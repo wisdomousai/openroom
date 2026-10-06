@@ -19,7 +19,7 @@ For a content-only edit after the other apps are built:
 
 ```sh
 bun run --filter openroom-site build
-bun run build:worker
+bun run --filter openroom-workspace-worker build
 ```
 
 ## Refresh screenshots
@@ -27,7 +27,7 @@ bun run build:worker
 ```sh
 UPDATE_MANUAL_SCREENSHOTS=1 bun run verify:browser --config manual/playwright.config.ts --grep 'capture the manual'
 bun run --filter openroom-site build
-bun run build:worker
+bun run --filter openroom-workspace-worker build
 ```
 
 `e2e/manual/capture.spec.ts` performs the actual browser workflow against the local application. It creates a sample learner, uses the checked-in French B1 lesson, runs participation in a separate browser, saves Notes, submits writing, and publishes feedback. It writes PNGs into `apps/site/public/docs/images/`. Review every image before keeping it. Do not capture account secrets, active learner links, or production personal data.

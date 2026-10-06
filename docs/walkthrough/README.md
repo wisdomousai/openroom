@@ -7,7 +7,7 @@ The scenarios and starting outlines are data. Add or change a walkthrough by edi
 ## Prerequisites
 
 - the OpenRoom worker running at `http://127.0.0.1:8787` (or set `OPENROOM_URL`)
-- local D1 migrations applied (`cd apps/worker && bunx wrangler d1 migrations apply openroom --local`)
+- local D1 migrations applied (`cd apps/workspace-worker && bunx wrangler d1 migrations apply openroom --local`)
 - Bun, `npx`, FFmpeg, and FFprobe
 - local demo credentials enabled by the worker when using authoring journeys
 - `docs/walkthrough/.env.local` containing the MiMo key for narration

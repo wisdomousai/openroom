@@ -17,7 +17,7 @@ document → encode as Playwright → fix UI until green → only then next UC
 4. Commit contract + test + UI together.
 
 Domain math, reveal security, and HTTP/WS behaviour stay in vitest
-(`packages/domain`, `apps/worker/test`). Playwright owns **browser visibility
+(`packages/domain`, `apps/workspace-worker/test`). Playwright owns **browser visibility
 and visual grammar**, not aggregate arithmetic.
 
 ## Visual north star
@@ -100,7 +100,7 @@ bun dev
 bun run test:e2e
 ```
 
-Admin key for session create comes from `apps/worker/.dev.vars` (`ADMIN_KEY`).
+Admin key for session create comes from `apps/workspace-worker/.dev.vars` (`ADMIN_KEY`).
 Override with `OPENROOM_ADMIN_KEY` if needed.
 
 UC-43 runs against a relay alone: `bun run dev:relay` (port 8790) and

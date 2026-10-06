@@ -53,7 +53,7 @@ two passed. Host, stage, domain, SDK, Worker and MCP typechecks passed; host/sta
 builds and Worker asset collection passed.
 
 Upstream dictionary availability is not covered by these browser fixtures. Normalization
-uses stubbed fetches in `apps/worker/test/dictionary.test.ts`; credential and language
+uses stubbed fetches in `apps/workspace-worker/test/dictionary.test.ts`; credential and language
 boundaries live in `dictionary-routes.test.ts`. Learners' private dictionary lookup,
 physical touch devices, Safari, freehand alignment and wrapped phrase marks need their
 own acceptance. No deployment is implied.

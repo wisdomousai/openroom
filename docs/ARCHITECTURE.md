@@ -43,7 +43,7 @@ flowchart TB
   Agents -->|stdio MCP sidecar| S
   X["External agents: Claude Code, Codex,<br/>any MCP client, the openroom CLI"] -->|openroom mcp| S
   subgraph Hosted["Hosted service"]
-    W["Control plane (apps/worker): accounts, library,<br/>same tools at /api/mcp, session creation"]
+    W["Control plane (apps/workspace-worker): accounts, library,<br/>same tools at /api/mcp, session creation"]
     RL["Relay (apps/relay): SessionDO,<br/>live API, stage and join pages"]
     W -->|SessionDO by script_name<br/>+ RELAY service binding| RL
   end
@@ -57,6 +57,13 @@ Signing in adds the online library, sharing and live sessions. Signed out, a
 teacher with a live server (their own relay) can still run anonymous and
 pseudonymous live sessions. Agents never talk to the editor UI. They talk to the
 same MCP tools as every other client, and the editor shows what they saved.
+
+The repository splits along the same line. The **core** (`packages/*`, `apps/relay`,
+`apps/stage`, `apps/participant`, `apps/office`, `apps/desktop`) makes and presents
+decks and runs live sessions. The **workspace** (`apps/workspace`,
+`apps/workspace-worker`, `apps/site`) is the signed-in library and the web host.
+`bun run build:core` builds the core in a checkout without the workspace apps; Desktop
+then has no renderer bundle, because its windows load the `apps/workspace` build.
 
 ## "Make me a slide with a picture of a cat"
 
@@ -226,13 +233,13 @@ The live plane is its own Worker. `apps/relay` (`openroom-relay`) owns the
 `SessionDO` class, one Durable Object per session, and serves everything a running
 session needs: state, commands, the WebSocket, per-session assets (SQLite chunks in
 the session's object), anonymous and pseudonymous joins, and the stage and
-participant apps. It has no D1, no R2 and no accounts. `apps/worker` (`openroom`) is
+participant apps. It has no D1, no R2 and no accounts. `apps/workspace-worker` (`openroom`) is
 the control plane: accounts, spaces, decks, billing, MCP and the API catalog.
 
 ```mermaid
 flowchart LR
   subgraph Hosted["openroom.app / join.openroom.app"]
-    CP["Control plane<br/>apps/worker"]
+    CP["Control plane<br/>apps/workspace-worker"]
     RE["Relay<br/>apps/relay"]
     DO[("SessionDO<br/>one per session")]
     CP -->|"SESSIONS: script_name openroom-relay"| DO
@@ -270,7 +277,7 @@ sessions run in full, with ballots export and no participant limit unless the re
 sets `participantLimit`. Without `RELAY_KEY`, creation is off. The API is in
 `docs/CONTRACTS.md`; deployment is in `docs/DEPLOYMENT.md`.
 
-**Desktop picks the server when a session starts** (`apps/host/src/lib/desktop-live.ts`):
+**Desktop picks the server when a session starts** (`apps/workspace/src/lib/desktop-live.ts`):
 
 | State | Start live | Present |
 | --- | --- | --- |
@@ -284,7 +291,7 @@ the main process sends it, as the bearer of `POST /api/sessions` on that relay
 (`apps/desktop/src/relay.ts`). The main process records each relay session's code, so
 the `openroom://app/api/sessions/<code>/…` proxy sends that session's state, commands,
 assets and exports to the relay. The editor does not branch on the server:
-`RelayLiveServices` (`apps/host/src/editor-services.tsx`) narrows `EditorServices` for
+`RelayLiveServices` (`apps/workspace/src/editor-services.tsx`) narrows `EditorServices` for
 the session, pointing join and stage links at the relay and dropping what the relay
 does not hold (saved session record, saved results, remote and Q&A links for other
 devices).
@@ -342,8 +349,8 @@ little:
 
 | Surface | Where |
 | --- | --- |
-| `llms.txt`, and Markdown versions of pages on `Accept: text/markdown` | site and Worker (`apps/worker/src/markdown-negotiation.ts`) |
-| OpenAPI document, generated from the running app | `/openapi.json` (`apps/worker/src/api-catalog`) |
+| `llms.txt`, and Markdown versions of pages on `Accept: text/markdown` | site and Worker (`apps/workspace-worker/src/markdown-negotiation.ts`) |
+| OpenAPI document, generated from the running app | `/openapi.json` (`apps/workspace-worker/src/api-catalog`) |
 | MCP server card | `/.well-known/mcp/server-card.json` (`packages/mcp/src/server-card.ts`) |
 | OAuth metadata for MCP clients | `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server` |
 | A2A agent card and JSON-RPC endpoint | `/.well-known/agent-card.json`, `/api/a2a` |

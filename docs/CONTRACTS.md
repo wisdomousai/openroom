@@ -11,11 +11,11 @@ packages/domain        @openroom/domain   — pure TS session state machine, com
 packages/cli           @openroom/cli      — `openroom` CLI: init/validate/preview (+ session commands hitting the HTTP API)
 packages/sdk           @openroom/sdk      — tiny browser client: join, snapshot fetch, WS+polling sync, command submit
 packages/ui            @openroom/ui       — typed theme-token system: 5 built-in themes x light/dark, CSS-variable emission
-apps/worker            — control plane Worker: router, D1/R2, accounts, session creation; binds the relay's SessionDO
+apps/workspace-worker  — control plane Worker: router, D1/R2, accounts, session creation; binds the relay's SessionDO
 apps/relay             — relay Worker (`openroom-relay`): SessionDO Durable Object, live session API, stage + participant apps
 apps/participant       — participant web app (Vite + React + @openroom/charts)
 apps/stage             — projector stage view (Vite + React + GSAP + Three + @openroom/charts)
-apps/host              — host console (Vite + React + shadcn + @openroom/charts)
+apps/workspace         — workspace client: Library, settings, host console (Vite + React + shadcn + @openroom/charts)
 examples/              — example Session YAML files
 ```
 
@@ -596,7 +596,7 @@ Everything above describes the **session plane**: capability tokens, the Session
 
 Worker binding `DB: D1Database` (wrangler.jsonc `d1_databases`, `database_name: "openroom"`, `migrations_dir: "migrations"`). The committed `database_id` is a placeholder — the integrator replaces it with the id from `wrangler d1 create openroom`. Miniflare/vitest ignores it and uses a local database.
 
-**The schema's source of truth is `apps/worker/src/db/schema.ts`** (drizzle-orm table definitions). SQL migrations are **generated, never handwritten**: edit `schema.ts`, then run `bun run db:generate` in `apps/worker` (`drizzle-kit generate`, configured by `apps/worker/drizzle.config.ts`). Output lands in `apps/worker/migrations/` — currently a single squashed `0000_init.sql` plus the `meta/` snapshot directory, **which must stay committed** because drizzle-kit diffs against it to produce the next migration. Wrangler (`migrations_dir`) and the vitest harness (`readD1Migrations`) both read that same directory, so a generated migration needs no copy step. The runtime does **not** use drizzle: request handlers keep issuing raw `env.DB.prepare()` statements; `schema.ts` exists purely so the DDL has one authoritative definition.
+**The schema's source of truth is `apps/workspace-worker/src/db/schema.ts`** (drizzle-orm table definitions). SQL migrations are **generated, never handwritten**: edit `schema.ts`, then run `bun run db:generate` in `apps/workspace-worker` (`drizzle-kit generate`, configured by `apps/workspace-worker/drizzle.config.ts`). Output lands in `apps/workspace-worker/migrations/` — currently a single squashed `0000_init.sql` plus the `meta/` snapshot directory, **which must stay committed** because drizzle-kit diffs against it to produce the next migration. Wrangler (`migrations_dir`) and the vitest harness (`readD1Migrations`) both read that same directory, so a generated migration needs no copy step. The runtime does **not** use drizzle: request handlers keep issuing raw `env.DB.prepare()` statements; `schema.ts` exists purely so the DDL has one authoritative definition.
 
 Core tables (28 in all; the rest cover media, archives, learner state, desktop file links and auth tickets):
 
@@ -623,7 +623,7 @@ Collaboration puts the sharing boundary on the **space**. The effective role on 
 `users.entitlements` is reserved for manual development grants to accounts without
 any Paddle customer mapping. Linked accounts derive capabilities from verified
 subscription state and the current approved price catalog through
-`apps/worker/src/entitlements.ts`. Only billing ingestion/reconciliation writes
+`apps/workspace-worker/src/entitlements.ts`. Only billing ingestion/reconciliation writes
 subscription state; neither client requests nor checkout redirects can grant
 access. Interface preferences live separately in `users.prefs`. Closed allowlist; unknown keys are ignored; only JSON `true` sets a flag:
 
@@ -756,7 +756,7 @@ Session lookup is **exactly one D1 read per request and nothing is cached** — 
 
 `orlnk_<id>_<secret>` (id 16 bytes, secret 32 bytes, both base64url) deliberately mirrors `orpat_` so the two are distinguishable in logs and cannot be confused by a shape check. Only `sha256Hex(token)` is stored; `token_prefix` (first 12 chars) is what the listing shows. Liveness is entirely in the SQL — the row must exist, be unrevoked, be unexpired, and point at a context that is not trashed — so there is no code path where a dead link resolves. Purging a context deletes its links outright.
 
-**The boundary — an invariant, in the same voice as the session-token rule in `apps/worker/src/auth.ts`:**
+**The boundary — an invariant, in the same voice as the session-token rule in `apps/workspace-worker/src/auth.ts`:**
 
 A context access link resolves to a `VerifiedContextLink` (`{ linkId, contextId, displayName }`) and **never to a `SessionUser`**. It therefore physically cannot be handed to `requireControlUser`, to `/api/tutoring/*`, or to `/api/my/*`. It creates no `users` row, no session, no space membership, and nothing derived from a space role. It grants exactly one context's learner-visible data — ten students in one space cannot read each other. **The blast radius of a leaked link is exactly one context.**
 
@@ -875,7 +875,7 @@ DELETE /api/tutoring/assets/:id                            uploader or editor+; 
 GET    /api/assets/:id                                     public read, immutable cache, ETag, ranges
 ```
 
-`GET /api/assets/:id` is **deliberately unauthenticated**: the id is a random UUID and acts as the capability, because a picture on a slide is fetched by the stage, by participant phones, and by learners holding no session. That makes an upload exactly as private as an unguessable CDN path — fine for teaching material, not a place for anything that must not leak if a URL is forwarded. Responses carry `Content-Security-Policy: default-src 'none'; sandbox` so uploaded bytes can never run as a document on the app's own origin. Source: `apps/worker/src/assets.ts`.
+`GET /api/assets/:id` is **deliberately unauthenticated**: the id is a random UUID and acts as the capability, because a picture on a slide is fetched by the stage, by participant phones, and by learners holding no session. That makes an upload exactly as private as an unguessable CDN path — fine for teaching material, not a place for anything that must not leak if a URL is forwarded. Responses carry `Content-Security-Policy: default-src 'none'; sandbox` so uploaded bytes can never run as a document on the app's own origin. Source: `apps/workspace-worker/src/assets.ts`.
 
 ### Host app
 
@@ -883,7 +883,7 @@ On load: one `/api/me`. Signed out, it probes `/api/auth/status` and shows Googl
 
 ### Worker env additions
 
-`DB: D1Database`; `MEDIA: R2Bucket` (bucket `openroom-media`; `wrangler dev` and the vitest pool simulate it locally from the binding alone, no setup — a first deploy needs `wrangler r2 bucket create openroom-media`); secrets `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional vars `GOOGLE_AUTH_URL`, `GOOGLE_TOKEN_URL`; dev-only `DEMO_AUTH=1`. Source: `apps/worker/src/auth.ts` (identity, cookies, OIDC, demo login) and `apps/worker/src/control.ts` (live-session directory, quota, recovery) and `apps/worker/src/delivery.ts` (decks and filed sessions).
+`DB: D1Database`; `MEDIA: R2Bucket` (bucket `openroom-media`; `wrangler dev` and the vitest pool simulate it locally from the binding alone, no setup — a first deploy needs `wrangler r2 bucket create openroom-media`); secrets `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional vars `GOOGLE_AUTH_URL`, `GOOGLE_TOKEN_URL`; dev-only `DEMO_AUTH=1`. Source: `apps/workspace-worker/src/auth.ts` (identity, cookies, OIDC, demo login) and `apps/workspace-worker/src/control.ts` (live-session directory, quota, recovery) and `apps/workspace-worker/src/delivery.ts` (decks and filed sessions).
 
 
 ## Live co-facilitation

@@ -41,12 +41,12 @@ agents are first-class users and not an add-on? The answers in this code base:
 ```mermaid
 flowchart LR
   subgraph Clients
-    B[Browser: host, stage, participant]
+    B[Browser: workspace, stage, participant]
     D[Desktop + local agents]
     C[CLI]
     M[MCP clients]
   end
-  B & D & C & M --> W[Control plane Worker: one application service layer]
+  B & D & C & M --> W[Workspace Worker, the control plane: one application service layer]
   W --> DB[(D1: accounts, spaces, decks, records)]
   W --> R2[(R2: media)]
   W -->|SessionDO by script_name, RELAY service binding| RL[Relay Worker: live API, stage and join pages]
@@ -66,30 +66,48 @@ and protocols), `docs/DESKTOP.md` (the native client and `.openroom` files) and
 
 ## Layout
 
+The repository has two halves. The **core** makes and presents decks and runs live
+sessions, and builds on its own (`bun run build:core`). The **workspace** organises
+decks for a signed-in teacher and is the web host.
+
+### Core
+
 | Path | What |
 | --- | --- |
 | `packages/schema` | `Session` and `Outline` JSON Schemas, validators, YAML/JSON parsers, normalizers |
 | `packages/domain` | Pure live-session state machine: commands, revisions, aggregates, blocklist, snapshots |
 | `packages/sdk` | Tiny browser client (snapshot fetch, WS + polling fallback, command submit) |
 | `packages/cli` | `openroom` CLI: init, validate, preview, `deck` and `session` control |
-| `apps/worker` | Control plane Worker: accounts, spaces, decks, billing, MCP, session creation; forwards live pages to the relay |
+| `packages/mcp` | MCP server: tool definitions, server instructions, server card, deck preview |
+| `packages/editor` | Deck editor, presenter and live console; reaches its host only through the `EditorServices` port |
+| `packages/slides` | Slide step renderer shared by the editor, stage and participant |
+| `packages/charts` | Live result charts |
+| `packages/ui` | Shared shadcn primitives, toasts, theme provider and design tokens |
 | `apps/relay` | Relay Worker: `SessionDO`, live session API and WebSocket, per-session assets, anonymous/pseudonymous join, stage and participant apps; runs alone with `RELAY_KEY` |
 | `apps/participant` | Participant join app (`join.openroom.app`, also `/join/` locally) |
 | `apps/stage` | Projector stage view (`/stage/`) — code + QR, animated live results |
-| `packages/editor` | Deck editor, presenter and live console; reaches its host only through the `EditorServices` port |
-| `packages/ui` | Shared shadcn primitives, toasts, theme provider and design tokens |
-| `apps/host` | Host client (`/host/`) — workspace shell, Library, settings and the `EditorServices` adapters around `packages/editor` |
+| `apps/office` | PowerPoint add-in (`/office/`) — OpenRoom slides and session controls inside PowerPoint |
 | `apps/desktop` | Electron client — offline `.openroom` files, recovery, OS integration and external-display presentation |
-| `apps/site` | Marketing/docs site (Astro) — landing (`/`), docs (`/docs/`), `llms.txt`, sitemap |
 | `examples/` | Example decks (validated in CI) |
-| `docs/journeys/` | Use-case contracts for UI consistency (stage / host / participant) |
-| `e2e/` | Playwright journeys that enforce those contracts |
+| `plugin/` | Agent plugin: MCP server declaration and skills |
+
+### Workspace
+
+| Path | What |
+| --- | --- |
+| `apps/workspace` | Workspace client (`/host/`) — shell, Library, spaces and folders, students and classes, Notes, learner page, billing, settings, and the `EditorServices` adapters around `packages/editor` |
+| `apps/workspace-worker` | Control plane Worker: accounts, spaces, decks, billing, MCP, session creation; forwards live pages to the relay |
+| `apps/site` | Marketing/docs site (Astro) — landing (`/`), docs (`/docs/`), `llms.txt`, sitemap |
+| `e2e/` | Playwright journeys that enforce the `docs/journeys/` contracts |
+
+`docs/journeys/` holds the use-case contracts for UI consistency (stage / host / participant).
 
 ## Develop
 
 ```sh
 bun install
-bun run build       # all packages + apps
+bun run build       # all packages + apps (build:core, then build:workspace)
+bun run build:core  # core only: packages, relay, stage, participant, office, Desktop main and preload
 bun run test        # all unit/integration tests (vitest)
 bun run typecheck
 ```
@@ -142,7 +160,7 @@ Because the port is pinned, a stale wrangler already holding 8787 makes the new 
 
 Then open `/host/`, sign in with a demo account or enter the local operator key in Settings. Create a deck, or open a space at `/host/#/space/:id` for the tutor route. **Start session** on either kind opens the live controls and provides the stage and participant URLs.
 
-Local sign-in (no Google needed): set `DEMO_AUTH=1` in `apps/worker/.dev.vars` (already in `.dev.vars.example`). Open Settings and pick a demo account — `alice` / `bob` / `cara`, password `demo`. That mints a real sign-in so the deck library and session recovery work.
+Local sign-in (no Google needed): set `DEMO_AUTH=1` in `apps/workspace-worker/.dev.vars` (already in `.dev.vars.example`). Open Settings and pick a demo account — `alice` / `bob` / `cara`, password `demo`. That mints a real sign-in so the deck library and session recovery work.
 
 ### Browser journeys (Playwright)
 
@@ -182,7 +200,7 @@ that relay.
 
 ### Full: workspace, library and live sessions
 
-Point the `routes` and the D1 `database_id` in `apps/worker/wrangler.jsonc` at your
+Point the `routes` and the D1 `database_id` in `apps/workspace-worker/wrangler.jsonc` at your
 own account, then from the repo root:
 
 ```sh

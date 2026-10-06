@@ -28,7 +28,7 @@ question letters sit inside clear, aligned markers. The screenshots include
 editor affordances such as Add option; audience cleanup is covered by UC-28.
 
 Playwright: `e2e/journeys/UC-29-classroom-designs.spec.ts`.
-Palette checks: `apps/host/src/lib/slide-contrast.test.ts`.
+Palette checks: `apps/workspace/src/lib/slide-contrast.test.ts`.
 
 The final run was interrupted after Clean/Paper/Board when Wrangler's local
 ProxyWorker exited with `Network connection lost`. Contrast/Color/Business

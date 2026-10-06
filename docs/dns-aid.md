@@ -54,10 +54,10 @@ Requires a Cloudflare API token with **Zone → DNS → Edit** (and **Zone → D
 ```bash
 export CLOUDFLARE_API_TOKEN=…   # DNS Edit on openroom.app
 export CLOUDFLARE_ZONE_ID=db3c373702a33f816e1bfd5bf4caec4e   # optional; script can resolve by name
-bun apps/worker/scripts/publish-dns-aid.mjs
+bun apps/workspace-worker/scripts/publish-dns-aid.mjs
 # optional:
-bun apps/worker/scripts/publish-dns-aid.mjs --dnssec
-bun apps/worker/scripts/publish-dns-aid.mjs --dry-run
+bun apps/workspace-worker/scripts/publish-dns-aid.mjs --dnssec
+bun apps/workspace-worker/scripts/publish-dns-aid.mjs --dry-run
 ```
 
 Dashboard alternative: **DNS → Records → Add record** → type SVCB / TXT with the values above.

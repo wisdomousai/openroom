@@ -22,7 +22,7 @@ original school documents or wrap a general-purpose model.
 
 On a billed deployment (openroom.app) the teaching loop — homework → preparation
 → class → recap → next class — is the paid `continuity` capability
-(`apps/worker/src/continuity-access.ts`), in Tutoring and Classroom workspaces
+(`apps/workspace-worker/src/continuity-access.ts`), in Tutoring and Classroom workspaces
 alike. It covers session Notes (`/api/sessions/:id/record`, including the
 next-time sticky and the homework published on the record), context people,
 access links, returned and learner work (practice, writing and voice
