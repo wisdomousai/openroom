@@ -48,7 +48,7 @@ jobs:
         run: bun run verify:browser --config manual/playwright.config.ts
       - name: Package the verified build
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: tar -czf "$RUNNER_TEMP/openroom-build.tar.gz" packages/*/dist apps/worker/public apps/relay/public
+        run: tar -czf "$RUNNER_TEMP/openroom-build.tar.gz" packages/*/dist apps/workspace-worker/public apps/relay/public
       - name: Keep the verified build for deployment
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -134,7 +134,7 @@ jobs:
           bun x --no-install wrangler deploy
       - name: Apply migrations and deploy the control plane
         if: steps.current.outputs.deploy == 'true'
-        working-directory: apps/worker
+        working-directory: apps/workspace-worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

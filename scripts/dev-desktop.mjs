@@ -51,7 +51,7 @@ console.log(`OpenRoom Desktop → ${origin}`);
 console.log(`Phones on this Wi-Fi join at ${origin}/join/`);
 
 const filters = [];
-if (needBuild('apps/host/dist/index.html')) filters.push('openroom-host');
+if (needBuild('apps/workspace/dist/index.html')) filters.push('openroom-workspace');
 if (needBuild('apps/participant/dist/index.html')) filters.push('openroom-participant');
 if (needBuild('apps/stage/dist/index.html')) filters.push('openroom-stage');
 if (filters.length > 0) {
@@ -65,7 +65,7 @@ await run('bun', ['run', 'build:worker']);
 console.log('Applying local D1 migrations…');
 await new Promise((resolvePromise, reject) => {
   const child = spawn('bunx', ['wrangler', 'd1', 'migrations', 'apply', 'openroom', '--local'], {
-    cwd: resolve(root, 'apps/worker'),
+    cwd: resolve(root, 'apps/workspace-worker'),
     stdio: 'inherit',
     env: { ...process.env, CI: '1' },
   });
@@ -99,7 +99,7 @@ try {
   const status = await fetch(readyUrl, { signal: AbortSignal.timeout(3_000) }).then((res) => res.json());
   if (status?.demo !== true) {
     console.warn(
-      'Local Desktop expects demo login. Set DEMO_AUTH=1 in apps/worker/.dev.vars and restart the worker.',
+      'Local Desktop expects demo login. Set DEMO_AUTH=1 in apps/workspace-worker/.dev.vars and restart the worker.',
     );
   }
 } catch {

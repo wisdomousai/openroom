@@ -16,7 +16,7 @@ import { parse } from 'jsonc-parser';
 import { bun, completed, run, start, stop } from './ci/run.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const workerDir = resolve(root, 'apps/worker');
+const workerDir = resolve(root, 'apps/workspace-worker');
 const relayDir = resolve(root, 'apps/relay');
 const capacity = process.argv[2] === '--capacity';
 if (capacity && process.argv.length !== 3) throw new Error('Usage: bun run verify:capacity');

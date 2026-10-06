@@ -15,7 +15,7 @@ if (options.some((option) => !['--install', '--skip-build'].includes(option))) {
 const install = options.includes('--install');
 if (install && process.platform !== 'darwin') throw new Error('Automatic sideloading currently supports macOS. See apps/office/README.md.');
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const workerDir = resolve(root, 'apps/worker');
+const workerDir = resolve(root, 'apps/workspace-worker');
 const local = resolve(root, '.wrangler/office');
 const persist = resolve(local, 'state');
 const origin = 'https://localhost:3443';
