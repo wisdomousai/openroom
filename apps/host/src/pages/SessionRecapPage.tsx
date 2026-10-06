@@ -6,7 +6,7 @@ import { to } from '../destinations';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { Textarea } from '@openroom/ui/components/textarea';
-import type { StoredSession } from '../../../../packages/editor/src/types';
+import type { StoredSession } from '@openroom/editor';
 
 function download(body: string, type: string, name: string) {
   const url = URL.createObjectURL(new Blob([body], { type }));

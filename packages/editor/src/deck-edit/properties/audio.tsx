@@ -1,8 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { OpenRoomFileResourceV1, OutlineMedia } from '@openroom/schema';
 import { AudioPlayer } from '@openroom/slides';
-import { ApiError, assetUrl, uploadAsset } from '../../../../../apps/host/src/api';
-import { desktopBridge } from '../../../../../apps/host/src/desktop-bridge';
+import { isServiceError, useEditorServices } from '../../services';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { CommitTextarea, Section } from './shared';
@@ -23,7 +22,7 @@ export function AudioSection({ media, spaceId, onChange, onEmbedded }: {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const input = useRef<HTMLInputElement>(null);
   const transcriptId = useId();
-  const bridge = desktopBridge();
+  const { desktop: bridge, assets } = useEditorServices();
   const settings = media.listening!;
   const embedded = Boolean(media.resourceId || (media.url?.startsWith('https://local.openroom.invalid/') && !media.url.includes('openroom-pending')));
   const file = async (selected?: File) => {
@@ -36,13 +35,13 @@ export function AudioSection({ media, spaceId, onChange, onEmbedded }: {
         onEmbedded(result.resourceId, result.resource);
         onChange({ ...content, url: `https://local.openroom.invalid/${result.resourceId}`, alt: result.resource.name });
       } else if (selected && spaceId) {
-        const asset = await uploadAsset(spaceId, selected);
+        const asset = await assets.upload(spaceId, selected);
         if (!mounted.current) return;
         if (asset.kind !== 'audio') throw new Error('Choose an audio recording.');
-        onChange({ ...content, assetId: asset.id, url: assetUrl(asset.id), alt: asset.name });
+        onChange({ ...content, assetId: asset.id, url: assets.url(asset.id), alt: asset.name });
       }
     } catch (cause) {
-      if (mounted.current) setError(cause instanceof ApiError && cause.code === 'unsupported-media-type'
+      if (mounted.current) setError(isServiceError(cause) && cause.code === 'unsupported-media-type'
         ? 'Choose an MP3, WAV or M4A recording.'
         : cause instanceof Error ? cause.message : 'The audio could not be added.');
     }

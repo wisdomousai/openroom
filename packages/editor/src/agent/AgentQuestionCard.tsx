@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import type { DesktopAgentQuestion, DesktopAgentQuestionAnswer } from '../../../../apps/host/src/desktop-bridge';
+import type { DesktopAgentQuestion, DesktopAgentQuestionAnswer } from '../desktop-bridge';
 import { Button } from '@openroom/ui/components/button';
 import { Checkbox } from '@openroom/ui/components/checkbox';
 import { Input } from '@openroom/ui/components/input';

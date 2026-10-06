@@ -5,9 +5,8 @@ import { canAdvanceOutline, canRetreatOutline } from './outline-navigation';
  * Per-slide controls only; Back / Next own a fixed 62px bottom row.
  */
 import { useCallback, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 
-import { to } from '../../../../apps/host/src/destinations';
+import { useEditorServices } from '../services';
 import { useSessionExit } from './useSessionExit';
 import { ListeningControls } from './ListeningControls';
 import { Alert, AlertDescription, AlertTitle } from '@openroom/ui/components/alert';
@@ -45,7 +44,7 @@ export function PresenterRemote({
   onOpenLiveHost: () => void;
 }) {
   const host = useHostSession(live);
-  const navigate = useNavigate();
+  const { navigate } = useEditorServices().navigation;
   const exit = useSessionExit(live, host.ended);
   const [copied, setCopied] = useState(false);
   const remaining = useClosesAt(host.closesAt);
@@ -137,7 +136,7 @@ export function PresenterRemote({
             <Button
               className="h-12 rounded-xl text-option font-semibold"
               onClick={() =>
-                void navigate({ ...to.sessionNotes(exit.sessionId!), replace: true })
+                navigate({ kind: 'sessionNotes', sessionId: exit.sessionId! }, { replace: true })
               }
             >
               Notes
@@ -147,7 +146,7 @@ export function PresenterRemote({
             variant="outline"
             className="h-12 rounded-xl text-option font-normal"
             onClick={() =>
-              void navigate({ ...to.library(exit.deckPlace ?? undefined), replace: true })
+              navigate({ kind: 'library', place: exit.deckPlace }, { replace: true })
             }
           >
             Library
@@ -443,7 +442,7 @@ export function PresenterRemote({
       {host.qna ? (
         <button
           type="button"
-          onClick={() => void navigate(to.sessionQna(live.sessionCode))}
+          onClick={() => navigate({ kind: 'sessionQna', sessionCode: live.sessionCode })}
           className="mt-1 text-center text-caption text-muted-foreground hover:text-foreground"
         >
           Open the Q&A desk

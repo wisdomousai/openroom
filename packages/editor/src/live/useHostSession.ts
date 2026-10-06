@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createSessionClient, type SessionClient } from '@openroom/sdk';
-import { fetchHostSnapshot } from '../../../../apps/host/src/api';
+import { useEditorServices } from '../services';
 import { deriveHostFlow, type HostFlowKind } from './hostFlow';
 import { newIdempotencyKey, submitCommand } from './sdk';
 import {
@@ -47,6 +47,7 @@ function summaryOf(
 }
 
 export function useHostSession(live: StoredSession) {
+  const { fetchHostSnapshot } = useEditorServices().live;
   const [snapshot, setSnapshot] = useState<HostSnapshot | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [fatal, setFatal] = useState<string | null>(null);
@@ -136,7 +137,7 @@ export function useHostSession(live: StoredSession) {
       push(first.message ?? first.code ?? 'Command failed', 'error');
       return false;
     },
-    [push, live.sessionCode, live.hostToken],
+    [fetchHostSnapshot, push, live.sessionCode, live.hostToken],
   );
 
   const session = useMemo(() => sessionOf(snapshot), [snapshot]);

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { fetchSessionContext, getSessionItem, type SessionContext } from '../../../../apps/host/src/api';
-import { handOffLiveNotes } from '../../../../apps/host/src/lib/scratchpad';
-import { clearLiveSession } from '../../../../apps/host/src/storage';
+import { useEditorServices, type SessionContext } from '../services';
 import type { StoredSession } from '../types';
 import { shouldHandOffNotes, type ProbeState } from './session-exit';
 
@@ -39,6 +37,10 @@ export interface SessionExit {
  * then drop the tutor's scratchpad.
  */
 export function useSessionExit(live: StoredSession, ended: boolean): SessionExit {
+  const services = useEditorServices();
+  const { fetchSessionContext, getSessionItem } = services.live;
+  const clearSession = services.live.sessions.clear;
+  const scratchpad = services.slots.scratchpad;
   const [context, setContext] = useState<SessionContext | null | undefined>(undefined);
   const [probeFailed, setProbeFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -71,7 +73,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     return () => {
       cancelled = true;
     };
-  }, [sessionCode, hostToken, attempt]);
+  }, [fetchSessionContext, sessionCode, hostToken, attempt]);
 
   /** One automatic retry at the moment the session ends — that is when it matters. */
   const retriedOnEnd = useRef(false);
@@ -105,7 +107,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [getSessionItem, sessionId]);
 
   const probe: ProbeState = probeFailed
     ? { state: 'failed' }
@@ -119,9 +121,9 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     handedOff.current = true;
     // The durable id is known now, so the live-keyed copy can be re-keyed and
     // the spent credentials dropped from this device.
-    handOffLiveNotes(sessionCode, sessionId);
-    clearLiveSession(sessionCode);
-  }, [ended, probe, sessionCode, sessionId]);
+    scratchpad?.handOff(sessionCode, sessionId);
+    clearSession(sessionCode);
+  }, [clearSession, ended, probe, scratchpad, sessionCode, sessionId]);
 
   return { context, probe, probeFailed, retryProbe, sessionId, deckPlace, canEdit };
 }

@@ -4,41 +4,26 @@
  */
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  RouterContextProvider,
-} from '@tanstack/react-router';
-
-import { to } from '../../../../apps/host/src/destinations';
+import { EditorServicesProvider } from '../services';
+import { memoryEditorServices } from '../testing';
 import { DeckEditorTopBar } from './DeckEditorTopBar';
 import { IDLE_STATUS, type DraftStatus } from './useDraftSave';
 
 /*
- * The bar's links are typed router targets, so rendering one needs a router in
- * context. This is the smallest one that resolves the two routes it names —
- * no jsdom, still a static render.
+ * The bar's links are destinations the host resolves; the in-memory services
+ * render each one as a readable href. The host's own routes are checked in
+ * apps/host (editor-services.test.tsx).
  */
-const rootRoute = createRootRoute();
-const routeTree = rootRoute.addChildren([
-  createRoute({ getParentRoute: () => rootRoute, path: '/space/$spaceId' }),
-  createRoute({ getParentRoute: () => rootRoute, path: '/space/$spaceId/members' }),
-]);
-const router = createRouter({
-  routeTree,
-  history: createMemoryHistory({ initialEntries: ['/'] }),
-});
+const services = memoryEditorServices();
 
 function render(overrides: Partial<Parameters<typeof DeckEditorTopBar>[0]> = {}): string {
   return renderToStaticMarkup(
-    <RouterContextProvider router={router as never}>
+    <EditorServicesProvider services={services}>
       <DeckEditorTopBar
         title="Summer camp — day 1"
         folderName="Workshops"
-        libraryTo={to.library({ spaceId: 's1', folderId: 'f1', itemId: 'd1' })}
-        shareTo={to.spaceMembers('s1')}
+        libraryTo={{ kind: 'library', place: { spaceId: 's1', folderId: 'f1', itemId: 'd1' } }}
+        shareTo={{ kind: 'spaceMembers', spaceId: 's1' }}
         status={IDLE_STATUS}
         onPresent={() => undefined}
         canPresent
@@ -48,7 +33,7 @@ function render(overrides: Partial<Parameters<typeof DeckEditorTopBar>[0]> = {})
         error={null}
         {...overrides}
       />
-    </RouterContextProvider>,
+    </EditorServicesProvider>,
   );
 }
 
@@ -60,8 +45,12 @@ describe('DeckEditorTopBar', () => {
   });
 
   it('takes the back arrow to the deck’s own row in the Library', () => {
-    // The selection rides in the URL, so Back from the editor lands on the deck.
-    expect(render()).toContain('/space/s1?folderId=f1&amp;itemId=d1');
+    expect(render()).toContain('href="memory:library?place.spaceId=s1&amp;place.folderId=f1&amp;place.itemId=d1"');
+  });
+
+  it('offers Share only when the deck has a space', () => {
+    expect(render()).toContain('href="memory:spaceMembers?spaceId=s1"');
+    expect(render({ shareTo: null })).not.toContain('>Share<');
   });
 
   it('drops the breadcrumb for a deck at the root of its space', () => {

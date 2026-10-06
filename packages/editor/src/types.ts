@@ -1,7 +1,6 @@
 /**
- * Local mirrors of the shared contracts (docs/CONTRACTS.md).
- * Declared here so apps/host does not depend on @openroom/schema or
- * @openroom/domain at build time. Keep in sync with CONTRACTS.md.
+ * Local mirrors of the shared contracts (docs/CONTRACTS.md), used by the
+ * editor and the apps that host it. Keep in sync with CONTRACTS.md.
  */
 import type { DictionaryEntry, Outline, PresentationPosition } from '@openroom/schema';
 import type { InkColor, MarkShape } from '@openroom/sdk';

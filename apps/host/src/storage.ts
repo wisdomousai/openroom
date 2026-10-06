@@ -1,4 +1,4 @@
-import type { StoredSession } from '../../../packages/editor/src/types';
+import type { StoredSession } from '@openroom/editor';
 
 const SESSION_PREFIX = 'openroom.host.session.';
 

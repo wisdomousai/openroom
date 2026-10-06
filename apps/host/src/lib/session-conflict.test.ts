@@ -6,7 +6,7 @@ import {
   parseVersionConflict,
   restoreInteraction,
 } from './session-conflict';
-import type { ChoiceInteraction, Session } from '../../../../packages/editor/src/types';
+import type { ChoiceInteraction, Session } from '@openroom/editor';
 
 function conflictError(): ApiError {
   return new ApiError(409, 'conflict', 'E_VERSION_CONFLICT', [], {

@@ -8,9 +8,8 @@
  * projector (spotlight) or show the whole list.
  */
 import { MonitorUp, MonitorX } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
 
-import { to } from '../../../../apps/host/src/destinations';
+import { useEditorServices } from '../services';
 import { useSessionExit } from './useSessionExit';
 import { Alert, AlertDescription } from '@openroom/ui/components/alert';
 import { Button } from '@openroom/ui/components/button';
@@ -28,7 +27,7 @@ const STATUS_LABEL: Record<ConnectionStatus, string> = {
 
 export function QnaDesk({ live, onLeave }: { live: StoredSession; onLeave: () => void }) {
   const host = useHostSession(live);
-  const navigate = useNavigate();
+  const { navigate } = useEditorServices().navigation;
   const { snapshot, status, fatal, toasts, ended, qna, toggleQnaHidden, setQnaStage } = host;
   const exit = useSessionExit(live, ended);
 
@@ -58,7 +57,7 @@ export function QnaDesk({ live, onLeave }: { live: StoredSession; onLeave: () =>
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => void navigate(to.sessionConsole(live.sessionCode))}
+              onClick={() => navigate({ kind: 'sessionConsole', sessionCode: live.sessionCode })}
             >
               Console
             </Button>
@@ -79,7 +78,7 @@ export function QnaDesk({ live, onLeave }: { live: StoredSession; onLeave: () =>
           {exit.sessionId !== null ? (
             <Button
               size="sm"
-              onClick={() => void navigate({ ...to.sessionNotes(exit.sessionId!), replace: true })}
+              onClick={() => navigate({ kind: 'sessionNotes', sessionId: exit.sessionId! }, { replace: true })}
             >
               Notes
             </Button>
@@ -88,7 +87,7 @@ export function QnaDesk({ live, onLeave }: { live: StoredSession; onLeave: () =>
             size="sm"
             variant="outline"
             onClick={() =>
-              void navigate({ ...to.library(exit.deckPlace ?? undefined), replace: true })
+              navigate({ kind: 'library', place: exit.deckPlace }, { replace: true })
             }
           >
             Library

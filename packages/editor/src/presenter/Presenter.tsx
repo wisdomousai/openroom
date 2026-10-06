@@ -4,13 +4,12 @@ import { deckAspectRatio, resolveRevealOrder, stringifyOpenRoomFile, type Outlin
 import { usePresentationKeys } from './usePresentationKeys';
 import { LiveHost } from '../live/LiveHost';
 import { Button } from '@openroom/ui/components/button';
-import { desktopBridge, type DesktopDisplay } from '../../../../apps/host/src/desktop-bridge';
+import type { DesktopDisplay } from '../desktop-bridge';
+import { useEditorServices } from '../services';
 import { PresentStage, presentableSteps } from './PresentationStage';
 import { advance, atEnd, atStart, openCursor, retreat, type PresentCursor } from './cursor';
-import { saveLiveSession } from '../../../../apps/host/src/storage';
 import type { StoredSession } from '../types';
 import { ListeningControls, type ListeningSettings } from '../live/ListeningControls';
-import { sessionStartMessage } from '../../../../apps/host/src/components/ContinuityLock';
 
 export type { PresentationPosition } from '@openroom/schema';
 
@@ -40,7 +39,9 @@ export function Presenter({ outline, fromStep = 0, startImmediately = false, doc
   const startPromise = useRef<Promise<StoredSession> | null>(null);
   const [displays, setDisplays] = useState<DesktopDisplay[]>([]);
   const [audienceOpen, setAudienceOpen] = useState(false);
-  const bridge = desktopBridge();
+  const services = useEditorServices();
+  const bridge = services.desktop;
+  const { sessions, startFailureMessage } = services.live;
   const containerRef = useRef<HTMLDivElement>(null);
   const fileId = useRef(crypto.randomUUID());
   const source = useMemo(() => documentSource ?? stringifyOpenRoomFile({
@@ -69,13 +70,13 @@ export function Presenter({ outline, fromStep = 0, startImmediately = false, doc
     startPromise.current = promise;
     try {
       const session = await promise;
-      saveLiveSession(session);
+      sessions.save(session);
       setLive(session);
     } catch (cause) {
-      setError(sessionStartMessage(cause, 'Could not start the session.'));
+      setError(startFailureMessage(cause, 'Could not start the session.'));
       startPromise.current = null;
     } finally { setStarting(false); }
-  }, [cursor, listening, live, onStart, steps]);
+  }, [cursor, listening, live, onStart, sessions, startFailureMessage, steps]);
   const autoStarted = useRef(false);
   useEffect(() => {
     if (startImmediately && !autoStarted.current) { autoStarted.current = true; void start(); }

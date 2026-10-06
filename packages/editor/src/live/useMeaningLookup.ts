@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { canonicalJson } from '@openroom/schema';
-import { ApiError, lookupDictionary, setSpaceLanguages, unconfiguredSpace } from '../../../../apps/host/src/api';
+import { isServiceError, useEditorServices, useNoLanguagePair } from '../services';
 import type { BreakoutLookup } from './MeaningBreakout';
-import { useLanguagePair } from '../../../../apps/host/src/components/LanguagePairFields';
 import type { HostCommand, HostSnapshot } from '../types';
 
 interface MeaningLookupDeps {
@@ -21,6 +20,10 @@ interface MeaningLookupDeps {
  * for a draft to live. It is kept across Close so “Reopen card” works.
  */
 export function useMeaningLookup({ sessionCode, snapshot, run }: MeaningLookupDeps) {
+  const services = useEditorServices();
+  const { lookUpWord: lookupDictionary } = services.tools;
+  const pairSlot = services.slots.languagePair;
+  const usePair = pairSlot?.usePair ?? useNoLanguagePair;
   const [lookUpTarget, setLookUpTarget] = useState<{
     stepId: string;
     partKey: string;
@@ -50,7 +53,7 @@ export function useMeaningLookup({ sessionCode, snapshot, run }: MeaningLookupDe
   );
   const [pairSaving, setPairSaving] = useState(false);
   // No stored pair to seed from — an unconfigured space is the only way here.
-  const languagePair = useLanguagePair(null);
+  const languagePair = usePair(null);
 
   const toggleArmed = useCallback(() => {
     setCardOpen(false);
@@ -134,7 +137,7 @@ export function useMeaningLookup({ sessionCode, snapshot, run }: MeaningLookupDe
            * here, so it is the one that gets its own branch. Everything else —
            * including this route's other 422, an unusable word — is a note.
            */
-          const space = unconfiguredSpace(error);
+          const space = pairSlot?.unconfiguredSpace(error) ?? null;
           if (space !== null) {
             setUnconfigured(space);
             if (space.canEdit) {
@@ -156,13 +159,13 @@ export function useMeaningLookup({ sessionCode, snapshot, run }: MeaningLookupDe
             kind: 'typed',
             word: target.word,
             note:
-              error instanceof ApiError && error.status === 429
+              isServiceError(error) && error.status === 429
                 ? 'Too many lookups — wait a minute, or type a meaning.'
                 : 'Lookup failed — type a meaning.',
           });
         });
     },
-    [sessionCode, stepId],
+    [lookupDictionary, pairSlot, sessionCode, stepId],
   );
 
   const entry = lookup?.kind === 'entry' ? { ...lookup.entry, sections: lookup.entry.sections.filter((section) => sections.includes(section.key)) } : undefined;
@@ -210,10 +213,10 @@ export function useMeaningLookup({ sessionCode, snapshot, run }: MeaningLookupDe
 
   const savePair = useCallback(() => {
     const target = lookUpTarget;
-    if (target === null || unconfigured === null) return;
+    if (target === null || unconfigured === null || pairSlot === undefined) return;
     const generation = epoch.current;
     setPairSaving(true);
-    void setSpaceLanguages(unconfigured.spaceId, {
+    void pairSlot.save(unconfigured.spaceId, {
       taught: languagePair.taught,
       native: languagePair.native,
     })
@@ -233,7 +236,7 @@ export function useMeaningLookup({ sessionCode, snapshot, run }: MeaningLookupDe
       .finally(() => {
         if (generation === epoch.current) setPairSaving(false);
       });
-  }, [lookUpTarget, unconfigured, languagePair, lookUpWord]);
+  }, [lookUpTarget, unconfigured, languagePair, lookUpWord, pairSlot]);
 
   return {
     lookUpTarget,

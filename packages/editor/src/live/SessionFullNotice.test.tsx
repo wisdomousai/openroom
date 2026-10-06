@@ -5,24 +5,14 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactNode } from 'react';
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  RouterContextProvider,
-} from '@tanstack/react-router';
-
+import { EditorServicesProvider } from '../services';
+import { memoryEditorServices } from '../testing';
 import { SessionFullNotice } from './SessionFullNotice';
 
-const rootRoute = createRootRoute();
-const router = createRouter({
-  routeTree: rootRoute.addChildren([createRoute({ getParentRoute: () => rootRoute, path: '/settings/billing' })]),
-  history: createMemoryHistory({ initialEntries: ['/'] }),
-});
+const services = memoryEditorServices();
 
 function render(node: ReactNode): string {
-  return renderToStaticMarkup(<RouterContextProvider router={router as never}>{node}</RouterContextProvider>);
+  return renderToStaticMarkup(<EditorServicesProvider services={services}>{node}</EditorServicesProvider>);
 }
 
 describe('session full notice', () => {
@@ -31,11 +21,11 @@ describe('session full notice', () => {
     expect(render(<SessionFullNotice joined={500} limit={undefined} canManagePlan />)).toBe('');
   });
 
-  it('names the full session and links an editor to billing plans', () => {
+  it('names the full session and links an editor to plans', () => {
     const html = render(<SessionFullNotice joined={50} limit={50} canManagePlan />);
     expect(html).toContain('data-or-lock="large-sessions"');
     expect(html).toContain('>Session full<');
-    expect(html).toContain('href="/settings/billing"');
+    expect(html).toContain('href="memory:plans"');
     expect(html).toContain('>Plans<');
   });
 

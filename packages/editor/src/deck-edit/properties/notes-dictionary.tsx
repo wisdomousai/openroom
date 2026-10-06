@@ -1,7 +1,6 @@
 import { DictionaryTable } from '@openroom/slides';
-import { useQuery } from '@tanstack/react-query';
 
-import { ApiError, lookupDictionary } from '../../../../../apps/host/src/api';
+import { isServiceError, useEditorServices } from '../../services';
 import { Textarea } from '@openroom/ui/components/textarea';
 import { stepTitle } from '../outline-edit';
 import type { PropertiesPanelProps } from './shared';
@@ -24,11 +23,7 @@ export function DictionarySection({
   deckId: string;
   onClose: () => void;
 }) {
-  const query = useQuery({
-    queryKey: ['dictionary', deckId, word] as const,
-    queryFn: () => lookupDictionary({ word, scope: { deckId } }),
-    retry: false,
-  });
+  const query = useEditorServices().tools.useDictionaryEntry(word, deckId);
   const result = query.data ?? null;
 
   return (
@@ -48,7 +43,7 @@ export function DictionarySection({
       ) : null}
       {query.error ? (
         <p className="pt-1.5 text-caption text-muted-foreground">
-          {query.error instanceof ApiError && query.error.status === 422
+          {isServiceError(query.error) && query.error.status === 422
             ? 'This space has no language pair set.'
             : 'Lookup failed.'}
         </p>

@@ -1,9 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Input } from '@openroom/ui/components/input';
 import { ArrowLeft } from 'lucide-react';
-import { Link } from '@tanstack/react-router';
 
-import type { LinkTarget } from '../../../../apps/host/src/destinations';
+import { useEditorServices, type EditorDestination } from '../services';
 import { Button } from '@openroom/ui/components/button';
 import type { DraftStatus } from './useDraftSave';
 
@@ -34,9 +33,9 @@ export function DeckEditorTopBar({
   fileStatus?: ReactNode;
   /** Null while the deck sits at the root of its space. */
   folderName: string | null;
-  libraryTo: LinkTarget;
+  libraryTo: EditorDestination;
   /** Space members, when the deck is filed in a space. */
-  shareTo: LinkTarget | null;
+  shareTo: EditorDestination | null;
   status: DraftStatus;
   onPresent: () => void;
   canPresent: boolean;
@@ -46,6 +45,7 @@ export function DeckEditorTopBar({
   startIssue?: string | null;
   error: string | null;
 }) {
+  const { Link } = useEditorServices().navigation;
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(title);
   useEffect(() => { if (!editing) setName(title); }, [title, editing]);
@@ -63,7 +63,7 @@ export function DeckEditorTopBar({
     <header className="flex shrink-0 flex-col bg-chrome">
       <div className="flex h-11 items-center gap-3 px-2 pr-3">
         <Link
-          {...libraryTo}
+          to={libraryTo}
           title="Back to the folder"
           className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-secondary text-muted-foreground hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
@@ -106,7 +106,7 @@ export function DeckEditorTopBar({
         <span className="flex-1" />
         {shareTo === null ? null : (
           <Button asChild variant="subtle" size="sm">
-            <Link {...shareTo}>Share</Link>
+            <Link to={shareTo}>Share</Link>
           </Button>
         )}
         <Button

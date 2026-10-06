@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { OpenRoomFileResourceV1, SlideImageSource } from '@openroom/schema';
-import { assetUrl, uploadAsset } from '../../../../../apps/host/src/api';
-import { desktopBridge } from '../../../../../apps/host/src/desktop-bridge';
+import { useEditorServices } from '../../services';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 
@@ -13,7 +12,7 @@ export function DesignImagePicker({ label, value, spaceId, onEmbedded, onChange 
   onEmbedded?: (id: string, resource: OpenRoomFileResourceV1) => void;
   onChange: (source: SlideImageSource) => void;
 }) {
-  const bridge = desktopBridge();
+  const { desktop: bridge, assets } = useEditorServices();
   const input = useRef<HTMLInputElement>(null);
   const mounted = useRef(true);
   const latest = useRef({ onChange, onEmbedded });
@@ -38,9 +37,9 @@ export function DesignImagePicker({ label, value, spaceId, onEmbedded, onChange 
         if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'].includes(file.type)) {
           throw new Error('Choose a PNG, JPEG, WebP, GIF or AVIF image.');
         }
-        const asset = await uploadAsset(spaceId, file);
+        const asset = await assets.upload(spaceId, file);
         if (asset.kind !== 'image') throw new Error('Choose an image.');
-        source = { assetId: asset.id, url: assetUrl(asset.id) };
+        source = { assetId: asset.id, url: assets.url(asset.id) };
       }
       if (!mounted.current) return;
       latest.current.onChange(source); setAddress(null);

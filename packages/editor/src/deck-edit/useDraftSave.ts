@@ -18,8 +18,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
-import { invalidateManagementData } from '../../../../apps/host/src/query-client';
-import { putDeckDraft } from '../../../../apps/host/src/api';
+import { useEditorServices } from '../services';
 
 export type DraftSaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
@@ -199,6 +198,7 @@ export interface DraftSaveHandle {
 /**
  * React binding. `enabled` stays false until the document is loaded, so the
  * seeding of the editor from the server is never mistaken for an edit.
+ * Writes go through the `drafts` slot; without it the status stays idle.
  */
 export function useDraftSave(options: {
   deckId: string;
@@ -217,11 +217,13 @@ export function useDraftSave(options: {
     seedRef.current = { deckId, source };
   }
 
+  const drafts = useEditorServices().slots.drafts;
+
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || drafts === undefined) return undefined;
     const saver = createDraftSaver({
       acked: seedRef.current.source,
-      put: async (text, base) => { const result = await putDeckDraft(deckId, text, base); void invalidateManagementData(); return result; },
+      put: (text, base) => drafts.save(deckId, text, base),
       onStatus: setStatus,
     });
     saverRef.current = saver;
@@ -231,7 +233,7 @@ export function useDraftSave(options: {
       saverRef.current = null;
     };
     // Seeding is intentionally read once, at creation, from the ref.
-  }, [deckId, enabled]);
+  }, [deckId, drafts, enabled]);
 
   useEffect(() => {
     if (!enabled) return;

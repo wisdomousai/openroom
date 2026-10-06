@@ -4,10 +4,9 @@
  * (`largeSessions`); admitted participants can still re-enter. Plans is offered
  * to the space's owner and editors only — presenters see the fact alone.
  */
-import { Link } from '@tanstack/react-router';
 import { Lock } from 'lucide-react';
 
-import { to } from '../../../../apps/host/src/destinations';
+import { useEditorServices } from '../services';
 import { Button } from '@openroom/ui/components/button';
 
 /** True once a limited session holds as many participants as it admits. */
@@ -24,6 +23,7 @@ export function SessionFullNotice({
   limit: number | undefined;
   canManagePlan: boolean;
 }) {
+  const { Link } = useEditorServices().navigation;
   if (!sessionFull(joined, limit)) return null;
   return (
     <span data-or-lock="large-sessions" role="status" className="inline-flex items-center gap-2 text-sm">
@@ -31,7 +31,7 @@ export function SessionFullNotice({
       <span className="font-semibold">Session full</span>
       {canManagePlan ? (
         <Button asChild variant="outline" size="sm">
-          <Link {...to.billing()}>Plans</Link>
+          <Link to={{ kind: 'plans' }}>Plans</Link>
         </Button>
       ) : null}
     </span>

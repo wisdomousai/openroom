@@ -26,7 +26,8 @@ import { Button } from '@openroom/ui/components/button';
 import { Card, CardContent } from '@openroom/ui/components/card';
 import { Label } from '@openroom/ui/components/label';
 import { Textarea } from '@openroom/ui/components/textarea';
-import { to, type LibraryPlace } from '../../destinations';
+import type { LibraryPlace } from '@openroom/editor';
+import { to } from '../../destinations';
 import { invalidateManagementData } from '../../query-client';
 import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../../components/ContinuityLock';
 import {

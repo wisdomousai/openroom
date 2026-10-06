@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { OutlineElement } from '@openroom/schema';
 
-import { checkEmbeddable, type EmbedCheck } from '../../../../apps/host/src/api';
+import { useEditorServices, type EmbedCheck } from '../services';
 import { embedRefusalText } from './IframeElementDialog';
 
 /**
@@ -15,6 +15,7 @@ const cache = new Map<string, EmbedCheck>();
 const inFlight = new Map<string, Promise<void>>();
 
 function useEmbedCheck(url: string, deckId: string | null | undefined): EmbedCheck | null {
+  const { checkEmbeddable } = useEditorServices().tools;
   const [result, setResult] = useState<EmbedCheck | null>(cache.get(url) ?? null);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ function useEmbedCheck(url: string, deckId: string | null | undefined): EmbedChe
     return () => {
       cancelled = true;
     };
-  }, [deckId, url]);
+  }, [checkEmbeddable, deckId, url]);
 
   return result;
 }

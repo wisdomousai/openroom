@@ -51,7 +51,7 @@ import { parseRows, ROW_DRAG_MIME, type DragRow } from '../lib/row-drag';
 import { to } from '../destinations';
 import { invalidateManagementData } from '../query-client';
 import type { AuthSession } from '../useAuth';
-import type { StoredSession } from '../../../../packages/editor/src/types';
+import type { StoredSession } from '@openroom/editor';
 import { stringifyOpenRoomFile, type OpenRoomFileV1 } from '@openroom/schema';
 
 interface Props {

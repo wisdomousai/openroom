@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { OpenRoomFileResourceV1, OutlineMedia } from '@openroom/schema';
 
-import { ApiError, listAssets, searchStock, uploadAsset, assetUrl, type StockHit, type MediaAssetSummary } from '../../../../apps/host/src/api';
+import type { MediaAssetSummary } from '@openroom/schema';
 import { Button } from '@openroom/ui/components/button';
 import { Checkbox } from '@openroom/ui/components/checkbox';
 import {
@@ -14,7 +14,7 @@ import {
 } from '@openroom/ui/components/dialog';
 import { Input } from '@openroom/ui/components/input';
 import { cn } from '@openroom/ui/utils';
-import { desktopBridge } from '../../../../apps/host/src/desktop-bridge';
+import { isServiceError, useEditorServices, type StockHit } from '../services';
 
 type PictureTab = 'computer' | 'stock' | 'space' | 'upload' | 'link';
 
@@ -37,7 +37,7 @@ export function PictureDialog({
   onInsert: (media: OutlineMedia, credit: boolean) => void;
   onEmbedded?: (resourceId: string, resource: OpenRoomFileResourceV1) => void;
 }) {
-  const bridge = desktopBridge();
+  const { desktop: bridge, assets } = useEditorServices();
   const [tab, setTab] = useState<PictureTab>(bridge === null ? 'stock' : 'computer');
   const [pending, setPending] = useState<OutlineMedia | null>(null);
   const [credit, setCredit] = useState(true);
@@ -133,7 +133,7 @@ export function PictureDialog({
                   type: asset.kind,
                   ...(asset.kind === 'audio' ? { listening: { mode: 'room' as const } } : {}),
                   assetId: asset.id,
-                  url: assetUrl(asset.id),
+                  url: assets.url(asset.id),
                   alt: asset.alt ?? asset.name,
                 });
               }}
@@ -179,6 +179,7 @@ function StockGrid({
   selectedUrl?: string;
   onPick: (hit: StockHit) => void;
 }) {
+  const { searchStock } = useEditorServices().tools;
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<StockHit[]>([]);
   const [busy, setBusy] = useState(false);
@@ -196,7 +197,7 @@ function StockGrid({
         })
         .catch((error: unknown) => {
           setHits([]);
-          setProblem(error instanceof ApiError ? error.message : 'Pixabay could not be reached.');
+          setProblem(isServiceError(error) ? error.message : 'Pixabay could not be reached.');
         })
         .finally(() => setBusy(false));
     }, q.length === 0 ? 0 : 250);
@@ -251,11 +252,12 @@ function SpaceGrid({
   selectedUrl?: string;
   onPick: (asset: MediaAssetSummary) => void;
 }) {
+  const service = useEditorServices().assets;
   const [assets, setAssets] = useState<MediaAssetSummary[]>([]);
   useEffect(() => {
     if (spaceId === null) return;
-    void listAssets(spaceId, '').then(setAssets).catch(() => setAssets([]));
-  }, [spaceId]);
+    void service.list(spaceId, '').then(setAssets).catch(() => setAssets([]));
+  }, [service, spaceId]);
   if (spaceId === null) {
     return <p className="text-caption text-muted-foreground">No space open to read files from yet.</p>;
   }
@@ -265,7 +267,7 @@ function SpaceGrid({
   return (
     <div className="grid grid-cols-4 gap-3">
       {assets.map((asset) => {
-        const url = assetUrl(asset.id);
+        const url = service.url(asset.id);
         const selected = selectedUrl === url;
         return (
           <button
@@ -297,6 +299,7 @@ function UploadPane({
   spaceId: string | null;
   onPick: (media: OutlineMedia) => void;
 }) {
+  const { assets } = useEditorServices();
   const fileInput = useRef<HTMLInputElement | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -309,18 +312,18 @@ function UploadPane({
     }
     setBusy(true);
     try {
-      const asset = await uploadAsset(spaceId, file);
+      const asset = await assets.upload(spaceId, file);
       if (asset.kind === 'pdf') throw new Error('Choose an image, video, or audio file.');
       onPick({
         type: asset.kind,
         ...(asset.kind === 'audio' ? { listening: { mode: 'room' as const } } : {}),
         assetId: asset.id,
-        url: assetUrl(asset.id),
+        url: assets.url(asset.id),
         alt: asset.alt ?? asset.name,
       });
       setProblem(null);
     } catch (error) {
-      setProblem(error instanceof ApiError ? error.message : 'The upload did not finish.');
+      setProblem(isServiceError(error) ? error.message : 'The upload did not finish.');
     } finally {
       setBusy(false);
     }

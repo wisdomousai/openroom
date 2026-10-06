@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { shouldHandOffNotes, type ProbeState } from '../../../../packages/editor/src/live/session-exit';
+import { shouldHandOffNotes, type ProbeState } from '@openroom/editor';
 
 describe('the scratchpad survives a failed probe', () => {
   it('leaves the live-keyed notes in place when no hand-off is allowed', async () => {

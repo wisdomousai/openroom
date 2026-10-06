@@ -8,8 +8,7 @@ import {
   type SpaceTreeDeck,
 } from '../api';
 import { currentCloudDocument } from './cloud-document';
-import { renameDeck, questionReadinessMessage } from '../../../../packages/editor/src/deck-document';
-import type { StoredSession } from '../../../../packages/editor/src/types';
+import { renameDeck, questionReadinessMessage, type StoredSession } from '@openroom/editor';
 
 /**
  * The two verbs the library owns that no single API wrapper covers.

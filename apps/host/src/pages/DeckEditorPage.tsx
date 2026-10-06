@@ -1,4 +1,16 @@
-import { blankDeck, renameDeck, questionReadinessMessage } from '../../../../packages/editor/src/deck-document';
+import {
+  AgentPane,
+  blankDeck,
+  DeckEditor,
+  DeckEditorTopBar,
+  Presenter,
+  questionReadinessMessage,
+  renameDeck,
+  seedAgentWithReading,
+  useDraftSave,
+  type PresentationPosition,
+  type StoredSession,
+} from '@openroom/editor';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { parseOutline, slideEmbedCode } from '@openroom/schema';
@@ -8,15 +20,7 @@ import { invalidateManagementData } from '../query-client';
 import { addDeckVersion, getDeck, getDeckDraft, getDeckFileLink, putDeckDraft } from '../api';
 import { desktopBridge } from '../desktop-bridge';
 import { startSessionFromDeck } from '../lib/library-actions';
-import { AgentPane } from '../../../../packages/editor/src/agent/AgentPane';
-import { seedAgentWithReading } from '../../../../packages/editor/src/agent/agent-chat';
-import { DeckEditor } from '../../../../packages/editor/src/deck-edit/DeckEditor';
-import { DeckEditorTopBar } from '../../../../packages/editor/src/deck-edit/DeckEditorTopBar';
-import { Presenter, type PresentationPosition } from '../../../../packages/editor/src/presenter/Presenter';
 import { downloadCloudDocument } from '../lib/cloud-document';
-import { useDraftSave } from '../../../../packages/editor/src/deck-edit/useDraftSave';
-import { to } from '../destinations';
-import type { StoredSession } from '../../../../packages/editor/src/types';
 import { sessionStartMessage } from '../components/ContinuityLock';
 
 
@@ -225,13 +229,16 @@ export function DeckEditorPage({
         onRename={(name) => { if (validation?.ok) setSource(stringify(renameDeck(validation.outline, name), { lineWidth: 100 })); }}
         folderName={detail?.folderName ?? null}
         // The back arrow lands on the deck's own row in the Library.
-        libraryTo={to.library({
-          spaceId: detail?.deck.spaceId,
-          folderId: detail?.deck.folderId,
-          itemId: detail?.deck.id,
-          contextId: detail?.deck.contextId,
-        })}
-        shareTo={detail?.deck.spaceId ? to.spaceMembers(detail.deck.spaceId) : null}
+        libraryTo={{
+          kind: 'library',
+          place: {
+            spaceId: detail?.deck.spaceId,
+            folderId: detail?.deck.folderId,
+            itemId: detail?.deck.id,
+            contextId: detail?.deck.contextId,
+          },
+        }}
+        shareTo={detail?.deck.spaceId ? { kind: 'spaceMembers', spaceId: detail.deck.spaceId } : null}
         status={draftSave.status}
         onPresent={() => { setStartImmediately(false); setPresentFrom(0); }}
         canPresent={validation?.ok === true}

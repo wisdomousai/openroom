@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { iframeUrlIssue } from '@openroom/schema';
 
-import { checkEmbeddable, type EmbedCheck } from '../../../../apps/host/src/api';
+import { useEditorServices, type EmbedCheck } from '../services';
 import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
@@ -38,6 +38,7 @@ export function IframeElementDialog({
   /** Hand this address to the reading-material dialog instead. */
   onImportAsReading?: (url: string) => void;
 }) {
+  const { checkEmbeddable } = useEditorServices().tools;
   const [url, setUrl] = useState(initialUrl ?? '');
   const [title, setTitle] = useState(initialTitle ?? '');
   const [check, setCheck] = useState<EmbedCheck | null>(null);
@@ -85,7 +86,7 @@ export function IframeElementDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [deckId, open, url, urlIssue]);
+  }, [checkEmbeddable, deckId, open, url, urlIssue]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

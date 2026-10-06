@@ -1,4 +1,5 @@
-import type { ContextKind, WorkspaceExperience, PublishedHomeworkTask, LearnerFeedback, LearnerCorrection, HomeworkPracticeAnswer, HomeworkPracticeInteraction } from '@openroom/schema';
+import type { ContextReturned } from '@openroom/editor';
+import type { ContextKind, WorkspaceExperience, PublishedHomeworkTask, LearnerFeedback } from '@openroom/schema';
 import { request } from './client';
 
 /* --------------------------------------------------------------- tutoring */
@@ -138,19 +139,6 @@ export function revokeContextLink(contextId: string, linkId: string): Promise<{ 
     `/api/tutoring/contexts/${encodeURIComponent(contextId)}/links/${encodeURIComponent(linkId)}`,
     { method: 'DELETE', mutating: true },
   );
-}
-
-export interface ContextReturned {
-  nextNote: string;
-  corrections: Array<LearnerCorrection & { id: string; learnerId: string; displayName: string }>;
-  writing: Array<{ learnerId: string; displayName: string; sessionId: string; taskId: string; title?: string; body: string }>;
-  missed: Array<{
-    learnerId: string;
-    displayName: string;
-    itemId: string;
-    exercise: { title?: string; interaction: HomeworkPracticeInteraction };
-    lastAnswer: HomeworkPracticeAnswer;
-  }>;
 }
 
 export function getContextReturned(contextId: string): Promise<ContextReturned> {

@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
-import {
-  desktopBridge,
-  type DesktopAgentConversationSummary,
-  type DesktopAgentHost,
-  type DesktopAgentHostId,
-  type DesktopAgentKeys,
-  type DesktopAgentModel,
-  type DesktopAgentQuestionAnswer,
-  type DesktopAgentRunResult,
-  type DesktopByokProviderId,
-} from '../../../../apps/host/src/desktop-bridge';
+import type {
+  DesktopAgentConversationSummary,
+  DesktopAgentHost,
+  DesktopAgentHostId,
+  DesktopAgentKeys,
+  DesktopAgentModel,
+  DesktopAgentQuestionAnswer,
+  DesktopAgentRunResult,
+  DesktopByokProviderId,
+} from '../desktop-bridge';
+import { useEditorServices } from '../services';
 import {
   Conversation,
   ConversationContent,
@@ -217,7 +217,7 @@ export function AgentPane({
   /** Called after a successful run so the mounting editor can adopt the agent's saves. */
   onAfterRun?: () => void;
 }) {
-  const bridge = desktopBridge();
+  const bridge = useEditorServices().desktop;
   const chat = useSyncExternalStore(agentChatStore.subscribe, agentChatStore.getState, agentChatStore.getState);
   // The unsent prompt lives in the store, not here, so a surface elsewhere in
   // the editor can hand the agent something to work on.

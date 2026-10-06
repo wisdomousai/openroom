@@ -3,7 +3,7 @@ import type {
   DesktopAgentEvent,
   DesktopAgentHostId,
   DesktopAgentRunResult,
-} from '../../../../apps/host/src/desktop-bridge';
+} from '../desktop-bridge';
 
 export type AgentChatPart = DesktopAgentEvent;
 

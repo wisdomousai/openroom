@@ -7,7 +7,7 @@ import { to } from '../destinations';
 import { LESSON_EXAMPLES, lessonExample } from '../lib/lesson-examples';
 import { getBreadcrumbTrail } from '../lib/folder-tree';
 import { invalidateManagementData } from '../query-client';
-import { SlideThumbnail } from '../../../../packages/editor/src/deck-edit/SlideThumbnail';
+import { SlideThumbnail } from '@openroom/editor';
 import { LoadState, PageHeading, messageOf } from './tutor/shared';
 
 export default function LessonExamplesPage({ spaceId, folderId, contextId }: { spaceId: string; folderId: string | null; contextId: string | null }) {

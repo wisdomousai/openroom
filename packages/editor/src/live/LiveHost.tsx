@@ -3,7 +3,6 @@ import { usePresentationKeys } from '../presenter/usePresentationKeys';
 import { canAdvanceOutline, canRetreatOutline } from './outline-navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useHotkeys } from '@tanstack/react-hotkeys';
-import { useNavigate } from '@tanstack/react-router';
 import { getTheme, type ThemeId } from '@openroom/ui';
 import { deckAspectRatio } from '@openroom/schema';
 import {
@@ -12,20 +11,15 @@ import {
   type MarkShape,
 } from '@openroom/sdk';
 
-import { downloadExport, resolveJoinUrl } from '../../../../apps/host/src/api';
+import { useEditorServices } from '../services';
 import { defaultDisplay } from '../builder/displays';
 import { ChartMenu, displayMenuLabel } from './ChartMenu';
 import { formatClock, formatQuestionLeft, useClosesAt, useSessionClock } from './liveClock';
 import { QuestionRailFooter } from './QuestionRailFooter';
-import { readLiveNotes, writeLiveNotes } from '../../../../apps/host/src/lib/scratchpad';
-import { to } from '../../../../apps/host/src/destinations';
 import { sessionThemeCommand } from './sdk';
-import { desktopBridge } from '../../../../apps/host/src/desktop-bridge';
 import { EndSessionDialog } from './EndSessionDialog';
 import { ToastRegion } from '@openroom/ui/toasts';
-import { saveLiveSession } from '../../../../apps/host/src/storage';
 import { useTheme } from '@openroom/ui/theme-provider';
-import { LanguagePairFields } from '../../../../apps/host/src/components/LanguagePairFields';
 import { ThemeStudio } from '@openroom/ui/theme-studio';
 import { Alert, AlertDescription } from '@openroom/ui/components/alert';
 import { Button } from '@openroom/ui/components/button';
@@ -45,7 +39,6 @@ import {
   type LiveInsertKind,
 } from './LiveInsertDialog';
 import { LiveRibbon } from './LiveRibbon';
-import { SavedResultsLinks } from '../../../../apps/host/src/components/SavedResultsLinks';
 import { MeaningBreakout } from './MeaningBreakout';
 import { useHostSession } from './useHostSession';
 import { useQuestionRail } from './useQuestionRail';
@@ -65,7 +58,6 @@ import {
   readAnswered,
   stepLabel,
 } from './utils';
-import { StageView } from '@openroom/stage-src/StageView';
 import type {
   InteractionStatus,
   StoredSession,
@@ -77,7 +69,10 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
   onReturnToDeck?: () => void;
   onPosition?: (position: { stepId: string; shown: number }) => void;
 }) {
-  const navigate = useNavigate();
+  const services = useEditorServices();
+  const { navigate } = services.navigation;
+  const { StageView } = services.live;
+  const { scratchpad: scratchpadSlot, languagePair: languagePairSlot, SavedResults } = services.slots;
   const host = useHostSession(live);
   const {
     snapshot,
@@ -145,7 +140,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
   // window takes the same route back to the library as the browser does.
   // `null` until the shell answers, so the exit control never renders the wrong
   // destination for a frame.
-  const bridge = desktopBridge();
+  const bridge = services.desktop;
   const [documentWindow, setDocumentWindow] = useState<boolean | null>(bridge === null ? false : null);
   useEffect(() => {
     if (bridge === null) return;
@@ -164,13 +159,12 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
   }, [bridge]);
   const backToDeck = useCallback(() => {
     /*
-     * The single sanctioned hash write in the app: the desktop shell owns the
-     * `/desktop/file` URL, and the document window must route back to the deck
-     * rather than into the web workspace shell.
+     * The desktop shell owns the document window's deck view, and that window
+     * must route back to the deck rather than into the web workspace shell.
      */
     if (onReturnToDeck) onReturnToDeck();
-    else location.hash = '#/desktop/file';
-  }, [onReturnToDeck]);
+    else navigate({ kind: 'deckDocument' });
+  }, [navigate, onReturnToDeck]);
   const [pickupDismissed, setPickupDismissed] = useState(false);
 
   /**
@@ -183,11 +177,11 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
   const exitSessionId = exitDecision.kind === 'notes' ? exitDecision.sessionId : null;
   useEffect(() => {
     if (exitKind === 'notes' && exitSessionId !== null) {
-      void navigate({ ...to.sessionNotes(exitSessionId), replace: true });
+      navigate({ kind: 'sessionNotes', sessionId: exitSessionId }, { replace: true });
       return;
     }
     if (exitKind === 'library') {
-      void navigate({ ...to.library(), replace: true });
+      navigate({ kind: 'library' }, { replace: true });
     }
   }, [exitKind, exitSessionId, navigate]);
 
@@ -357,7 +351,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
   });
 
   const code = snapshot?.code ?? live.code;
-  const joinUrl = resolveJoinUrl(code, snapshot?.joinUrl ?? live.joinUrl);
+  const joinUrl = services.live.joinUrl(code, snapshot?.joinUrl ?? live.joinUrl);
   const { joined, answered } = countsOf(snapshot);
 
   const learner = exit.context?.context ?? null;
@@ -401,22 +395,23 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
    * Named `scratchpad` deliberately — further down, `notes` is the interaction's
    * host-only pedagogy note from the session document, a different thing.
    */
-  const [scratchpad, setScratchpad] = useState(() => readLiveNotes(live.sessionCode));
+  const [scratchpad, setScratchpad] = useState(() => scratchpadSlot?.read(live.sessionCode) ?? '');
   useEffect(() => {
-    setScratchpad(readLiveNotes(live.sessionCode));
-  }, [live.sessionCode]);
+    setScratchpad(scratchpadSlot?.read(live.sessionCode) ?? '');
+  }, [scratchpadSlot, live.sessionCode]);
   const updateScratchpad = useCallback(
     (text: string) => {
       setScratchpad(text);
-      writeLiveNotes(live.sessionCode, text);
+      scratchpadSlot?.write(live.sessionCode, text);
     },
-    [live.sessionCode],
+    [scratchpadSlot, live.sessionCode],
   );
+  const saveSession = services.live.sessions.save;
   useEffect(() => {
     if (snapshot?.code && snapshot.code !== live.code) {
-      saveLiveSession({ ...live, code: snapshot.code });
+      saveSession({ ...live, code: snapshot.code });
     }
-  }, [snapshot?.code, live]);
+  }, [saveSession, snapshot?.code, live]);
 
   const copyJoin = useCallback(() => {
     const write = navigator.clipboard?.writeText?.(joinUrl);
@@ -430,13 +425,14 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
     }
   }, [joinUrl, push]);
 
+  const { downloadExport } = services.live;
   const doExport = useCallback(
     (format: 'csv' | 'json' | 'ballots') => {
       downloadExport(live.sessionCode, live.hostToken, format).catch((err: unknown) => {
         push(err instanceof Error ? err.message : 'Export failed', 'error');
       });
     },
-    [live.sessionCode, live.hostToken, push],
+    [downloadExport, live.sessionCode, live.hostToken, push],
   );
 
   const toggleEntry = useCallback(
@@ -481,7 +477,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
             <Button
               variant="outline"
               onClick={() =>
-                void navigate({ ...to.library(exit.deckPlace ?? undefined), replace: true })
+                navigate({ kind: 'library', place: exit.deckPlace }, { replace: true })
               }
             >
               Library
@@ -635,7 +631,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
         >
           <p className="text-sm font-semibold">Session ended</p>
           <span className="flex-1" />
-          <SavedResultsLinks sessionCode={live.sessionCode} compact />
+          {SavedResults ? <SavedResults sessionCode={live.sessionCode} /> : null}
           <Button size="sm" variant="outline" onClick={() => doExport('csv')}>
             Export CSV
           </Button>
@@ -733,7 +729,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
           onClockReset={() => void run({ command: 'timer.reset' })}
           onClockAdjust={(seconds) => void run({ command: 'timer.adjust', seconds })}
           onPresenterView={() => {
-            void navigate(to.sessionRemote(live.sessionCode));
+            navigate({ kind: 'sessionRemote', sessionCode: live.sessionCode });
           }}
         /></fieldset>
       ) : null}
@@ -927,13 +923,15 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
                     }}
                     onClose={lookupFlow.closeCard}
                     pairFields={
-                      <LanguagePairFields
-                        pair={lookupFlow.languagePair}
-                        disabled={lookupFlow.pairSaving}
-                        idPrefix="live-pair"
-                        className="flex flex-wrap gap-4"
-                        triggerClassName="w-[14rem]"
-                      />
+                      languagePairSlot ? (
+                        <languagePairSlot.Fields
+                          pair={lookupFlow.languagePair}
+                          disabled={lookupFlow.pairSaving}
+                          idPrefix="live-pair"
+                          className="flex flex-wrap gap-4"
+                          triggerClassName="w-[14rem]"
+                        />
+                      ) : null
                     }
                     pairComplete={lookupFlow.languagePair.complete}
                     pairSaving={lookupFlow.pairSaving}
@@ -974,7 +972,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
             notes ??
             pedagogy?.explanation
           }
-          scratchpad={scratchpad}
+          scratchpad={scratchpadSlot ? scratchpad : undefined}
           onScratchpadChange={updateScratchpad}
           qna={qna}
           answeredQna={answeredQna}

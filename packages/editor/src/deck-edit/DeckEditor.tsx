@@ -1,6 +1,5 @@
 import { applyBrandKit } from './outline-edit';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { stringify } from 'yaml';
 import {
   kindCanCarryElements,
@@ -13,11 +12,10 @@ import {
   type Outline,
   type OutlineValidateResult,
 } from '@openroom/schema';
-import { getContextReturned } from '../../../../apps/host/src/api';
+import { useEditorServices, useIdleQuery, type ContextReturned } from '../services';
 
 import { SessionErrorList } from './SessionErrorList';
 import { Button } from '@openroom/ui/components/button';
-import { VersionHistory } from '../../../../apps/host/src/components/VersionHistory';
 import { TemplateGallery } from './TemplateGallery';
 import { AskDialog } from './AskDialog';
 import { SlideEmbedDialog } from './SlideEmbedDialog';
@@ -185,11 +183,9 @@ export function DeckEditor({
   const [placing, setPlacing] = useState<'text' | null>(null);
   const [pickupDismissed, setPickupDismissed] = useState(false);
 
-  const pickupQuery = useQuery({
-    queryKey: ['contexts', contextId, 'returned'] as const,
-    queryFn: () => getContextReturned(contextId!),
-    enabled: contextId !== null && contextId !== '',
-  });
+  const { learnerWork, VersionHistory } = useEditorServices().slots;
+  const useReturned = learnerWork?.useReturned ?? useIdleQuery<ContextReturned>;
+  const pickupQuery = useReturned(contextId);
   const nextNote = pickupQuery.data?.nextNote ?? '';
   const missed = pickupQuery.data?.missed ?? [];
 
@@ -404,7 +400,7 @@ export function DeckEditor({
             message="This outline cannot be read yet. Restore an earlier version or ask the person who created it to repair it."
             errors={validation?.ok === false ? validation.errors.slice(0, 5) : []}
           />
-          <div className="mx-auto max-w-lg px-[18px] py-3.5">
+          {VersionHistory === undefined ? null : <div className="mx-auto max-w-lg px-[18px] py-3.5">
             <h3 className="text-row-title">History</h3>
             <VersionHistory
               deckId={deckId}
@@ -412,7 +408,7 @@ export function DeckEditor({
               currentVersion={currentVersion}
               onLoadVersion={(nextSource) => { onSourceChange(nextSource); }}
             />
-          </div>
+          </div>}
         </div>
       </div>
     );
@@ -610,7 +606,7 @@ export function DeckEditor({
             versionRefresh={versionRefresh}
             revealFocus={revealFocus}
             paneTab={paneTab}
-            learnerFeedback={<>{pickupQuery.isError ? <div className="grid gap-2 border-t border-hairline px-[18px] py-4"><p role="alert" className="text-sm">Learner work could not be loaded.</p><Button variant="outline" size="sm" disabled={pickupQuery.isFetching} onClick={() => void pickupQuery.refetch()}>Retry learner work</Button></div> : null}<FeedbackPicker corrections={pickupQuery.data?.corrections ?? []} onInsert={(correction) => {
+            learnerFeedback={learnerWork === undefined ? undefined : <>{pickupQuery.isError ? <div className="grid gap-2 border-t border-hairline px-[18px] py-4"><p role="alert" className="text-sm">Learner work could not be loaded.</p><Button variant="outline" size="sm" disabled={pickupQuery.isFetching} onClick={() => void pickupQuery.refetch()}>Retry learner work</Button></div> : null}<FeedbackPicker corrections={pickupQuery.data?.corrections ?? []} onInsert={(correction) => {
               const inserted = insertCorrection(outline, step?.id ?? null, correction);
               if (!inserted.stepId) return;
               apply(inserted.outline);

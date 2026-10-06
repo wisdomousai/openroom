@@ -5,8 +5,7 @@ import {
   type StageSnapshot,
 } from '@openroom/sdk';
 
-import { fetchStageToken } from '../../../../apps/host/src/api';
-import { saveLiveSession } from '../../../../apps/host/src/storage';
+import { useEditorServices } from '../services';
 import type { StoredSession } from '../types';
 
 /**
@@ -18,6 +17,7 @@ import type { StoredSession } from '../types';
  * console is a dead path.
  */
 export function useStageMirror(live: StoredSession) {
+  const { fetchStageToken, sessions } = useEditorServices().live;
   const [stageToken, setStageToken] = useState(live.stageToken);
   const [attempt, setAttempt] = useState(0);
   const [stageSnapshot, setStageSnapshot] = useState<StageSnapshot | null>(null);
@@ -30,7 +30,7 @@ export function useStageMirror(live: StoredSession) {
       .then((token) => {
         if (cancelled) return;
         setStageToken(token);
-        saveLiveSession({ ...live, stageToken: token });
+        sessions.save({ ...live, stageToken: token });
       })
       .catch(() => {
         /* the Stage item shows a retry */

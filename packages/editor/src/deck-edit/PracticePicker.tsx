@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { assessHomework, type HomeworkPracticeAnswer, type HomeworkPracticeInteraction } from '@openroom/schema';
-import type { ContextReturned } from '../../../../apps/host/src/api';
+import type { ContextReturned } from '../services';
 import { Button } from '@openroom/ui/components/button';
 
 type Exercise = ContextReturned['missed'][number]['exercise'];

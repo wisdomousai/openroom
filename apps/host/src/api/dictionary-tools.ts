@@ -1,25 +1,7 @@
-import type { DictionaryEntry } from '@openroom/schema';
+import type { DictionaryLookup, DictionaryLookupInput, EmbedCheck, StockSearch } from '@openroom/editor';
 import { ApiError, request } from './client';
 
 /* ------------------------------------------------- tutoring authoring tools */
-
-export interface StockHit {
-  id: number;
-  previewUrl: string;
-  imageUrl: string;
-  pageUrl: string;
-  tags: string;
-  user: string;
-  width: number;
-  height: number;
-}
-
-export interface StockSearch {
-  hits: StockHit[];
-  totalHits: number;
-  page: number;
-  source?: string;
-}
 
 export function searchStock(query: string, page = 1): Promise<StockSearch> {
   const q = query.trim();
@@ -38,14 +20,7 @@ export function searchStock(query: string, page = 1): Promise<StockSearch> {
  * says which half could not be served, so the panel can say so rather than
  * show a blank.
  */
-export function lookupDictionary(input: {
-  word: string;
-  scope: { deckId: string } | { sessionCode: string };
-}, signal?: AbortSignal): Promise<{
-  entry: DictionaryEntry | null;
-  meaning: string | null;
-  unsupported?: 'language' | 'meaning-language';
-}> {
+export function lookupDictionary(input: DictionaryLookupInput, signal?: AbortSignal): Promise<DictionaryLookup> {
   return request('/api/tutoring/dictionary', {
     method: 'POST',
     mutating: true,
@@ -71,11 +46,6 @@ export function unconfiguredSpace(error: unknown): { spaceId: string; canEdit: b
   if (body.error !== 'languages-not-configured' || typeof body.spaceId !== 'string') return null;
   return { spaceId: body.spaceId, canEdit: body.canEdit === true };
 }
-
-/** Whether a page allows being framed, and what refused if it does not. */
-export type EmbedCheck =
-  | { embeddable: true }
-  | { embeddable: false; reason: 'x-frame-options' | 'frame-ancestors' | 'unreachable' };
 
 /**
  * Ask whether a page can be embedded.

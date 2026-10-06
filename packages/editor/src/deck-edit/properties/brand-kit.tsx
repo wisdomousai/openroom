@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import type { DeckDesign } from '@openroom/schema';
-import { listBrandKits } from '../../../../../apps/host/src/api/brand-kits';
+import type { EditorSlots } from '../../services';
 import { Button } from '@openroom/ui/components/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
 import { Section } from './shared';
 
-export function BrandKitPicker({ spaceId, onApply }: { spaceId: string; onApply: (design: DeckDesign) => void }) {
+export function BrandKitPicker({ brandKits, spaceId, onApply }: {
+  brandKits: NonNullable<EditorSlots['brandKits']>;
+  spaceId: string;
+  onApply: (design: DeckDesign) => void;
+}) {
   const [chosen, setChosen] = useState('');
-  const query = useQuery({ queryKey: ['brand-kits', spaceId, false], queryFn: () => listBrandKits(spaceId) });
+  const query = brandKits.useBrandKits(spaceId);
   const kit = query.data?.brandKits.find((item) => item.id === chosen);
   return <Section title="Brand kit">
     {query.error ? <p role="alert" className="text-sm text-destructive">Brand kits could not be loaded.</p> : query.data?.brandKits.length ? <>
@@ -17,6 +20,6 @@ export function BrandKitPicker({ spaceId, onApply }: { spaceId: string; onApply:
       <Button variant="outline" disabled={!kit} onClick={() => { if (kit) onApply(kit.design); }}>Apply to all slides</Button>
       <p className="text-xs text-muted-foreground">Copies colors, fonts and masters into this deck and resets slide backgrounds to the kit. Content and layouts stay in place.</p>
     </> : <p className="text-sm text-muted-foreground">{query.isPending ? 'Loading brand kits…' : 'Create reusable designs in this space’s settings.'}</p>}
-    <Button asChild size="sm" variant="ghost"><a href={`/host/#/space/${encodeURIComponent(spaceId)}/brand-kits`} target="_blank" rel="noreferrer">Manage brand kits</a></Button>
+    <Button asChild size="sm" variant="ghost"><a href={brandKits.manageUrl(spaceId)} target="_blank" rel="noreferrer">Manage brand kits</a></Button>
   </Section>;
 }

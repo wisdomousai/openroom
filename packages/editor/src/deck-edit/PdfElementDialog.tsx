@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { pdfUrlIssue, type OpenRoomFileResourceV1, type OutlinePdfElement } from '@openroom/schema';
 
-import { ApiError, assetUrl, uploadAsset } from '../../../../apps/host/src/api';
-import { desktopBridge } from '../../../../apps/host/src/desktop-bridge';
+import { isServiceError, useEditorServices } from '../services';
 import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
@@ -36,7 +35,7 @@ export function PdfElementDialog({
   onEmbedded?: (resourceId: string, resource: OpenRoomFileResourceV1) => void;
   onSave: (source: PdfSource, title: string) => void;
 }) {
-  const bridge = desktopBridge();
+  const { desktop: bridge, assets } = useEditorServices();
   const embeddedInitialUrl = initialUrl?.startsWith('https://local.openroom.invalid/') === true
     ? initialUrl
     : undefined;
@@ -101,11 +100,11 @@ export function PdfElementDialog({
       // asset store, the same place pictures go, so they survive this window closing.
       if (spaceId !== null && spaceId !== undefined) {
         const extracted = await bridge.extractPdfBytes(selection.selectionId, fromPage, toPage);
-        const asset = await uploadAsset(
+        const asset = await assets.upload(
           spaceId,
           new File([new Uint8Array(extracted.bytes)], extracted.name, { type: 'application/pdf' }),
         );
-        onSave({ assetId: asset.id, url: assetUrl(asset.id) }, title.trim());
+        onSave({ assetId: asset.id, url: assets.url(asset.id) }, title.trim());
         onOpenChange(false);
         return;
       }
@@ -115,7 +114,7 @@ export function PdfElementDialog({
       onOpenChange(false);
     } catch (cause) {
       setProblem(
-        cause instanceof ApiError
+        isServiceError(cause)
           ? cause.message
           : cause instanceof Error
             ? cause.message

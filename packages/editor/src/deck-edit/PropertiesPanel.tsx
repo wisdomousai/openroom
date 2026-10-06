@@ -3,7 +3,7 @@ import { BrandKitPicker } from './properties/brand-kit';
 import { Button } from '@openroom/ui/components/button';
 import { cn } from '@openroom/ui/utils';
 
-import { VersionHistory } from '../../../../apps/host/src/components/VersionHistory';
+import { useEditorServices } from '../services';
 import { AsideDesign, DesignState } from './properties/design';
 import { DictionarySection, NotesSection } from './properties/notes-dictionary';
 import { DeckDesignPanel } from './properties/deck-design';
@@ -14,6 +14,7 @@ export type { PaneTab, PropertiesPanelProps } from './properties/shared';
 
 export function PropertiesPanel(props: PropertiesPanelProps) {
   const { outline, step, aside } = props;
+  const { VersionHistory, brandKits } = useEditorServices().slots;
   const rootRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (!props.overflowFocus?.sequence) return;
@@ -47,7 +48,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             { id: 'notes', label: 'Notes' },
             { id: 'history', label: 'History' },
           ] as const
-        ).map((tab) => (
+        ).filter((tab) => tab.id !== 'history' || VersionHistory !== undefined).map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -88,8 +89,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             onClose={props.onCloseLookUp}
           />
         ) : null}
-        {props.paneTab === 'deck' ? <>{props.spaceId ? <BrandKitPicker spaceId={props.spaceId} onApply={props.onApplyBrandKit} /> : null}<DeckDesignPanel {...props} /></> : props.paneTab === 'history' ? (
-          <div className="border-t border-hairline px-[18px] py-3.5">
+        {props.paneTab === 'deck' ? <>{props.spaceId && brandKits ? <BrandKitPicker brandKits={brandKits} spaceId={props.spaceId} onApply={props.onApplyBrandKit} /> : null}<DeckDesignPanel {...props} /></> : props.paneTab === 'history' ? (
+          VersionHistory === undefined ? null : <div className="border-t border-hairline px-[18px] py-3.5">
             <VersionHistory
               deckId={props.deckId}
               refreshKey={props.versionRefresh}

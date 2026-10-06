@@ -1,4 +1,3 @@
-import { useNavigate } from '@tanstack/react-router';
 import {
   ChevronDown,
   Copy,
@@ -10,8 +9,7 @@ import {
   Snowflake,
 } from 'lucide-react';
 
-import { stageUrlFor } from '../../../../apps/host/src/api';
-import { qnaShareUrl, remoteShareUrl, to, type LibraryPlace } from '../../../../apps/host/src/destinations';
+import { useEditorServices, type LibraryPlace } from '../services';
 import { Button } from '@openroom/ui/components/button';
 import { SessionFullNotice } from './SessionFullNotice';
 import {
@@ -109,7 +107,8 @@ export function HostHeader({
   onReturnToDeck,
   push,
 }: HostHeaderProps) {
-  const navigate = useNavigate();
+  const services = useEditorServices();
+  const { navigate, shareUrl } = services.navigation;
 
   return (
     <header className="flex h-11 shrink-0 items-center gap-3.5 bg-chrome px-4" data-theme-surface="">
@@ -162,7 +161,7 @@ export function HostHeader({
           </DropdownMenuItem>
           {stageToken ? (
             <DropdownMenuItem asChild>
-              <a href={stageUrlFor(sessionCode, stageToken)} target="_blank" rel="noreferrer">
+              <a href={services.live.stageUrl(sessionCode, stageToken)} target="_blank" rel="noreferrer">
                 <ExternalLink aria-hidden="true" />
                 Stage
               </a>
@@ -175,7 +174,7 @@ export function HostHeader({
           )}
           <DropdownMenuItem
             onSelect={() => {
-              void navigate(to.sessionRemote(sessionCode));
+              navigate({ kind: 'sessionRemote', sessionCode });
             }}
           >
             <Smartphone aria-hidden="true" />
@@ -183,7 +182,7 @@ export function HostHeader({
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
-              const url = remoteShareUrl(sessionCode, hostToken);
+              const url = shareUrl('remote', sessionCode, hostToken);
               void navigator.clipboard.writeText(url).then(
                 () => push('Remote link copied'),
                 () => push('Could not copy link', 'error'),
@@ -196,7 +195,7 @@ export function HostHeader({
           {hasQna ? (
             <DropdownMenuItem
               onSelect={() => {
-                void navigate(to.sessionQna(sessionCode));
+                navigate({ kind: 'sessionQna', sessionCode });
               }}
             >
               <ExternalLink aria-hidden="true" />
@@ -206,7 +205,7 @@ export function HostHeader({
           {hasQna ? (
             <DropdownMenuItem
               onSelect={() => {
-                const url = qnaShareUrl(sessionCode, hostToken);
+                const url = shareUrl('qna', sessionCode, hostToken);
                 void navigator.clipboard.writeText(url).then(
                   () => push('Link copied'),
                   () => push('Could not copy link', 'error'),
@@ -226,7 +225,7 @@ export function HostHeader({
             {frozen ? 'Unfreeze' : 'Freeze'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => { void navigate(to.sessionRecap(sessionCode)); }}>
+          <DropdownMenuItem onSelect={() => { navigate({ kind: 'sessionRecap', sessionCode }); }}>
             <Download aria-hidden="true" />
             Prepare workshop recap
           </DropdownMenuItem>
@@ -245,7 +244,7 @@ export function HostHeader({
           {documentWindow === null ? null : !documentWindow ? (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => void navigate(to.library(libraryPlace ?? undefined))}>
+              <DropdownMenuItem onSelect={() => navigate({ kind: 'library', place: libraryPlace })}>
                 <LogOut aria-hidden="true" />
                 Library
               </DropdownMenuItem>

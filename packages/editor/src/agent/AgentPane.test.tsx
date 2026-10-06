@@ -8,18 +8,23 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { AgentPane } from './AgentPane';
 import { EMPTY_AGENT_CHAT, agentChatStore } from './agent-chat';
-import type { OpenRoomDesktopBridge } from '../../../../apps/host/src/desktop-bridge';
+import type { OpenRoomDesktopBridge } from '../desktop-bridge';
+import { EditorServicesProvider } from '../services';
+import { memoryEditorServices } from '../testing';
 
 const bridge = { listAgentHosts: () => Promise.resolve([]) } as unknown as OpenRoomDesktopBridge;
+const services = memoryEditorServices({ desktop: bridge });
 
 function render(): string {
-  (globalThis as { window?: unknown }).window = { openroomDesktop: bridge };
-  return renderToStaticMarkup(<AgentPane onBeforeRun={() => Promise.resolve(true)} />);
+  return renderToStaticMarkup(
+    <EditorServicesProvider services={services}>
+      <AgentPane onBeforeRun={() => Promise.resolve(true)} />
+    </EditorServicesProvider>,
+  );
 }
 
 afterEach(() => {
   agentChatStore.setState(() => EMPTY_AGENT_CHAT);
-  delete (globalThis as { window?: unknown }).window;
 });
 
 describe('AgentPane transcript', () => {

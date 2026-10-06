@@ -25,7 +25,8 @@ export interface SessionAsideProps {
   onToggleEntry: (entry: TextEntry) => void;
   /** The step's tutor note, else the interaction note, else the pedagogy note. */
   notesText: string | undefined;
-  scratchpad: string;
+  /** Absent without a scratchpad slot: the note field is not rendered. */
+  scratchpad?: string;
   onScratchpadChange: (text: string) => void;
   qna: HostQnaView | null;
   answeredQna: Set<string>;
@@ -217,17 +218,21 @@ export function SessionAside({
             {notesText ? (
               <p className="text-sm leading-snug text-foreground">{notesText}</p>
             ) : null}
-            <Textarea
-              value={scratchpad}
-              onChange={(event) => onScratchpadChange(event.currentTarget.value)}
-              placeholder="Notes"
-              className="min-h-20"
-              disabled={ended}
-              aria-label="Private notes"
-            />
-            <p className="text-caption text-muted-foreground">
-              Saved on this device.
-            </p>
+            {scratchpad === undefined ? null : (
+              <>
+                <Textarea
+                  value={scratchpad}
+                  onChange={(event) => onScratchpadChange(event.currentTarget.value)}
+                  placeholder="Notes"
+                  className="min-h-20"
+                  disabled={ended}
+                  aria-label="Private notes"
+                />
+                <p className="text-caption text-muted-foreground">
+                  Saved on this device.
+                </p>
+              </>
+            )}
           </div>
         </div>
       ) : pane === 'groups' ? <div className="min-h-0 flex-1 overflow-y-auto">{groupControls}</div> : (

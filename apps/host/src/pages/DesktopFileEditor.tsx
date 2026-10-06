@@ -1,4 +1,15 @@
-import { blankDeck, renameDeck, questionReadinessMessage } from '../../../../packages/editor/src/deck-document';
+import {
+  AgentPane,
+  blankDeck,
+  DeckEditor,
+  DeckEditorTopBar,
+  Presenter,
+  questionReadinessMessage,
+  renameDeck,
+  type DesktopDocumentChanged,
+  type PresentationPosition,
+  type StoredSession,
+} from '@openroom/editor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   editableOutlineForOpenRoomFile,
@@ -17,9 +28,7 @@ import {
 import { stringify } from 'yaml';
 
 
-import { to } from '../destinations';
-import { desktopBridge, type DesktopDocumentChanged } from '../desktop-bridge';
-import { AgentPane } from '../../../../packages/editor/src/agent/AgentPane';
+import { desktopBridge } from '../desktop-bridge';
 import {
   addDeckVersion,
   startSessionFromOutline,
@@ -31,11 +40,7 @@ import {
   uploadAsset,
 } from '../api';
 import { Button } from '@openroom/ui/components/button';
-import { DeckEditor } from '../../../../packages/editor/src/deck-edit/DeckEditor';
-import { Presenter, type PresentationPosition } from '../../../../packages/editor/src/presenter/Presenter';
-import { DeckEditorTopBar } from '../../../../packages/editor/src/deck-edit/DeckEditorTopBar';
 import { startSessionFromDeck } from '../lib/library-actions';
-import type { StoredSession } from '../../../../packages/editor/src/types';
 import { DesktopLinkDialog } from './DesktopLinkDialog';
 import { sessionStartMessage } from '../components/ContinuityLock';
 
@@ -405,7 +410,7 @@ export function DesktopFileEditor() {
       <DeckEditorTopBar
         title={validation?.ok ? validation.outline.meta.title : displayName}
         onRename={(name) => { if (validation?.ok) setSource(stringify(renameDeck(validation.outline, name), { lineWidth: 100 })); }}
-        folderName={null} libraryTo={to.library()} shareTo={null}
+        folderName={null} libraryTo={{ kind: 'library' }} shareTo={null}
         status={{ state: saving ? 'saving' : dirty ? 'dirty' : 'saved', label: saving ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved', retrying: false, savedAt: null }}
         fileStatus={<span className="text-caption text-muted-foreground">{file.remote ? syncStatus === 'synced' ? 'Synced' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'checking' ? 'Syncing…' : 'Offline' : 'Local file'}</span>}
         onPresent={() => { setStartImmediately(false); setPresentFrom(0); }} canPresent={validation?.ok === true}

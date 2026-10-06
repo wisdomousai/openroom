@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { elementMarkupIssue, iframeUrlIssue, renderMarkdownToHtml } from '@openroom/schema';
 import { HtmlHost } from '@openroom/slides';
 
-import { ApiError, importReadingMaterial } from '../../../../apps/host/src/api';
-import { desktopBridge } from '../../../../apps/host/src/desktop-bridge';
+import { isServiceError, useEditorServices } from '../services';
 import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
@@ -29,7 +28,7 @@ import { Textarea } from '@openroom/ui/components/textarea';
  */
 /** The route answers in codes; the dialog says what happened. */
 function importProblemText(cause: unknown): string {
-  const code = cause instanceof ApiError ? cause.code : undefined;
+  const code = isServiceError(cause) ? cause.code : undefined;
   if (code === 'page-not-html') return 'That address is not a web page.';
   if (code === 'page-empty') return 'That page had no readable text.';
   if (code === 'page-unreachable') return 'That page could not be reached.';
@@ -57,7 +56,7 @@ export function MarkdownElementDialog({
   onSave: (markdown: string) => void;
   onRefineWithAgent?: (markdown: string) => void;
 }) {
-  const bridge = desktopBridge();
+  const { desktop: bridge, tools: { importReadingMaterial } } = useEditorServices();
   const [markdown, setMarkdown] = useState(initialMarkdown ?? '');
   const [url, setUrl] = useState(initialUrl ?? '');
   const [busy, setBusy] = useState(false);

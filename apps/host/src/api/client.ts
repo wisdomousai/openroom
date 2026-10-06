@@ -1,4 +1,4 @@
-import type { ApiErrorBody, SessionError } from '../../../../packages/editor/src/types';
+import type { ApiErrorBody, SessionError } from '@openroom/editor';
 
 export const baseUrl = ''; // same origin (docs/CONTRACTS.md §HTTP API)
 
