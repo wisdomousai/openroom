@@ -81,8 +81,8 @@ if (await originReady()) {
   console.log(`Worker already running at ${origin}`);
 } else {
   console.log('Starting local worker…');
-  worker = spawn('bun', ['run', 'dev', '--', '--ip', '0.0.0.0', '--port', '8787'], {
-    cwd: resolve(root, 'apps/worker'),
+  worker = spawn('node', ['scripts/dev-workers.mjs', '--ip', '0.0.0.0', '--port', '8787'], {
+    cwd: root,
     stdio: 'inherit',
     env: { ...process.env, DEMO_AUTH: '1' },
   });

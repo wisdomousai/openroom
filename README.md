@@ -125,14 +125,16 @@ In a linked git worktree the branch name is prepended: `https://fix-ui.openroom.
 Playwright journeys are unaffected. Two escape hatches:
 
 ```sh
-bun run dev:worker   # wrangler dev directly, no portless needed
+bun run dev:worker   # both Workers through wrangler dev directly, no portless needed
 PORTLESS=0 bun dev   # same, through the portless CLI but bypassing the proxy
 bun run dev:relay    # the relay alone on :8790 (RELAY_KEY=dev-relay in apps/relay/.dev.vars)
 ```
 
-`bun dev` and `dev:worker` run both Workers in one `wrangler dev`
-(`-c wrangler.jsonc -c ../relay/wrangler.jsonc`); 8787 is the control plane, and the
-relay is reached through its bindings. Copy `apps/relay/.dev.vars.example` to
+`bun dev` and `dev:worker` run both Workers as two `wrangler dev` processes
+(`scripts/dev-workers.mjs`): the control plane on 8787, the relay on 8790. The control
+plane reaches the relay through its bindings, connected by Wrangler's local dev registry. One
+`wrangler dev -c … -c …` does not work: Miniflare backs both Workers' static assets with one
+disk, so the relay would serve the control plane's files for `/stage/` and `/join/`. Copy `apps/relay/.dev.vars.example` to
 `apps/relay/.dev.vars` next to the worker's; both need the same `TOKEN_SECRET`.
 
 Because the port is pinned, a stale wrangler already holding 8787 makes the new one fall back to
