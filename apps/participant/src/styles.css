@@ -1,0 +1,1817 @@
+/**
+ * The participant surface.
+ *
+ * One phone, one thumb, one job: answer. Every colour, radius and font here is
+ * an `@openroom/ui` token applied to <html> from the snapshot's `theme`, so the
+ * phone restyles with the projector when the host switches themes.
+ *
+ * Two rules the layout is built around:
+ *  - the primary action is always a full-width, unmissable target
+ *  - nothing interactive is ever smaller than 44px (WCAG 2.5.5)
+ */
+
+@import 'tailwindcss';
+@source "../../../packages/charts/src";
+@import '@openroom/charts/charts.css';
+/* Same outline composition as stage / host stage-mirror (structure: @openroom/slides). */
+@import '@openroom/slides/outline-step.css';
+
+@custom-variant dark ([data-theme-mode='dark'] &);
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-live: var(--live);
+  --color-live-foreground: var(--live-foreground);
+  --color-live-tint: var(--live-tint);
+  --color-live-tint-foreground: var(--live-tint-foreground);
+  --font-sans: var(--font-sans);
+}
+
+:root {
+  --tap: 44px;
+  --ok: var(--chart-2);
+  --ok-fill: color-mix(in oklab, var(--chart-2) 14%, var(--card));
+  --destructive-tint: color-mix(in oklab, var(--destructive) 8%, var(--card));
+  color-scheme: light dark;
+}
+
+/* Fallback tokens for the moment before the first theme is applied. */
+:root:not([data-theme]) {
+  --background: #faf9f8;
+  --foreground: #242424;
+  --card: #ffffff;
+  --card-foreground: #242424;
+  --primary: #0f6cbd;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f2f1;
+  --secondary-foreground: #242424;
+  --muted: #f3f2f1;
+  --muted-foreground: #616161;
+  --accent: #ebf3fc;
+  --accent-foreground: #115ea3;
+  --destructive: #a4262c;
+  --destructive-foreground: #ffffff;
+  --border: #e1dfdd;
+  --input: #d2d0ce;
+  --ring: #0f6cbd;
+  --radius: 0.25rem;
+  --chart-1: #0f6cbd;
+  --chart-2: #107c41;
+  --chart-3: #b88217;
+  --chart-4: #b4009e;
+  --chart-5: #5c2e91;
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-display: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue',
+    Arial, sans-serif;
+  /* Named run families. Fixed stacks — a run's `serif` means serif everywhere. */
+  --font-serif: Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace;
+  --desk: #e8e6e4;
+  --chrome: #f3f2f1;
+  --hairline: #edebe9;
+  --live: #ca5010;
+  --live-foreground: #ffffff;
+  --live-tint: #fdf1e8;
+  --live-tint-foreground: #9c3d0b;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --background: #0b0d10;
+    --foreground: #f5f7fa;
+    --card: #14171c;
+    --card-foreground: #f5f7fa;
+    --primary: #4d8dff;
+    --primary-foreground: #06122b;
+    --secondary: #1e232b;
+    --secondary-foreground: #f5f7fa;
+    --muted: #1e232b;
+    --muted-foreground: #a7b0be;
+    --accent: #17305e;
+    --accent-foreground: #cfe0ff;
+    --destructive: #ff6b6b;
+    --destructive-foreground: #240404;
+    --border: #454e5e;
+    --input: #5c6675;
+    --ring: #7fa9ff;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--card);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  /* Kill iOS double-tap zoom — awkward on a one-thumb answer surface. */
+  touch-action: manipulation;
+}
+
+/*
+ * The browser's own surfaces belong to the room theme too: the selection, the
+ * caret in the code field, the scrollbar and the numerals in every tally.
+ */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+input,
+textarea {
+  caret-color: var(--live);
+}
+
+* {
+  scrollbar-color: var(--input) var(--background);
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--input);
+  border: 2px solid var(--background);
+}
+
+a {
+  color: var(--primary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ====================================================================== */
+/* Page shell                                                              */
+/* ====================================================================== */
+
+.page {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: max(62px, env(safe-area-inset-top)) 24px max(44px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--card);
+  /* Definite height so the slide plate can letterbox with container queries. */
+  height: 100dvh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0 8px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.stack:empty {
+  display: none;
+}
+
+.prompt {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.join .prompt {
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.countdown {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--live-tint-foreground);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted-foreground);
+}
+
+.error-text {
+  margin: 0;
+  font-weight: 600;
+  color: var(--destructive);
+}
+
+/* ====================================================================== */
+/* Buttons                                                                 */
+/* ====================================================================== */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--tap);
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--radius-xl, 8px);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+  font: inherit;
+  font-weight: 400;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:disabled {
+  background: var(--chrome, var(--muted));
+  color: var(--muted-foreground);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+.btn:focus-visible,
+.input:focus-visible,
+.textarea:focus-visible,
+.scale__dot:focus-visible,
+.qna__vote:focus-visible,
+.ranking__move:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/**
+ * Every student press. Orange — the phone is the room. Blue never appears on
+ * a filled button a student taps.
+ */
+.btn--primary {
+  background: var(--live);
+  color: var(--live-foreground);
+  border-color: var(--live);
+  min-height: 54px;
+  font-size: 17px;
+  font-weight: 600;
+  justify-content: center;
+  text-align: center;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--live-tint-foreground);
+  border-color: var(--live-tint-foreground);
+}
+
+.btn--secondary {
+  background: var(--card);
+  border-color: var(--input);
+  color: var(--foreground);
+  min-height: 50px;
+  font-size: 16px;
+  justify-content: center;
+  text-align: center;
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--background);
+}
+
+.btn--ghost {
+  background: var(--card);
+  border-color: var(--input);
+  color: var(--foreground);
+  justify-content: center;
+  text-align: center;
+}
+
+.btn--text {
+  background: transparent;
+  border-color: transparent;
+  color: var(--primary);
+  min-height: 48px;
+  font-size: 15px;
+  justify-content: center;
+  text-align: center;
+}
+
+.btn--text:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.btn--text:disabled {
+  background: transparent;
+  border-color: transparent;
+}
+
+.btn--leave {
+  flex: none;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--chrome, var(--muted));
+  color: var(--secondary-foreground);
+  font-size: 13px;
+}
+
+.btn--gotit {
+  align-self: flex-start;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-xl, 8px);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.btn--wide {
+  width: 100%;
+}
+
+.dont-know {
+  margin-top: 6px;
+}
+
+/* Answer options ------------------------------------------------------- */
+
+.option {
+  width: 100%;
+  min-height: 62px;
+  padding: 12px 16px;
+  gap: 14px;
+  font-size: 17px;
+  font-weight: 400;
+  background: var(--card);
+  border: 1px solid var(--input);
+  border-radius: var(--radius-xl, 8px);
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.option:hover:not(:disabled) {
+  background: var(--background);
+}
+
+.option__mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--muted-foreground);
+  background: transparent;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--live);
+}
+
+.option--radio .option__mark {
+  border-radius: 13px;
+}
+
+.option--check .option__mark {
+  border-radius: var(--radius-md, 4px);
+}
+
+.option[aria-checked='true'] {
+  border: 2px solid var(--live);
+  background: var(--live-tint);
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.option[aria-checked='true'] .option__mark {
+  background: transparent;
+  border: 2px solid var(--live);
+  color: var(--live);
+}
+
+/* ====================================================================== */
+/* Fields                                                                  */
+/* ====================================================================== */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field__label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 12px 14px;
+  border-radius: var(--radius-xl, 8px);
+  border: 1px solid var(--input);
+  background: var(--card);
+  color: var(--card-foreground);
+  font: inherit;
+  font-size: 16px;
+}
+
+.textarea {
+  min-height: 7rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.input:focus,
+.textarea:focus,
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: none;
+  border-bottom: 2px solid var(--live);
+}
+
+.input--code {
+  font-family: var(--font-display);
+  height: 60px;
+  min-height: 60px;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-transform: uppercase;
+  padding: 0 16px;
+  border: 1px solid var(--input);
+  border-bottom: 2px solid var(--live);
+  border-radius: var(--radius-xl, 8px);
+}
+
+.input--code:focus-visible {
+  outline: none;
+  border-color: var(--input);
+  border-bottom-color: var(--live);
+}
+
+/*
+ * The join screen is one decision on a whole phone screen — let the group sit
+ * in the middle instead of hugging the top bar with a dead lower half.
+ */
+.join {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 8vh;
+}
+
+.hint--center {
+  text-align: center;
+}
+
+.counter {
+  align-self: flex-end;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.counter--over {
+  color: var(--destructive);
+  font-weight: 600;
+}
+
+.unit {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.unit .input {
+  padding-right: 4.5rem;
+}
+
+.unit__suffix {
+  position: absolute;
+  right: 0.9rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+/* ====================================================================== */
+/* Banners, waiting, acknowledgement                                       */
+/* ====================================================================== */
+
+.handle {
+  min-width: 0;
+  margin-left: auto;
+  margin-right: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.handle strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--radius-xl, 8px);
+  background: var(--background);
+}
+
+.notice__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--secondary-foreground);
+  text-wrap: pretty;
+}
+
+.notice__text strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--radius-xl, 8px);
+  background: var(--chrome, var(--muted));
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--secondary-foreground);
+}
+
+.banner--offline,
+.banner--warn {
+  background: var(--chrome, var(--muted));
+  color: var(--secondary-foreground);
+}
+
+.banner--paused,
+.banner--frozen {
+  background: var(--live-tint);
+  color: var(--live-tint-foreground);
+}
+
+.banner--error {
+  background: var(--destructive-tint);
+  color: var(--destructive);
+}
+
+.waiting {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 3rem 1rem 60px;
+  text-align: center;
+}
+
+.waiting__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.waiting__dot,
+.waiting__pulse {
+  width: 14px;
+  height: 14px;
+  border-radius: 8px;
+  background: var(--live);
+}
+
+.ack {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--radius-xl, 8px);
+  background: var(--live-tint);
+  color: var(--live-tint-foreground);
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.ack span:first-child {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--live);
+  color: var(--live-foreground);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ack__answer {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* ====================================================================== */
+/* Peer instruction round banner                                           */
+/* ====================================================================== */
+
+.round {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-xl, 8px);
+  border: 1px solid var(--border);
+  background: var(--live-tint);
+  color: var(--live-tint-foreground);
+}
+
+.round__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.round__badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--live);
+  color: var(--live-foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.round__recall {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.round__recall-value {
+  font-weight: 600;
+}
+
+/* ====================================================================== */
+/* Scale                                                                   */
+/* ====================================================================== */
+
+.scale {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.scale__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.scale__dot {
+  flex: 1 1 var(--tap);
+  min-width: var(--tap);
+  min-height: 3.25rem;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+  font: inherit;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform 120ms ease,
+    background-color 140ms ease;
+}
+
+.scale__dot:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.scale__dot[aria-checked='true'] {
+  background: var(--live-tint);
+  color: var(--foreground);
+  border: 2px solid var(--live);
+  font-weight: 600;
+}
+
+.scale__labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+}
+
+/* ====================================================================== */
+/* Ranking                                                                 */
+/* ====================================================================== */
+
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  counter-reset: rank;
+}
+
+.ranking__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.6rem 0.55rem 0.55rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.ranking__pos {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md, 4px);
+  background: var(--live);
+  color: var(--live-foreground);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.ranking__label {
+  font-weight: 600;
+}
+
+.ranking__moves {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.ranking__move {
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: 0.9rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ranking__move:disabled {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+}
+
+/* ====================================================================== */
+/* View tabs (Now / Q&A)                                                   */
+/* ====================================================================== */
+
+.viewtabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--radius-xl, 8px);
+  background: var(--chrome, var(--muted));
+  margin-bottom: 22px;
+}
+
+.viewtabs__tab {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: var(--radius-lg, 6px);
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  cursor: pointer;
+  touch-action: manipulation;
+  font-variant-numeric: tabular-nums;
+}
+
+.viewtabs__tab--active {
+  background: var(--card);
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* ====================================================================== */
+/* Q&A                                                                     */
+/* ====================================================================== */
+
+.qna {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.qna__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-xl, 8px);
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.qna__item--own {
+  border: 2px solid var(--live);
+  background: var(--live-tint);
+}
+
+.qna__text {
+  display: grid;
+  gap: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.qna__handle {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.qna__own-tag {
+  justify-self: start;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--live-tint-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.qna__vote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 46px;
+  height: 52px;
+  min-width: 46px;
+  min-height: 52px;
+  padding: 0;
+  border-radius: var(--radius-xl, 8px);
+  border: 1px solid var(--input);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.05;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  touch-action: manipulation;
+}
+
+.qna__item--own .qna__vote {
+  border-color: var(--live);
+  background: var(--live);
+  color: var(--live-foreground);
+}
+
+.qna__vote small {
+  display: none;
+}
+
+.qna__vote:disabled {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+}
+
+/* ====================================================================== */
+/* Results                                                                 */
+/* ====================================================================== */
+
+.results {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.results__heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.results .or-chart-viz figcaption {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  padding-top: 4px;
+  border: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+.results .or-bars-chart {
+  height: auto;
+  grid-template-columns: minmax(0, 55%) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.results .or-bars-chart .or-chart-legend {
+  /* Equal bands grow to the tallest wrapped answer; the chart follows that
+     content height instead of squeezing every answer into a fixed phone row. */
+  grid-auto-rows: minmax(3.5rem, 1fr);
+}
+
+.results .or-bars-chart .or-chart-frame--rows {
+  height: 100%;
+}
+
+.results .or-bars-chart .barrow {
+  padding-block: 0.5rem;
+  font-size: 15px;
+}
+
+.results .barrow {
+  min-height: 0;
+}
+
+.bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'label value' 'track track';
+  gap: 0.2rem 0.75rem;
+  align-items: baseline;
+}
+
+.bar__label {
+  grid-area: label;
+  font-weight: 600;
+}
+
+.bar__value {
+  grid-area: value;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+
+.bar__track {
+  grid-area: track;
+  display: block;
+  height: 0.5rem;
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.bar__fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--chart-1);
+  transform: scaleX(var(--fill, 0));
+  transform-origin: left center;
+  transition: transform 420ms cubic-bezier(0.22, 0.72, 0.24, 1);
+}
+
+.bar--correct .bar__fill {
+  background: var(--ok);
+}
+
+.bar--correct .bar__label::after {
+  content: ' ✓';
+  font-weight: 600;
+  color: var(--ok);
+}
+
+/* Peer-instruction reveal: was → now (stage grammar at pocket scale). */
+.results--shift {
+  gap: 0.85rem;
+}
+
+.shiftbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'label nums'
+    'r1 r1'
+    'r2 r2';
+  gap: 0.2rem 0.6rem;
+  align-items: baseline;
+}
+
+.shiftbar__label {
+  grid-area: label;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.shiftbar__nums {
+  grid-area: nums;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+
+.shiftbar__nums strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.shiftbar__track {
+  display: block;
+  height: 0.45rem;
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.shiftbar__track[data-round='r1'] {
+  grid-area: r1;
+  height: 0.35rem;
+}
+
+.shiftbar__track[data-round='r2'] {
+  grid-area: r2;
+  height: 0.55rem;
+}
+
+.shiftbar__fill {
+  display: block;
+  height: 100%;
+}
+
+.shiftbar__fill--r1 {
+  background: var(--muted-foreground);
+}
+
+.shiftbar__fill--r2 {
+  background: var(--primary);
+}
+
+.bar--correct .shiftbar__fill--r2 {
+  background: var(--ok);
+}
+
+/* Peer instruction: hollow R1 + solid R2 (stage grammar at pocket scale). */
+.results--rounds {
+  gap: 0.85rem;
+}
+
+.rounds-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.1rem;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted-foreground);
+}
+
+.rounds-key__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.rounds-key__item--now {
+  color: var(--foreground);
+}
+
+.rounds-key__swatch {
+  display: inline-block;
+  width: 1.1rem;
+  height: 0.55rem;
+  border: 2px solid var(--primary);
+  background: var(--primary);
+}
+
+.rounds-key__swatch--r1 {
+  background: transparent;
+}
+
+.roundbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'label shift'
+    'r1 r1'
+    'r2 r2';
+  gap: 0.2rem 0.6rem;
+  align-items: baseline;
+}
+
+.roundbar__label {
+  grid-area: label;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.roundbar__shift {
+  grid-area: shift;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.roundbar__shift strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.roundbar__track {
+  display: block;
+  height: 0.45rem;
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.roundbar__track[data-round='r1'] {
+  grid-area: r1;
+  height: 0.4rem;
+}
+
+.roundbar__track[data-round='r2'] {
+  grid-area: r2;
+  height: 0.55rem;
+}
+
+.roundbar__fill {
+  display: block;
+  height: 100%;
+}
+
+/* Hollow R1: border only — never opacity wash. */
+.roundbar__fill--r1 {
+  box-sizing: border-box;
+  background: transparent;
+  border: 2px solid var(--primary);
+}
+
+.roundbar__fill--r2 {
+  background: var(--primary);
+}
+
+.bar--correct .roundbar__fill--r1 {
+  border-color: var(--ok);
+}
+
+.bar--correct .roundbar__fill--r2 {
+  background: var(--ok);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * A secondary action that still has to clear the 44px target floor — it gets
+ * narrower, never shorter.
+ */
+.btn--compact {
+  min-height: var(--tap);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.88rem;
+}
+
+/* ====================================================================== */
+/* Tutoring learner surface — half screen and tablet, not phone            */
+/* ====================================================================== */
+
+/* Session layout follows viewport size, independently of identity or workspace. */
+
+.page__body {
+  /* Phone flow unchanged: the wrapper is not a box, the column is the column. */
+  display: contents;
+}
+
+@media (min-width: 640px) {
+.page[data-session] {
+  max-width: none;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.5rem, 1.2vh, 1rem);
+  padding: clamp(0.75rem, 1.6vw, 1.25rem);
+  padding-bottom: calc(clamp(0.75rem, 1.6vw, 1.25rem) + env(safe-area-inset-bottom));
+  font-size: 1.1rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  /* Tokens outline-step.css expects (stage sets these on .stage). */
+  --rule: var(--border);
+  --panel: var(--card);
+  --font-display: var(--font-sans);
+}
+
+.page[data-session] > :not(.page__body) {
+  flex-shrink: 0;
+}
+
+.page[data-session] .page__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow: hidden;
+  /* Full width: the slide owns the measure, not a phone column. */
+  max-width: none;
+}
+
+.page[data-session] .option,
+.page[data-session] .hint {
+  font-size: 1.15rem;
+}
+
+}
+
+/* The same authored slide and annotation coordinate space as the projector. */
+.learner-slide {
+  flex: 1 1 0; min-height: 0; width: 100%; display: grid;
+  grid-template-rows: auto minmax(0, 1fr); justify-items: center;
+  container-type: size; gap: 0.5rem;
+}
+.learner-slide__view { display: flex; justify-content: center; gap: 0.25rem; }
+.learner-slide__view button { font: inherit; padding: 0.45rem 0.9rem; border: 1px solid var(--border); border-radius: 0.5rem; color: var(--foreground); background: var(--background); }
+.learner-slide__view button[aria-pressed='true'] { background: var(--foreground); color: var(--background); }
+.learner-slide__plate {
+  position: relative; align-self: center;
+  width: min(100cqw, calc((100cqh - 3rem) * var(--slide-aspect)));
+  aspect-ratio: var(--slide-aspect); max-width: 100%; min-height: 0;
+  overflow: hidden; border-radius: 0.5rem; box-shadow: var(--shadow-page);
+}
+.learner-slide__hint { display: none; }
+/* In the narrow scrolling page, width determines the authored slide's height.
+   Size containment is only useful in the bounded desktop presentation area. */
+@media (max-width: 639px) {
+  .learner-slide { flex: none; container-type: inline-size; grid-template-rows: auto auto; }
+  .learner-slide__plate { width: 100%; }
+}
+/* Reading keeps the content and revealed word indices, with natural document flow. */
+.learner-slide[data-reading='true'] { display: flex; flex-direction: column; overflow-y: auto; align-items: stretch; }
+.learner-slide[data-reading='true'] .learner-slide__view { flex: none; }
+.learner-slide[data-reading='true'] .learner-slide__plate { flex: none; width: 100%; aspect-ratio: auto; overflow: visible; }
+.learner-slide[data-reading='true'] .slide-surface { height: auto; aspect-ratio: auto; min-height: 16rem; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step { display: flex; flex-direction: column; height: auto; min-height: 16rem; gap: 1.25rem; padding: 1.25rem; font-size: 1rem; overflow: visible; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step h1,
+.learner-slide[data-reading='true'] .slide-surface .outline-step__term { max-width: none; font-size: 1.75rem; line-height: 1.2; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step h2 { font-size: 1.15rem; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step p,
+.learner-slide[data-reading='true'] .slide-surface .outline-step li { font-size: 1rem; line-height: 1.55; max-width: none; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step__region { padding: 0; border: 0; overflow: visible; gap: 1rem; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step__cards,
+.learner-slide[data-reading='true'] .slide-surface .outline-step__sequence,
+.learner-slide[data-reading='true'] .slide-surface .outline-step__bullets { display: grid; grid-template-columns: 1fr; grid-auto-rows: auto; gap: 0.75rem; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step__cards article,
+.learner-slide[data-reading='true'] .slide-surface .outline-step__sequence li { padding: 1rem; overflow: visible; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step__elements { position: relative; display: grid; gap: 1rem; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step__element { position: relative; inset: auto !important; width: 100% !important; height: auto !important; font-size: 1rem !important; min-height: 1em; overflow: visible; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step__element--iframe,
+.learner-slide[data-reading='true'] .slide-surface .outline-step__element--pdf { height: 24rem !important; }
+.learner-slide[data-reading='true'] .slide-surface__footer { position: relative; display: block; left: auto; bottom: auto; padding: 0 1.25rem 1rem; font-size: 0.8rem; }
+.learner-slide[data-reading='true'] .slide-surface__logo { display: none; }
+
+.learner-ink {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Which half of the pair this learner is. A label, never a heading — the cards
+   below it are the content, this is only how to read them. */
+.step__lane {
+  margin: 0 0 10px;
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted-foreground);
+}
+
+/* ------------------------------------------------------------- dictionary */
+
+/*
+ * The learner's own lookup sheet. It covers the bottom of the screen rather
+ * than floating over the word: a forms table is taller than a phone can spare
+ * above a line of text, and the sentence stays visible above it.
+ */
+.learner-lookup {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  max-height: 62vh;
+  overflow: auto;
+  padding: 0.9rem 1rem 1.4rem;
+  background: var(--card);
+  color: var(--card-foreground);
+  border-top: 1px solid var(--border);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 30px rgb(0 0 0 / 18%);
+  font-size: 0.9rem;
+}
+
+.learner-lookup__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.learner-lookup__bar button {
+  padding: 0.25rem 0.6rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.learner-lookup__meaning {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+.learner-lookup__note {
+  margin: 0.3rem 0;
+  color: var(--muted-foreground);
+}
+
+/*
+ * The pushed meaning card: what the tutor put up, over the learner's slide on
+ * a scrim. It replaces the old under-slide forms table and the small gloss
+ * over the word. Same card the wall shows, minus every act.
+ */
+.meaning-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+.meaning-layer__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim, rgb(32 31 30 / 38%));
+}
+
+.meaning-card {
+  position: absolute;
+  inset: 4% 5%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 8px);
+  box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
+  font-size: clamp(0.8rem, 2vw, 1.1rem);
+  line-height: 1.35;
+}
+
+.meaning-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6em;
+  padding: 0.9em 1.1em 0.6em;
+  border-bottom: 1px solid var(--border);
+}
+
+.meaning-card__word {
+  font-size: 1.8em;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.meaning-card__from {
+  color: var(--muted-foreground);
+}
+
+.meaning-card__facts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4em;
+}
+
+.meaning-card__pos {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.meaning-card__label {
+  padding: 0.05em 0.5em;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-radius: 999px;
+  font-size: 0.8em;
+}
+
+.meaning-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+  overflow: auto;
+  padding: 0.8em 1.1em;
+}
+
+.meaning-card__meaning {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.meaning-card__senses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin: 0;
+  padding-left: 1.3em;
+  font-size: 1.1em;
+}
+
+.meaning-card__example {
+  display: block;
+  color: var(--muted-foreground);
+  font-style: italic;
+  font-size: 0.85em;
+}
+
+.meaning-card__foot {
+  padding: 0.55em 1.1em;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 0.8em;
+}
+
+/* Same class names as stage ink — the table renders through one component. */
+.learner-lookup .dict__lemma,
+.meaning-card .dict__lemma {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4em;
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.learner-lookup .dict-head,
+.meaning-card .dict-head {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3em;
+  font-size: 0.65em;
+  font-weight: 400;
+}
+
+.learner-lookup .dict-head__pos,
+.meaning-card .dict-head__pos {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.learner-lookup .dict-head__label,
+.learner-lookup .dict-head__from,
+.meaning-card .dict-head__label,
+.meaning-card .dict-head__from {
+  padding: 0.05em 0.4em;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-radius: 999px;
+}
+
+.learner-lookup .dict__senses {
+  margin: 0.5em 0 0;
+  padding-left: 1.1em;
+  color: var(--muted-foreground);
+}
+
+.learner-lookup .dict-section {
+  margin-top: 0.85em;
+}
+
+/* The card's body spaces sections with its own gap. */
+.meaning-card .dict-section {
+  margin-top: 0;
+}
+
+.learner-lookup .dict-section__label,
+.meaning-card .dict-section__label {
+  margin-bottom: 0.25em;
+  color: var(--muted-foreground);
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.learner-lookup .dict-scroll,
+.meaning-card .dict-scroll {
+  overflow-x: auto;
+}
+
+.learner-lookup .dict-table,
+.meaning-card .dict-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.learner-lookup .dict-table th,
+.learner-lookup .dict-table td,
+.meaning-card .dict-table th,
+.meaning-card .dict-table td {
+  padding: 0.15em 0.45em;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.learner-lookup .dict-table thead th,
+.learner-lookup .dict-table tbody th,
+.meaning-card .dict-table thead th,
+.meaning-card .dict-table tbody th {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+.learner-lookup .dict-cell--on,
+.learner-lookup .dict-chip--on,
+.meaning-card .dict-cell--on,
+.meaning-card .dict-chip--on {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: 600;
+}
+
+.learner-lookup .dict-chips,
+.meaning-card .dict-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+}
+
+.learner-lookup .dict-chip,
+.meaning-card .dict-chip {
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.learner-lookup .dict__source,
+.meaning-card .dict__source {
+  margin-top: 0.75rem;
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+}
+
+/* Fill-the-gaps picker ------------------------------------------------- */
+
+.gap-slot {
+  display: inline-block;
+  min-width: 4.5rem;
+  min-height: 44px;
+  margin: 0 0.15em;
+  padding: 0.15em 0.55em;
+  vertical-align: baseline;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-bottom: 2px dashed var(--muted-foreground);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.gap-slot--filled {
+  color: var(--live);
+  border-bottom-style: solid;
+  border-bottom-color: var(--live);
+  font-weight: 600;
+}
+
+.gap-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.gap-picker__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: var(--scrim, rgb(32 31 30 / 38%));
+  cursor: pointer;
+}
+
+.gap-picker__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 62vh;
+  overflow: auto;
+  padding: 1rem 1rem 1.4rem;
+  background: var(--card);
+  color: var(--card-foreground);
+  border-top: 1px solid var(--border);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 30px rgb(0 0 0 / 18%);
+}
+
+@media (min-width: 640px) {
+  .gap-picker__panel {
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    width: min(24rem, calc(100vw - 2rem));
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl, 8px);
+    box-shadow: 0 16px 40px rgb(0 0 0 / 22%);
+  }
+}
+
+.gap-picker .option--used {
+  opacity: 0.55;
+}
+
+.gap-picker .option[aria-pressed='true'] {
+  background: color-mix(in oklab, var(--live) 16%, var(--card));
+  color: var(--live);
+  font-weight: 600;
+}
+
+.gap-result {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25em;
+  margin: 0 0.1em;
+  font-weight: 600;
+}
+
+.gap-result--ok {
+  color: var(--chart-2);
+}
+
+.gap-result--bad {
+  color: var(--live);
+}
+
+.gap-result__expected {
+  font-weight: 400;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}

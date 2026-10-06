@@ -1,0 +1,82 @@
+version: 1
+meta:
+  title: Revision week — what do we spend the sessions on?
+  description: >-
+    A prioritisation task for the last week before the exam. The class ranks the
+    revision topics, the Borda scores decide the running order, and the average
+    rank shows where the session genuinely disagrees.
+  locale: en
+  source: Year 11 combined science, revision planning
+defaults:
+  identityMode: anonymous
+  resultVisibility: hidden-until-close
+  allowAnswerChange: true
+
+interactions:
+  - id: warm-up
+    type: choice
+    prompt: How ready do you feel for the exam right now?
+    display: emoji-pulse
+    allowDontKnow: true
+    options:
+      - id: lost
+        label: 😵 Lost — I need the basics again
+      - id: shaky
+        label: 😬 Shaky in places
+      - id: okay
+        label: 🙂 Mostly okay
+      - id: ready
+        label: 😎 Ready — I want hard practice
+    pedagogy:
+      objective: Read the session before asking it to prioritise.
+      durationSec: 45
+
+  - id: revision-priorities
+    type: ranking
+    prompt: >-
+      Put these five revision topics in the order you want to spend Monday to
+      Friday on — first place gets the first session.
+    display: ordered-bars
+    allowDontKnow: true
+    options:
+      - id: required-practicals
+        label: Required practicals and how they are marked
+      - id: exam-technique
+        label: Exam technique — command words and mark schemes
+      - id: calculations
+        label: Calculations, rearranging and units
+      - id: graphs
+        label: Reading and drawing graphs
+      - id: past-papers
+        label: Timed past-paper practice
+    pedagogy:
+      objective: >-
+        Hand the class real ownership of the week while surfacing which topic is
+        merely popular and which is genuinely agreed on.
+      explanation: >-
+        Scores are Borda counts: with five options a first place is worth 4
+        points, a second 3, down to 0 for last. A topic can win on score while
+        its average rank hides a split session — check both columns before locking
+        the timetable.
+      followUp: >-
+        Ask the two people who ranked the winner last to say why. That is the
+        argument the rest of the class has not heard.
+      durationSec: 150
+    notes: >-
+      Everyone orders all five — there is no partial ranking. Keep the results
+      hidden until everyone has submitted, otherwise the first bars anchor the
+      rest of the session.
+
+  - id: why-first
+    type: text
+    prompt: In one sentence, why does your first-place topic deserve the first session?
+    display: word-cloud
+    maxLength: 180
+    pedagogy:
+      objective: Capture the reasoning behind the ranking, not just the order.
+      durationSec: 120
+
+  - id: revision-questions
+    type: qna
+    prompt: What do you want covered that is not on the list?
+    display: list

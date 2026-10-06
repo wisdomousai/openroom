@@ -1,0 +1,65 @@
+@import './deck-slide.css';
+
+/* Corner clock — furniture, always top-right. */
+.clock-pill {
+  position: absolute;
+  top: 3cqw;
+  right: 3cqw;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 1.2cqw;
+  padding: 1cqw 1.8cqw;
+  border-radius: 999px;
+  background: var(--chrome, var(--muted));
+  color: var(--secondary-foreground, var(--foreground));
+  font-family: var(--font-display);
+  font-size: 2.6cqw;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.clock-pill[data-clock-state='running'] {
+  background: var(--live-tint);
+  color: var(--live-tint-foreground);
+}
+
+.clock-pill[data-clock-state='last-ten'] {
+  background: var(--live);
+  color: var(--live-foreground);
+}
+
+.clock-pill[data-clock-state='overrun'] {
+  color: var(--muted-foreground);
+}
+
+.clock-pill__dot {
+  width: 1.4cqw;
+  height: 1.4cqw;
+  border-radius: 999px;
+  background: var(--muted-foreground);
+}
+
+.clock-pill[data-clock-state='running'] .clock-pill__dot {
+  background: var(--live);
+}
+
+.clock-pill__mark {
+  font-size: 0.7em;
+  line-height: 1;
+}
+.outline-step__audio { width: 100%; min-width: 0; overflow: auto; }
+.listening-block { display: grid; gap: 0.8em; padding: 1.2em; border: 1px solid currentColor; border-radius: 0.7em; }
+.listening-block p, .listening-block h3 { margin: 0; }
+.listening-block__title { font-weight: 600; }
+.listening-block__instruction { font-size: 0.75em; opacity: 0.8; }
+.listening-block__transcript { border-top: 1px solid currentColor; padding-top: 0.8em; font-size: 0.8em; }
+.listening-block__transcript p { white-space: pre-wrap; line-height: 1.5; margin-top: 0.5em; }
+.listening-player { display: grid; gap: 0.6rem; font: 14px/1.45 system-ui, sans-serif; }
+.listening-player audio { width: 100%; min-width: 0; }
+.listening-player__controls, .listening-player__controls [role="group"] { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+.listening-player button { border: 1px solid var(--border, #aaa); border-radius: 6px; padding: 0.35rem 0.6rem; min-height: 36px; color: inherit; background: transparent; cursor: pointer; }
+.listening-player button[aria-pressed="true"] { background: var(--foreground, #222); color: var(--background, #fff); }
+.listening-player__error { font-size: 14px; }

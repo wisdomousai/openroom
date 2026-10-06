@@ -1,0 +1,17 @@
+version: 1
+meta:
+  title: Type answer
+  description: Short-text quiz with accepted answers (type-the-answer as a text mode).
+interactions:
+  - id: capital
+    type: text
+    prompt: What is the capital of France?
+    display: list
+    resultVisibility: hidden-until-close
+    maxLength: 40
+    correctAnswers:
+      - Paris
+      - City of Light
+    pedagogy:
+      explanation: Matching is case-insensitive after trim; list every accepted form.
+    notes: Reveal highlights matching responses on the stage.

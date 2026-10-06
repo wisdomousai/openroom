@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "types": ["vite/client"],
+    "noEmit": true,
+    "declaration": false,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@openroom/stage-src/*": ["../stage/src/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "../stage/src/**/*.ts", "../stage/src/**/*.tsx"]
+}

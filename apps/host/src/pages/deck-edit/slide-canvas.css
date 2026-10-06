@@ -1,0 +1,20 @@
+@import '@openroom/slides/deck-slide.css';
+
+.aside-canvas { overflow-wrap: anywhere; }
+.aside-canvas > div, .aside-canvas [data-homework-task] { flex-shrink: 0; }
+.aside-canvas textarea { min-width: 0; max-width: 100%; }
+.aside-canvas [role='combobox'] > span { min-width: 0; overflow-wrap: anywhere; }
+.deck-editor-properties button { max-width: 100%; }
+
+/* The authoring desk positions the shared slide surface. */
+.slide-canvas__stage {
+  flex: 1 1 auto; min-height: 0; width: 100%; container-type: size;
+  display: flex; align-items: center; justify-content: center;
+}
+.slide-canvas__frame {
+  position: relative; container-type: inline-size;
+  aspect-ratio: var(--slide-aspect, 1.7777778);
+  width: min(100cqw, calc(100cqh * var(--slide-aspect, 1.7777778)), 1000px); max-height: 100%; margin-inline: auto;
+  overflow: hidden; border-radius: var(--radius-lg);
+  background: var(--card); color: var(--card-foreground); box-shadow: var(--shadow-page);
+}

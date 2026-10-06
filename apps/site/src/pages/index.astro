@@ -1,0 +1,148 @@
+---
+import Base from '../layouts/Base.astro';
+
+const title = 'OpenRoom | Live questions for tutoring, classes, training and meetings';
+const description =
+  'Present a deck, ask a question and put everyone’s answers on the screen. People join from their phone with a code, no account needed. For tutoring, classrooms, and training, workshops and meetings.';
+
+// Slide mocks use each space's starter content and default deck design
+// palette (packages/schema deck-design.ts: paper, clean, business).
+const paper = '--s-bg:#F8F3E9;--s-fg:#302C28;--s-muted:#655D52;--s-accent:#9D3E28;--s-surface:#EEE5D5;--s-border:#CFC2AD;--s-head:Georgia,"Times New Roman",serif';
+const clean = '--s-bg:#FFFFFF;--s-fg:#172B3A;--s-muted:#526473;--s-accent:#1765B0;--s-surface:#F0F5FA;--s-border:#CAD8E4';
+const business = '--s-bg:#F8FAFC;--s-fg:#14283F;--s-muted:#52647A;--s-accent:#205E96;--s-surface:#E8EFF6;--s-border:#BACDDF';
+
+const jsonLd = [
+  {
+    '@type': 'SoftwareApplication',
+    name: 'OpenRoom',
+    url: Astro.site?.toString(),
+    applicationCategory: 'EducationalApplication',
+    operatingSystem: 'Web',
+    description,
+    inLanguage: 'en',
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    featureList: [
+      'Spaces for tutoring, classrooms, and training, workshops and meetings',
+      'Decks with slides and live questions in one file',
+      'Participants join with an 8-character session code, no account needed',
+      'Agents prepare decks through an MCP endpoint, CLI or HTTP API',
+      'Answers deleted 30 minutes after a session ends',
+    ],
+  },
+  {
+    '@type': 'WebSite',
+    name: 'OpenRoom',
+    url: Astro.site?.toString(),
+  },
+];
+---
+
+<Base title={title} description={description} path="/" jsonLd={jsonLd} landing>
+
+<header class="wrap hero">
+  <h1>Hear from everyone, not just the first hand up.</h1>
+  <p class="lede">Ask a question and everyone answers from their phone. The answers show up on the screen, so you know where people actually are before you move on.</p>
+  <div class="cta-row">
+    <a class="btn solid" href="/api/auth/google">Start for free</a>
+    <a href="#how">See how it works</a>
+  </div>
+  <p class="hero-note">For tutoring, classrooms, training, workshops and meetings.</p>
+</header>
+
+<div class="wrap scene" aria-hidden="true">
+  <div class="stage-mock">
+    <div class="session-code"><span>join.openroom.app</span><strong>K7QX-24FD</strong></div>
+    <p class="prompt">Two similar plants get the same water. One has light, the other sits in a dark cupboard. What happens after two weeks?</p>
+    <div class="bar-row"><span>They grow equally well</span><div class="bar b2" style="width:9%"></div><span class="pct">9%</span></div>
+    <div class="bar-row"><span>The one with light stays healthier</span><div class="bar b1" style="width:78%"></div><span class="pct">78%</span></div>
+    <div class="bar-row"><span>The one in the cupboard stays healthier</span><div class="bar b3" style="width:13%"></div><span class="pct">13%</span></div>
+  </div>
+  <div class="phone-mock">
+    <p class="phone-q">What happens after two weeks?</p>
+    <span class="opt">They grow equally well</span>
+    <span class="opt picked">The one with light stays healthier</span>
+    <span class="opt">The one in the cupboard stays healthier</span>
+  </div>
+</div>
+
+<section class="wrap benefits">
+  <div class="benefit" id="tutoring">
+    <div class="benefit-text">
+      <p class="audience">For tutors</p>
+      <h2>Walk into every lesson prepared.</h2>
+      <p>The worksheet arrives an hour before the lesson. Hand it to your agent and get a deck back that you adjust and teach. The student follows on their own screen, and afterwards your notes and the homework are waiting for them in one place, so next week starts where this one ended.</p>
+    </div>
+    <div class="slide-mock" style={paper} aria-hidden="true">
+      <p class="slide-title">Trois phrases utiles</p>
+      <div class="slide-cards">
+        <div><span>Ask</span>Je voudrais un café, s’il vous plaît.</div>
+        <div><span>Price</span>Ça coûte combien ?</div>
+        <div><span>Thank</span>Merci, bonne journée !</div>
+      </div>
+      <p class="slide-foot">Au café, French A1</p>
+    </div>
+  </div>
+
+  <div class="benefit" id="classroom">
+    <div class="benefit-text">
+      <p class="audience">For teachers</p>
+      <h2>Know who’s lost before you move on.</h2>
+      <p>A show of hands tells you what the confident students think. When everyone answers on their phone, without their name on it, you see the whole class at once and can go back over the part that didn’t land.</p>
+    </div>
+    <div class="slide-mock" style={clean} aria-hidden="true">
+      <p class="slide-title">Which change keeps the test fair?</p>
+      <div class="slide-bars">
+        <div><span>Give the plant in the light more water</span><i style="width:24%"></i></div>
+        <div class="correct"><span>Change only the amount of light</span><i style="width:61%"></i></div>
+        <div><span>Use a bigger plant for the cupboard</span><i style="width:15%"></i></div>
+      </div>
+      <p class="slide-foot">What plants need</p>
+    </div>
+  </div>
+
+  <div class="benefit" id="training">
+    <div class="benefit-text">
+      <p class="audience">For training, workshops and meetings</p>
+      <h2>Get the honest answer, not the polite one.</h2>
+      <p>People say what they think when their name isn’t attached. Have each table agree on one answer, put the split on the screen, and spend the time on the disagreement instead of going round the table.</p>
+    </div>
+    <div class="slide-mock" style={business} aria-hidden="true">
+      <p class="slide-title">What would you recommend first?</p>
+      <div class="slide-bars">
+        <div><span>Propose a smaller release and explain the defect</span><i style="width:46%"></i></div>
+        <div><span>Ask for a new delivery date for the complete fix</span><i style="width:17%"></i></div>
+        <div><span>Get the customer’s priorities first</span><i style="width:37%"></i></div>
+      </div>
+      <p class="slide-foot">6 of 6 tables answered</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap how" id="how">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li><h3>Make a deck</h3><p>Write it in the editor, or hand your material to your agent and let it draft one.</p></li>
+    <li><h3>Share the code</h3><p>People join from their phone with the code on the screen. No app, no account.</p></li>
+    <li><h3>See the answers</h3><p>Results come in live. Show them when you’re ready and talk about what they mean.</p></li>
+  </ol>
+</section>
+
+<section class="wrap assure">
+  <ul>
+    <li>Free to use</li>
+    <li>No app or account for participants</li>
+    <li>Answers deleted 30 minutes after the session</li>
+    <li>No ads or tracking</li>
+  </ul>
+</section>
+
+<section class="wrap final">
+  <h2>Try it in your next session.</h2>
+  <div class="cta-row">
+    <a class="btn solid" href="/api/auth/google">Start for free</a>
+    <a href="/docs/">Read the docs</a>
+  </div>
+</section>
+
+</Base>

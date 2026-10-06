@@ -1,0 +1,36 @@
+{
+  "name": "@openroom/slides",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./outline-step.css": "./src/outline-step.css",
+    "./deck-slide.css": "./src/deck-slide.css"
+  },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@openroom/schema": "workspace:*",
+    "@openroom/sdk": "workspace:*",
+    "qrcode-generator": "^1.4.4"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

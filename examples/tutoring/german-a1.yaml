@@ -1,0 +1,212 @@
+version: 1
+meta:
+  title: In der Bäckerei
+  description: Etwas bestellen, nach dem Preis fragen und sich bedanken.
+  locale: de
+  language: German
+  level: A1
+  durationMinutes: 40
+  objectives:
+    - Mit « Ich hätte gern… » etwas bestellen.
+    - Einen einfachen Preis erfragen und verstehen.
+    - Ein kurzes Gespräch höflich beenden.
+design:
+  aspectRatio: 16:9
+  theme:
+    family: clean
+    colors:
+      background: "#FFFFFF"
+      foreground: "#172B3A"
+      muted: "#526473"
+      accent: "#1765B0"
+      surface: "#F0F5FA"
+      border: "#CAD8E4"
+      charts:
+        - "#1765B0"
+        - "#14786F"
+        - "#8B4BA1"
+        - "#A65014"
+        - "#B13A55"
+        - "#506A28"
+    fonts:
+      heading: sans
+      body: sans
+  defaultMasterId: standard
+  masters:
+    - id: standard
+      name: Standard
+      safeArea: 8
+      decoration: rule
+      footer: Deutsch · A1
+    - id: opening
+      name: Opening
+      safeArea: 8
+      decoration: none
+      background:
+        kind: gradient
+        from: "#FFFFFF"
+        to: "#F0F5FA"
+        angle: 120
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+steps:
+  - id: welcome
+    kind: title
+    title: In der Bäckerei
+    body: Sie kaufen etwas zum Essen und fragen nach dem Preis.
+    tutorNotes: Start with a bakery item the learner knows. Model the short final exchange; teach hätte
+      gern as a useful chunk, not a full tense system. 3 minutes.
+    design:
+      masterId: opening
+  - id: warmup
+    kind: activity
+    title: Was möchten Sie?
+    instructions:
+      - Nennen Sie etwas, das Sie in einer Bäckerei kaufen.
+      - "Hören Sie zu: Was möchte die andere Person?"
+    durationSec: 120
+    tutorNotes: Accept a word and supply the article in a natural response. Learners can invent a preference.
+  - id: menu
+    kind: cards
+    title: Unser Angebot
+    items:
+      - label: Ein Brot
+        text: 3,80 €
+      - label: Ein Brötchen
+        text: 0,80 €
+      - label: Eine Brezel
+        text: 1,50 €
+    tutorNotes: Fictional prices. Say the amounts, then ask the learner to point. Regional alternatives
+      such as Brötli or Semmel are welcome in discussion; this example consistently uses Brötchen. 4
+      minutes.
+  - id: phrases
+    kind: cards
+    title: Drei hilfreiche Sätze
+    items:
+      - label: Bestellen
+        text: Ich hätte gern eine Brezel, bitte.
+      - label: Nachfragen
+        text: Was kostet das?
+      - label: Beenden
+        text: Danke. Auf Wiedersehen!
+    tutorNotes: Practise the whole phrase at a comfortable pace. Show the article with each noun. 4 minutes.
+  - id: listen
+    kind: activity
+    title: Hören Sie zu
+    instructions:
+      - Was kauft die Kundin?
+      - Wie viel bezahlt sie?
+    durationSec: 90
+    tutorNotes: "Read twice to the room: Guten Tag! — Guten Tag, ich hätte gern eine Brezel, bitte. —
+      Gern. Sonst noch etwas? — Nein, danke. Was kostet das? — Eins fünfzig. — Danke. Auf
+      Wiedersehen! Keep the transcript closed during the first attempts."
+  - id: transcript
+    kind: statement
+    title: Das Gespräch
+    body: |-
+      — Guten Tag, ich hätte gern eine Brezel, bitte.
+      — Gern. Sonst noch etwas?
+      — Nein, danke. Was kostet das?
+      — Eins fünfzig.
+      — Danke. Auf Wiedersehen!
+    tutorNotes: Open after listening. Read in roles and swap. Explain eins fünfzig as one euro fifty,
+      then say the full amount.
+    breakoutOf:
+      stepId: listen
+      afterKey: header
+  - id: understand
+    kind: interaction
+    interactionId: price
+    tutorNotes: Ask the learner to say the amount after choosing it. 3 minutes.
+  - id: practice
+    kind: interaction
+    interactionId: article
+    tutorNotes: Give the chunks ein Brot and eine Brezel. These examples avoid introducing masculine
+      accusative before the learner needs it. 4 minutes.
+  - id: roles
+    kind: cards
+    title: An der Theke
+    items:
+      - label: Kundin oder Kunde
+        text: Wählen Sie etwas aus dem Angebot. Fragen Sie nach dem Preis.
+      - label: Verkauf
+        text: "Hören Sie zu und nennen Sie den Preis. Fragen Sie: « Sonst noch etwas? »"
+    tutorNotes: In one-to-one teaching take the seller role first. Let learners point to the menu if a
+      word is missing.
+  - id: roleplay
+    kind: activity
+    title: Bestellen Sie
+    instructions:
+      - Begrüssen Sie die andere Person.
+      - Bestellen Sie etwas und fragen Sie nach dem Preis.
+      - Bedanken Sie sich. Tauschen Sie die Rollen.
+    durationSec: 240
+    tutorNotes: Listen for a successful exchange and one clear price question. Give one useful
+      correction after both turns. 6 minutes total.
+  - id: transfer
+    kind: activity
+    title: Ohne die Sätze
+    instructions:
+      - Bestellen Sie zwei verschiedene Dinge.
+      - Fragen Sie nach dem Gesamtpreis.
+      - Beenden Sie das Gespräch höflich.
+    durationSec: 120
+    tutorNotes: "A single item remains a valid supported version. If adding prices is a distraction,
+      provide the total: one roll plus one pretzel is 2.30 euros."
+  - id: recap
+    kind: debrief
+    title: Das nehmen Sie mit
+    prompts:
+      - Welchen Satz können Sie ohne Lesen sagen?
+      - Bestellen Sie jetzt etwas für sich.
+    tutorNotes: Check an actual request and price question, then agree on one phrase to repeat next
+      time. 3 minutes.
+interactions:
+  - id: price
+    type: choice
+    prompt: Was kostet die Brezel im Gespräch?
+    options:
+      - id: o1
+        label: 0,80 €
+      - id: o2
+        label: 1,50 €
+        correct: true
+      - id: o3
+        label: 3,80 €
+    notes: The spoken amount eins fünfzig corresponds to 1,50 €.
+  - id: article
+    type: fill-the-gaps
+    prompt: Ich hätte gern {{bread}} Brot und {{pretzel}} Brezel.
+    gaps:
+      - id: bread
+        answers:
+          - ein
+      - id: pretzel
+        answers:
+          - eine
+    match:
+      locale: de
+homework:
+  tasks:
+    - id: read
+      kind: reading
+      body: "Lesen Sie: « Ich hätte gern eine Brezel, bitte. Was kostet das? Danke. Auf Wiedersehen! »
+        Decken Sie die Sätze ab und sagen Sie sie noch einmal."
+    - id: write
+      kind: writing
+      prompt: Schreiben Sie ein Gespräch in der Bäckerei (4 bis 6 Gesprächsbeiträge).
+      guidance: Bestellen Sie etwas, fragen Sie nach dem Preis und bedanken Sie sich. Die Preise dürfen
+        erfunden sein.
+    - id: speak
+      kind: voice
+      prompt: Nehmen Sie Ihre Bestellung auf (20 bis 40 Sekunden).
+      guidance: Begrüssen Sie die Person, bestellen Sie etwas und fragen Sie nach dem Preis. Drei
+        Stichwörter sind als Hilfe erlaubt.
+    - id: practise
+      kind: quiz
+      interactionId: article
+recap:
+  title: Für das nächste Mal
+  body: Greifen Sie eine ausgewählte Formulierung aus dem Feedback auf und verwenden Sie sie in einer
+    neuen Situation.

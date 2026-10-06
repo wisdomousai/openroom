@@ -1,0 +1,629 @@
+/* OpenRoom landing — default theme tokens from packages/ui.
+   Three surfaces, two hues, two shadows. Structure comes from fill. */
+
+.landing {
+  --background: #faf9f8;
+  --foreground: #242424;
+  --card: #ffffff;
+  --primary: #0f6cbd;
+  --primary-hover: #115ea3;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f2f1;
+  --secondary-foreground: #242424;
+  --muted-foreground: #616161;
+  --tertiary: #8a8886;
+  --accent: #ebf3fc;
+  --accent-foreground: #115ea3;
+  --border: #e1dfdd;
+  --hairline: #edebe9;
+  --chrome: #f3f2f1;
+  --desk: #e8e6e4;
+  --live: #ca5010;
+  --live-foreground: #ffffff;
+  --live-tint: #fdf1e8;
+  --live-tint-foreground: #9c3d0b;
+  --radius: 0.25rem;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 20px rgba(0, 0, 0, 0.1);
+  --chart-1: #0f6cbd;
+  --chart-2: #107c41;
+  --chart-3: #b88217;
+  --chart-4: #b4009e;
+  --chart-5: #5c2e91;
+  --page-max: 84rem;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .landing {
+    --background: #201f1e;
+    --foreground: #f3f2f1;
+    --card: #292827;
+    --primary: #4f9ae8;
+    --primary-hover: #7ab4ee;
+    --primary-foreground: #06122b;
+    --secondary: #323130;
+    --secondary-foreground: #f3f2f1;
+    --muted-foreground: #c8c6c4;
+    --tertiary: #a19f9d;
+    --accent: #163a5c;
+    --accent-foreground: #b3d6f5;
+    --border: #484644;
+    --hairline: #3b3a39;
+    --chrome: #252423;
+    --desk: #151413;
+    --live: #ca5010;
+    --live-foreground: #ffffff;
+    --live-tint: #3d2213;
+    --live-tint-foreground: #f4c7a5;
+    --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.28), 0 6px 24px rgba(0, 0, 0, 0.32);
+    --chart-1: #4f9ae8;
+    --chart-2: #54b471;
+    --chart-3: #e8b44a;
+    --chart-4: #e05bc4;
+    --chart-5: #a47bea;
+  }
+}
+
+
+.landing {
+  font-size: 1rem;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font);
+  font-weight: 400;
+}
+
+.landing a {
+  color: var(--primary);
+}
+
+.landing .wrap {
+  max-width: var(--page-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.landing .topnav a:not(.nav-cta) {
+  text-decoration: none;
+  color: var(--muted-foreground);
+}
+
+.landing .topnav a:hover {
+  color: var(--foreground);
+}
+
+/* Nav and footer sit on the page, not in bars. */
+.landing .topnav {
+  background: transparent;
+  border: 0;
+  min-height: 56px;
+  padding: 0 1.5rem;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  font-size: 0.875rem;
+}
+
+.landing .topnav .brand {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.landing .topnav .brand img {
+  border-radius: var(--radius-md);
+}
+
+.landing .topnav .nav-cta {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.9rem;
+}
+
+.landing .topnav .nav-cta:hover {
+  background: var(--primary-hover);
+  text-decoration: none;
+}
+
+.landing footer.site {
+  border: 0;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 2.5rem;
+  color: var(--tertiary);
+}
+
+/* ---------------------------------------------------------------- hero */
+
+.hero {
+  padding-top: 5rem;
+}
+
+.hero h1 {
+  font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  max-width: 16ch;
+  margin: 0 0 1.25rem;
+}
+
+.hero .lede {
+  font-size: 1.125rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  max-width: 34rem;
+  margin: 0 0 2rem;
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+}
+
+.btn.solid {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.btn.solid:hover {
+  background: var(--primary-hover);
+  text-decoration: none;
+}
+
+/* --------------------------------------------------------------- scene */
+/* The only framed things on the page are the two screens. */
+
+.scene {
+  position: relative;
+  margin-top: 4rem;
+  padding-bottom: 3rem;
+}
+
+.stage-mock {
+  background: var(--card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-page);
+  padding: 2rem 5rem 2.25rem 2.25rem;
+  margin-right: 10rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-mock .session-code {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  margin-bottom: 1.5rem;
+}
+
+.stage-mock .session-code strong {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--live);
+}
+
+.stage-mock .prompt {
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1.3;
+  max-width: 34ch;
+  margin: 0 0 1.5rem;
+}
+
+.stage-mock .bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 16rem) 1fr 2.5rem;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 0.65rem 0;
+  font-size: 0.9375rem;
+}
+
+.stage-mock .bar {
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  transform-origin: left;
+  animation: bar-grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.9s both;
+}
+
+.stage-mock .b1 { background: var(--chart-1); }
+.stage-mock .b2 { background: var(--chart-2); }
+.stage-mock .b3 { background: var(--chart-3); }
+
+.stage-mock .pct {
+  text-align: right;
+  color: var(--muted-foreground);
+  animation: fade-in 0.4s ease-out 1.5s both;
+}
+
+/* Participant phone: orange on every button a participant presses. */
+.phone-mock {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 0;
+  width: 12.5rem;
+  background: var(--card);
+  border: 7px solid #242424;
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-page);
+  padding: 1.1rem 0.85rem 1.25rem;
+  font-size: 0.75rem;
+}
+
+.phone-mock .phone-q {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  margin: 0 0 0.75rem;
+}
+
+.phone-mock .opt {
+  display: block;
+  border: 1px solid var(--live);
+  color: var(--live-tint-foreground);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.6rem;
+  margin: 0.4rem 0;
+  line-height: 1.3;
+}
+
+.phone-mock .opt.picked {
+  animation: pick 0.25s ease-out 0.5s both;
+}
+
+@keyframes pick {
+  to {
+    background: var(--live);
+    color: var(--live-foreground);
+  }
+}
+
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.hero-note {
+  margin: 1.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--tertiary);
+}
+
+/* ------------------------------------------------------------ benefits */
+
+.benefits {
+  padding-top: 6rem;
+}
+
+.benefit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  margin-bottom: 6rem;
+}
+
+.benefit:nth-child(even) .slide-mock {
+  order: -1;
+}
+
+.benefit .audience {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--primary);
+}
+
+.landing .benefit h2,
+.landing .how h2,
+.landing .final h2 {
+  font-size: clamp(1.6rem, 3.2vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  border: 0;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.benefit-text > p:last-child {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  max-width: 32rem;
+}
+
+/* Slides painted with a deck design's palette (--s-* set inline). */
+.slide-mock {
+  aspect-ratio: 16 / 10;
+  display: flex;
+  flex-direction: column;
+  background: var(--s-bg);
+  color: var(--s-fg);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-page);
+  padding: 1.75rem 2rem 1.25rem;
+  font-size: 0.875rem;
+  min-width: 0;
+}
+
+.slide-mock .slide-title {
+  font-family: var(--s-head, var(--font));
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0 0 1.1rem;
+}
+
+.slide-mock .slide-foot {
+  margin: auto 0 0;
+  padding-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--s-muted);
+}
+
+.slide-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.slide-cards div {
+  background: var(--s-surface);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.75rem;
+  line-height: 1.35;
+}
+
+.slide-cards span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--s-accent);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.slide-steps {
+  margin: 0;
+  padding-left: 1.3rem;
+  line-height: 1.5;
+}
+
+.slide-steps li {
+  margin: 0.35rem 0;
+}
+
+.slide-steps li::marker {
+  color: var(--s-accent);
+  font-weight: 600;
+}
+
+.slide-steps .dim {
+  opacity: 0.3;
+}
+
+.slide-bars div {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.25rem;
+  margin: 0 0 0.6rem;
+}
+
+.slide-bars i {
+  display: block;
+  height: 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--s-accent);
+}
+
+
+.slide-bars .correct span::after {
+  content: " \2713";
+  color: var(--s-accent);
+  font-weight: 600;
+}
+
+/* ----------------------------------------------------------------- how */
+
+.how {
+  padding-top: 1rem;
+  padding-bottom: 5rem;
+}
+
+.steps {
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+  margin: 2rem 0 0;
+  padding: 0;
+}
+
+.steps li {
+  counter-increment: step;
+}
+
+.steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.landing .steps h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.steps p {
+  margin: 0;
+  color: var(--muted-foreground);
+  line-height: 1.55;
+}
+
+/* -------------------------------------------------------------- assure */
+
+.assure ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2.5rem;
+  margin: 0;
+  padding: 0 0 5rem;
+  font-size: 0.9375rem;
+}
+
+.assure li::before {
+  content: "\2713";
+  color: var(--primary);
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+/* --------------------------------------------------------------- final */
+
+.final {
+  padding-top: 1rem;
+  padding-bottom: 5rem;
+}
+
+/* ---------------------------------------------------------- responsive */
+
+@media (max-width: 60rem) {
+  .phone-mock {
+    width: 11rem;
+    right: 0.5rem;
+  }
+
+  .stage-mock {
+    margin-right: 7rem;
+  }
+
+  .benefit {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 4rem;
+  }
+
+  .benefit:nth-child(even) .slide-mock {
+    order: 0;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+}
+
+@media (max-width: 40rem) {
+  .hero {
+    padding-top: 2.5rem;
+  }
+
+  .scene {
+    margin-top: 2.5rem;
+    padding-bottom: 0;
+  }
+
+  .stage-mock {
+    margin-right: 0;
+    padding: 1.25rem 1.1rem 1.4rem;
+  }
+
+  .stage-mock .prompt {
+    font-size: 1.15rem;
+  }
+
+  .stage-mock .bar-row {
+    grid-template-columns: 1fr 2.25rem;
+    row-gap: 0.3rem;
+  }
+
+  .stage-mock .bar-row > span:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .phone-mock {
+    display: none;
+  }
+
+  .benefits {
+    padding-top: 4rem;
+  }
+
+  .slide-mock {
+    aspect-ratio: auto;
+    padding: 1.25rem 1.1rem 1rem;
+  }
+
+  .slide-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .landing .topnav {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    padding: 0 1rem;
+    font-size: 0.82rem;
+  }
+
+  .landing .topnav .nav-optional {
+    display: none;
+  }
+}
+
+/* Large displays: scale the whole page (everything is in rem) instead of
+   leaving a narrow column in the middle of a 4K screen. */
+@media (min-width: 1800px) {
+  html {
+    font-size: clamp(16px, 0.7vw, 28px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .phone-mock .opt.picked {
+    background: var(--live);
+    color: var(--live-foreground);
+  }
+}

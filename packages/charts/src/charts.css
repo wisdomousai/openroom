@@ -1,0 +1,322 @@
+/**
+ * @openroom/charts — the one stylesheet for chart markup on every surface
+ * (stage, host console, participant). Apps must load Tailwind with @source on
+ * this package; color/radius tokens come from @openroom/ui theme vars.
+ *
+ * Flat by decree (DESIGN.md): no shadows, no gradients, no blur. Structure is
+ * 1px borders; data marks are square-cornered rectangles.
+ */
+
+:root {
+  /* Correct-answer tokens, derived from the series green. Apps may override. */
+  --ok: var(--chart-2);
+  --ok-fill: color-mix(in oklab, var(--chart-2) 14%, var(--background));
+}
+
+/* ------------------------------------------------------------ containers */
+
+/**
+ * Horizontal bars: label column and plot share fixed row bands so every label
+ * sits exactly on its bar, and the chart is sized by its data (rows x band)
+ * rather than stretched over the plate.
+ */
+.or-bars-chart {
+  --or-row: 3.25rem;
+  display: grid;
+  grid-template-columns: minmax(7rem, 30%) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  align-content: center;
+  height: 100%;
+  min-height: 0;
+}
+
+.or-bars-chart .or-chart-legend {
+  display: grid;
+  grid-auto-rows: var(--or-row);
+  align-items: center;
+  gap: 0;
+}
+
+.or-chart-frame--rows {
+  height: calc(var(--or-rows, 1) * var(--or-row));
+  max-height: 100%;
+}
+
+.or-cols-chart,
+.or-pie-chart,
+.or-radial-chart,
+.or-scale-chart,
+.or-hist-chart,
+.or-rank-chart,
+.or-emoji-chart,
+.or-gauge-chart {
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* content-sized charts centre in the plate */
+  gap: 0.5rem;
+  height: 100%;
+  min-height: 0;
+}
+
+/**
+ * Peer instruction reuses the bars grid (labels left, plot right); each label
+ * block sits on its pair of round-1/round-2 bars via the shared row bands.
+ */
+.or-peer-chart {
+  --or-row: 4.25rem;
+}
+
+.or-peer-chart .shiftrow {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.15rem;
+}
+
+.or-peer-chart .shiftnote {
+  grid-column: 1 / -1;
+}
+
+.or-chart-frame {
+  min-height: 0;
+  width: 100%;
+}
+
+/* TanStack owns SVG layout and responsive measurement; the package frame owns
+   the available box so all three consumers share the same sizing semantics. */
+.or-tanstack-chart,
+.or-tanstack-chart .ts-chart-host,
+.or-tanstack-chart .ts-chart-surface {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.or-tanstack-chart {
+  color: var(--foreground);
+}
+
+.or-tanstack-chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.or-chart--compact .or-bars-chart {
+  grid-template-columns: minmax(5rem, 34%) minmax(0, 1fr);
+}
+
+/* ---------------------------------------------------------------- legend */
+
+.or-chart-legend {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.or-chart-legend--wrap {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+}
+
+.barrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  min-height: 2rem;
+  min-width: 0;
+}
+
+.barrow__label {
+  font-weight: 600;
+  line-height: 1.2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/**
+ * Abstention row ("Don't know"). It belongs to the total, so it is drawn —
+ * but it is not an answer, so it takes the muted role and never a series hue.
+ */
+.barrow--abstain .barrow__label,
+.barrow--abstain {
+  color: var(--muted-foreground);
+}
+
+/* Value labels drawn inside the SVG (counts / percents next to bars). */
+.or-bar-value {
+  fill: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reveal caption under column charts: the correct option, named once. */
+.or-correct-note {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Square swatch — data marks never get soft corners. */
+.or-swatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------- correct tag */
+
+.tag-correct {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.5rem;
+  padding: 0.05em 0.5em;
+  background: var(--ok-fill);
+  border: 1px solid var(--ok);
+  color: color-mix(in oklab, var(--ok) 72%, var(--foreground));
+  font-size: 0.7em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------- peer instruction rows */
+
+.shiftrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  min-height: 2rem;
+}
+
+.shiftrow__label {
+  font-weight: 600;
+  line-height: 1.25;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shiftrow__nums {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.shiftnote {
+  margin: 0;
+}
+
+/* -------------------------------------------------------- text/QnA cards */
+
+/**
+ * The whole edge is the series colour — one hairline all the way round rather
+ * than a fat coloured stripe down one side, which is a card costume.
+ */
+.card {
+  border: 1px solid var(--card-tone, var(--border));
+  background: var(--card);
+  color: var(--card-foreground);
+  overflow-wrap: anywhere;
+}
+
+/* Scale min/max anchors under the axis (e.g. "Guessing" / "Certain"). */
+.or-scale-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+/* Word cloud: the layout runs on a fixed canvas; the svg scales to fill. */
+/* ------------------------------------------------------- fill-the-gaps / match */
+
+/**
+ * Both lanes are read as text, not as a plot: one block per gap (or per left
+ * item), each holding the answers the room gave. The count sits at the end of
+ * the row so the eye runs label → tally down a single column.
+ */
+.or-gaps-chart__label {
+  font-weight: 600;
+}
+
+.or-gaps-chart .barrow,
+.or-pairs-chart .barrow {
+  min-height: 1.75rem;
+}
+
+.or-gaps-chart__count,
+.or-pairs-chart__count {
+  margin-left: auto;
+  padding: 0.05em 0.5em;
+  border: 1px solid var(--border);
+}
+
+.or-cloud-chart svg {
+  width: 100%;
+  height: 100%;
+}
+
+.or-chart--compact .card {
+  font-size: 0.875rem;
+}
+
+/* ------------------------------------------------------------- mean chip */
+
+.or-mean-chip {
+  margin: 0 auto;
+  padding: 0.15em 0.55em;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  width: fit-content;
+}
+
+/* --------------------------------------------------------------- marquee */
+
+@keyframes or-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap, 1rem)));
+  }
+}
+
+.animate-or-marquee {
+  animation: or-marquee var(--duration, 28s) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-or-marquee {
+    animation: none;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

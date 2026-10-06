@@ -1,0 +1,32 @@
+{
+  "name": "openroom-worker",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "node scripts/collect-assets.mjs && wrangler deploy",
+    "build": "node scripts/collect-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "test": "vitest run",
+    "dns-aid": "node scripts/publish-dns-aid.mjs"
+  },
+  "dependencies": {
+    "@openroom/domain": "workspace:*",
+    "@openroom/mcp": "workspace:*",
+    "@openroom/schema": "workspace:*",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.20.2",
+    "@cloudflare/workers-types": "^5.20260801.1",
+    "drizzle-kit": "^0.31.10",
+    "miniflare": "5.20260801.1-alpha",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.119.0",
+    "yaml": "^2.6.1"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "meta": {
+    "title": "Walkthrough live classroom",
+    "description": "A small, concrete session used by the narrated walkthrough.",
+    "locale": "en"
+  },
+  "defaults": {
+    "identityMode": "pseudonymous",
+    "resultVisibility": "hidden-until-close",
+    "allowAnswerChange": true
+  },
+  "interactions": [
+    {
+      "id": "walkthrough-choice",
+      "type": "choice",
+      "prompt": "What should participants see during a live session?",
+      "display": "bars",
+      "options": [
+        { "id": "live-question", "label": "The live question", "correct": true },
+        { "id": "private-notes", "label": "Private host notes" }
+      ]
+    }
+  ]
+}

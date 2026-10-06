@@ -1,0 +1,224 @@
+version: 1
+meta:
+  title: Die Lampe funktioniert nicht
+  description: Ein Problem beschreiben und einen passenden Termin vereinbaren.
+  locale: de
+  language: German
+  level: A2
+  durationMinutes: 45
+  objectives:
+    - Ein Problem mit Ort und Zeitpunkt beschreiben.
+    - Höflich um Hilfe bitten.
+    - Einen Termin vorschlagen und bestätigen.
+design:
+  aspectRatio: 16:9
+  theme:
+    family: clean
+    colors:
+      background: "#FFFFFF"
+      foreground: "#172B3A"
+      muted: "#526473"
+      accent: "#1765B0"
+      surface: "#F0F5FA"
+      border: "#CAD8E4"
+      charts:
+        - "#1765B0"
+        - "#14786F"
+        - "#8B4BA1"
+        - "#A65014"
+        - "#B13A55"
+        - "#506A28"
+    fonts:
+      heading: sans
+      body: sans
+  defaultMasterId: standard
+  masters:
+    - id: standard
+      name: Standard
+      safeArea: 8
+      decoration: rule
+      footer: Deutsch · A2
+    - id: opening
+      name: Opening
+      safeArea: 8
+      decoration: none
+      background:
+        kind: gradient
+        from: "#FFFFFF"
+        to: "#F0F5FA"
+        angle: 120
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+steps:
+  - id: welcome
+    kind: title
+    title: Die Lampe funktioniert nicht
+    body: Sie beschreiben ein Problem und vereinbaren einen Termin.
+    tutorNotes: Use a fictional household problem. This is a language task, not advice about electrical
+      work or tenancy rights. 3 minutes.
+    design:
+      masterId: opening
+  - id: warmup
+    kind: activity
+    title: Was ist das Problem?
+    instructions:
+      - Nennen Sie einen Gegenstand in einer Wohnung.
+      - Beschreiben Sie ein einfaches Problem damit.
+    durationSec: 120
+    tutorNotes: Supply funktioniert nicht, ist kaputt or fehlt. Do not ask learners to troubleshoot
+      electrical equipment.
+  - id: phrases
+    kind: cards
+    title: Eine klare Nachricht
+    items:
+      - label: Ort und Problem
+        text: Die Lampe in der Küche funktioniert nicht.
+      - label: Zeitpunkt
+        text: Seit gestern ist es dort dunkel.
+      - label: Bitte
+        text: Könnten Sie bitte einen Termin vorschlagen?
+    tutorNotes: Practise the polite request as a chunk. Ask which detail helps the recipient understand
+      the message. 4 minutes.
+  - id: message
+    kind: statement
+    title: Eine Nachricht an die Verwaltung
+    body: >-
+      Guten Tag Frau Weber,
+
+      seit gestern funktioniert die Lampe in der Küche nicht. Die Lampen in den anderen Zimmern
+      funktionieren. Könnten Sie bitte jemanden schicken? Am Dienstag bin ich ab 14 Uhr zu Hause. Am
+      Mittwoch habe ich vormittags Zeit.
+
+      Freundliche Grüsse
+
+      Nora Meier
+    tutorNotes: Read for problem, place and availability. Do not infer a cause. Ask the learner to
+      separate facts from guesses. 5 minutes.
+  - id: understand
+    kind: interaction
+    interactionId: availability
+    tutorNotes: Learners identify the time that is actually offered. Ask them to point to the words ab
+      14 Uhr. 3 minutes.
+  - id: notice
+    kind: cards
+    title: Wann haben Sie Zeit?
+    items:
+      - label: Ein Tag
+        text: am Dienstag
+      - label: Eine Uhrzeit
+        text: um 14 Uhr
+      - label: Ab diesem Zeitpunkt
+        text: ab 14 Uhr
+    tutorNotes: Use a simple timeline on paper or annotate the slide. Contrast a precise appointment at
+      14:00 with availability starting at 14:00. 4 minutes.
+  - id: practice
+    kind: interaction
+    interactionId: time
+    tutorNotes: After checking, ask for the learner’s own invented availability. 4 minutes.
+  - id: listen
+    kind: activity
+    title: Die Antwort
+    instructions:
+      - "Hören Sie zu: Welcher Termin wird vorgeschlagen?"
+      - Passt der Termin zu Noras Nachricht?
+    durationSec: 90
+    tutorNotes: "Read twice: Guten Tag Frau Meier. Jemand kann am Dienstag um fünfzehn Uhr vorbeikommen.
+      Passt Ihnen das? Bitte bestätigen Sie den Termin kurz. Correct: Tuesday at 15:00, which fits
+      availability from 14:00. No repair procedure is discussed."
+  - id: roles
+    kind: cards
+    title: Ein Termin für beide
+    items:
+      - label: Nora
+        text: Am Dienstag sind Sie erst ab 16 Uhr zu Hause. Am Mittwoch haben Sie bis 11 Uhr Zeit.
+      - label: Verwaltung
+        text: Sie können Dienstag um 15 Uhr oder Mittwoch um 9 Uhr anbieten.
+    tutorNotes: The possible agreement is Wednesday at 9:00. If learners choose something else, ask them
+      to re-check both constraints, not simply to repeat a sentence.
+  - id: agree
+    kind: activity
+    title: Vereinbaren Sie den Termin
+    instructions:
+      - Beschreiben Sie das Problem in zwei Sätzen.
+      - Fragen Sie nach einem Termin.
+      - Erklären Sie, wenn ein Vorschlag nicht passt.
+      - Bestätigen Sie Tag und Uhrzeit.
+    durationSec: 300
+    tutorNotes: In one-to-one teaching take the other role. After agreement repeat with the roles
+      reversed. Give feedback on time expressions. 8 minutes.
+  - id: confirm
+    kind: statement
+    title: Schriftlich bestätigen
+    body: « Vielen Dank. Der Termin am … um … passt mir. Freundliche Grüsse … »
+    tutorNotes: Have learners fill the actual agreed time, then remove the model. Explain that the
+      greeting can vary by relationship. 4 minutes.
+  - id: recap
+    kind: debrief
+    title: Das nehmen Sie mit
+    prompts:
+      - Welche drei Informationen gehören in Ihre Nachricht?
+      - Wie bitten Sie höflich um einen Termin?
+      - Bestätigen Sie den vereinbarten Termin.
+    tutorNotes: Look for problem, place and availability; do not require a technical diagnosis. 3 minutes.
+interactions:
+  - id: availability
+    type: choice
+    prompt: Wann ist Nora am Dienstag zu Hause?
+    options:
+      - id: o1
+        label: Nur vor 14 Uhr.
+      - id: o2
+        label: Ab 14 Uhr.
+        correct: true
+      - id: o3
+        label: Erst am Abend.
+    notes: ab means from that time onward in this message.
+  - id: time
+    type: fill-the-gaps
+    prompt: Ich habe {{day}} Mittwoch Zeit. Der Termin ist {{hour}} 9 Uhr.
+    gaps:
+      - id: day
+        answers:
+          - am
+      - id: hour
+        answers:
+          - um
+    match:
+      locale: de
+homework:
+  tasks:
+    - id: read
+      kind: reading
+      body: >-
+        Eine Nachricht an die Verwaltung
+
+        Guten Tag Frau Weber,
+
+        seit gestern funktioniert die Lampe in der Küche nicht. Die Lampen in den anderen Zimmern
+        funktionieren. Könnten Sie bitte jemanden schicken? Am Dienstag bin ich ab 14 Uhr zu Hause.
+        Am Mittwoch habe ich vormittags Zeit.
+
+        Freundliche Grüsse
+
+        Nora Meier
+
+
+        Lesen Sie Noras Nachricht noch einmal. Markieren Sie das Problem, den Ort und die möglichen
+        Zeiten. Verwenden Sie keine Vermutung über die technische Ursache.
+    - id: write
+      kind: writing
+      prompt: Schreiben Sie eine Nachricht wegen eines erfundenen Problems (60 bis 80 Wörter).
+      guidance: Beschreiben Sie Problem und Ort. Bitten Sie um Hilfe und nennen Sie zwei mögliche Zeiten.
+    - id: speak
+      kind: voice
+      prompt: Nehmen Sie eine kurze Terminabsprache auf (30 bis 60 Sekunden).
+      guidance: Nennen Sie das Problem. Lehnen Sie einen unpassenden Termin höflich ab und machen Sie
+        einen neuen Vorschlag.
+    - id: practise
+      kind: quiz
+      interactionId: time
+recap:
+  title: Für das nächste Mal
+  body: Greifen Sie eine ausgewählte Formulierung aus dem Feedback auf und verwenden Sie sie in einer
+    neuen Situation.

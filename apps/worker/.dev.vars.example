@@ -1,0 +1,18 @@
+TOKEN_SECRET=dev-secret-change-me
+ADMIN_KEY=dev-admin
+# Local sign-in without Google: alice / bob / cara — password "demo"
+DEMO_AUTH=1
+# Stock tab in the deck editor. Never commit the real key; wrangler secret put PIXABAY_API_KEY
+PIXABAY_API_KEY=
+# Clear production join host so Create room / snapshots use /join/ on this
+# origin. wrangler.jsonc sets JOIN_ORIGIN for deploy; empty here overrides it.
+JOIN_ORIGIN=
+
+# Paddle Billing. Leave empty until you supply the approved catalog for this environment.
+# Catalog JSON format and webhook setup: docs/BILLING.md.
+PADDLE_ENVIRONMENT=
+PADDLE_PRICE_CATALOG=
+PADDLE_WEBHOOK_SECRET=
+PADDLE_API_KEY=
+# Public Paddle.js token: test_... for sandbox, live_... for production.
+PADDLE_CLIENT_TOKEN=

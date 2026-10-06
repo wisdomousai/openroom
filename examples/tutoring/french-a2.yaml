@@ -1,0 +1,216 @@
+version: 1
+meta:
+  title: On se retrouve samedi ?
+  description: Proposer une sortie, expliquer un empêchement et se mettre d’accord.
+  locale: fr
+  language: French
+  level: A2
+  durationMinutes: 45
+  objectives:
+    - Proposer une sortie avec une heure et un lieu.
+    - Parler d’un projet avec « aller + infinitif ».
+    - Refuser poliment et proposer une autre possibilité.
+design:
+  aspectRatio: 16:9
+  theme:
+    family: paper
+    colors:
+      background: "#F8F3E9"
+      foreground: "#302C28"
+      muted: "#655D52"
+      accent: "#9D3E28"
+      surface: "#EEE5D5"
+      border: "#CFC2AD"
+      charts:
+        - "#9D3E28"
+        - "#47624C"
+        - "#4B6385"
+        - "#86552C"
+        - "#795173"
+        - "#64602A"
+    fonts:
+      heading: serif
+      body: sans
+  defaultMasterId: standard
+  masters:
+    - id: standard
+      name: Standard
+      safeArea: 8
+      decoration: rule
+      footer: Français · A2
+    - id: opening
+      name: Opening
+      safeArea: 8
+      decoration: none
+      background:
+        kind: gradient
+        from: "#F8F3E9"
+        to: "#EEE5D5"
+        angle: 120
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+steps:
+  - id: welcome
+    kind: title
+    title: On se retrouve samedi ?
+    body: Vous organisez une sortie qui convient à deux personnes.
+    tutorNotes: Ask about one enjoyable outing. The final task is an agreed plan, not a list of
+      future-tense sentences. 3 minutes.
+    design:
+      masterId: opening
+  - id: warmup
+    kind: activity
+    title: Une bonne sortie
+    instructions:
+      - "Choisissez : un parc, un musée ou un café."
+      - Expliquez votre choix en une phrase.
+    durationSec: 120
+    tutorNotes: Offer parce que c’est calme/intéressant/pratique as support. Keep everyone’s choice for
+      the final task.
+  - id: phrases
+    kind: cards
+    title: Proposer et répondre
+    items:
+      - label: Proposer
+        text: Ça te dit d’aller au musée samedi ?
+      - label: Refuser poliment
+        text: J’aimerais bien, mais je travaille le matin.
+      - label: Chercher une solution
+        text: Et l’après-midi, tu es libre ?
+    tutorNotes: Read with rising intonation on the questions. Practise the invitation as a chunk;
+      contrast a polite refusal with an unexplained non. 4 minutes.
+  - id: message
+    kind: statement
+    title: Deux messages
+    body: >-
+      Maya : Samedi, je vais visiter le musée. Ça te dit de venir à 10 h ?
+
+      Noé : J’aimerais bien, mais je vais travailler jusqu’à midi. On peut se retrouver à 14 h
+      devant le musée ?
+
+      Maya : D’accord ! On va prendre un café après.
+    tutorNotes: Read silently first. Ask learners to underline the final agreement and circle the first
+      proposal. Do not introduce every future form at once. 5 minutes.
+  - id: understand
+    kind: interaction
+    interactionId: meeting
+    tutorNotes: "Ask what changed and why. Correct answer: 14 h, because Noé works until noon. 3 minutes."
+  - id: notice
+    kind: cards
+    title: Parler d’un projet
+    items:
+      - label: Je / tu
+        text: Je vais visiter le musée. Tu vas venir ?
+      - label: Nous / on
+        text: Nous allons prendre un café. On va prendre un café.
+      - label: La forme
+        text: "aller au présent + infinitif : va + travailler"
+    tutorNotes: Use two examples from the messages. Distinguish aller + infinitive from aller + place
+      only if the learner asks. 4 minutes.
+  - id: practice
+    kind: interaction
+    interactionId: future
+    tutorNotes: After checking, ask for a new sentence using one activity the learner chose. 4 minutes.
+  - id: listen
+    kind: activity
+    title: Un changement de dernière minute
+    instructions:
+      - Écoutez le message. Quelle est la nouvelle proposition ?
+      - Dites si vous êtes disponible. Sinon, proposez autre chose.
+    durationSec: 90
+    tutorNotes: "Read twice: Salut ! Finalement, je vais finir le travail à quinze heures. On se
+      retrouve à seize heures au café de la place ? Le musée, ce sera pour une autre fois. Check
+      both time and place. This is room listening; no audio file is required."
+  - id: roles
+    kind: cards
+    title: Deux emplois du temps
+    items:
+      - label: Personne A
+        text: Libre de 10 h à 12 h, puis après 15 h. Vous préférez être dehors.
+      - label: Personne B
+        text: Libre de 11 h à 16 h. Vous préférez le musée, mais le parc vous convient aussi.
+    tutorNotes: Possible agreements include 11–12 or 15–16. Neither preference is the correct one. In
+      one-to-one teaching take B without revealing all your constraints immediately.
+  - id: plan
+    kind: activity
+    title: Trouvez un accord
+    instructions:
+      - Proposez une activité, une heure et un lieu.
+      - Expliquez un empêchement et proposez une autre possibilité.
+      - Répétez l’accord final tous les deux.
+    durationSec: 300
+    tutorNotes: Assess whether both people can state the same plan. Give one form correction after
+      agreement. Repeat with a rainy-weather constraint. 8 minutes total.
+  - id: confirm
+    kind: statement
+    title: Confirmez par message
+    body: « D’accord, on se retrouve… On va… À samedi ! »
+    tutorNotes: Have each learner write their own confirmation before comparing. Check that time and
+      place match, then remove the model for a second attempt. 4 minutes.
+  - id: recap
+    kind: debrief
+    title: À retenir
+    prompts:
+      - Comment proposez-vous une sortie ?
+      - Quelle phrase utilisez-vous pour refuser poliment ?
+      - Dites ce que vous allez faire.
+    tutorNotes: Ask for an invitation and a response with a reason. Carry one difficulty into the next
+      lesson’s opening. 3 minutes.
+interactions:
+  - id: meeting
+    type: choice
+    prompt: Quel est l’accord final dans les deux messages ?
+    options:
+      - id: o1
+        label: Samedi à 10 h au musée.
+      - id: o2
+        label: Samedi à 14 h devant le musée.
+        correct: true
+      - id: o3
+        label: Dimanche à midi au café.
+    notes: Distinguish the original suggestion from the agreed plan.
+  - id: future
+    type: fill-the-gaps
+    prompt: Samedi, je {{first}} visiter le musée. Nous {{second}} prendre un café.
+    gaps:
+      - id: first
+        answers:
+          - vais
+      - id: second
+        answers:
+          - allons
+    match:
+      locale: fr
+homework:
+  tasks:
+    - id: read
+      kind: reading
+      body: >-
+        Deux messages
+
+        Maya : Samedi, je vais visiter le musée. Ça te dit de venir à 10 h ?
+
+        Noé : J’aimerais bien, mais je vais travailler jusqu’à midi. On peut se retrouver à 14 h
+        devant le musée ?
+
+        Maya : D’accord ! On va prendre un café après.
+
+
+        Relisez les messages de Maya et Noé. Repérez une proposition, un empêchement et l’accord
+        final. Réutilisez une phrase pour votre propre sortie.
+    - id: write
+      kind: writing
+      prompt: Écrivez une invitation et une réponse (60 à 80 mots en tout).
+      guidance: Précisez l’activité, le lieu et l’heure. La réponse doit proposer un changement et
+        expliquer pourquoi.
+    - id: speak
+      kind: voice
+      prompt: Laissez un message pour modifier votre sortie (30 à 60 secondes).
+      guidance: Expliquez le changement, proposez une nouvelle heure et demandez une réponse.
+    - id: practise
+      kind: quiz
+      interactionId: future
+recap:
+  title: Pour la prochaine fois
+  body: Reprenez une phrase choisie dans les retours, puis utilisez-la dans une nouvelle situation.

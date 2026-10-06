@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`routeAgentProfile > snapshots the router prompt 1`] = `
+"Name the task a tutor's request asks for. Answer with one id.
+
+add-image — adding a picture, photo or illustration to a slide.
+"Put a photo of the Eiffel Tower on slide 3."
+"Add a picture to the vocabulary slide."
+"This slide needs an image."
+
+add-exercise — adding one question or interactive exercise to a slide.
+"Add a fill-the-gap exercise for the past tense."
+"Put a multiple choice question after the reading."
+"Add a quick poll at the end."
+
+full — everything else: rewriting or building an outline, several tasks at
+once, running a session, reading files, questions about the deck.
+"Build a lesson on the water cycle from this PDF."
+"Add a picture to slide 2 and rewrite the intro."
+"Start the session and show me the results."
+
+Pick add-image or add-exercise only when the request is that one task and
+nothing more. When unsure, choose full."
+`;

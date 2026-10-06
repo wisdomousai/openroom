@@ -1,0 +1,17 @@
+version: 1
+meta:
+  title: True or false
+  description: Choice preset — True/False is not a separate type.
+interactions:
+  - id: tf1
+    type: choice
+    prompt: Photosynthesis happens in the mitochondria.
+    resultVisibility: hidden-until-close
+    options:
+      - id: 'true'
+        label: 'True'
+      - id: 'false'
+        label: 'False'
+        correct: true
+    pedagogy:
+      explanation: It happens in the chloroplasts.

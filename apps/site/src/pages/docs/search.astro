@@ -1,0 +1,44 @@
+---
+import Docs from '../../layouts/Docs.astro';
+---
+<Docs title="Search the manual" description="Find instructions, settings, and troubleshooting across all OpenRoom topics." path="/docs/search/">
+  <p id="search-status" role="status" aria-live="polite">Enter a term in “Search the manual”.</p>
+  <ol id="search-results" class="manual-search-results"></ol>
+  <noscript><p>Enable JavaScript to search, or use <a href="/docs/">the complete topic index</a>.</p></noscript>
+</Docs>
+<script>
+  import { searchManual } from '../../lib/search';
+  const input = document.querySelector<HTMLInputElement>('#manual-query')!;
+  const form = document.querySelector<HTMLFormElement>('.manual-search')!;
+  const status = document.querySelector<HTMLElement>('#search-status')!;
+  const results = document.querySelector<HTMLOListElement>('#search-results')!;
+  let index: Promise<{ title: string; description: string; url: string; text: string }[]> | undefined;
+  let request = 0;
+  async function search() {
+    const generation = ++request;
+    const query = input.value.trim(); results.replaceChildren();
+    if (!query) { status.textContent = 'Enter a term in “Search the manual”.'; return; }
+    status.textContent = 'Searching…';
+    try {
+      index ??= fetch('/docs/search-index.json').then((response) => { if (!response.ok) throw new Error('Search index unavailable'); return response.json(); });
+      const matches = searchManual(await index, query);
+      if (generation !== request) return;
+      status.textContent = matches.length ? `${matches.length} ${matches.length === 1 ? 'page' : 'pages'} found for “${query}”.` : `No pages found for “${query}”. Try a shorter term, or browse the topic index.`;
+      for (const match of matches) {
+        const item = document.createElement('li');
+        const heading = document.createElement('h2');
+        const link = document.createElement('a'); link.href = match.url; link.textContent = match.title;
+        const excerpt = document.createElement('p'); excerpt.textContent = match.excerpt;
+        heading.append(link); item.append(heading, excerpt); results.append(item);
+      }
+    } catch {
+      if (generation !== request) return;
+      index = undefined;
+      status.textContent = 'Search could not load. Submit your search again, or browse the topic index.';
+    }
+  }
+  input.value = new URL(location.href).searchParams.get('q') ?? '';
+  form.addEventListener('submit', (event) => { event.preventDefault(); const url = new URL(location.href); url.searchParams.set('q', input.value.trim()); history.pushState(null, '', url); void search(); });
+  window.addEventListener('popstate', () => { input.value = new URL(location.href).searchParams.get('q') ?? ''; void search(); });
+  void search();
+</script>

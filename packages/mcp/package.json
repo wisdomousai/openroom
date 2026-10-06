@@ -1,0 +1,41 @@
+{
+  "name": "@openroom/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build:preview": "node scripts/build-preview.mjs",
+    "preview:harness": "node scripts/preview-harness.mjs",
+    "build": "bun run build:preview && tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@openroom/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@openroom/slides": "workspace:*",
+    "@openroom/ui": "workspace:*",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "esbuild": "^0.25.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

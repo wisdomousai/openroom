@@ -1,0 +1,46 @@
+/**
+ * Tailwind entry for shadcn chart primitives.
+ * Document chrome / projector layout stays in stage-reset + stage-ui;
+ * this layer only supplies utilities the chart stack needs.
+ */
+@import 'tailwindcss';
+
+/* Scan shared chart package for utility classes. */
+@source "../../../packages/charts/src";
+
+@custom-variant dark ([data-theme-mode='dark'] &);
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  /* `--color-secondary` is unregistered on purpose: this sheet is also
+     bundled into the host (Present imports it), where `text-secondary` is a
+     step of the type scale. A colour of that name would compile to
+     near-white body text there. Nothing here uses the secondary surface. */
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
+  --font-sans: var(--font-sans);
+}

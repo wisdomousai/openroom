@@ -1,0 +1,312 @@
+/* OpenRoom static pages — shared stylesheet. No web fonts, no external requests. */
+
+/* Palette matches the app's flat "default" theme: ink on white, one decisive
+   blue, borders with real presence. Solid colors only — no shadows, no
+   gradients anywhere on these pages. */
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #4a4f5a;
+  --rule: #aab2bf;
+  --link: #1d4ed8;
+  --code-bg: #eceef2;
+  --code-fg: #111111;
+  --accent-bg: #eceef2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0d10;
+    --fg: #f5f7fa;
+    --muted: #a7b0be;
+    --rule: #454e5e;
+    --link: #4d8dff;
+    --code-bg: #1e232b;
+    --code-fg: #f5f7fa;
+    --accent-bg: #1e232b;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+::selection {
+  background: var(--link);
+  color: var(--bg);
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+code,
+pre,
+kbd {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.875em;
+}
+
+code {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow-x: auto;
+  line-height: 1.45;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.25;
+  font-weight: 600;
+  margin: 2rem 0 0.6rem;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin-top: 0;
+}
+
+h2 {
+  font-size: 1.2rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+h3 {
+  font-size: 1rem;
+}
+
+h4 {
+  font-size: 0.95rem;
+}
+
+p,
+ul,
+ol {
+  margin: 0.7rem 0;
+}
+
+li {
+  margin: 0.25rem 0;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 2rem 0;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.9rem 0;
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+th,
+td {
+  border: 1px solid var(--rule);
+  padding: 0.35rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: var(--accent-bg);
+  font-weight: 600;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.875rem;
+}
+
+/* --- nav / layout --- */
+
+.topnav {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.topnav .brand {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--fg);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.topnav .brand img {
+  display: block;
+  border-radius: 3px;
+}
+
+.topnav .nav-cta {
+  margin-left: auto;
+  background: var(--link);
+  color: var(--bg);
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.45rem 1rem;
+  border-radius: 3px;
+}
+
+.topnav .nav-cta:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.page {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.75rem 1.25rem 4rem;
+}
+
+.wide {
+  max-width: 72rem;
+}
+
+footer.site {
+  border-top: 1px solid var(--rule);
+  margin-top: 3rem;
+  padding-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* --- docs sidebar --- */
+
+.docs-layout {
+  display: flex;
+  gap: 2.5rem;
+  align-items: flex-start;
+}
+
+.toc {
+  flex: 0 0 15rem;
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  font-size: 0.875rem;
+  border-right: 1px solid var(--rule);
+  padding-right: 1rem;
+}
+
+.toc h2 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border: 0;
+  margin: 0 0 0.5rem;
+}
+
+.toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: toc;
+}
+
+.toc > ol > li {
+  counter-increment: toc;
+  margin: 0.2rem 0;
+}
+
+.toc > ol > li > a::before {
+  content: counter(toc) ". ";
+  color: var(--muted);
+}
+
+.toc a {
+  text-decoration: none;
+}
+
+.toc a:hover {
+  text-decoration: underline;
+}
+
+.docs-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 48rem;
+}
+
+.docs-body section {
+  scroll-margin-top: 1rem;
+}
+
+@media (max-width: 60rem) {
+  .docs-layout {
+    display: block;
+  }
+
+  .toc {
+    position: static;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    padding: 0 0 1rem;
+    margin-bottom: 1.5rem;
+    flex: none;
+  }
+}

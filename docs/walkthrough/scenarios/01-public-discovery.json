@@ -1,0 +1,49 @@
+{
+  "id": "public-discovery",
+  "title": "Discover the public and host surfaces",
+  "persona": "A first-time host checking whether OpenRoom is ready for a live session.",
+  "purpose": "Walk the public home, documentation, participant join, and signed-out host entry points.",
+  "outcome": "The visitor can distinguish the participant, stage, and host surfaces before signing in.",
+  "prerequisites": ["OpenRoom worker running locally."],
+  "routes": ["/", "/docs/", "/join/", "/host/"],
+  "status": "scripted",
+  "chapters": [
+    {
+      "id": "home",
+      "title": "Start at the product home",
+      "narration": "We begin at the public home. This is the promise surface, so the first question is simple: can a new host understand what happens here and where the live session begins?",
+      "actions": [
+        { "type": "goto", "path": "/" },
+        { "type": "expectRole", "role": "heading", "name": "Hear from everyone, not just the first hand up.", "exact": true }
+      ]
+    },
+    {
+      "id": "docs",
+      "title": "Check the documentation entry point",
+      "narration": "Next we open the documentation. A good walkthrough should expose the handoff from product promise to operating instructions, not leave the host to guess which surface is authoritative.",
+      "actions": [
+        { "type": "goto", "path": "/docs/" },
+        { "type": "expectRole", "role": "heading", "name": "OpenRoom documentation", "exact": true }
+      ]
+    },
+    {
+      "id": "participant-join",
+      "title": "Check the participant entry point",
+      "narration": "The participant does not enter through the host workspace. The join route is deliberately separate, and it should make the session code and account-free recovery path obvious.",
+      "actions": [
+        { "type": "goto", "path": "/join/" },
+        { "type": "expectRole", "role": "heading", "name": "Join the session", "exact": true }
+      ]
+    },
+    {
+      "id": "host-entry",
+      "title": "Inspect signed-out host entry",
+      "narration": "Finally we open the host workspace while signed out. This is a useful boundary check: the workspace should explain what requires an account without pretending that the visitor is already authenticated.",
+      "actions": [
+        { "type": "goto", "path": "/host/" },
+        { "type": "expectText", "text": "Account" },
+        { "type": "expectText", "text": "Sign in" }
+      ]
+    }
+  ]
+}

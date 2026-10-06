@@ -1,0 +1,49 @@
+{
+  "name": "openroom-desktop",
+  "productName": "OpenRoom",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "description": "OpenRoom desktop client",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "bun run --filter openroom-host build && bun run build:from-host",
+    "build:from-host": "tsc -p tsconfig.json && node scripts/bundle-preload.mjs && node scripts/copy-host.mjs",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "start": "bun run build && electron .",
+    "start:local": "electron .",
+    "package": "bun run build && node scripts/prepare-package.mjs && electron-forge package .forge-app && node scripts/sign-local.mjs",
+    "make": "bun run package && electron-forge make --skip-package .forge-app",
+    "make:release": "node scripts/make-release.mjs"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.39",
+    "@ai-sdk/google": "^4.0.44",
+    "@ai-sdk/groq": "^4.0.28",
+    "@ai-sdk/mcp": "^2.0.32",
+    "@ai-sdk/mistral": "^4.0.29",
+    "@ai-sdk/openai": "^4.0.42",
+    "@ai-sdk/openai-compatible": "^3.0.31",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.233",
+    "@openai/codex-sdk": "^0.147.0",
+    "@openroom/mcp": "workspace:*",
+    "@openroom/schema": "workspace:*",
+    "ai": "^7.0.66",
+    "archiver": "7.0.1",
+    "extract-zip": "2.0.1",
+    "pdf-lib": "^1.17.1",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-squirrel": "^7.11.2",
+    "@electron-forge/maker-zip": "^7.11.2",
+    "@types/node": "^24.10.0",
+    "electron": "^43.3.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^7.0.2",
+    "vitest": "^3.0.0"
+  }
+}

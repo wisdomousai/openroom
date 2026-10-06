@@ -1,0 +1,55 @@
+# STEP 3 — a graded quiz.
+# New here: `correct: true` on an option (kept secret until you press Reveal),
+# `resultVisibility: hidden-until-close` so early answers don't anchor the session,
+# and `pedagogy.explanation` — your one-line debrief, visible only to you.
+version: 1
+meta:
+  title: Quick quiz — world capitals
+  description: Three questions, answers hidden until reveal.
+defaults:
+  resultVisibility: hidden-until-close
+
+interactions:
+  - id: australia
+    type: choice
+    prompt: What is the capital of Australia?
+    options:
+      - id: sydney
+        label: Sydney
+      - id: canberra
+        label: Canberra
+        correct: true
+      - id: melbourne
+        label: Melbourne
+    pedagogy:
+      explanation: >-
+        Sydney and Melbourne fought over it, so in 1908 Australia purpose-built
+        a compromise capital between them.
+
+  - id: canada
+    type: choice
+    prompt: What is the capital of Canada?
+    options:
+      - id: toronto
+        label: Toronto
+      - id: ottawa
+        label: Ottawa
+        correct: true
+      - id: vancouver
+        label: Vancouver
+    pedagogy:
+      explanation: Same pattern — the biggest city is rarely the capital.
+
+  - id: pattern
+    type: choice
+    prompt: 'True or false: a country''s largest city is usually its capital.'
+    options:
+      - id: t
+        label: 'True'
+      - id: f
+        label: 'False'
+        correct: true
+    pedagogy:
+      explanation: >-
+        Capitals are political choices, not population contests — see Canberra,
+        Ottawa, Brasília, Ankara, Washington.

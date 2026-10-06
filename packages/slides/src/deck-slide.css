@@ -1,0 +1,1310 @@
+/* One composition for editor, projector, Desktop and learner slides. */
+.slide-viewport { width: 100%; height: 100%; min-height: 0; container-type: size; display: grid; place-items: center; }
+.slide-viewport > .slide-surface { width: min(100cqw, calc(100cqh * var(--slide-aspect))); height: auto; }
+.slide-surface {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  container-type: inline-size;
+  isolation: isolate;
+  overflow: hidden;
+  aspect-ratio: var(--slide-aspect, 1.7777778);
+  line-height: 1.4;
+  letter-spacing: normal;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.slide-surface .outline-step {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2cqw;
+  padding: 5cqw;
+  overflow: hidden;
+  /* One root size; everything below is in em, so the slide scales as one thing. */
+  font-size: 2.6cqw;
+}
+
+.slide-surface .outline-step__elements {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.slide-surface .outline-step__element {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.slide-surface .outline-step__element--heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.slide-surface .outline-step__element--image img,
+.slide-surface .outline-step__element--image .outline-step__media-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slide-surface .outline-step__html-host {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * A page that will not draw says so here, and only here. The live stage never
+ * shows a diagnostic over a slide.
+ */
+.slide-canvas__embed-notices {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.slide-canvas__embed-notice {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+}
+
+.slide-canvas__embed-notice p {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+/* The editor owns selection and resize gestures, so reading material does not
+   take the pointer here. It scrolls in the live room and on the stage. */
+.slide-canvas__frame .outline-step__element--reading .outline-step__html-host {
+  pointer-events: none;
+}
+
+.slide-surface .outline-step__element--iframe iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--background);
+  /* The room editor owns selection and resize gestures; the live stage keeps
+     the iframe interactive. */
+  pointer-events: auto;
+}
+
+.slide-surface .outline-step__element--pdf {
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.slide-surface .outline-step__element--pdf iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border: 0;
+  background: var(--background);
+  /* The editor owns selection and resize gestures. The live room keeps the
+     PDF viewer scrollable. */
+  pointer-events: auto;
+}
+
+.slide-canvas__frame .outline-step__element--iframe iframe,
+.slide-canvas__frame .outline-step__element--pdf iframe { pointer-events: none; }
+
+.slide-surface .outline-step h1,
+.slide-surface .outline-step h2,
+.slide-surface .outline-step p,
+.slide-surface .outline-step ul,
+.slide-surface .outline-step ol,
+.slide-surface .outline-step blockquote {
+  margin: 0;
+}
+
+.slide-surface .outline-step h1 {
+  max-width: 20ch;
+  font-family: var(--font-display);
+  font-size: 2.6em;
+  font-weight: 600;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+
+.slide-surface .outline-step__meta {
+  font-size: 0.7em;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+}
+
+.slide-surface .outline-step__lead,
+.slide-surface .outline-step__meaning {
+  max-width: 48ch;
+  font-size: 1.1em;
+  line-height: 1.35;
+  color: var(--muted-foreground);
+}
+
+.slide-surface .outline-step__stat,
+.slide-surface .outline-step__term {
+  font-family: var(--font-display);
+  font-size: 4.2em;
+  font-weight: 600;
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  color: var(--primary);
+}
+
+.slide-surface .outline-step__timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9cqw;
+  margin: 0;
+  color: var(--muted-foreground);
+}
+
+.slide-surface .outline-step__timer-digits {
+  font-family: var(--font-display);
+  font-size: 3.6cqw;
+  font-weight: 600;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.slide-surface .outline-step__timer--countdown .outline-step__timer-digits,
+.slide-surface .outline-step__timer--countup .outline-step__timer-digits {
+  font-size: 15cqw;
+}
+
+.slide-surface .outline-step__timer-bar {
+  width: min(42cqw, 100%);
+  height: 1.1cqw;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--background);
+}
+
+.slide-surface .outline-step__timer-bar-fill {
+  height: 100%;
+  width: calc(var(--timer-fill, 1) * 100%);
+  background: var(--muted-foreground);
+}
+
+.slide-surface .outline-step__timer--ring {
+  position: relative;
+  width: 22cqw;
+  height: 22cqw;
+  justify-content: center;
+}
+
+.slide-surface .outline-step__timer-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.slide-surface .outline-step__timer-ring-track,
+.slide-surface .outline-step__timer-ring-value {
+  fill: none;
+  stroke-width: 8;
+}
+
+.slide-surface .outline-step__timer-ring-track {
+  stroke: var(--border);
+}
+
+.slide-surface .outline-step__timer-ring-value {
+  stroke: var(--muted-foreground);
+  stroke-linecap: round;
+}
+
+.slide-surface .outline-step__timer--ring .outline-step__timer-digits {
+  position: relative;
+  z-index: 1;
+  font-size: 3.2cqw;
+}
+
+.slide-surface .outline-step__timer-hourglass {
+  width: 11cqw;
+  height: 17cqw;
+}
+
+.slide-surface .outline-step__timer-hourglass-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--foreground);
+  border-radius: 0.2cqw;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.slide-surface .outline-step__timer-hourglass-chamber {
+  position: relative;
+  flex: 1 1 50%;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.slide-surface .outline-step__timer-hourglass-chamber--top {
+  clip-path: polygon(8% 0, 92% 0, 52% 100%, 48% 100%);
+  background: color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.slide-surface .outline-step__timer-hourglass-chamber--bottom {
+  clip-path: polygon(48% 0, 52% 0, 92% 100%, 8% 100%);
+  background: color-mix(in srgb, var(--border) 55%, transparent);
+  display: flex;
+  align-items: flex-end;
+}
+
+.slide-surface .outline-step__timer-hourglass-sand {
+  position: absolute;
+  inset: 0;
+  background: var(--muted-foreground);
+}
+
+.slide-surface .outline-step__timer-hourglass-chamber--top .outline-step__timer-hourglass-sand {
+  transform-origin: center top;
+}
+
+.slide-surface .outline-step__timer-hourglass-chamber--bottom .outline-step__timer-hourglass-sand {
+  transform-origin: center bottom;
+}
+
+.slide-surface .outline-step__timer-hourglass-neck {
+  flex: none;
+  width: 12%;
+  height: 2px;
+  background: var(--foreground);
+}
+
+.slide-surface .outline-step__timer--hourglass .outline-step__timer-digits {
+  font-size: 2.4cqw;
+}
+
+.slide-surface .outline-step blockquote {
+  max-width: 42ch;
+  padding-left: 0.7em;
+  border-left: 0.25em solid var(--chart-2);
+  font-size: 1.05em;
+}
+
+.slide-surface .outline-step__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(9em, 100%), 1fr));
+  gap: 0.7em;
+}
+
+.slide-surface .outline-step__cards article {
+  padding: 0.8em;
+  border: 1px solid var(--border);
+  background: var(--background);
+  font-size: 0.95em;
+}
+
+.slide-surface .outline-step__cards h2 {
+  margin-bottom: 0.4em;
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.slide-surface .outline-step__sequence,
+.slide-surface .outline-step__bullets,
+.slide-surface .outline-step__options {
+  display: grid;
+  gap: 0.55em;
+  padding: 0;
+  list-style: none;
+}
+
+.slide-surface .outline-step__sequence li {
+  display: grid;
+  grid-template-columns: 1.8em minmax(0, 1fr);
+  align-items: start;
+  gap: 0.6em;
+  font-size: 1em;
+}
+
+.slide-surface .outline-step__sequence li > span:not([data-slide-decoration]) {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  background: var(--background);
+  font-weight: 600;
+}
+
+.slide-surface .outline-step__bullets li {
+  padding-left: 1.2em;
+  font-size: 1.05em;
+  line-height: 1.3;
+}
+
+.slide-surface .outline-step__bullets li::before {
+  content: '—';
+  margin-left: -1.2em;
+  margin-right: 0.45em;
+  color: var(--chart-1);
+}
+
+.slide-surface .outline-step__bullets--questions li::before {
+  content: '?';
+  font-weight: 600;
+}
+
+.slide-surface .outline-step__materials {
+  display: grid;
+  gap: 0.5em;
+  padding-top: 0.7em;
+  border-top: 1px solid var(--border);
+}
+
+/* A question drawn as a slide. In the room the aggregate surface draws this;
+   here the author needs to see the prompt and the answers laid out. */
+.slide-surface .outline-step__options li {
+  min-width: 0;
+  padding: 0.5em 0.7em;
+  border: 1px solid var(--border);
+  background: var(--background);
+  font-size: 1em;
+}
+
+.slide-surface .outline-step--media img,
+.slide-surface .outline-step--media video,
+.slide-surface .outline-step__media-placeholder {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  background: var(--background);
+}
+
+.slide-surface .outline-step__media-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 1.5em;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.slide-surface .outline-step__caption {
+  font-size: 0.8em;
+  color: var(--muted-foreground);
+}
+
+.slide-surface .outline-step__media-photo {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  flex: 0 1 auto;
+}
+
+.slide-surface .outline-step__media-photo > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.slide-surface .outline-step__media-credit {
+  position: absolute;
+  inset-inline-end: 6px;
+  bottom: 6px;
+  padding: 0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.2;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/*
+ * Part affordances. Selection is a 1px --primary outline *and* the part named in
+ * the properties breadcrumb — never colour alone (DESIGN.md).
+ */
+.slide-surface [data-part] {
+  position: relative;
+  outline-offset: 0.5cqw;
+}
+
+.slide-canvas__frame .slide-surface [data-part] { cursor: text; }
+
+/* A freeform element is placed by its percent box. The part affordance above
+   would pull it back into flow — its top/left would then stack on the flowed
+   position, drifting the drawn text away from the box ObjectFrame outlines. */
+.slide-surface .outline-step__element[data-part] {
+  position: absolute;
+}
+
+.slide-canvas__frame .slide-surface [data-part]:hover {
+  outline: 1px dashed var(--muted-foreground);
+}
+
+.slide-surface [data-part][data-selected='true'] {
+  outline: 1px solid var(--primary);
+}
+
+.slide-surface [data-part='image'][data-selected='true'] {
+  outline: 1px solid var(--primary);
+  outline-offset: 0;
+}
+
+/* A selected freeform element is framed by ObjectFrame (border + handles);
+   any outline of its own underneath just reads as a double frame. */
+.slide-surface .outline-step__element[data-selected='true'],
+.slide-surface .outline-step__element[data-selected='true']:focus-visible {
+  outline: none;
+}
+
+.picture-frame {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  border: 1px solid var(--primary);
+  pointer-events: none;
+}
+
+.picture-frame--move {
+  pointer-events: auto;
+  cursor: move;
+}
+
+/* Grab strips along the border: how a text box is moved without stealing
+   clicks from its contenteditable interior. */
+.picture-frame__edge {
+  position: absolute;
+  pointer-events: auto;
+  cursor: move;
+}
+
+.picture-frame__edge--n { top: -4px; left: 4px; right: 4px; height: 8px; }
+.picture-frame__edge--s { bottom: -4px; left: 4px; right: 4px; height: 8px; }
+.picture-frame__edge--e { right: -4px; top: 4px; bottom: 4px; width: 8px; }
+.picture-frame__edge--w { left: -4px; top: 4px; bottom: 4px; width: 8px; }
+
+.picture-frame__handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid var(--primary);
+  border-radius: 50%;
+  background: var(--card);
+  pointer-events: auto;
+}
+
+.picture-frame__handle--n { top: -5px; left: 50%; margin-left: -4px; }
+.picture-frame__handle--s { bottom: -5px; left: 50%; margin-left: -4px; }
+.picture-frame__handle--e { right: -5px; top: 50%; margin-top: -4px; }
+.picture-frame__handle--w { left: -5px; top: 50%; margin-top: -4px; }
+.picture-frame__handle--ne { top: -5px; right: -5px; }
+.picture-frame__handle--nw { top: -5px; left: -5px; }
+.picture-frame__handle--se { bottom: -5px; right: -5px; }
+.picture-frame__handle--sw { bottom: -5px; left: -5px; }
+
+/* Shown only during an active resize — quiet card chip, not a permanent badge. */
+.picture-frame__size {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.slide-surface [data-part]:focus-visible {
+  outline: 2px solid var(--ring);
+}
+
+/* Grow/shrink a poll on the slide itself — same row language as the answers. */
+.slide-surface .outline-step__options li.slide-canvas__add-option {
+  padding: 0;
+  border: 1px dashed var(--border);
+  background: transparent;
+}
+
+.slide-surface .outline-step__options li.slide-canvas__add-option:hover,
+.slide-surface .outline-step__options li.slide-canvas__add-option:focus-within {
+  border-color: var(--primary);
+}
+
+.slide-canvas__add-option button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.5em 0.7em;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.slide-canvas__add-option button:hover,
+.slide-canvas__add-option button:focus-visible {
+  color: var(--primary);
+  outline: none;
+}
+
+.slide-surface .outline-step--layout-poll .outline-step__options li.slide-canvas__add-option {
+  counter-increment: none;
+}
+
+.slide-surface .outline-step--layout-poll .outline-step__options li.slide-canvas__add-option::before {
+  content: none;
+}
+
+.slide-surface .outline-step--layout-poll .slide-canvas__add-option button {
+  gap: 1.1cqw;
+  padding: 0.95cqw 1.25cqw;
+  font-size: 1.4cqw;
+}
+
+.slide-surface .outline-step--layout-poll .slide-canvas__add-option button::before {
+  content: '+';
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2cqw;
+  height: 2cqw;
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius);
+  color: var(--primary);
+  font-size: 1.1cqw;
+  font-weight: 600;
+}
+
+.slide-canvas__remove-option {
+  position: absolute;
+  top: 50%;
+  right: 0.6em;
+  z-index: 1;
+  transform: translateY(-50%);
+  padding: 0.15em 0.4em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 0.65em;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.slide-canvas__remove-option:hover,
+.slide-canvas__remove-option:focus-visible {
+  border-color: var(--destructive);
+  color: var(--destructive);
+  outline: none;
+}
+
+.slide-surface [data-part^='option-'][data-selected='true'] {
+  padding-right: 4.2em;
+}
+
+/* The reveal-group number a part carries while the block plays in groups:
+   a small bordered square, the number readable on its own. */
+.slide-canvas__badge {
+  position: absolute;
+  top: -0.4em;
+  left: -1.9em;
+  display: grid;
+  place-items: center;
+  min-width: 1.4em;
+  height: 1.4em;
+  padding: 0 0.2em;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--primary);
+  font-size: 0.62em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  user-select: none;
+}
+
+/* ======================================================================
+ * Layouts.
+ *
+ * `step.layout` names a typed arrangement of regions; `@openroom/slides`
+ * resolves it (authored, else the kind's default) and puts it on the root as
+ * `.outline-step--layout-*`. Everything above is the kind's own reading of a
+ * step and stays the fallback: a rule below only restates what the arrangement
+ * actually changes.
+ *
+ * Proportions follow the deck editor prototype, which is authored in cqw against the
+ * canvas frame — so they are stated in cqw here rather than in the root `em`.
+ * ====================================================================== */
+
+/* --- title: one centred stack, heading dominant ----------------------- */
+.slide-surface .outline-step--layout-title {
+  justify-content: center;
+  gap: 1.25cqw;
+  padding: 4.4cqw 4.7cqw;
+}
+
+.slide-surface .outline-step--layout-title h1 {
+  font-size: 5.8cqw;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-title .outline-step__lead,
+.slide-surface .outline-step--layout-title .outline-step__meaning {
+  max-width: 50cqw;
+  font-size: 2.5cqw;
+  line-height: 1.5;
+}
+
+/* --- text: heading, hairline, prose ----------------------------------- */
+.slide-surface .outline-step--layout-text {
+  justify-content: flex-start;
+  gap: 1.6cqw;
+  padding: 3.75cqw 4.7cqw;
+}
+
+.slide-surface .outline-step--layout-text h1,
+.slide-surface .outline-step--layout-text .outline-step__term {
+  max-width: none;
+  padding-bottom: 1.6cqw;
+  border-bottom: 1px solid var(--border);
+  font-size: 4cqw;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-text .outline-step__lead,
+.slide-surface .outline-step--layout-text .outline-step__meaning,
+.slide-surface .outline-step--layout-text .outline-step__bullets li,
+.slide-surface .outline-step--layout-text .outline-step__sequence li {
+  max-width: 60cqw;
+  font-size: 2.5cqw;
+  line-height: 1.55;
+}
+
+/* --- split: heading side, supporting side ----------------------------- */
+.slide-surface .outline-step--layout-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--picture-size, 42%);
+  gap: 0;
+  padding: 0;
+}
+
+.slide-surface .outline-step--has-picture[data-picture-place='left'].outline-step--layout-split {
+  grid-template-columns: var(--picture-size, 42%) minmax(0, 1fr);
+}
+
+.slide-surface .outline-step--has-picture[data-picture-place='left'].outline-step--layout-split .outline-step__region--lede {
+  order: 2;
+}
+
+.slide-surface .outline-step--has-picture[data-picture-place='left'].outline-step--layout-split .outline-step__region--support {
+  order: 1;
+  border-left: 0;
+  border-right: 1px solid var(--border);
+}
+
+.slide-surface .outline-step--has-picture[data-picture-place='top'] [data-part='image'],
+.slide-surface .outline-step--has-picture[data-picture-place='bottom'] [data-part='image'] {
+  max-height: var(--picture-size, 42%);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.slide-surface .outline-step--has-picture[data-picture-place='top'] [data-part='image'] {
+  order: -1;
+}
+
+.slide-surface .outline-step--layout-split .outline-step__region--lede,
+.slide-surface .outline-step--layout-split .outline-step__region--support {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.25cqw;
+  min-width: 0;
+  padding: 3.75cqw;
+  overflow: hidden;
+}
+
+.slide-surface .outline-step--layout-split .outline-step__region--support {
+  border-left: 1px solid var(--border);
+}
+
+.slide-surface .outline-step--layout-split h1 {
+  max-width: none;
+  font-size: 4.4cqw;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-split .outline-step__lead,
+.slide-surface .outline-step--layout-split .outline-step__meaning {
+  max-width: none;
+  font-size: 2.5cqw;
+  line-height: 1.55;
+}
+
+/* A picture in the supporting column fills that side edge to edge. */
+.slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support,
+.slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support {
+  padding: 0;
+  background: var(--background);
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support > img,
+.slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support > video,
+.slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support > .outline-step__media-placeholder,
+.slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support > img,
+.slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support > video,
+.slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support > .outline-step__media-placeholder {
+  flex: 1 1 auto;
+  height: 100%;
+  border: 0;
+  object-fit: cover;
+}
+
+.slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support > .outline-step__media-photo,
+.slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support > .outline-step__media-photo {
+  flex: 0 1 auto;
+  width: 100%;
+  height: auto;
+  align-self: center;
+}
+
+.slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__media-frame,
+.slide-surface .outline-step--media.outline-step--layout-split .outline-step__media-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  align-self: center;
+}
+
+.slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__media-frame[data-orientation='portrait'],
+.slide-surface .outline-step--media.outline-step--layout-split .outline-step__media-frame[data-orientation='portrait'] {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+}
+
+/* --- grid: heading on top, peer cells below --------------------------- */
+.slide-surface .outline-step--layout-grid {
+  justify-content: flex-start;
+  gap: 1.6cqw;
+  padding: 3.1cqw 3.75cqw;
+}
+
+.slide-surface .outline-step--layout-grid h1 {
+  max-width: none;
+  font-size: 3.6cqw;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-grid .outline-step__cards,
+.slide-surface .outline-step--layout-grid .outline-step__sequence,
+.slide-surface .outline-step--layout-grid .outline-step__bullets {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 1.1cqw;
+}
+
+.slide-surface .outline-step--layout-grid .outline-step__cards article,
+.slide-surface .outline-step--layout-grid .outline-step__sequence li,
+.slide-surface .outline-step--layout-grid .outline-step__bullets li {
+  min-width: 0;
+  padding: 1.1cqw 1.25cqw;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* The em dash / question mark leader is a list marker; inside a bordered cell
+   the border already separates the items, so the leader is noise. */
+.slide-surface .outline-step--layout-grid .outline-step__bullets li::before {
+  content: none;
+}
+
+.slide-surface .outline-step--layout-grid .outline-step__cards h2 {
+  font-size: 2.4cqw;
+  letter-spacing: 0.04em;
+  color: var(--card-foreground);
+}
+
+.slide-surface .outline-step--layout-grid .outline-step__cards article p,
+.slide-surface .outline-step--layout-grid .outline-step__sequence li p,
+.slide-surface .outline-step--layout-grid .outline-step__bullets li {
+  font-size: 2.2cqw;
+  line-height: 1.45;
+}
+
+/* --- media: full-bleed picture, heading as a caption bar -------------- */
+.slide-surface .outline-step--layout-media {
+  justify-content: flex-start;
+  gap: 0;
+  padding: 0;
+}
+
+.slide-surface .outline-step--layout-media .outline-step__region--support {
+  order: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--background);
+}
+
+.slide-surface .outline-step--layout-media .outline-step__region--support > img,
+.slide-surface .outline-step--layout-media .outline-step__region--support > video,
+.slide-surface .outline-step--layout-media .outline-step__region--support > .outline-step__media-placeholder {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  border: 0;
+  object-fit: cover;
+}
+
+.slide-surface .outline-step--layout-media .outline-step__region--support > .outline-step__media-photo {
+  flex: 0 1 auto;
+  width: 100%;
+  height: auto;
+  align-self: center;
+}
+
+.slide-surface .outline-step--layout-media .outline-step__media-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.slide-surface .outline-step--layout-media .outline-step__media-frame[data-orientation='portrait'] {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+}
+
+.slide-surface .outline-step--layout-media .outline-step__caption {
+  flex: none;
+  padding: 0.8cqw 2.5cqw;
+  font-size: 2.2cqw;
+}
+
+.slide-surface .outline-step--layout-media .outline-step__region--lede {
+  order: 2;
+  flex: none;
+  padding: 1.4cqw 2.5cqw;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+
+.slide-surface .outline-step--layout-media .outline-step__region--lede h1 {
+  max-width: none;
+  font-size: 3.2cqw;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* --- media + text: title above, picture below ------------------------- */
+.slide-surface .outline-step--media.outline-step--layout-text {
+  gap: 1.4cqw;
+  align-items: center;
+}
+
+.slide-surface .outline-step--media.outline-step--layout-text .outline-step__media-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.slide-surface .outline-step--media.outline-step--layout-text .outline-step__media-frame[data-orientation='portrait'] {
+  width: auto;
+  max-width: 42%;
+  height: auto;
+  max-height: 70%;
+}
+
+/* --- aspect frame (shared by deck editor canvas and stage skins) ------------- */
+.slide-surface .outline-step__media-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  margin-inline: auto;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+.slide-surface .outline-step__media-frame iframe,
+.slide-surface .outline-step__media-frame video,
+.slide-surface .outline-step__media-frame img,
+.slide-surface .outline-step__media-frame .outline-step__media-placeholder--framed {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: contain;
+}
+
+.slide-surface .outline-step__media-frame .outline-step__media-placeholder--framed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: unset;
+  font-size: 2.2cqw;
+}
+
+.slide-surface .outline-step__media-frame .outline-step__media-photo {
+  position: absolute;
+  inset: 0;
+}
+
+.slide-surface .outline-step__media-frame .outline-step__media-photo > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slide-surface .outline-step__media-frame .outline-step__media-credit {
+  z-index: 1;
+}
+
+/* --- poll: question, then the answers as lettered rows ---------------- */
+.slide-surface .outline-step--layout-poll {
+  justify-content: center;
+  gap: 1.7cqw;
+  padding: 3.4cqw 4.4cqw;
+}
+
+.slide-surface .outline-step--layout-poll h1 {
+  max-width: none;
+  font-size: 4cqw;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-poll .outline-step__lead {
+  max-width: none;
+  font-size: 2.5cqw;
+}
+
+.slide-surface .outline-step--layout-poll .outline-step__options {
+  gap: 0.8cqw;
+  counter-reset: slide-option;
+}
+
+.slide-surface .outline-step--layout-poll .outline-step__options li {
+  display: flex;
+  align-items: center;
+  gap: 1.1cqw;
+  padding: 0.95cqw 1.25cqw;
+  font-size: 2.5cqw;
+  font-weight: 600;
+  counter-increment: slide-option;
+}
+
+/* The answer letter the room is told to hold up. Drawn, never authored, so it
+   is a marker rather than a part. */
+.slide-surface .outline-step--layout-poll .outline-step__options li::before {
+  content: counter(slide-option, upper-alpha);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.8cqw;
+  height: 2.8cqw;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  color: var(--primary);
+  font-size: 1.8cqw;
+  line-height: 1;
+  font-weight: 600;
+}
+
+/* --- activity: what they do, beside what has to be on the table ------- */
+.slide-surface .outline-step--layout-activity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38%;
+  gap: 0;
+  padding: 0;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__region--lede {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25cqw;
+  min-width: 0;
+  padding: 3.1cqw 3.4cqw;
+  overflow: hidden;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__region--support {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+  padding: 3.1cqw 3.4cqw;
+  border-left: 1px solid var(--border);
+  background: var(--background);
+  overflow: hidden;
+}
+
+.slide-surface .outline-step--layout-activity h1 {
+  max-width: none;
+  font-size: 4cqw;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__region--lede .outline-step__bullets li {
+  font-size: 2.3cqw;
+  line-height: 1.5;
+}
+
+/* An activity that carries a picture gives the second region to it, and the
+   materials list drops under the instructions — the list is still one part,
+   it has simply lost the column it had to itself. */
+.slide-surface .outline-step--layout-activity .outline-step__region--support:has(img),
+.slide-surface .outline-step--layout-activity .outline-step__region--support:has(video),
+.slide-surface .outline-step--layout-activity .outline-step__region--support:has(.outline-step__media-frame),
+.slide-surface
+  .outline-step--layout-activity
+  .outline-step__region--support:has(.outline-step__media-placeholder) {
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__region--support > img,
+.slide-surface .outline-step--layout-activity .outline-step__region--support > video,
+.slide-surface .outline-step--layout-activity .outline-step__region--support > .outline-step__media-placeholder {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  border: 0;
+  object-fit: cover;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__region--support > .outline-step__media-photo {
+  flex: 0 1 auto;
+  width: 100%;
+  height: auto;
+  align-self: center;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__media-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__media-frame[data-orientation='portrait'] {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__region--lede .outline-step__materials {
+  margin-top: auto;
+}
+
+/* The list is already set apart by the column rule; the block's own top rule
+   would be a second, redundant boundary. */
+.slide-surface .outline-step--layout-activity .outline-step__materials {
+  gap: 0.45cqw;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__materials .outline-step__meta {
+  font-size: 1.5cqw;
+  letter-spacing: 0.06em;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__materials li {
+  padding-left: 0;
+  font-size: 2cqw;
+  line-height: 1.35;
+}
+
+.slide-surface .outline-step--layout-activity .outline-step__materials li::before {
+  content: none;
+}
+
+/* --- timer: the clock, centred, and what it is for -------------------- */
+.slide-surface .outline-step--layout-timer {
+  align-items: center;
+  justify-content: center;
+  gap: 1.6cqw;
+  padding: 4.4cqw;
+  text-align: center;
+}
+
+.slide-surface .outline-step--layout-timer h1 {
+  max-width: none;
+  font-size: 3.6cqw;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-timer .outline-step__lead {
+  max-width: 50cqw;
+  font-size: 2.5cqw;
+}
+
+/* --- join: the QR is the slide ---------------------------------------- */
+.slide-surface .outline-step--layout-join {
+  align-items: center;
+  justify-content: center;
+  gap: 2.4cqw;
+  padding: 4.4cqw;
+  text-align: center;
+}
+
+.slide-surface .outline-step__qr {
+  width: min(42cqw, 58%);
+  max-height: 68%;
+  aspect-ratio: 1;
+  background: #ffffff;
+  padding: 2cqw;
+  border-radius: var(--radius);
+}
+
+.slide-surface .outline-step__qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.slide-surface .outline-step__join-code {
+  font-size: 4.4cqw;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--live, #ca5010);
+}
+
+.slide-surface .outline-step--join[data-sample='true'] .outline-step__join-code {
+  color: var(--muted-foreground);
+}
+
+.slide-surface .outline-step--blank {
+  justify-content: flex-start;
+}
+
+/* Full-frame catcher while the author points where an insert should land. */
+.slide-canvas__place {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  cursor: crosshair;
+}
+
+/* Watermarks exist only in the editor's CSS, never in the deck or text DOM. */
+.slide-surface [contenteditable][data-placeholder]:is(:empty, [data-empty='true'])::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+.slide-surface [contenteditable][data-placeholder] {
+  min-height: 1em;
+}
+
+
+/* Saved document appearance wins over every application's chrome. */
+.slide-surface > .outline-step {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: var(--slide-safe-area, 8cqw);
+}
+.slide-surface__background, .slide-surface__background img, .slide-surface__background > span {
+  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+}
+.slide-surface__background { z-index: -1; }
+.slide-surface__background img { object-fit: cover; }
+.slide-surface__logo { position: absolute; z-index: 2; top: 2cqw; right: 3cqw; width: 9cqw; height: 4cqw; object-fit: contain; pointer-events: none; }
+.slide-surface__footer { position: absolute; z-index: 2; left: var(--slide-safe-area); bottom: 1.6cqw; max-width: 80%; font-size: 1.4cqw; color: var(--muted-foreground); pointer-events: none; }
+.slide-surface[data-slide-decoration='rule']::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1cqw; background: var(--slide-accent); pointer-events: none; }
+.slide-surface[data-slide-decoration='corner']::after { content: ''; position: absolute; right: 0; bottom: 0; width: 14cqw; height: 1.4cqw; background: var(--slide-accent); pointer-events: none; }
+
+/* Content shares the master's inset; only master backgrounds reach the edge.
+   Regions divide the inner canvas rather than applying competing outer margins. */
+.slide-surface > .outline-step--layout-split,
+.slide-surface > .outline-step--layout-activity,
+.slide-surface > .outline-step--layout-media { padding: var(--slide-safe-area, 8cqw); }
+.slide-surface > .outline-step--layout-split,
+.slide-surface > .outline-step--layout-activity { gap: 3cqw; }
+.slide-surface .outline-step--layout-split .outline-step__region--lede,
+.slide-surface .outline-step--layout-split .outline-step__region--support,
+.slide-surface .outline-step--layout-activity .outline-step__region--lede,
+.slide-surface .outline-step--layout-activity .outline-step__region--support { padding: 0; border: 0; }
+.slide-surface .outline-step__sequence li > span:not([data-slide-decoration]) { align-self: start; }
+.slide-surface .outline-step__sequence li p { align-self: start; }
+.slide-surface .outline-step__cards article { border-radius: 0.8cqw; background: var(--card); }
+.slide-surface .outline-step__cards h2 { text-transform: none; letter-spacing: 0; }
+.slide-surface .outline-step__timer { --timer-accent: var(--muted-foreground); color: var(--timer-accent); }
+.slide-surface .outline-step__timer[data-timer-state='running'],
+.slide-surface .outline-step__timer[data-timer-state='last-ten'] { --timer-accent: var(--slide-accent); }
+.slide-surface .outline-step__timer-bar-fill,
+.slide-surface .outline-step__timer-hourglass-sand { background: var(--timer-accent); }
+.slide-surface .outline-step__timer-ring-value { stroke: var(--timer-accent); }

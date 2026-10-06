@@ -1,0 +1,225 @@
+version: 1
+meta:
+  title: Deux jours à distance ?
+  description: Nuancer une proposition, répondre à une objection et négocier un essai.
+  locale: fr
+  language: French
+  level: B2
+  durationMinutes: 50
+  objectives:
+    - Présenter une position avec une réserve.
+    - Distinguer un exemple d’une preuve.
+    - Négocier un compromis et des critères pour l’évaluer.
+design:
+  aspectRatio: 16:9
+  theme:
+    family: paper
+    colors:
+      background: "#F8F3E9"
+      foreground: "#302C28"
+      muted: "#655D52"
+      accent: "#9D3E28"
+      surface: "#EEE5D5"
+      border: "#CFC2AD"
+      charts:
+        - "#9D3E28"
+        - "#47624C"
+        - "#4B6385"
+        - "#86552C"
+        - "#795173"
+        - "#64602A"
+    fonts:
+      heading: serif
+      body: sans
+  defaultMasterId: standard
+  masters:
+    - id: standard
+      name: Standard
+      safeArea: 8
+      decoration: rule
+      footer: Français · B2
+    - id: opening
+      name: Opening
+      safeArea: 8
+      decoration: none
+      background:
+        kind: gradient
+        from: "#F8F3E9"
+        to: "#EEE5D5"
+        angle: 120
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+steps:
+  - id: welcome
+    kind: title
+    title: Deux jours à distance ?
+    body: Votre équipe doit décider si elle teste une nouvelle organisation.
+    tutorNotes: This is a fictional decision exercise, not a factual claim about remote-work
+      productivity. Invite learners to take a role that differs from their own view. 3 minutes.
+    design:
+      masterId: opening
+  - id: warmup
+    kind: activity
+    title: Ce qui compte pour vous
+    instructions:
+      - "Choisissez un critère : concentration, entraide ou disponibilité."
+      - Expliquez pourquoi ce critère compte dans une équipe.
+    durationSec: 150
+    tutorNotes: Ask for a concrete example. Do not equate the learner’s confidence with the quality of
+      their argument. 4 minutes.
+  - id: proposal
+    kind: statement
+    title: La proposition
+    body: Pendant six semaines, l’équipe pourrait travailler à distance deux jours par semaine. Une
+      présence commune le mardi faciliterait les échanges. Le responsable souhaite tester cette
+      organisation, puis la revoir avec l’équipe. Les contraintes d’accueil restent à préciser.
+    tutorNotes: Read for proposal, conditions and unresolved issue. No statistics are asserted. Ask what
+      information would be needed before deciding. 4 minutes.
+  - id: positions
+    kind: cards
+    title: Deux points de vue
+    items:
+      - label: Lina
+        text: Je me concentre mieux chez moi. Cela dit, les nouveaux collègues ont besoin de contacts
+          réguliers.
+      - label: Marc
+        text: Je crains que les réponses prennent plus de temps. Un essai me semble possible, à condition de
+          fixer des plages de disponibilité.
+    tutorNotes: Have learners identify a concession in each position. Ask whether either speaker rejects
+      the proposal entirely. 4 minutes.
+  - id: understand
+    kind: interaction
+    interactionId: nuance
+    tutorNotes: The answer depends on the actual statement, not on a stereotype about managers. Ask
+      which words support the inference. 3 minutes.
+  - id: language
+    kind: cards
+    title: Nuancer sans perdre son idée
+    items:
+      - label: Concéder
+        text: Certes, l’organisation serait plus souple, mais…
+      - label: Poser une condition
+        text: Je suis favorable à un essai, à condition de…
+      - label: Exprimer une réserve
+        text: Cela me paraît utile, pour autant que…
+    tutorNotes: Elicit one sentence from each learner. For pour autant que, model the subjunctive only
+      if they choose the structure. à condition de takes an infinitive. 5 minutes.
+  - id: practice
+    kind: interaction
+    interactionId: concession
+    tutorNotes: "Both positions must remain visible: a benefit plus a limit. Discuss why the distractors
+      change the relationship. 3 minutes."
+  - id: listen
+    kind: activity
+    title: Écoutez l’objection
+    instructions:
+      - Quelle crainte la personne exprime-t-elle ?
+      - Répondez d’abord en reformulant, puis proposez une solution.
+    durationSec: 120
+    tutorNotes: "Read: Je ne suis pas opposée au travail à distance. Ce qui me préoccupe, c’est
+      l’accueil des nouveaux collègues. Si personne n’est disponible quand ils ont une question, ils
+      risquent de rester bloqués. Ask for a fair paraphrase before any rebuttal. 4 minutes."
+  - id: roles
+    kind: cards
+    title: Une décision à construire
+    items:
+      - label: Organisation
+        text: Vous voulez garantir la disponibilité de l’équipe et un accueil de qualité.
+      - label: Équipe
+        text: Vous voulez des périodes de concentration et de la souplesse.
+      - label: Observation
+        text: Repérez une concession, une objection reformulée et un critère vérifiable.
+    tutorNotes: In one-to-one teaching alternate the first two roles. With three learners use an
+      observer, then rotate. Roles describe priorities, not fixed opinions.
+  - id: negotiate
+    kind: activity
+    title: Proposez un essai acceptable
+    instructions:
+      - Présentez votre position et une réserve.
+      - Reformulez une objection avant de répondre.
+      - Convenez d’une durée, de deux conditions et d’un critère de bilan.
+    durationSec: 420
+    tutorNotes: Accept different agreements if reasons and conditions are explicit. If consensus is
+      impossible, state the unresolved question. Give feedback on reasoning and language separately.
+      9 minutes.
+  - id: write
+    kind: statement
+    title: Une recommandation courte
+    body: "Rédigez trois phrases : la proposition retenue, sa principale limite et la manière d’évaluer
+      l’essai."
+    tutorNotes: Compare the recommendation with the agreement. Replace vague réussite with something the
+      team could actually observe, without inventing measurements. 4 minutes.
+  - id: recap
+    kind: debrief
+    title: À retenir
+    prompts:
+      - Quelle objection avez-vous comprise autrement ?
+      - Quelle formulation vous aide à nuancer ?
+      - Qu’est-ce qui ferait évoluer votre recommandation ?
+    tutorNotes: Ask the learner to reformulate one overly absolute sentence. Preserve a chosen
+      correction for the next deck. 3 minutes.
+interactions:
+  - id: nuance
+    type: choice
+    prompt: Quelle position correspond à celle de Marc ?
+    options:
+      - id: o1
+        label: Il refuse toute période à distance.
+      - id: o2
+        label: Il accepte un essai sous certaines conditions.
+        correct: true
+      - id: o3
+        label: Il affirme que les délais sont déjà meilleurs.
+    notes: Marc expresses a concern and names a condition; he does not report measured results.
+  - id: concession
+    type: choice
+    prompt: Quelle phrase reconnaît un avantage tout en posant une limite ?
+    options:
+      - id: o1
+        label: Cette formule est souple ; par conséquent, elle est impossible.
+      - id: o2
+        label: Certes, cette formule est souple, mais l’accueil doit rester assuré.
+        correct: true
+      - id: o3
+        label: Cette formule est souple parce que personne ne l’accepte.
+    notes: Certes… mais… explicitly relates a concession to a reservation.
+homework:
+  tasks:
+    - id: read
+      kind: reading
+      body: >-
+        La proposition
+
+        Pendant six semaines, l’équipe pourrait travailler à distance deux jours par semaine. Une
+        présence commune le mardi faciliterait les échanges. Le responsable souhaite tester cette
+        organisation, puis la revoir avec l’équipe. Les contraintes d’accueil restent à préciser.
+
+
+        Deux points de vue
+
+        Lina : Je me concentre mieux chez moi. Cela dit, les nouveaux collègues ont besoin de
+        contacts réguliers.
+
+        Marc : Je crains que les réponses prennent plus de temps. Un essai me semble possible, à
+        condition de fixer des plages de disponibilité.
+
+
+        Relisez la proposition et les deux points de vue. Distinguez ce qui est proposé, ce qui est
+        supposé et ce qu’il faudrait vérifier.
+    - id: write
+      kind: writing
+      prompt: Rédigez une recommandation à l’équipe (180 à 220 mots).
+      guidance: Présentez une position nuancée, une objection traitée équitablement, deux conditions et un
+        critère pour le bilan. N’inventez pas de statistiques.
+    - id: speak
+      kind: voice
+      prompt: Enregistrez votre réponse à une objection (1 à 2 minutes).
+      guidance: Reformulez l’objection sans la caricaturer, répondez avec un exemple et précisez une
+        limite de votre réponse.
+    - id: practise
+      kind: quiz
+      interactionId: concession
+recap:
+  title: Pour la prochaine fois
+  body: Reprenez une phrase choisie dans les retours, puis utilisez-la dans une nouvelle situation.

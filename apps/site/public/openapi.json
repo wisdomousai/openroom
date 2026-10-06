@@ -1,0 +1,1840 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenRoom API",
+    "version": "0.2.0",
+    "description": "Business control plane for tutor-delivered sessions plus the live classroom runtime. Original school documents stay in the external preparation agent; OpenRoom stores typed outlines and presentation contexts (person, group, class, event).",
+    "contact": {
+      "url": "https://openroom.app"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://openroom.app"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Liveness check",
+        "responses": {
+          "200": {
+            "description": "Worker is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/join": {
+      "post": {
+        "operationId": "joinSession",
+        "summary": "Join a session with an 8-character code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "recoveryHandle": {
+                    "type": "string",
+                    "description": "Existing session-local handle used to recover a pseudonymous participant"
+                  },
+                  "contextLink": {
+                    "type": "string",
+                    "description": "Context access link (orlnk_…) for an identified session. The session must already be started by its host; a session still in the lobby answers 409 session-not-started."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Joined",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "sessionId",
+                    "participantToken",
+                    "participantId"
+                  ],
+                  "properties": {
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "participantToken": {
+                      "type": "string"
+                    },
+                    "participantId": {
+                      "type": "string"
+                    },
+                    "identityMode": {
+                      "type": "string"
+                    },
+                    "handle": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing session code or invalid recovery handle"
+          },
+          "403": {
+            "description": "Identified session joined without a context link (context-link-required), or a link that is invalid, revoked, expired, or issued for a different context (context-link-invalid)"
+          },
+          "404": {
+            "description": "Unknown session or recovery handle"
+          },
+          "409": {
+            "description": "Handle recovery is unavailable for this session, a context link was offered to a session that is not identified (identified-join-unavailable), or the identified session has not been started yet (session-not-started)"
+          },
+          "429": {
+            "description": "Too many failed recovery attempts"
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionCode}/state": {
+      "get": {
+        "operationId": "getSessionState",
+        "summary": "Role-scoped session snapshot",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "participant",
+                "stage",
+                "host"
+              ]
+            }
+          },
+          {
+            "name": "afterRevision",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Return 304 when the session revision has not advanced past this value"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot including revision"
+          },
+          "304": {
+            "description": "Unchanged since afterRevision"
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionCode}/commands": {
+      "post": {
+        "operationId": "applyCommand",
+        "summary": "Apply a command envelope (actor derived from the bearer token)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "idempotencyKey",
+                  "command"
+                ],
+                "properties": {
+                  "idempotencyKey": {
+                    "type": "string"
+                  },
+                  "expectedRevision": {
+                    "type": "integer"
+                  },
+                  "command": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Domain command, e.g. { command: \"interaction.open\", interactionId: \"…\" }"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "revision": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision conflict (E_REVISION_CONFLICT)"
+          },
+          "422": {
+            "description": "Domain validation error"
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionCode}/export": {
+      "get": {
+        "operationId": "exportResults",
+        "summary": "Export results (host token)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json",
+                "ballots"
+              ]
+            },
+            "description": "json and csv are aggregates (free). ballots is the per-person file and requires rawExport or a roster session."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Export body"
+          },
+          "403": {
+            "description": "raw-export-required (ballots without entitlement)"
+          },
+          "410": {
+            "description": "Ballots purged (ballots format only)"
+          }
+        }
+      }
+    },
+    "/api/tutoring/contexts": {
+      "get": {
+        "operationId": "listContexts",
+        "summary": "List active or trashed presentation contexts",
+        "description": "Contexts answer who an outline is for: person, group, class, event, or other.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trash",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "person",
+                "group",
+                "class",
+                "event",
+                "other"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Context summaries"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createContext",
+        "summary": "Create a presentation context with curated notes",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "displayName"
+                ],
+                "properties": {
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "person",
+                      "group",
+                      "class",
+                      "event",
+                      "other"
+                    ],
+                    "description": "Defaults to person"
+                  },
+                  "spaceId": {
+                    "type": "string"
+                  },
+                  "context": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Context created"
+          }
+        }
+      }
+    },
+    "/api/tutoring/contexts/{contextId}/returned": {
+      "get": {
+        "operationId": "getContextReturned",
+        "summary": "Writing and missed practice for this Card — no dates, no scores",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "contextId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pickup pack"
+          },
+          "403": {
+            "description": "Presenter cannot read returned work"
+          }
+        }
+      }
+    },
+    "/api/tutoring/contexts/{contextId}": {
+      "get": {
+        "operationId": "getContext",
+        "summary": "Read a context and curated notes",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "contextId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Context detail"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateContext",
+        "summary": "Update context name, kind, or curated notes",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "contextId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Context updated"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "trashContext",
+        "summary": "Move a context to recoverable trash",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "contextId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Moved to trash; recoverable"
+          }
+        }
+      }
+    },
+    "/api/tutoring/contexts/{contextId}/restore": {
+      "post": {
+        "operationId": "restoreContext",
+        "summary": "Restore a context from trash",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "contextId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored"
+          }
+        }
+      }
+    },
+    "/api/tutoring/contexts/{contextId}/permanent-deletion": {
+      "post": {
+        "operationId": "requestContextPurge",
+        "summary": "Request a short-lived browser confirmation URL",
+        "description": "The purge cannot be completed through this API, MCP, or CLI. A signed-in user must open and confirm the returned URL.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "contextId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Browser confirmation required"
+          }
+        }
+      }
+    },
+    "/api/decks": {
+      "get": {
+        "operationId": "listDecks",
+        "summary": "List decks (reusable content) in the space, optionally by space or folder",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trash",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "folderId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Folder id, or root for unfiled"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deck summaries"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDeck",
+        "summary": "Create a deck, optionally with its first typed content version",
+        "description": "The content contains derived outline material only. Original source documents remain in the external agent. Writes exactly one resource; pass createSession to also create a draft session in the same folder.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Falls back to the content title, then \"Untitled\""
+                  },
+                  "shape": {
+                    "type": "string",
+                    "enum": [
+                      "tutoring",
+                      "lecture",
+                      "meeting",
+                      "event",
+                      "interaction",
+                      "other"
+                    ],
+                    "description": "Defaults to tutoring"
+                  },
+                  "contextId": {
+                    "type": "string",
+                    "description": "Presentation context this deck is for"
+                  },
+                  "spaceId": {
+                    "type": "string",
+                    "description": "Workspace space; ignored when contextId or folderId resolves one"
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "Must belong to the same space"
+                  },
+                  "content": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Optional Outline v1; stored as immutable version 1"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "createSession": {
+                    "type": "boolean",
+                    "description": "Opt-in: also create a draft session of this deck"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Deck created (session included only when createSession was set)"
+          },
+          "404": {
+            "description": "context or folder not found in this space"
+          },
+          "422": {
+            "description": "Invalid Outline v1"
+          }
+        }
+      }
+    },
+    "/api/decks/{deckId}": {
+      "get": {
+        "operationId": "getDeck",
+        "summary": "Read deck metadata and a content version",
+        "description": "Returns { deck, spaceName, folderName, contentVersion, content }.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deck and content"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateDeck",
+        "summary": "Update deck title, shape, location, or context default",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "shape": {
+                    "type": "string",
+                    "enum": [
+                      "tutoring",
+                      "lecture",
+                      "meeting",
+                      "event",
+                      "interaction",
+                      "other"
+                    ]
+                  },
+                  "contextId": {
+                    "type": "string",
+                    "description": "Required when changing context; omission keeps the current link"
+                  },
+                  "folderId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Must belong to the same space; null moves to root"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deck updated"
+          },
+          "404": {
+            "description": "context or folder not found in this space"
+          },
+          "409": {
+            "description": "resource-in-trash"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "trashDeck",
+        "summary": "Move deck to trash",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trashed"
+          }
+        }
+      }
+    },
+    "/api/decks/{deckId}/versions": {
+      "get": {
+        "operationId": "listDeckVersions",
+        "summary": "List immutable content versions",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDeckVersion",
+        "summary": "Save content with optimistic baseVersion",
+        "description": "Identical content returns { unchanged: true } and no new version.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "baseVersion",
+                  "content"
+                ],
+                "properties": {
+                  "baseVersion": {
+                    "type": "integer",
+                    "description": "Must equal the current version"
+                  },
+                  "content": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Outline v1"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Version created"
+          },
+          "400": {
+            "description": "base-version-required"
+          },
+          "409": {
+            "description": "version-conflict or resource-in-trash"
+          },
+          "422": {
+            "description": "invalid-content"
+          }
+        }
+      }
+    },
+    "/api/decks/{deckId}/draft": {
+      "get": {
+        "operationId": "getDeckDraft",
+        "summary": "Read the rolling working draft (unsaved editor text)",
+        "description": "A draft is working text, not content: the source may not parse. 404 when there is no draft.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ source, baseVersion, updatedAt, updatedBy }"
+          },
+          "404": {
+            "description": "No draft for this deck"
+          }
+        }
+      },
+      "put": {
+        "operationId": "putDeckDraft",
+        "summary": "Auto-save the working draft (no validation)",
+        "description": "Upserts the one draft row for this deck. Deliberately unvalidated so a half-typed outline still saves; creating a version clears the draft.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "source",
+                  "baseVersion"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "description": "Editor YAML, as typed (may be invalid)"
+                  },
+                  "baseVersion": {
+                    "type": "integer",
+                    "description": "Version this working text branched from"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ savedAt }"
+          },
+          "400": {
+            "description": "source-required or base-version-required"
+          },
+          "409": {
+            "description": "resource-in-trash"
+          },
+          "413": {
+            "description": "draft-too-large"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "discardDeckDraft",
+        "summary": "Discard the working draft",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Discarded"
+          }
+        }
+      }
+    },
+    "/api/decks/{deckId}/restore": {
+      "post": {
+        "operationId": "restoreDeck",
+        "summary": "Restore deck from trash",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored"
+          }
+        }
+      }
+    },
+    "/api/decks/{deckId}/permanent-deletion": {
+      "post": {
+        "operationId": "requestDeckPurge",
+        "summary": "Browser confirmation URL for permanent delete",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Confirmation required"
+          }
+        }
+      }
+    },
+    "/api/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "summary": "List sessions; filter by deck, context, space, or folder",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trash",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "deckId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "contextId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "folderId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session summaries"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSession",
+        "summary": "Start another session of an existing deck (e.g. new group)",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "deckId"
+                ],
+                "properties": {
+                  "deckId": {
+                    "type": "string"
+                  },
+                  "contextId": {
+                    "type": "string",
+                    "description": "Defaults to the deck context when omitted"
+                  },
+                  "deckVersion": {
+                    "type": "integer",
+                    "description": "Pin a version; defaults to the current one"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Falls back to the deck title"
+                  },
+                  "shape": {
+                    "type": "string",
+                    "enum": [
+                      "tutoring",
+                      "lecture",
+                      "meeting",
+                      "event",
+                      "interaction",
+                      "other"
+                    ]
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "Must belong to the same space"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Session created"
+          },
+          "404": {
+            "description": "deck, context, or folder not found"
+          },
+          "422": {
+            "description": "invalid-deck-version or status-server-owned"
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}": {
+      "get": {
+        "operationId": "getSession",
+        "summary": "Read a session",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSession",
+        "summary": "Update session title, location, or context",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "contextId": {
+                    "type": "string",
+                    "description": "Required when changing context; omission keeps the current link"
+                  },
+                  "folderId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Must belong to the same space; null moves to root"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated"
+          },
+          "404": {
+            "description": "context or folder not found in this space"
+          },
+          "409": {
+            "description": "resource-in-trash"
+          },
+          "422": {
+            "description": "status-server-owned or invalid-status"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "trashSession",
+        "summary": "Trash a session",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trashed"
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}/launch": {
+      "post": {
+        "operationId": "launchSession",
+        "summary": "Launch a live session from this session",
+        "description": "Copies the validated content into the session runtime and marks the session live.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "description": "Deck version; defaults to the version pinned on the session, else latest"
+                  },
+                  "start": {
+                    "type": "boolean",
+                    "description": "true starts the session immediately (session becomes live)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Session created"
+          },
+          "409": {
+            "description": "session-already-live or deck-content-not-found"
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}/record": {
+      "get": {
+        "operationId": "getSessionRecord",
+        "summary": "Post-session outcomes record",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Record"
+          }
+        }
+      },
+      "put": {
+        "operationId": "putSessionRecord",
+        "summary": "Write compact outcomes (not a transcript; never per-participant ballots)",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "outcomes": {
+                    "type": "array",
+                    "items": {},
+                    "maxItems": 50
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "nextNote": {
+                    "type": "string",
+                    "description": "Sticky on the Card: start here next time. Empty clears it."
+                  },
+                  "homework": {
+                    "type": "array",
+                    "items": {},
+                    "maxItems": 50
+                  },
+                  "artifacts": {
+                    "type": "array",
+                    "items": {},
+                    "maxItems": 50
+                  },
+                  "sessionCode": {
+                    "type": "string"
+                  },
+                  "deckVersion": {
+                    "type": "integer",
+                    "description": "Must exist on the deck; defaults to the session version"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved"
+          },
+          "409": {
+            "description": "resource-in-trash"
+          },
+          "422": {
+            "description": "record-arrays-too-large or invalid-deck-version"
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}/restore": {
+      "post": {
+        "operationId": "restoreSession",
+        "summary": "Restore session from trash",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored"
+          }
+        }
+      }
+    },
+    "/api/sessions/{sessionId}/permanent-deletion": {
+      "post": {
+        "operationId": "requestSessionPurge",
+        "summary": "Browser confirmation URL",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Confirmation required"
+          }
+        }
+      }
+    },
+    "/api/tutoring/spaces/{spaceId}/assets": {
+      "get": {
+        "operationId": "listSpaceAssets",
+        "summary": "List uploaded media in a space",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filters on file name and stored alt text"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assets"
+          },
+          "404": {
+            "description": "Not a space you can open"
+          }
+        }
+      },
+      "post": {
+        "operationId": "uploadSpaceAsset",
+        "summary": "Upload a picture or video (raw bytes)",
+        "description": "The request body is the file bytes and Content-Type is the real media type (image/* or video/mp4). Name and default alt text ride in the query string. Max 20 MiB. Requires the editor role. The returned `url` is a public, unguessable path.",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "alt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/*": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "video/mp4": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Asset stored"
+          },
+          "403": {
+            "description": "forbidden — presenter role cannot upload"
+          },
+          "413": {
+            "description": "asset-too-large"
+          },
+          "415": {
+            "description": "unsupported-media-type"
+          }
+        }
+      }
+    },
+    "/api/tutoring/assets/{assetId}": {
+      "delete": {
+        "operationId": "deleteAsset",
+        "summary": "Delete an uploaded asset (bytes and index row)",
+        "security": [
+          {
+            "UserBearer": []
+          },
+          {
+            "SessionCookie": [],
+            "CsrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/assets/{assetId}": {
+      "get": {
+        "operationId": "readAsset",
+        "summary": "Read uploaded media (public)",
+        "description": "Unauthenticated on purpose: the asset id is a random UUID and acts as the capability, so the stage and participant surfaces can render the picture without a session. Immutable caching, ETag, and range requests are supported.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bytes"
+          },
+          "206": {
+            "description": "Partial content"
+          },
+          "304": {
+            "description": "Not modified"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/mcp": {
+      "post": {
+        "operationId": "mcp",
+        "summary": "Stateless MCP endpoint (Streamable HTTP, JSON only)",
+        "description": "JSON-RPC tools: outline_validate, session_validate, session_create, session_status, session_results, openroom_api, and session_command. Permanent deletion confirmation is never exposed.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON-RPC response"
+          },
+          "401": {
+            "description": "Missing or invalid bearer; WWW-Authenticate advertises OAuth metadata"
+          }
+        }
+      }
+    },
+    "/api/a2a": {
+      "post": {
+        "operationId": "a2a",
+        "summary": "A2A JSON-RPC endpoint (Agent2Agent protocol)",
+        "description": "Discover via /.well-known/agent-card.json. Supports message/send; skills mirror MCP tools.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON-RPC response (Task or Message)"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AdminKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-openroom-admin",
+        "description": "Deployment admin key (ops override for session creation)"
+      },
+      "SessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "or_session",
+        "description": "Signed-in host session"
+      },
+      "CsrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-openroom-csrf",
+        "description": "Required with a host session on mutating control-plane routes"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Session capability token, personal API token (orpat_…), MCP access token, or ADMIN_KEY"
+      },
+      "UserBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "User-scoped personal API token (orpat_…) or OAuth access token"
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "openroom",
+  "script": "dev:worker",
+  "appPort": 8787
+}

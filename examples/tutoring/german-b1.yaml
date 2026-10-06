@@ -1,0 +1,238 @@
+version: 1
+meta:
+  title: Ein Fest trotz Regen
+  description: Alternativen vergleichen, Gründe nennen und gemeinsam einen Plan ändern.
+  locale: de
+  language: German
+  level: B1
+  durationMinutes: 45
+  objectives:
+    - Vor- und Nachteile zweier Möglichkeiten erklären.
+    - Mit « weil » und « obwohl » begründen und einschränken.
+    - Einen gemeinsamen Plan verständlich zusammenfassen.
+design:
+  aspectRatio: 16:9
+  theme:
+    family: clean
+    colors:
+      background: "#FFFFFF"
+      foreground: "#172B3A"
+      muted: "#526473"
+      accent: "#1765B0"
+      surface: "#F0F5FA"
+      border: "#CAD8E4"
+      charts:
+        - "#1765B0"
+        - "#14786F"
+        - "#8B4BA1"
+        - "#A65014"
+        - "#B13A55"
+        - "#506A28"
+    fonts:
+      heading: sans
+      body: sans
+  defaultMasterId: standard
+  masters:
+    - id: standard
+      name: Standard
+      safeArea: 8
+      decoration: rule
+      footer: Deutsch · B1
+    - id: compact
+      name: More room for content
+      safeArea: 6
+      decoration: rule
+      footer: Deutsch · B1
+    - id: opening
+      name: Opening
+      safeArea: 8
+      decoration: none
+      background:
+        kind: gradient
+        from: "#FFFFFF"
+        to: "#F0F5FA"
+        angle: 120
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+steps:
+  - id: welcome
+    kind: title
+    title: Ein Fest trotz Regen
+    body: Sie finden einen Plan, der auch bei schlechtem Wetter funktioniert.
+    tutorNotes: The scenario and weather are invented. Invite learners to plan for a fictional group
+      rather than disclose personal responsibilities. 3 minutes.
+    design:
+      masterId: opening
+  - id: warmup
+    kind: activity
+    title: Was macht ein gutes Fest aus?
+    instructions:
+      - Nennen Sie zwei Dinge, die Ihnen wichtig sind.
+      - Vergleichen Sie Ihre Ideen mit einer anderen Person.
+    durationSec: 120
+    tutorNotes: Ask for a reason after each preference. Keep the criteria visible for the final decision.
+  - id: situation
+    kind: statement
+    title: Der ursprüngliche Plan
+    body: Am Samstag wollte die Nachbarschaft im Park feiern. Zwanzig Personen haben zugesagt. Nun ist
+      Regen angekündigt. Der Gemeinschaftsraum ist frei, aber dort gibt es nur zwölf Stühle. Das
+      Fest kann auch auf Sonntag verschoben werden; dann können sechs Personen nicht kommen.
+    tutorNotes: Read for the two alternatives and their trade-offs. All figures belong to this fictional
+      scenario. Ask learners to restate the problem without deciding yet. 5 minutes.
+  - id: options
+    kind: cards
+    title: Zwei Möglichkeiten
+    items:
+      - label: Samstag im Raum
+        text: Alle können kommen. Acht Stühle fehlen.
+      - label: Sonntag im Park
+        text: Mehr Platz im Freien. Sechs Personen fehlen; das Wetter bleibt unsicher.
+    tutorNotes: "Do not assume Sunday will be dry: no Sunday forecast is given. Discuss which missing
+      information matters. 4 minutes."
+  - id: understand
+    kind: interaction
+    interactionId: facts
+    tutorNotes: Ask why the other statements are not supported. Separate the number of people from the
+      number of seats. 3 minutes.
+  - id: language
+    kind: cards
+    title: Gründe und Einwände
+    items:
+      - label: Begründen
+        text: Ich bin für den Raum, weil alle kommen können.
+      - label: Einschränken
+        text: Obwohl Stühle fehlen, können wir dort feiern.
+      - label: Eine Lösung anbieten
+        text: Wir könnten acht Stühle ausleihen.
+    tutorNotes: Underline the final verb in the weil clause. Show the main-clause inversion after a
+      fronted obwohl clause using this exact sentence. 5 minutes.
+  - id: practice
+    kind: interaction
+    interactionId: word-order
+    design:
+      masterId: compact
+    tutorNotes: Have learners read the full sentence after ordering. Then ask for a different reason
+      without the model. 4 minutes.
+  - id: listen
+    kind: activity
+    title: Eine neue Information
+    instructions:
+      - Was bietet die Nachbarin an?
+      - Was ändert diese Information an Ihrer Entscheidung?
+    durationSec: 90
+    tutorNotes: "Read twice: Ich kann sechs Klappstühle mitbringen. Zwei weitere könnten wir vielleicht
+      bei Ali ausleihen. Ich frage ihn heute Abend. Distinguish confirmed six from possible two; do
+      not treat the uncertainty as solved."
+  - id: roles
+    kind: cards
+    title: Unterschiedliche Prioritäten
+    items:
+      - label: Person A
+        text: Sie möchten, dass möglichst alle teilnehmen können.
+      - label: Person B
+        text: Sie möchten genug Platz und möglichst wenig zusätzliche Arbeit.
+    tutorNotes: "The priorities can lead to more than one defensible choice. One-to-one: take the
+      opposing priority and acknowledge a useful argument."
+  - id: decide
+    kind: activity
+    title: Ändern Sie den Plan
+    instructions:
+      - Vergleichen Sie beide Möglichkeiten mit je einem Grund.
+      - Gehen Sie auf einen Einwand ein.
+      - Vereinbaren Sie eine Lösung und klären Sie, was noch geprüft werden muss.
+    durationSec: 300
+    tutorNotes: Assess the clarity of the agreement, not whether learners choose your preferred option.
+      Give feedback on two clauses, then let them restate the decision. 8 minutes.
+  - id: message
+    kind: statement
+    title: Die Gruppe informieren
+    body: "Schreiben Sie eine kurze Nachricht: Was ändert sich? Warum? Was müssen die Gäste wissen oder
+      mitbringen?"
+    tutorNotes: Keep the announcement consistent with the negotiated plan. Separate an agreed
+      arrangement from a request for help. 4 minutes.
+  - id: recap
+    kind: debrief
+    title: Zum Schluss
+    prompts:
+      - Welcher Grund war für Sie entscheidend?
+      - Formulieren Sie einen Satz mit « obwohl ».
+      - Welche Information fehlt noch?
+    tutorNotes: Ask for the learner’s own statement, not a copied example. Publish a focused follow-up
+      task from Notes. 3 minutes.
+interactions:
+  - id: facts
+    type: choice
+    prompt: Welche Aussage steht im Text?
+    options:
+      - id: o1
+        label: Am Sonntag bleibt es sicher trocken.
+      - id: o2
+        label: Für Samstag fehlen acht Stühle.
+        correct: true
+      - id: o3
+        label: Am Samstag können nur zwölf Personen kommen.
+    notes: Twenty attendees and twelve chairs leave eight chairs missing; chairs do not determine how
+      many people can attend.
+  - id: word-order
+    type: ranking
+    display: sentence
+    prompt: "Ordnen Sie die Wörter: « Ich bin für den Raum, … »"
+    options:
+      - id: because
+        label: weil
+      - id: everyone
+        label: alle
+      - id: come
+        label: kommen
+      - id: can
+        label: können
+    correctOrder:
+      - because
+      - everyone
+      - come
+      - can
+homework:
+  tasks:
+    - id: read
+      kind: reading
+      body: >-
+        Der ursprüngliche Plan
+
+        Am Samstag wollte die Nachbarschaft im Park feiern. Zwanzig Personen haben zugesagt. Nun ist
+        Regen angekündigt. Der Gemeinschaftsraum ist frei, aber dort gibt es nur zwölf Stühle. Das
+        Fest kann auch auf Sonntag verschoben werden; dann können sechs Personen nicht kommen.
+
+
+        Zwei Möglichkeiten
+
+        Samstag im Raum : Alle können kommen. Acht Stühle fehlen.
+
+        Sonntag im Park : Mehr Platz im Freien. Sechs Personen fehlen; das Wetter bleibt unsicher.
+
+
+        Die Gruppe informieren
+
+        Schreiben Sie eine kurze Nachricht: Was ändert sich? Warum? Was müssen die Gäste wissen oder
+        mitbringen?
+
+
+        Lesen Sie die Ausgangssituation noch einmal. Notieren Sie für jede Möglichkeit einen
+        Vorteil, einen Nachteil und eine offene Frage.
+    - id: write
+      kind: writing
+      prompt: Schreiben Sie eine Nachricht an die Nachbarschaft (100 bis 130 Wörter).
+      guidance: Erklären Sie die Entscheidung, nennen Sie zwei Gründe und gehen Sie auf einen Einwand ein.
+        Verwenden Sie « weil » und « obwohl ».
+    - id: speak
+      kind: voice
+      prompt: Begründen Sie Ihren Vorschlag als Sprachnachricht (45 bis 90 Sekunden).
+      guidance: Nennen Sie eine Alternative, erklären Sie Ihre Wahl und sagen Sie, was noch geklärt werden
+        muss.
+    - id: practise
+      kind: quiz
+      interactionId: word-order
+recap:
+  title: Für das nächste Mal
+  body: Greifen Sie eine ausgewählte Formulierung aus dem Feedback auf und verwenden Sie sie in einer
+    neuen Situation.

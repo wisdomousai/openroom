@@ -1,0 +1,42 @@
+{
+  "name": "openroom",
+  "version": "1.2.0",
+  "description": "Prepare and deliver tutor-led sessions and live classroom interactions through OpenRoom without wrapping the preparation model.",
+  "author": {
+    "name": "OpenRoom"
+  },
+  "homepage": "https://openroom.app",
+  "keywords": [
+    "tutoring",
+    "sessions",
+    "classroom",
+    "polls",
+    "live-interaction"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "OpenRoom",
+    "shortDescription": "Prepare sessions externally and deliver them live.",
+    "longDescription": "Use this chat as the preparation workbench for local school documents, then save typed outlines, manage learners, launch sessions, and control tutor-led delivery through OpenRoom. Original documents stay here; OpenRoom stores only the structured deck.",
+    "developerName": "OpenRoom",
+    "category": "Education",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://openroom.app",
+    "privacyPolicyURL": "https://openroom.app/privacy",
+    "termsOfServiceURL": "https://openroom.app/terms",
+    "defaultPrompt": [
+      "Prepare an OpenRoom deck from these materials and show me a preview.",
+      "Revise this learner's next outline and save a new version.",
+      "Start this deck as a live session and help me run it."
+    ],
+    "brandColor": "#1d4ed8",
+    "composerIcon": "./assets/logo.png",
+    "logo": "./assets/logo.png",
+    "screenshots": ["./assets/screenshot-preview.png"]
+  }
+}

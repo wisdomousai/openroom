@@ -1,0 +1,215 @@
+version: 1
+meta:
+  title: Le train est parti
+  description: Raconter un imprévu, demander une solution et vérifier les informations.
+  locale: fr
+  language: French
+  level: B1
+  durationMinutes: 45
+  objectives:
+    - Situer un problème puis raconter les événements.
+    - Demander une solution au guichet.
+    - Vérifier un horaire et une correspondance.
+design:
+  aspectRatio: 16:9
+  theme:
+    family: paper
+    colors:
+      background: "#F8F3E9"
+      foreground: "#302C28"
+      muted: "#655D52"
+      accent: "#9D3E28"
+      surface: "#EEE5D5"
+      border: "#CFC2AD"
+      charts:
+        - "#9D3E28"
+        - "#47624C"
+        - "#4B6385"
+        - "#86552C"
+        - "#795173"
+        - "#64602A"
+    fonts:
+      heading: serif
+      body: sans
+  defaultMasterId: standard
+  masters:
+    - id: standard
+      name: Standard
+      safeArea: 8
+      decoration: rule
+      footer: Français · B1
+    - id: opening
+      name: Opening
+      safeArea: 8
+      decoration: none
+      background:
+        kind: gradient
+        from: "#F8F3E9"
+        to: "#EEE5D5"
+        angle: 120
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+steps:
+  - id: welcome
+    kind: title
+    title: Le train est parti
+    body: Vous expliquez ce qui s’est passé et trouvez une autre solution.
+    tutorNotes: Ask about a manageable travel problem; invented experiences are welcome. Avoid forcing
+      personal disclosure. 3 minutes.
+    design:
+      masterId: opening
+  - id: warmup
+    kind: activity
+    title: Quand un voyage change
+    instructions:
+      - Donnez un exemple d’imprévu pendant un trajet.
+      - Dites ce dont vous auriez besoin pour continuer.
+    durationSec: 120
+    tutorNotes: Listen for the distinction between describing the problem and asking for help. Keep one
+      learner phrase for feedback.
+  - id: phrases
+    kind: cards
+    title: Au guichet
+    items:
+      - label: Expliquer
+        text: J’ai raté ma correspondance.
+      - label: Demander
+        text: Est-ce que je peux prendre le prochain train ?
+      - label: Vérifier
+        text: Si j’ai bien compris, je dois changer à Lyon.
+    tutorNotes: Check correspondance in context, not as an English cognate. Model a calm request. 4 minutes.
+  - id: story
+    kind: statement
+    title: Le trajet de Samira
+    body: Il pleuvait et le bus avançait lentement. Quand Samira est arrivée à la gare, son train était
+      déjà parti. Elle a consulté le panneau, puis elle est allée au guichet. Elle voulait arriver
+      avant 18 h pour dîner avec sa sœur.
+    tutorNotes: Read for the problem first, then reconstruct four events. The plus-que-parfait is input
+      here, not a production target; explain était déjà parti as had already left if needed. 5
+      minutes.
+  - id: understand
+    kind: interaction
+    interactionId: priority
+    tutorNotes: Ask learners to justify their choice with a phrase from the text. 3 minutes.
+  - id: notice
+    kind: cards
+    title: Le décor et les événements
+    items:
+      - label: La situation
+        text: Il pleuvait. Le bus avançait lentement.
+      - label: Ce qui s’est passé
+        text: Elle a consulté le panneau. Elle est allée au guichet.
+      - label: Pour raconter
+        text: D’abord… puis… finalement…
+    tutorNotes: Contrast background and completed events with these examples. Do not teach that every
+      long action must use imparfait. 5 minutes.
+  - id: practice
+    kind: interaction
+    interactionId: past
+    tutorNotes: Accept both written forms only as specified; then ask which clause gives the background.
+      4 minutes.
+  - id: listen
+    kind: activity
+    title: Une proposition au guichet
+    instructions:
+      - "Écoutez : quelle solution permet d’arriver avant 18 h ?"
+      - Reformulez l’heure de départ et l’heure d’arrivée.
+    durationSec: 90
+    tutorNotes: "Read twice: Le train direct part à seize heures vingt et arrive à dix-huit heures dix.
+      Vous pouvez aussi partir à quinze heures quarante, changer à Lyon et arriver à dix-sept heures
+      cinquante. Fictional timetable. Ask the learner to repeat the useful option; do not provide
+      transport advice."
+  - id: roles
+    kind: cards
+    title: Cherchez une solution
+    items:
+      - label: Voyageur ou voyageuse
+        text: Vous avez raté une correspondance. Expliquez les faits. Vous devez arriver avant 18 h.
+      - label: Au guichet
+        text: Proposez les deux trajets entendus. Demandez si la personne accepte une correspondance.
+    tutorNotes: The goal is a confirmed workable journey. Do not invent ticket-validity rules; say you
+      would check the ticket if asked.
+  - id: roleplay
+    kind: activity
+    title: Au guichet
+    instructions:
+      - Expliquez le problème sans raconter tous les détails.
+      - Demandez une solution et une précision.
+      - Reformulez le trajet choisi pour vérifier.
+    durationSec: 300
+    tutorNotes: After both roles, give one correction on tense and one on checking information. Repeat
+      the ending without the cards. 8 minutes.
+  - id: message
+    kind: statement
+    title: Prévenez votre sœur
+    body: Expliquez le retard, dites la solution trouvée et annoncez votre arrivée.
+    tutorNotes: Ask for three or four spoken sentences, then a brief written version. The listener
+      should know when to expect the traveller. 4 minutes.
+  - id: recap
+    kind: debrief
+    title: À retenir
+    prompts:
+      - Quelle phrase permet de vérifier une information ?
+      - Racontez le problème en trois phrases.
+      - Quel point voulez-vous retravailler ?
+    tutorNotes: Keep the learner’s own next step private in Notes until you choose what to publish. 3 minutes.
+interactions:
+  - id: priority
+    type: choice
+    prompt: Quelle est la priorité de Samira ?
+    options:
+      - id: o1
+        label: Éviter toute correspondance.
+      - id: o2
+        label: Arriver avant 18 h.
+        correct: true
+      - id: o3
+        label: Prendre le même bus.
+    notes: The purpose is dinner with her sister before 18 h; no preference about transfers is stated.
+  - id: past
+    type: fill-the-gaps
+    prompt: Il {{weather}}. Samira {{aux}} consulté le panneau, puis elle est allée au guichet.
+    gaps:
+      - id: weather
+        answers:
+          - pleuvait
+      - id: aux
+        answers:
+          - a
+    match:
+      locale: fr
+homework:
+  tasks:
+    - id: read
+      kind: reading
+      body: >-
+        Le trajet de Samira
+
+        Il pleuvait et le bus avançait lentement. Quand Samira est arrivée à la gare, son train
+        était déjà parti. Elle a consulté le panneau, puis elle est allée au guichet. Elle voulait
+        arriver avant 18 h pour dîner avec sa sœur.
+
+
+        Prévenez votre sœur
+
+        Expliquez le retard, dites la solution trouvée et annoncez votre arrivée.
+
+
+        Relisez le trajet de Samira. Repérez deux éléments de la situation et deux événements.
+        Préparez un autre imprévu, réel ou inventé, avec une solution.
+    - id: write
+      kind: writing
+      prompt: Racontez un trajet qui ne s’est pas passé comme prévu (100 à 130 mots).
+      guidance: Présentez la situation, trois événements et la solution. Utilisez au moins une phrase à
+        l’imparfait et deux au passé composé.
+    - id: speak
+      kind: voice
+      prompt: Enregistrez votre demande au guichet (45 à 90 secondes).
+      guidance: Expliquez le problème, précisez votre priorité, puis demandez une solution et une précision.
+    - id: practise
+      kind: quiz
+      interactionId: past
+recap:
+  title: Pour la prochaine fois
+  body: Reprenez une phrase choisie dans les retours, puis utilisez-la dans une nouvelle situation.

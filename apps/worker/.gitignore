@@ -1,0 +1,5 @@
+# `bun run build` (scripts/collect-assets.mjs) copies the built front-ends here.
+public/*
+!public/.gitkeep
+!public/_headers
+!public/favicon.svg

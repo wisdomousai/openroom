@@ -1,0 +1,41 @@
+/*
+  # script-src notes (Cloudflare edge injections, not app code):
+  # - Web Analytics loads from static.cloudflareinsights.com (external).
+  # - Bot Fight / JS Detections inject a per-request inline bootstrap that then
+  #   loads /cdn-cgi/challenge-platform/… . The body embeds rotating r/t tokens,
+  #   so a static sha256-… allowlist never works; 'unsafe-inline' is required
+  #   while that feature is on. OpenRoom ships no first-party inline scripts
+  #   (Vite module bundles only). Alternative: turn off JavaScript Detections
+  #   in the zone bot settings and drop 'unsafe-inline' again.
+  # img-src / media-src allow https: because Prep embeds Pixabay-hosted photos,
+  # pasted picture URLs, direct MP4s, and explicitly-authored sandboxed web-page
+  # slides. A framed site can still refuse embedding through its own policy.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src 'self' https:; connect-src 'self' ws: wss: https://cloudflareinsights.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+# Agent Skills Discovery (RFC v0.2.0) — JSON index + SKILL.md artifacts.
+/.well-known/agent-skills/index.json
+  Content-Type: application/json; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/.well-known/agent-skills/*/SKILL.md
+  Content-Type: text/markdown; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+# RFC 8288 / RFC 9727 agent discovery on the marketing homepage.
+# Relative targets; comma-separated Link values are valid per RFC 8288.
+/
+  Link: </.well-known/api-catalog>; rel="api-catalog", </openapi.json>; rel="service-desc", </docs/>; rel="service-doc", </llms.txt>; rel="service-doc", </schema/session.schema.json>; rel="describedby"
+
+/index.html
+  Link: </.well-known/api-catalog>; rel="api-catalog", </openapi.json>; rel="service-desc", </docs/>; rel="service-doc", </llms.txt>; rel="service-doc", </schema/session.schema.json>; rel="describedby"
+
+# RFC 9727: api-catalog MUST be application/linkset+json (no file extension).
+/.well-known/api-catalog
+  Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
+  Link: </.well-known/api-catalog>; rel="api-catalog"

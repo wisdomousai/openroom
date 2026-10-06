@@ -1,0 +1,16 @@
+# SimpleSession — the default authoring format.
+# Validate: openroom validate 00-simple.yaml
+# Most teaching never needs a full Session (see docs/AGENT.md).
+
+title: Check-in
+questions:
+  - prompt: How clear was that explanation?
+    options: [Clear, Fuzzy, Lost]
+  - prompt: How is your energy right now?
+    type: scale
+    min: 1
+    max: 5
+    minLabel: Low
+    maxLabel: High
+  - prompt: One word for how you feel about the next topic
+    type: text

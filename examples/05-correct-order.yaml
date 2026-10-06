@@ -1,0 +1,26 @@
+version: 1
+meta:
+  title: Correct order
+  description: Ranking with a scored correctOrder key (put-in-order quiz) while Borda still shows class preference.
+interactions:
+  - id: water-cycle
+    type: ranking
+    prompt: Put the water-cycle stages in the correct order (first to last).
+    display: ordered-bars
+    resultVisibility: hidden-until-close
+    options:
+      - id: evaporate
+        label: Evaporation
+      - id: condense
+        label: Condensation
+      - id: precip
+        label: Precipitation
+      - id: collect
+        label: Collection
+    correctOrder:
+      - evaporate
+      - condense
+      - precip
+      - collect
+    pedagogy:
+      explanation: Stage shows the correct sequence on reveal; bars remain Borda preference scores.

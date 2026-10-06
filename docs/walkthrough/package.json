@@ -1,0 +1,15 @@
+{
+  "name": "@openroom/walkthroughs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "list": "bun run src/cli.ts list",
+    "validate": "bun run src/cli.ts validate",
+    "capture": "bun run src/cli.ts capture",
+    "narrate": "bun run src/cli.ts narrate",
+    "render": "bun run src/cli.ts render",
+    "verify": "bun run src/cli.ts verify"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "openroom",
+  "version": "1.2.0",
+  "description": "Prepare and deliver tutor-led sessions and run live classroom interactions through OpenRoom without wrapping the preparation model.",
+  "homepage": "https://openroom.app",
+  "keywords": ["tutoring", "sessions", "polls", "quiz", "classroom", "live-session"]
+}

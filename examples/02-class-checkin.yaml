@@ -1,0 +1,35 @@
+# STEP 2 — three question types in one short check-in.
+# New here: `scale` (rating with labelled ends), `text` (open answers),
+# and per-question `notes` that only you see in the console.
+version: 1
+meta:
+  title: Class check-in
+  description: A five-minute warm-up — mood, confidence, and one open question.
+
+interactions:
+  - id: mood
+    type: choice
+    prompt: How are you arriving today?
+    options:
+      - id: fresh
+        label: Fresh and ready
+      - id: ok
+        label: Doing okay
+      - id: tired
+        label: Running on fumes
+    notes: Just a warm-up — take whatever the session gives you and move on.
+
+  - id: confidence
+    type: scale
+    prompt: How confident do you feel about last week's material?
+    min: 1
+    max: 5
+    minLabel: Not at all
+    maxLabel: Very
+    notes: A low spread here means revisit before introducing anything new.
+
+  - id: expectations
+    type: text
+    prompt: What is one thing you want out of today?
+    maxLength: 200
+    notes: Read a few out loud — it sets the contract for the session.

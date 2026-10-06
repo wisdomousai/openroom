@@ -1,0 +1,53 @@
+{
+  "id": "classroom-authoring",
+  "title": "Author and launch a live classroom session",
+  "persona": "A teacher creating one question, saving it, and opening the live host session.",
+  "purpose": "Cover the browser authoring seam from demo sign-in through deck editor and live launch.",
+  "outcome": "A saved deck opens in the live host console with the first question ready to present.",
+  "prerequisites": ["OpenRoom worker running locally.", "The local demo account alice/demo is enabled."],
+  "routes": ["/host/", "#/", "#/decks/new", "#/sessions/:sessionCode"],
+  "status": "scripted",
+  "chapters": [
+    {
+      "id": "sign-in",
+      "title": "Sign in to the host workspace",
+      "narration": "We sign in as the local demo teacher. This is intentionally a browser action because authentication is the one part of the workflow that cannot be reduced to a session API token.",
+      "actions": [
+        { "type": "goto", "path": "/host/" },
+        { "type": "fillLabel", "label": "Username", "value": "alice" },
+        { "type": "fillLabel", "label": "Password", "value": "demo" },
+        { "type": "clickRole", "role": "button", "name": "Sign in", "exact": true },
+        { "type": "expectText", "text": "Alice Teacher" }
+      ]
+    },
+    {
+      "id": "outline-designer",
+      "title": "Create and save a question in deck editor",
+      "narration": "The structured authoring surface is the deck editor. We give the deck a concrete title, write the question, provide two options, mark the answer, and save the version to the library.",
+      "actions": [
+        { "type": "goto", "path": "/host/#/decks/new" },
+        { "type": "expectRole", "role": "tab", "name": "deck editor", "exact": true },
+        { "type": "fillLabel", "label": "Deck title", "value": "OpenRoom walkthrough check-in {{runTag}}" },
+        { "type": "fillLabel", "label": "Question", "value": "Which part of a session should be visible to participants?" },
+        { "type": "fillLabel", "label": "Option 1 label", "value": "The live question" },
+        { "type": "fillLabel", "label": "Option 2 label", "value": "Private host notes" },
+        { "type": "checkLabel", "label": "Correct", "exact": true, "nth": 0 },
+        { "type": "clickRole", "role": "button", "name": "Save to library", "exact": true },
+        { "type": "expectRole", "role": "button", "name": "Save version", "exact": true },
+        { "type": "clickRole", "role": "button", "name": "Start live", "exact": true },
+        { "type": "expectRole", "role": "button", "name": "Start session", "exact": false }
+      ]
+    },
+    {
+      "id": "live-host",
+      "title": "Open the first question",
+      "narration": "The saved deck is started as a session. We ask the first question, and leave the host looking at the live control surface rather than a static preview.",
+      "actions": [
+        { "type": "clickRole", "role": "button", "name": "Start session", "exact": false },
+        { "type": "expectRole", "role": "button", "name": "Ask first question", "exact": false },
+        { "type": "clickRole", "role": "button", "name": "Ask first question", "exact": false },
+        { "type": "expectText", "text": "Which part of a session should be visible to participants?" }
+      ]
+    }
+  ]
+}

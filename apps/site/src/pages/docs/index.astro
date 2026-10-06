@@ -1,0 +1,32 @@
+---
+import Docs from '../../layouts/Docs.astro';
+import { manual, docUrl } from '../../lib/docs';
+const pages = await manual();
+const groups = [...new Set(pages.map((page) => page.data.section))];
+const legacy = [
+  ['quickstart', 'start', 'Start here'], ['tutoring', 'contexts', 'Students and classes'],
+  ['session-format', 'cli', 'Files and command-line workflows'], ['full-example', 'cli', 'A working file example'],
+  ['cli', 'agents', 'Connect an agent'], ['http-api', 'cli', 'API and schema references'],
+  ['live-behavior', 'live-session', 'Run a live session'], ['privacy', 'limits', 'Privacy and retention'],
+  ['self-hosting', 'desktop', 'Desktop setup'], ['architecture', 'limits', 'Storage and access'],
+];
+---
+<Docs title="OpenRoom user manual" description="Instructions for preparing decks, presenting, teaching, participating, and managing shared work.">
+  <div class="manual-starts">
+    <a href="/docs/start/"><strong>Host your first session</strong><span>Create a deck, present it, and invite answers.</span></a>
+    <a href="/docs/participant/"><strong>Join and participate</strong><span>Enter a session and respond from your phone.</span></a>
+    <a href="/docs/learner/"><strong>Open your learning work</strong><span>Read Notes, complete homework, and review feedback.</span></a>
+  </div>
+  {groups.map((group) => <section class="manual-directory"><h2>{group}</h2><dl>{pages.filter((page) => page.data.section === group).map((page) => <div><dt><a href={docUrl(page.id)}>{page.data.title}</a></dt><dd>{page.data.description}</dd></div>)}</dl></section>)}
+  <details class="manual-old-links"><summary>Earlier documentation bookmarks</summary><ul>{legacy.map(([anchor, target, label]) => <li id={anchor}><a href={docUrl(target)}>{label}</a></li>)}</ul></details>
+  <p class="manual-download"><a href="/llms-full.txt">Download the manual as text</a></p>
+</Docs>
+<script>
+  function revealBookmark() {
+    const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    const group = target?.closest<HTMLDetailsElement>('.manual-old-links');
+    if (group && target) { group.open = true; target.scrollIntoView(); }
+  }
+  revealBookmark();
+  window.addEventListener('hashchange', revealBookmark);
+</script>

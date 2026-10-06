@@ -1,0 +1,61 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://openroom.app/api/sessions",
+      "service-desc": [
+        {
+          "href": "https://openroom.app/openapi.json",
+          "type": "application/vnd.oai.openapi+json;version=3.1"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://openroom.app/docs/#http-api",
+          "type": "text/html"
+        },
+        {
+          "href": "https://openroom.app/llms.txt",
+          "type": "text/plain"
+        }
+      ]
+    },
+    {
+      "anchor": "https://openroom.app/api/mcp",
+      "service-desc": [
+        {
+          "href": "https://openroom.app/openapi.json",
+          "type": "application/vnd.oai.openapi+json;version=3.1"
+        },
+        {
+          "href": "https://openroom.app/.well-known/oauth-protected-resource",
+          "type": "application/json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://openroom.app/docs/#http-api",
+          "type": "text/html"
+        },
+        {
+          "href": "https://openroom.app/llms-full.txt",
+          "type": "text/plain"
+        }
+      ]
+    },
+    {
+      "anchor": "https://openroom.app/api/join",
+      "service-desc": [
+        {
+          "href": "https://openroom.app/openapi.json",
+          "type": "application/vnd.oai.openapi+json;version=3.1"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://openroom.app/docs/#http-api",
+          "type": "text/html"
+        }
+      ]
+    }
+  ]
+}

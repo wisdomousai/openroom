@@ -1,0 +1,1060 @@
+/* ====================================================================== */
+
+.stage {
+  /* Derived paint tokens — also on :root in stage-reset for standalone /stage/.
+     Duplicated here so an embedded .stage (LiveHost) carries them when theme
+     is applied to the node. */
+  --ok: var(--chart-2);
+  --ok-fill: color-mix(in oklab, var(--chart-2) 14%, var(--background));
+  --rule: var(--border);
+  --rule-soft: var(--hairline, var(--border));
+  --panel: var(--card);
+
+  /* --- Geometry ---------------------------------------------------------
+     Page / panel rhythm is fixed here. Charts size to the plate body via
+     container queries (--chart-frame uses cqi/cqb); do not invent rem/vh caps
+     on individual viz. */
+  --stage-pad: clamp(1rem, 2.2vw, 1.75rem); /* outer page margin — 28px at 1280 */
+  --stage-gap: clamp(1.25rem, 2.2vw, 1.75rem); /* rail ↔ plate */
+  --stage-rail: 240px; /* join column width */
+  --panel-pad: clamp(1.25rem, 2.2vw, 2rem); /* inside bordered cards */
+  --panel-gap: clamp(0.75rem, 1.4vh, 1.25rem); /* prompt ↔ chart */
+  --stack-gap: clamp(0.55rem, 1.2vh, 1rem); /* tight stacks */
+  /* Fallback before plate__body establishes a size container. */
+  --chart-frame: min(18rem, 38vh, 100%);
+  --pad: var(--stage-pad);
+
+  position: relative;
+  height: 100dvh;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  color-scheme: light dark;
+  container-type: size;
+}
+
+/** Host embed: LiveHost GUTTER owns page width; stage owns the plate. */
+.stage.stage--embedded {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  --stage-pad: 0;
+  --stage-gap: 0;
+  --panel-pad: 1.5rem;
+  --panel-gap: 1rem;
+}
+
+/* Scale the saved slide aspect and panel rhythm inside the console's frame. */
+.stage-mirror {
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+
+.stage-mirror .stage.stage--embedded {
+  width: min(100cqw, calc(100cqh * var(--slide-aspect, 1.7777778)));
+  height: min(100cqh, calc(100cqw / var(--slide-aspect, 1.7777778)));
+  --panel-pad: clamp(0.875rem, 2.5cqw, 2rem);
+  --panel-gap: clamp(0.5rem, 1.8cqh, 1.25rem);
+  --stack-gap: clamp(0.5rem, 1.4cqh, 1rem);
+}
+
+.ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.stage__grid {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: grid;
+  grid-template-columns: var(--stage-rail) minmax(0, 1fr);
+  gap: var(--stage-gap);
+  padding: var(--stage-pad);
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.stage[data-idle='true'] .stage__grid,
+.stage.stage--no-rail .stage__grid,
+.stage[data-rail='false'] .stage__grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Idle has a single child: give it the full height so the plate centers. */
+.stage[data-idle='true'] .stage__main {
+  grid-template-rows: 1fr;
+  align-content: stretch;
+}
+
+.stage--bare {
+  display: grid;
+  place-items: center;
+}
+
+.stage__main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .stage__grid,
+  .stage[data-idle='true'] .stage__grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .rail {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    height: auto;
+    align-self: stretch;
+  }
+  .rail__qr {
+    width: min(5.5rem, 12vh);
+  }
+  .rail__brand {
+    order: -1;
+  }
+}
+
+/* ====================================================================== */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 8px);
+  background: var(--background);
+  min-width: 0;
+  min-height: 0;
+  /* Match the results plate: same top/bottom edges in the live grid. */
+  align-self: stretch;
+  height: 100%;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.rail__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.rail__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--live);
+}
+
+.rail__dot[data-state='wait'] {
+  background: var(--chart-3);
+}
+
+.rail__dot[data-state='offline'] {
+  background: var(--destructive);
+}
+
+.rail__brandname {
+  font-family: var(--font-display);
+}
+
+.rail__join {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.rail__code {
+  margin: 0;
+  font-family: var(--font-display);
+  /* 8 glyphs + tracking must fit the rail column — never clip the join code. */
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+
+/**
+ * A QR code is a black-on-white contract with every phone camera in the room,
+ * so the plate under it stays literally white in every theme. It is a solid
+ * field with an inked edge — the one surface here that is not a token colour,
+ * and it is that way for the scanner, not for the look.
+ */
+.rail__qr {
+  width: 100%;
+  max-width: 160px;
+  aspect-ratio: 1;
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md, 4px);
+  box-sizing: border-box;
+}
+
+.rail__qr--compact {
+  max-width: 160px;
+}
+
+.rail__qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.counts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-top: auto;
+  border: 1px solid var(--rule);
+}
+
+.count {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.55rem 0.7rem;
+  min-width: 0;
+}
+
+.count + .count {
+  border-left: 1px solid var(--rule);
+}
+
+.meter {
+  display: block;
+  height: 8px;
+  border: 0;
+  border-radius: var(--radius-sm, 2px);
+  background: var(--chrome, var(--muted));
+  overflow: hidden;
+}
+
+.meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-sm, 2px);
+  background: var(--chart-1);
+}
+
+.rail__notice {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--destructive);
+}
+
+/* ====================================================================== */
+
+.head {
+  display: grid;
+  gap: calc(var(--stack-gap) * 0.65);
+}
+
+.head__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.countdown {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: clamp(1.25rem, 2.4vw, 2.125rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--live-tint-foreground);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--rule);
+  background: var(--background);
+  font-size: clamp(0.72rem, 1vw, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.chip--frozen {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+
+.prompt {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.6vw, 2.875rem);
+  line-height: 1.06;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  max-width: 28ch;
+}
+
+.word-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45em;
+  margin: 0.7em 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.word-bank li {
+  padding: 0.2em 0.7em;
+  border: 1px solid var(--rule, var(--border));
+  border-radius: 999px;
+  font-size: 0.55em;
+  font-weight: 600;
+}
+
+.stage--embedded .prompt {
+  font-size: clamp(1.35rem, 2.4vw, 2.25rem);
+}
+
+.plate {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 20px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 8px);
+  background: var(--card);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.window-meter {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-sm, 2px);
+  background: var(--chrome, var(--muted));
+  overflow: hidden;
+}
+
+.window-meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-sm, 2px);
+  background: var(--live);
+}
+
+.plate__body {
+  min-height: 0;
+  min-width: 0;
+  /* Size container: charts use 100cqmin / 100cqh — fills this cell, not the page. */
+  container-type: size;
+  display: grid;
+  overflow: hidden;
+  /* Redefine chart frame in terms of this cell. */
+  --chart-frame: min(100cqmin, 100%);
+}
+
+/* ====================================================================== */
+
+.center {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.8rem;
+  height: 100%;
+  text-align: center;
+  padding: var(--pad);
+}
+
+.center__big {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.center__sub {
+  margin: 0;
+  font-size: clamp(1rem, 1.6vw, 1.6rem);
+  color: var(--muted-foreground);
+}
+
+/* A square turning in hard quarter-steps: a spinner drawn in the same hand. */
+.center__spinner {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 3px solid var(--rule);
+  border-top-color: var(--chart-1);
+  animation: quarter-turn 1.2s steps(1, end) infinite;
+}
+
+@keyframes quarter-turn {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(90deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/**
+ * The idle screen. Its whole job is the room code and the QR: everything else
+ * on it is one line of state underneath. Nothing sits above the code.
+ */
+.idle {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  text-align: center;
+}
+
+/* One opaque plate: the ambient geometry can never collide with the content. */
+.idle__plate {
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 8px);
+  padding: 52px 80px;
+  max-width: min(92vw, 64rem);
+  text-align: center;
+}
+
+.idle__brand {
+  margin: 0;
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--muted-foreground);
+}
+
+.idle__code {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8.1vw, 6.5rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--foreground);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.idle__url {
+  margin: 0;
+  font-size: 24px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.idle__qr {
+  width: 240px;
+  aspect-ratio: 1;
+  padding: 11px;
+  background: #ffffff;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md, 4px);
+  box-sizing: border-box;
+}
+
+.idle__qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.idle__sub {
+  margin: 0;
+  font-size: clamp(1rem, 1.7vw, 1.7rem);
+  color: var(--muted-foreground);
+}
+
+.idle__state {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.idle__count {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* ====================================================================== */
+
+.viz {
+  margin: 0;
+  display: grid;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.viz__body {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* Chart roots sit in the body cell; they must not force height:100% of the plate. */
+.viz__body > * {
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+}
+
+/**
+ * STAGE-06. Small, quiet, and always present: the same numbers the chart draws,
+ * in words. It is not visually hidden — a projector audience that cannot read a
+ * colour still gets the reading.
+ */
+.summary {
+  font-size: 19px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+  border-top: 1px solid var(--hairline, var(--border));
+  padding-top: 14px;
+  max-height: none;
+  overflow: visible;
+}
+
+.plate .or-chart-viz figcaption {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline, var(--border));
+  font-size: 19px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+
+.rail__counts {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.rail__timer {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+
+.rail__num {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* ------------------------------------------- peer instruction discuss beat */
+
+.discuss {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.6rem, 1.5vh, 1.2rem);
+  align-items: flex-start;
+  max-width: 36rem;
+}
+
+.discuss__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  line-height: 1.1;
+}
+
+.discuss__body {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.2vw, 1.8rem);
+  line-height: 1.35;
+  color: var(--foreground);
+}
+
+.discuss__meta {
+  margin: 0;
+  font-size: clamp(0.85rem, 1.2vw, 1.15rem);
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 52rem) {
+  }
+
+/* ----------------------------------------------------------------- gauge */
+
+/* ------------------------------------------------------------ text list */
+
+/* -------------------------------------------------------- pending counter */
+
+.pending {
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  height: 100%;
+  min-height: 0;
+}
+
+.pending--bump .pending__value {
+  animation: pending-value-tick 420ms cubic-bezier(0.22, 0.72, 0.24, 1);
+}
+
+@keyframes pending-value-tick {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.pending__value {
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 14vw, 14rem);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pending__label {
+  font-size: clamp(0.9rem, 1.5vw, 1.6rem);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+/* ====================================================================== */
+
+.moment {
+  /* Absolute within .stage so an embedded console does not cover the host chrome. */
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* A flat plate, not a vignette: the beat dims the room by covering it. */
+.moment__wash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  background: var(--background);
+}
+
+/**
+ * The wipe. One solid bar of colour crossing the surface edge-first — the beat
+ * is the hard edge travelling, so there is nothing to soften.
+ */
+.moment__sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 34%;
+  opacity: 0;
+  visibility: hidden;
+  background: var(--chart-1);
+  border-right: 0.5rem solid var(--chart-4);
+}
+
+.moment__title {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  visibility: hidden;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 9vw, 9rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+  text-align: center;
+}
+
+.moment__spark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* The burst is squares, in whole chart colours, thrown and cut. */
+.moment__piece {
+  grid-area: 1 / 1;
+  width: clamp(0.6rem, 1.4vw, 1.3rem);
+  height: clamp(0.6rem, 1.4vw, 1.3rem);
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* ====================================================================== */
+/* Projector scale for @openroom/charts vocabulary                         */
+/* Base look lives in @openroom/charts/charts.css; the plate only sizes it */
+/* up so labels and numbers read from the back row.                        */
+/* ====================================================================== */
+
+.plate .or-chart-legend .barrow {
+  min-height: 0;
+}
+
+.plate .or-chart-viz__body {
+  container-type: size;
+}
+
+.plate .or-bars-chart {
+  /* The body excludes the prompt and spoken-results caption. Match each label
+     to its bar, with room for several lines and the correct-answer marker. */
+  --or-row: calc(100cqh / var(--or-rows, 1));
+  grid-template-columns: minmax(0, 50%) minmax(0, 1fr);
+}
+
+.plate .barrow__label {
+  font-size: min(3.2cqw, calc(var(--or-row, 5.5rem) * 0.26));
+}
+
+.plate .or-bar-value {
+  font-size: clamp(0.9rem, 1.3vw, 1.5rem);
+}
+
+.plate .or-correct-note {
+  font-size: clamp(0.95rem, 1.6vw, 1.7rem);
+}
+
+.plate .shiftrow__label,
+.plate .shiftrow__nums {
+  font-size: clamp(1rem, 1.8vw, 1.7rem);
+}
+
+.plate .shiftnote {
+  font-size: clamp(0.8rem, 1.1vw, 1.1rem);
+}
+
+.plate .card {
+  font-size: clamp(0.9rem, 1.4vw, 1.5rem);
+  line-height: 1.3;
+}
+
+.plate .or-peer-chart {
+  --or-row: clamp(4.25rem, 20cqh, 8rem);
+}
+
+.plate .or-rank-chart {
+  --or-row: clamp(3.5rem, 16cqh, 7rem);
+}
+
+.plate .or-chart-legend--wrap {
+  gap: 0.75rem 2.5rem;
+}
+
+.plate .or-scale-ends {
+  font-size: clamp(1rem, 1.6vw, 1.6rem);
+}
+
+.plate .or-mean-chip {
+  font-size: clamp(1rem, 1.5vw, 1.5rem);
+}
+
+.plate .or-emoji-item {
+  font-size: clamp(2rem, 6cqh, 3.75rem);
+  width: 1.7em;
+  height: 1.7em;
+}
+
+
+/* ---------------------------------------------------------------- tutor ink */
+
+/*
+ * The words under the pointer while a shape tool is live — what a click is
+ * about to mark. A thin box and nothing else: the plate is the content, and a
+ * hover state must not repaint it. Colour comes from the active ink.
+ */
+.ink-lock {
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.45;
+  pointer-events: none;
+  /* A hair of room so the box does not sit on the letters. */
+  margin: -0.08em -0.12em;
+  padding: 0.08em 0.12em;
+}
+
+/* A circle names a word, so the words have to be selectable one by one. */
+.ink-overlay {
+  touch-action: none;
+}
+
+/* --------------------------------------------------------- meaning breakout */
+
+/*
+ * The pushed meaning card: one card over the slide, on a scrim. It replaces
+ * the old right-edge forms panel and the small gloss over the word — a word
+ * is either being looked at or it is not. It scrolls inside itself; a table
+ * that would overflow is clipped by the card, never by the slide.
+ */
+.meaning-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+.meaning-layer__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim, rgb(32 31 30 / 38%));
+}
+
+.meaning-card {
+  position: absolute;
+  inset: 6% 9%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 8px);
+  box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
+  font-size: clamp(0.8rem, 1.5vw, 1.3rem);
+  line-height: 1.35;
+}
+
+.meaning-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6em;
+  padding: 1em 1.3em 0.7em;
+  border-bottom: 1px solid var(--border);
+}
+
+.meaning-card__word {
+  font-size: 2em;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.meaning-card__from {
+  color: var(--muted-foreground);
+}
+
+.meaning-card__facts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4em;
+}
+
+.meaning-card__pos {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.meaning-card__label {
+  padding: 0.05em 0.5em;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-radius: 999px;
+  font-size: 0.8em;
+}
+
+.meaning-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9em;
+  overflow: auto;
+  padding: 0.9em 1.3em;
+}
+
+.meaning-card__meaning {
+  margin: 0;
+  font-size: 1.6em;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.meaning-card__senses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin: 0;
+  padding-left: 1.3em;
+  font-size: 1.15em;
+}
+
+.meaning-card__example {
+  display: block;
+  color: var(--muted-foreground);
+  font-style: italic;
+  font-size: 0.85em;
+}
+
+.meaning-card__foot {
+  padding: 0.6em 1.3em;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 0.8em;
+}
+
+/* The card's sections sit flush; DictionarySection brings its own gap. */
+.meaning-card__body .dict-section {
+  margin-top: 0;
+}
+
+.dict__lemma {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  font-size: 1.35em;
+  font-weight: 600;
+}
+
+.dict-head {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35em;
+  font-size: 0.62em;
+  font-weight: 400;
+}
+
+.dict-head__pos {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.dict-head__label,
+.dict-head__from {
+  padding: 0.05em 0.4em;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border-radius: 999px;
+}
+
+.dict__senses {
+  margin: 0.6em 0 0;
+  padding-left: 1.2em;
+  color: var(--muted-foreground);
+}
+
+.dict-section {
+  margin-top: 1em;
+}
+
+.dict-section__label {
+  margin-bottom: 0.3em;
+  color: var(--muted-foreground);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Wide tables scroll in their own box; the panel itself never scrolls sideways. */
+.dict-scroll {
+  overflow-x: auto;
+}
+
+.dict-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.dict-table th,
+.dict-table td {
+  padding: 0.18em 0.5em;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dict-table thead th,
+.dict-table tbody th {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+/* The word the tutor clicked, so a class can find it in a table of sixty. */
+.dict-cell--on,
+.dict-chip--on {
+  background: var(--live-tint, var(--accent));
+  color: var(--live-tint-foreground, var(--accent-foreground));
+  font-weight: 600;
+}
+
+.dict-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+}
+
+.dict-chip {
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.dict__source {
+  margin-top: 1em;
+  color: var(--muted-foreground);
+  font-size: 0.8em;
+}
+
+/* Live results inherit the same master and type scale as authored content. */
+.slide-surface > .plate { padding: var(--slide-safe-area); background: transparent; border: 0; border-radius: 0; box-shadow: none; gap: 2cqw; }
+.slide-surface .prompt { font-size: 4cqw; max-width: none; line-height: 1.15; }
+.slide-surface .plate__body { background: transparent; }

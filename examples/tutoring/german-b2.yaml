@@ -1,0 +1,237 @@
+version: 1
+meta:
+  title: Fortbildung, die im Alltag hilft
+  description: Ein Angebot kritisch prüfen, Einwände aufgreifen und eine Empfehlung formulieren.
+  locale: de
+  language: German
+  level: B2
+  durationMinutes: 50
+  objectives:
+    - Ein Beispiel von einer belastbaren Begründung unterscheiden.
+    - Einen Einwand fair wiedergeben und beantworten.
+    - Eine Empfehlung mit Bedingungen und einem überprüfbaren Ziel formulieren.
+design:
+  aspectRatio: 16:9
+  theme:
+    family: clean
+    colors:
+      background: "#FFFFFF"
+      foreground: "#172B3A"
+      muted: "#526473"
+      accent: "#1765B0"
+      surface: "#F0F5FA"
+      border: "#CAD8E4"
+      charts:
+        - "#1765B0"
+        - "#14786F"
+        - "#8B4BA1"
+        - "#A65014"
+        - "#B13A55"
+        - "#506A28"
+    fonts:
+      heading: sans
+      body: sans
+  defaultMasterId: standard
+  masters:
+    - id: standard
+      name: Standard
+      safeArea: 8
+      decoration: rule
+      footer: Deutsch · B2
+    - id: compact
+      name: More room for content
+      safeArea: 6
+      decoration: rule
+      footer: Deutsch · B2
+    - id: opening
+      name: Opening
+      safeArea: 8
+      decoration: none
+      background:
+        kind: gradient
+        from: "#FFFFFF"
+        to: "#F0F5FA"
+        angle: 120
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+steps:
+  - id: welcome
+    kind: title
+    title: Fortbildung, die im Alltag hilft
+    body: Ihr Team entscheidet, wie es mit einem neuen Werkzeug arbeiten lernen will.
+    tutorNotes: Fictional procurement discussion with no claims about a specific vendor. Learners can
+      role-play an unfamiliar job; professional expertise is not required. 3 minutes.
+    design:
+      masterId: opening
+  - id: warmup
+    kind: activity
+    title: Wann hilft eine Fortbildung?
+    instructions:
+      - Beschreiben Sie ein hilfreiches Lernangebot, real oder erfunden.
+      - Was konnten die Teilnehmenden danach besser tun?
+    durationSec: 150
+    tutorNotes: Ask for observable behavior rather than a satisfaction score. Keep the example brief. 4
+      minutes.
+  - id: proposal
+    kind: statement
+    title: Zwei Angebote
+    body: Das Team soll ein neues Werkzeug nutzen. Angebot A umfasst einen Seminartag mit Übungen.
+      Angebot B verteilt drei kurze Workshops auf vier Wochen; dazwischen bearbeiten die
+      Teilnehmenden eigene Fälle. Beide Angebote kosten im Szenario gleich viel. Über die
+      tatsächliche Wirkung liegen noch keine Daten vor.
+    tutorNotes: Read for format, transfer opportunity and missing evidence. Equal cost is a scenario
+      assumption, not a price claim. 4 minutes.
+  - id: positions
+    kind: cards
+    title: Zwei Stimmen aus dem Team
+    items:
+      - label: Mira
+        text: Ein Seminartag lässt sich leichter einplanen. Allerdings bleibt danach oft wenig Zeit zum
+          Ausprobieren.
+      - label: Jonas
+        text: Eigene Fälle wären hilfreich. Drei Termine funktionieren aber nur, wenn wir zwischen den
+          Workshops Zeit zum Üben bekommen.
+    tutorNotes: Ask each learner to paraphrase a position before expressing agreement. Neither speaker
+      presents evidence of outcomes. 4 minutes.
+  - id: understand
+    kind: interaction
+    interactionId: evidence
+    tutorNotes: The correct answer identifies missing evidence without declaring either format useless.
+      Ask what a small trial could reveal. 3 minutes.
+  - id: language
+    kind: cards
+    title: Präzise abwägen
+    items:
+      - label: Einräumen
+        text: Zwar ist ein einzelner Termin einfacher, doch…
+      - label: Eine Bedingung nennen
+        text: Das wäre sinnvoll, sofern…
+      - label: Eine Annahme markieren
+        text: Wir gehen bisher davon aus, dass…
+    tutorNotes: Practise one sentence with the verb at the end of the sofern clause. Ask how the wording
+      changes the strength of a claim. 5 minutes.
+  - id: practice
+    kind: interaction
+    interactionId: condition
+    tutorNotes: Explain why a condition is different from a guarantee or a claim about everyone. Accept
+      other well-formed formulations in open discussion. 3 minutes.
+  - id: listen
+    kind: activity
+    title: Ein Einwand aus der Leitung
+    instructions:
+      - Welche Sorge wird genannt?
+      - Geben Sie den Einwand fair wieder, bevor Sie antworten.
+    durationSec: 120
+    tutorNotes: "Read: Mir geht es nicht darum, Weiterbildung zu verhindern. Ich muss aber
+      sicherstellen, dass die laufende Arbeit erledigt wird. Wenn zwischen den Workshops zusätzliche
+      Aufgaben anfallen, brauchen wir eine klare Absprache darüber, was dafür wegfällt. Ask for a
+      paraphrase that preserves this concern. 4 minutes."
+  - id: roles
+    kind: cards
+    title: Drei Perspektiven
+    design:
+      masterId: compact
+    items:
+      - label: Team
+        text: Sie möchten mit echten Fällen üben und bei Schwierigkeiten Rückmeldung erhalten.
+      - label: Leitung
+        text: Sie möchten verlässliche Abläufe und eine überschaubare Belastung.
+      - label: Beobachtung
+        text: Notieren Sie eine faire Zusammenfassung, eine unbelegte Annahme und eine konkrete Bedingung.
+    tutorNotes: With two people omit the observer; in one-to-one teaching alternate team and leadership.
+      No role has a predetermined correct position.
+  - id: recommend
+    kind: activity
+    title: Entwickeln Sie eine Empfehlung
+    design:
+      masterId: compact
+    instructions:
+      - Vergleichen Sie die Angebote anhand von zwei Kriterien.
+      - Greifen Sie den Einwand zur Arbeitsbelastung auf.
+      - Schlagen Sie einen begrenzten Versuch mit einer Bedingung und einem überprüfbaren Ziel vor.
+    durationSec: 420
+    tutorNotes: A valid goal describes a task people should be able to complete, not an invented
+      percentage improvement. Give feedback on both reasoning and clause structure. 9 minutes.
+  - id: summary
+    kind: statement
+    title: An die Leitung
+    body: "Fassen Sie Ihre Empfehlung in drei Sätzen zusammen: Entscheidung, wichtigste Bedingung,
+      Prüfung des Nutzens."
+    tutorNotes: Check that the recommendation names what is still uncertain. Replace broad claims such
+      as immer besser with scoped, justified wording. 4 minutes.
+  - id: recap
+    kind: debrief
+    title: Zum Schluss
+    prompts:
+      - Welche Annahme würden Sie zuerst prüfen?
+      - Wie hat sich Ihre Empfehlung verändert?
+      - Welche Formulierung möchten Sie beim nächsten Mal gezielter verwenden?
+    tutorNotes: Ask for one revised sentence that acknowledges uncertainty without becoming vague. Save
+      a chosen correction for the next deck. 3 minutes.
+interactions:
+  - id: evidence
+    type: choice
+    prompt: Was lässt sich aus der Beschreibung der Angebote ableiten?
+    options:
+      - id: o1
+        label: Angebot B wirkt nachweislich besser.
+      - id: o2
+        label: Die Formate unterscheiden sich; ihre Wirkung ist noch nicht belegt.
+        correct: true
+      - id: o3
+        label: Gleiche Kosten bedeuten gleiche Wirkung.
+    notes: A plausible mechanism is not evidence of actual effects.
+  - id: condition
+    type: choice
+    prompt: Welche Formulierung nennt eine Bedingung für die Empfehlung?
+    options:
+      - id: o1
+        label: Die Workshops sind immer für alle geeignet.
+      - id: o2
+        label: Wir empfehlen die Workshops, sofern Zeit für die Praxis eingeplant wird.
+        correct: true
+      - id: o3
+        label: Die Workshops garantieren bessere Ergebnisse.
+    notes: sofern introduces the condition; no guarantee is justified by the scenario.
+homework:
+  tasks:
+    - id: read
+      kind: reading
+      body: >-
+        Zwei Angebote
+
+        Das Team soll ein neues Werkzeug nutzen. Angebot A umfasst einen Seminartag mit Übungen.
+        Angebot B verteilt drei kurze Workshops auf vier Wochen; dazwischen bearbeiten die
+        Teilnehmenden eigene Fälle. Beide Angebote kosten im Szenario gleich viel. Über die
+        tatsächliche Wirkung liegen noch keine Daten vor.
+
+
+        Zwei Stimmen aus dem Team
+
+        Mira : Ein Seminartag lässt sich leichter einplanen. Allerdings bleibt danach oft wenig Zeit
+        zum Ausprobieren.
+
+        Jonas : Eigene Fälle wären hilfreich. Drei Termine funktionieren aber nur, wenn wir zwischen
+        den Workshops Zeit zum Üben bekommen.
+
+
+        Lesen Sie die Angebote und die beiden Stimmen erneut. Trennen Sie Angaben aus dem Szenario,
+        Vermutungen und offene Fragen.
+    - id: write
+      kind: writing
+      prompt: Schreiben Sie eine Empfehlung an die Leitung (180 bis 220 Wörter).
+      guidance: Vergleichen Sie zwei Kriterien, behandeln Sie einen Einwand fair und nennen Sie eine
+        Bedingung sowie ein überprüfbares Ziel. Erfinden Sie keine Wirkungsdaten.
+    - id: speak
+      kind: voice
+      prompt: Nehmen Sie eine begründete Empfehlung auf (1 bis 2 Minuten).
+      guidance: Fassen Sie den wichtigsten Einwand zusammen. Antworten Sie darauf und benennen Sie eine
+        Grenze Ihrer Empfehlung.
+    - id: practise
+      kind: quiz
+      interactionId: condition
+recap:
+  title: Für das nächste Mal
+  body: Greifen Sie eine ausgewählte Formulierung aus dem Feedback auf und verwenden Sie sie in einer
+    neuen Situation.

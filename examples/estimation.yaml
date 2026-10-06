@@ -1,0 +1,103 @@
+version: 1
+meta:
+  title: Fermi estimation warm-up
+  description: >-
+    Four order-of-magnitude estimation questions. Everyone commits to a number
+    before any discussion, then the class distribution is revealed against the
+    real value. The session is that structured guessing beats refusing to guess.
+  locale: en
+  source: Classic Fermi problem set, adapted for a 30-minute slot
+defaults:
+  identityMode: anonymous
+  resultVisibility: hidden-until-close
+  allowAnswerChange: true
+
+interactions:
+  - id: ground-rules
+    type: choice
+    prompt: When you have no idea, what is the right move?
+    display: bars
+    resultVisibility: live
+    options:
+      - id: refuse
+        label: Say "I don't know" and wait
+        misconception: Treats estimation as recall rather than reasoning
+      - id: decompose
+        label: Break it into parts you can each roughly bound
+        correct: true
+      - id: google
+        label: Look it up
+        misconception: Fine in life, useless for building estimation intuition
+    pedagogy:
+      objective: Set the norm for the session before the first hard number.
+      durationSec: 60
+
+  - id: piano-tuners
+    type: numeric
+    prompt: How many piano tuners work in a city of one million people?
+    display: histogram
+    unit: tuners
+    correct: 125
+    tolerance: 100
+    allowDontKnow: true
+    pedagogy:
+      objective: The canonical Fermi problem — decomposition over recall.
+      explanation: >-
+        One million people, roughly one piano per 100 people gives 10,000 pianos.
+        Tuned about once a year, at four tunings a day for 250 working days, one
+        tuner handles 1,000 pianos. That lands near 10 to 100 full-time tuners;
+        surveys of real cities land in the same band.
+      durationSec: 240
+    notes: Do the decomposition on the board only AFTER the vote closes.
+
+  - id: earth-circumference
+    type: numeric
+    prompt: What is the circumference of the Earth around the equator, in kilometres?
+    display: histogram
+    unit: km
+    correct: 40075
+    tolerance: 4000
+    allowDontKnow: true
+    pedagogy:
+      objective: Show that a known anchor (a flight time, a time zone) beats a blank.
+      explanation: >-
+        40,075 km. If you know a jet cruises near 900 km/h and circling the globe
+        would take about 45 hours of flying, you get there without memorising it.
+      durationSec: 150
+
+  - id: breaths-per-day
+    type: numeric
+    prompt: How many breaths does an adult take in a single day?
+    display: histogram
+    unit: breaths
+    correct: 20000
+    tolerance: 6000
+    allowDontKnow: true
+    pedagogy:
+      objective: Practise unit chaining — per minute to per hour to per day.
+      explanation: >-
+        About 14 breaths a minute times 60 minutes times 24 hours is roughly
+        20,000. The chain matters more than the answer.
+      durationSec: 120
+
+  - id: estimation-confidence
+    type: scale
+    prompt: How comfortable are you now making a number up out loud?
+    display: dots
+    min: 1
+    max: 7
+    minLabel: Still hate it
+    maxLabel: Bring it on
+    resultVisibility: live
+    pedagogy:
+      objective: Measure the attitude shift, which is the actual goal of the session.
+      durationSec: 45
+
+  - id: estimation-method
+    type: text
+    prompt: Describe the decomposition you used for the piano tuner question.
+    display: list
+    maxLength: 300
+    pedagogy:
+      objective: Compare different valid decompositions that reached the same band.
+      durationSec: 180

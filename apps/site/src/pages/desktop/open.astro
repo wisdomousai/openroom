@@ -1,0 +1,59 @@
+---
+const title = 'Open deck in OpenRoom Desktop';
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>{title}</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <style>
+    :root { font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #242424; background: #faf9f8; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 1.5rem; }
+    main { width: min(100%, 32rem); padding: clamp(1.5rem, 5vw, 2.5rem); border: 1px solid #d2d0ce; border-radius: 8px; background: #fff; }
+    .brand { display: flex; align-items: center; gap: 0.55rem; margin: 0 0 2rem; font-weight: 650; }
+    h1 { margin: 0; font-size: clamp(1.6rem, 6vw, 2.35rem); line-height: 1.08; letter-spacing: -0.025em; }
+    p { color: #616161; line-height: 1.55; }
+    .actions { display: grid; gap: 0.65rem; margin-top: 1.5rem; }
+    a { color: #0f6cbd; }
+    .button { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; padding: 0.65rem 0.9rem; border: 1px solid #0f6cbd; border-radius: 4px; background: #0f6cbd; color: #fff; font-weight: 650; text-decoration: none; }
+    .button.secondary { background: #fff; color: #0f6cbd; }
+    #error { color: #a4262c; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="brand"><img src="/favicon.svg" alt="" width="22" height="22" /> OpenRoom</p>
+    <h1>Open this deck in Desktop</h1>
+    <p>OpenRoom Desktop uses your existing Desktop sign-in. This link does not pass an MCP token or create a new credential.</p>
+    <p id="error" hidden>This deck link is incomplete. Return to the preview.</p>
+    <div class="actions" id="actions" hidden>
+      <a class="button" id="desktop-link" href="#">Open in Desktop</a>
+      <a class="button secondary" id="browser-link" href="#">Open deck in browser</a>
+    </div>
+  </main>
+  <script>
+    const query = new URLSearchParams(window.location.search);
+    const deckId = query.get('deckId');
+    const error = document.getElementById('error');
+    const actions = document.getElementById('actions');
+    const desktop = document.getElementById('desktop-link');
+    const browser = document.getElementById('browser-link');
+    if (deckId === null || deckId === '') {
+      error.hidden = false;
+    } else {
+      const custom = new URL('openroom://deck/open');
+      custom.searchParams.set('origin', `${window.location.origin}/`);
+      custom.searchParams.set('deckId', deckId);
+      desktop.href = custom.toString();
+      browser.href = `/host/#/decks/${encodeURIComponent(deckId)}/edit`;
+      actions.hidden = false;
+      window.location.href = custom.toString();
+    }
+  </script>
+</body>
+</html>

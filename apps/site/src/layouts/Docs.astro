@@ -1,0 +1,72 @@
+---
+import Base from './Base.astro';
+import { manual, docUrl } from '../lib/docs';
+import '../styles/docs.css';
+interface Props {
+  title: string;
+  description: string;
+  id?: string;
+  section?: string;
+  headings?: { depth: number; slug: string; text: string }[];
+  related?: string[];
+  path?: string;
+}
+const { title, description, id, section, headings = [], related = [], path } = Astro.props;
+const pages = await manual();
+const groups = [...new Set(pages.map((page) => page.data.section))];
+const current = pages.findIndex((page) => page.id === id);
+const previous = current > 0 ? pages[current - 1] : undefined;
+const next = current >= 0 ? pages[current + 1] : undefined;
+const links = related.map((target) => {
+  const entry = pages.find((page) => page.id === target);
+  if (!entry) throw new Error(`Unknown related documentation page: ${target}`);
+  return entry;
+});
+---
+<Base title={`${title} · OpenRoom manual`} description={description} path={path ?? (id ? docUrl(id) : '/docs/')}>
+  <a class="docs-skip" href="#manual-content">Skip to content</a>
+  <div class="manual-shell">
+    <aside class="manual-sidebar">
+      <a class="manual-home" href="/docs/">OpenRoom manual</a>
+      <form class="manual-search" role="search" action="/docs/search/">
+        <label for="manual-query">Search the manual</label>
+        <div><input id="manual-query" name="q" type="search" placeholder="Search instructions…" required /><button type="submit">Search</button></div>
+      </form>
+      <details class="manual-navigation" open>
+        <summary>Browse topics</summary>
+        <nav aria-label="Manual chapters">
+          {groups.map((group) => <div class="manual-group">
+            <p>{group}</p>
+            <ul>{pages.filter((page) => page.data.section === group).map((page) => <li><a href={docUrl(page.id)} aria-current={id === page.id ? 'page' : undefined}>{page.data.title}</a></li>)}</ul>
+          </div>)}
+        </nav>
+      </details>
+    </aside>
+    <main id="manual-content" class="manual-content" tabindex="-1">
+      {id && <nav class="manual-breadcrumb" aria-label="Breadcrumb"><a href="/docs/">Manual</a><span aria-hidden="true"> / </span><span>{section}</span></nav>}
+      <header class="manual-heading"><h1>{title}</h1><p>{description}</p></header>
+      {headings.some((heading) => heading.depth === 2) && <nav class="manual-contents" aria-label="On this page"><p>On this page</p><ul>{headings.filter((heading) => heading.depth === 2).map((heading) => <li><a href={`#${heading.slug}`}>{heading.text}</a></li>)}</ul></nav>}
+      <article class="manual-prose"><slot /></article>
+      {links.length > 0 && <aside class="manual-related" aria-label="Related instructions"><h2>Related instructions</h2><ul>{links.map((page) => <li><a href={docUrl(page.id)}>{page.data.title}</a></li>)}</ul></aside>}
+      {(previous || next) && <nav class="manual-pagination" aria-label="Chapter navigation">
+        <div>{previous && <a href={docUrl(previous.id)}><span>Previous</span>{previous.data.title}</a>}</div>
+        <div>{next && <a href={docUrl(next.id)}><span>Next</span>{next.data.title}</a>}</div>
+      </nav>}
+    </main>
+  </div>
+</Base>
+<script>
+  const navigation = document.querySelector<HTMLDetailsElement>('.manual-navigation');
+  const mobile = window.matchMedia('(max-width: 760px)');
+  if (navigation && mobile.matches) navigation.open = false;
+  mobile.addEventListener('change', (event) => { if (navigation) navigation.open = !event.matches; });
+  // Make long reference tables independently keyboard-scrollable.
+  document.querySelectorAll<HTMLTableElement>('.manual-prose table').forEach((table) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'manual-table'; wrapper.tabIndex = 0;
+    wrapper.setAttribute('role', 'region');
+    const heading = table.closest('article')?.querySelector('h2');
+    wrapper.setAttribute('aria-label', `${table.querySelector('th')?.textContent || heading?.textContent || 'Reference'} table`);
+    table.before(wrapper); wrapper.append(table);
+  });
+</script>

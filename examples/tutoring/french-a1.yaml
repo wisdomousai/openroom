@@ -1,0 +1,211 @@
+version: 1
+meta:
+  title: Au café
+  description: Commander, demander le prix et terminer un échange poliment.
+  locale: fr
+  language: French
+  level: A1
+  durationMinutes: 40
+  objectives:
+    - Commander une boisson avec « Je voudrais… ».
+    - Demander et comprendre un prix simple.
+    - Remercier et prendre congé.
+design:
+  aspectRatio: 16:9
+  theme:
+    family: paper
+    colors:
+      background: "#F8F3E9"
+      foreground: "#302C28"
+      muted: "#655D52"
+      accent: "#9D3E28"
+      surface: "#EEE5D5"
+      border: "#CFC2AD"
+      charts:
+        - "#9D3E28"
+        - "#47624C"
+        - "#4B6385"
+        - "#86552C"
+        - "#795173"
+        - "#64602A"
+    fonts:
+      heading: serif
+      body: sans
+  defaultMasterId: standard
+  masters:
+    - id: standard
+      name: Standard
+      safeArea: 8
+      decoration: rule
+      footer: Français · A1
+    - id: opening
+      name: Opening
+      safeArea: 8
+      decoration: none
+      background:
+        kind: gradient
+        from: "#F8F3E9"
+        to: "#EEE5D5"
+        angle: 120
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+steps:
+  - id: welcome
+    kind: title
+    title: Au café
+    body: Vous commandez une boisson et demandez le prix.
+    tutorNotes: Start with what the learner already orders. Model the final exchange once without asking
+      them to repeat every word. Allow 3 minutes.
+    design:
+      masterId: opening
+  - id: warmup
+    kind: activity
+    title: Votre boisson
+    instructions:
+      - Dites une boisson que vous connaissez en français.
+      - Écoutez votre partenaire. Choisit-il la même boisson ?
+    durationSec: 120
+    tutorNotes: "Accept a single word. Supply an article in your reply: un café, un thé, une eau. Do not
+      interrupt for pronunciation yet."
+  - id: menu
+    kind: cards
+    title: La carte
+    items:
+      - label: Un café
+        text: 2 €
+      - label: Un thé
+        text: 2,50 €
+      - label: Une eau
+        text: 1,50 €
+    tutorNotes: Fictional café menu. Say each price and have the learner point before they say it.
+      Contrast deux euros and deux euros cinquante. 4 minutes.
+  - id: phrases
+    kind: cards
+    title: Trois phrases utiles
+    items:
+      - label: Commander
+        text: Je voudrais un thé, s’il vous plaît.
+      - label: Demander le prix
+        text: Ça coûte combien ?
+      - label: Terminer
+        text: Merci, bonne journée !
+    tutorNotes: Model voudrais as a useful chunk. At A1 do not require a conditional conjugation lesson.
+      Reveal, repeat, then cover the model. 4 minutes.
+  - id: listen
+    kind: activity
+    title: Écoutez au café
+    instructions:
+      - "Écoutez sans lire : quelle boisson la cliente commande-t-elle ?"
+      - "Écoutez encore : combien paie-t-elle ?"
+    durationSec: 90
+    tutorNotes: "Read in the room, twice, at a natural but clear pace. Script: Bonjour ! — Bonjour, je
+      voudrais un thé, s’il vous plaît. — Bien sûr. — Ça coûte combien ? — Deux euros cinquante. —
+      Merci, bonne journée ! Keep the transcript closed until both listening attempts."
+  - id: transcript
+    kind: statement
+    title: Le dialogue
+    body: |-
+      — Bonjour !
+      — Bonjour, je voudrais un thé, s’il vous plaît.
+      — Ça coûte combien ?
+      — Deux euros cinquante.
+      — Merci, bonne journée !
+    tutorNotes: Open after listening. Read with the learner, then swap roles. Accept polite equivalent
+      requests.
+    breakoutOf:
+      stepId: listen
+      afterKey: header
+  - id: understand
+    kind: interaction
+    interactionId: price
+    tutorNotes: Collect an answer before revealing. Ask the learner to say the whole price. If needed,
+      return to the menu. 3 minutes.
+  - id: form
+    kind: interaction
+    interactionId: request
+    tutorNotes: Let the learner complete both gaps, then substitute café. Explain only that café/thé use
+      un and eau uses une. 4 minutes.
+  - id: roles
+    kind: cards
+    title: Vous êtes au café
+    items:
+      - label: Client ou cliente
+        text: Choisissez une boisson. Demandez le prix.
+      - label: Au comptoir
+        text: Écoutez la commande. Donnez le prix.
+    tutorNotes: For one-to-one teaching, play the server first. With a pair, each learner takes both
+      roles. The menu remains available.
+  - id: roleplay
+    kind: activity
+    title: Passez votre commande
+    instructions:
+      - Saluez, commandez et demandez le prix.
+      - Répondez avec la carte.
+      - Changez de rôle et de boisson.
+    durationSec: 240
+    tutorNotes: Listen for a complete exchange, not accent imitation. Note one useful correction
+      privately; give it after both turns. 6 minutes including feedback.
+  - id: transfer
+    kind: activity
+    title: Sans le modèle
+    instructions:
+      - Fermez les phrases utiles.
+      - Commandez pour vous et pour une autre personne.
+      - Terminez l’échange poliment.
+    durationSec: 120
+    tutorNotes: "Offer a single drink for learners who need support. Extension: ask for two cafés.
+      Reopen the phrases only when requested."
+  - id: recap
+    kind: debrief
+    title: À retenir
+    prompts:
+      - Quelle phrase pouvez-vous dire sans lire ?
+      - Commandez maintenant votre boisson préférée.
+    tutorNotes: Check the actual request and price question orally. Agree one phrase to reuse next
+      lesson; publish homework from Notes. 3 minutes.
+interactions:
+  - id: price
+    type: choice
+    prompt: Dans le dialogue, combien coûte le thé ?
+    options:
+      - id: o1
+        label: 1,50 €
+      - id: o2
+        label: 2,50 €
+        correct: true
+      - id: o3
+        label: 2 €
+    notes: The spoken script gives deux euros cinquante. The other prices belong to other drinks.
+  - id: request
+    type: fill-the-gaps
+    prompt: Je {{want}} {{article}} thé, s’il vous plaît.
+    gaps:
+      - id: want
+        answers:
+          - voudrais
+      - id: article
+        answers:
+          - un
+    match:
+      locale: fr
+homework:
+  tasks:
+    - id: read
+      kind: reading
+      body: "Relisez : « Je voudrais un thé, s’il vous plaît. Ça coûte combien ? Merci, bonne journée ! »
+        Puis cachez le texte et retrouvez les trois phrases."
+    - id: write
+      kind: writing
+      prompt: Écrivez un petit dialogue au café (4 à 6 répliques).
+      guidance: Choisissez une boisson, demandez son prix et remerciez. Les prix peuvent être inventés.
+    - id: speak
+      kind: voice
+      prompt: Enregistrez votre commande au café (20 à 40 secondes).
+      guidance: Saluez, commandez et demandez le prix. Vous pouvez regarder trois mots-clés.
+    - id: practise
+      kind: quiz
+      interactionId: request
+recap:
+  title: Pour la prochaine fois
+  body: Reprenez une phrase choisie dans les retours, puis utilisez-la dans une nouvelle situation.

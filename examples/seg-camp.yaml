@@ -1,0 +1,227 @@
+version: 1
+meta:
+  title: SEG Camp — Startup Myth Busters
+  description: >-
+    A 45-minute opening session for the SEG entrepreneurship camp. Participants
+    surface what they already believe about starting a company, test five common
+    myths against the evidence, estimate a market number, and leave a one-word
+    takeaway for the closing word cloud.
+  locale: en
+  source: SEG Camp facilitator handbook, module 1
+defaults:
+  identityMode: pseudonymous
+  resultVisibility: hidden-until-close
+  allowAnswerChange: true
+
+interactions:
+  # ---- 1. Pulse check -------------------------------------------------
+  - id: pulse-check
+    type: choice
+    prompt: Where are you right now with your own venture idea?
+    display: bars
+    resultVisibility: live
+    options:
+      - id: no-idea
+        label: No idea yet — I came to find one
+      - id: fuzzy-idea
+        label: A fuzzy idea I have not tested
+      - id: talked-to-people
+        label: An idea I have talked to real people about
+      - id: building
+        label: Already building or selling something
+    pedagogy:
+      objective: Establish the range of starting points so peer groups can be mixed.
+      durationSec: 90
+    notes: >-
+      Show this live. Use the split to form teams: pair "no idea" with
+      "talked-to-people" so nobody sits alone with a blank page.
+
+  # ---- 2..6. Myth busters --------------------------------------------
+  - id: myth-great-idea
+    type: choice
+    prompt: >-
+      "The hardest part of starting a company is coming up with a great idea."
+      True or false?
+    display: bars
+    allowDontKnow: true
+    options:
+      - id: true-hardest
+        label: True — the idea is the hard part
+        misconception: Idea-first thinking; underrates execution and customer discovery
+      - id: false-execution
+        label: False — finding a customer who pays is the hard part
+        correct: true
+    pedagogy:
+      objective: Shift attention from ideation to customer discovery.
+      explanation: >-
+        Most funded startups pivoted away from their founding idea. Ideas are
+        cheap and widely shared; what is scarce is a founder who has spoken to
+        fifty customers and knows exactly which pain they will pay to remove.
+      followUp: Ask a "true" voter what would change their mind, then a "false" voter why.
+      durationSec: 180
+
+  - id: myth-funding-first
+    type: choice
+    prompt: What does a first-time founder most often need before raising outside money?
+    display: bars
+    allowDontKnow: true
+    options:
+      - id: business-plan
+        label: A polished 30-page business plan
+        misconception: Plan-as-artifact; confuses documentation with evidence
+      - id: evidence
+        label: Evidence that specific people want the thing
+        correct: true
+      - id: patent
+        label: A registered patent or trademark
+        misconception: Over-weights legal protection at pre-traction stage
+      - id: cofounder-lawyer
+        label: A lawyer on the founding team
+        misconception: Mistakes risk management for progress
+    pedagogy:
+      objective: Reframe fundraising as a consequence of traction, not a precondition.
+      explanation: >-
+        Investors price down risk. Ten paying customers, or fifty waitlist signups
+        from strangers, removes more risk than any document you can write alone.
+      durationSec: 180
+
+  - id: myth-failure-rate
+    type: choice
+    prompt: Roughly what share of new small businesses are still trading after five years?
+    display: donut
+    allowDontKnow: true
+    options:
+      - id: about-10
+        label: About 10%
+        misconception: "The 90% failure myth — repeated widely, not supported by data"
+      - id: about-30
+        label: About 30%
+        misconception: Too pessimistic; closer to the 10-year figure
+      - id: about-50
+        label: About 50%
+        correct: true
+      - id: about-80
+        label: About 80%
+        misconception: Too optimistic; survivorship bias from visible success stories
+    pedagogy:
+      objective: Replace a scary folk statistic with the real base rate.
+      explanation: >-
+        Across most OECD economies roughly half of new employer businesses survive
+        five years. "Nine out of ten startups fail" is a slogan, not a measurement,
+        and it mostly circulates about venture-backed companies.
+      durationSec: 150
+
+  - id: myth-solo-founder
+    type: choice
+    prompt: Which statement about founding teams is best supported by the evidence?
+    display: bars
+    allowDontKnow: true
+    options:
+      - id: solo-doomed
+        label: Solo founders essentially never succeed
+        misconception: Absolute claim; plenty of large solo-founded companies exist
+      - id: teams-help
+        label: Small teams tend to do better, but solo founders succeed regularly
+        correct: true
+      - id: bigger-better
+        label: The bigger the founding team the better
+        misconception: Ignores coordination cost and equity dilution
+    pedagogy:
+      objective: Give solo participants permission to start without waiting for a co-founder.
+      explanation: >-
+        Complementary two- or three-person teams show a modest advantage, mostly
+        through covering more skills and sustaining motivation. It is an advantage,
+        not a requirement — do not delay six months hunting for a co-founder.
+      durationSec: 150
+
+  - id: myth-first-customer
+    type: choice
+    prompt: >-
+      You have a prototype and no customers. What is the single best use of
+      tomorrow morning?
+    display: bars
+    allowDontKnow: true
+    options:
+      - id: polish-product
+        label: Polish the product for another week
+        misconception: Build trap; adds cost without adding information
+      - id: talk-to-five
+        label: Talk to five people in your target group and ask them to buy
+        correct: true
+      - id: build-website
+        label: Build a proper website first
+        misconception: Confuses looking legitimate with learning something
+      - id: apply-grant
+        label: Apply for a startup grant
+        misconception: Outsources validation to a committee instead of a customer
+    pedagogy:
+      objective: Convert the myth-busting into one concrete next action.
+      explanation: >-
+        Every morning spent building is a morning you learn nothing new about the
+        customer. Five real conversations beat a week of polish, every time.
+      followUp: Ask each team to name the five people they will contact.
+      durationSec: 150
+
+  # ---- 7. Discussion capture -----------------------------------------
+  - id: myth-i-held
+    type: text
+    prompt: Which of those five beliefs did you hold before today, and what changed?
+    display: list
+    maxLength: 240
+    resultVisibility: hidden-until-close
+    pedagogy:
+      objective: Make the belief revision explicit and public (anonymously).
+      durationSec: 240
+    notes: Read three aloud before moving on. Do not comment on every entry.
+
+  # ---- 8. Estimation --------------------------------------------------
+  - id: cost-of-first-customer
+    type: numeric
+    prompt: >-
+      A small local service business spends money on ads and outreach to win one
+      new customer. What do you think that costs, in euros?
+    display: histogram
+    unit: EUR
+    correct: 45
+    tolerance: 25
+    allowDontKnow: true
+    pedagogy:
+      objective: Anchor customer acquisition cost as a real, measurable number.
+      explanation: >-
+        Typical local service businesses land somewhere between 20 and 70 euros
+        per acquired customer. The point is not the exact number — it is that the
+        number exists, can be measured, and must be smaller than what the customer
+        is worth over their lifetime.
+      durationSec: 180
+
+  # ---- 9. Confidence check -------------------------------------------
+  - id: confidence-out
+    type: scale
+    prompt: How confident are you that you could find your first paying customer this month?
+    display: dots
+    min: 1
+    max: 5
+    minLabel: Not at all
+    maxLabel: Very confident
+    resultVisibility: live
+    pedagogy:
+      objective: Compare against the same question at the end of camp.
+      durationSec: 60
+
+  # ---- 10. Closing word cloud ----------------------------------------
+  - id: one-word
+    type: text
+    prompt: One word — what will you actually do differently next week?
+    display: word-cloud
+    maxLength: 40
+    resultVisibility: live
+    pedagogy:
+      objective: Close on commitment, not on content.
+      durationSec: 90
+
+  # ---- 11. Open questions --------------------------------------------
+  - id: open-questions
+    type: qna
+    prompt: What do you still want answered before the next session?
+    display: list
+    notes: Leave open across the break; vote up the top three and answer those.

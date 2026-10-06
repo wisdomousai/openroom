@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "make-this-interactive",
+      "type": "skill-md",
+      "description": "Take an OpenRoom outline that already has visuals and add or replace wired steps (questions, activities, timers) so the class can answer. Use when the tutor says the slides look fine but nothing asks the class.",
+      "url": "/.well-known/agent-skills/make-this-interactive/SKILL.md",
+      "digest": "sha256:6cea0f079efee5eb61dfc90e4ea45e3c3a9bc3c4b0a4ae7d96e5b6fde45ec466"
+    },
+    {
+      "name": "port-a-deck",
+      "type": "skill-md",
+      "description": "Turn an existing PowerPoint, PDF, or folder of slide images into an OpenRoom outline: keep the visuals as freeform elements (text, pictures, HTML/SVG, typed web pages, or typed PDFs), and upgrade checks and talk-turns into wired interactions. Use when a tutor or dean has a deck to bring into class, or says \"make these slides interactive.\"",
+      "url": "/.well-known/agent-skills/port-a-deck/SKILL.md",
+      "digest": "sha256:7feddee4f1941c11581e25b1dd446af31c7799fa28501cbbb33669fc97c19fed"
+    },
+    {
+      "name": "prepare-a-language-outline",
+      "type": "skill-md",
+      "description": "Prepare a 1:1 or small-group language tutoring outline for OpenRoom. Use when the tutor has a language, level, school material, or last session record and needs a live hour they can present like a deck.",
+      "url": "/.well-known/agent-skills/prepare-a-language-outline/SKILL.md",
+      "digest": "sha256:85dc9753e27c189f2ceaf807a1e032e86e2551cfa5133a10a57a1b728428d536"
+    },
+    {
+      "name": "prepare-a-tutoring-outline",
+      "type": "skill-md",
+      "description": "Prepare, save, revise, launch, and help deliver a tutor-led OpenRoom outline from school material available to the external agent. Use when a tutor has source documents, a person or group context, a test, or a topic to prepare at short notice.",
+      "url": "/.well-known/agent-skills/prepare-a-tutoring-outline/SKILL.md",
+      "digest": "sha256:45b32aad52d26411815e3986eb522ce975f4568eabe51547b88829794af356b0"
+    },
+    {
+      "name": "run-a-session",
+      "type": "skill-md",
+      "description": "Plan and run a live OpenRoom session: author questions in simple YAML, start a session from that outline, hand participants the join code, drive the questions live, and read aggregate results. Use when the user wants a live poll, quiz, check-in, ranking, or Q&A with an audience.",
+      "url": "/.well-known/agent-skills/run-a-session/SKILL.md",
+      "digest": "sha256:21ea862831f0bcdd122a98ec6c95e5ce40efa3de029f40597b8f02108fc37c28"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Terms of use | OpenRoom"
+  description="Terms for using the hosted OpenRoom beta at openroom.app."
+  path="/terms"
+>
+<main class="page">
+  <h1>Terms of use</h1>
+  <p class="muted">Last updated 20 August 2026. These terms apply to the hosted beta at openroom.app. “OpenRoom” is a working name.</p>
+
+  <h2>The service</h2>
+  <p>OpenRoom lets a tutor prepare decks, start live classroom or tutoring sessions, and read aggregate results. Participants join with a session code or QR code and do not create accounts. The product is a public beta: features may change, and a 500-participant load test has not been completed.</p>
+
+  <h2>Accounts</h2>
+  <p>Hosts sign in with Google. You are responsible for activity under your account, including decks you save, sessions you start, and credentials you mint (personal API tokens, learner access links, roster invites). Do not share those secrets. Permanent deletion of host records requires a confirmation in a signed-in browser and cannot be completed from MCP, CLI, or an API token alone.</p>
+
+  <h2>Acceptable use</h2>
+  <p>Use OpenRoom for teaching and live facilitated sessions. Do not use it to collect participant personal data the product is not designed to hold, to probe other people’s sessions or spaces, or to attempt to bypass join, roster, or learner-link boundaries. Do not upload material you do not have the right to use. Original school documents must stay in your own agent or computer; OpenRoom stores only the structured outline you save.</p>
+
+  <h2>Agents and plugins</h2>
+  <p>You may connect an MCP client, ChatGPT, Codex, or the OpenRoom plugin using OAuth or a personal API token. The agent acts as you. You remain responsible for what it writes to your decks and sessions. OpenRoom does not wrap, proxy, or bill the model you use to prepare an outline.</p>
+
+  <h2>No warranty</h2>
+  <p>The hosted beta is provided as is. We do not warrant uninterrupted availability, fitness for a particular institution’s procurement rules, or that live sessions will support any given audience size.</p>
+
+  <h2>Changes</h2>
+  <p>We may update these terms as the product changes. The date at the top is the current version. Continued use after an update means you accept the new terms.</p>
+
+  <h2>Contact</h2>
+  <p>See <a href="https://openroom.app/docs/">openroom.app/docs</a> and <a href="https://openroom.app/privacy">the privacy policy</a>.</p>
+</main>
+</Base>

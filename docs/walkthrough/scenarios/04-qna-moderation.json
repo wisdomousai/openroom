@@ -1,0 +1,42 @@
+{
+  "id": "qna-moderation",
+  "title": "Ask, moderate, and spotlight audience Q&A",
+  "persona": "A participant asks a question while a co-host moderates it for the projector.",
+  "purpose": "Cover the session-wide Q&A tab, moderation desk, and stage handoff.",
+  "outcome": "A participant question reaches the Q&A desk and can be spotlighted on the stage.",
+  "prerequisites": ["OpenRoom worker running locally.", "A session whose outline sets qna.enabled."],
+  "routes": ["#/sessions/:sessionCode/qna", "/join/", "/stage/"],
+  "seed": "qna-session",
+  "status": "scripted",
+  "chapters": [
+    {
+      "id": "ask",
+      "title": "Ask a question from the participant tab",
+      "narration": "The Q&A flow is session-wide rather than tied to one poll. The participant switches to the Q&A tab, submits a question, and sees it return as their own item.",
+      "actions": [
+        { "type": "gotoRuntime", "target": "participant" },
+        { "type": "clickRole", "role": "button", "name": "Join as new participant", "exact": true },
+        { "type": "clickText", "text": "Got it", "exact": true },
+        { "type": "expectRole", "role": "tab", "name": "Q&A", "exact": false },
+        { "type": "clickRole", "role": "tab", "name": "Q&A", "exact": false },
+        { "type": "fillLabel", "label": "Ask a question", "value": "What should we revisit?" },
+        { "type": "clickRole", "role": "button", "name": "Send question", "exact": true },
+        { "type": "expectText", "text": "What should we revisit?" }
+      ]
+    },
+    {
+      "id": "moderate",
+      "title": "Moderate and spotlight the question",
+      "narration": "The Q&A desk is a separate host surface. It is where a co-host can decide what reaches the session. We find the question and spotlight it for the stage.",
+      "actions": [
+        { "type": "gotoRuntime", "target": "qna" },
+        { "type": "expectRole", "role": "heading", "name": "Audience Q&A desk", "exact": true },
+        { "type": "expectText", "text": "What should we revisit?" },
+        { "type": "clickRole", "role": "button", "name": "Spotlight on stage: What should we revisit?", "exact": true },
+        { "type": "gotoRuntime", "target": "stage" },
+        { "type": "expectText", "text": "Audience Q&A" },
+        { "type": "expectText", "text": "What should we revisit?" }
+      ]
+    }
+  ]
+}

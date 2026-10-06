@@ -1,0 +1,48 @@
+:root {
+  color-scheme: light dark;
+  /* Named run families. Fixed stacks — a run's `serif` means serif everywhere. */
+  --font-serif: Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  background: var(--background, #faf9f8);
+  color: var(--foreground, #242424);
+}
+
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; min-height: 100%; }
+button { font: inherit; color: inherit; }
+
+.preview-shell { min-height: 100vh; display: flex; flex-direction: column; background: var(--background); }
+.preview-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 1rem; border-bottom: 1px solid var(--border); }
+.preview-header h1, .preview-empty h1 { margin: 0.15rem 0 0; font: 650 clamp(1rem, 3vw, 1.35rem)/1.15 var(--font-display, inherit); }
+.preview-kicker { margin: 0; color: var(--muted-foreground); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.preview-actions, .preview-controls { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+.preview-actions button, .preview-controls button { min-height: 2.25rem; padding: 0.45rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-md, 4px); background: var(--background); cursor: pointer; }
+.preview-actions button:hover, .preview-controls button:hover, .thumbnail:hover { background: var(--muted); }
+.preview-actions .primary { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.preview-workspace { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(9rem, 13rem) minmax(0, 1fr); }
+.thumbnail-rail { min-height: 0; overflow-y: auto; padding: 0.65rem; border-right: 1px solid var(--border); background: var(--chrome, var(--muted)); }
+.thumbnail { width: 100%; display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); gap: 0.4rem; align-items: start; margin: 0 0 0.35rem; padding: 0.55rem; border: 1px solid transparent; border-radius: var(--radius-md, 4px); background: transparent; text-align: left; cursor: pointer; }
+.thumbnail.active { border-color: var(--primary); background: var(--background); }
+.thumbnail[data-breakout='true'] { margin-left: 0.75rem; width: calc(100% - 0.75rem); color: var(--muted-foreground); }
+.thumbnail-number { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.preview-stage-wrap { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: clamp(0.7rem, 2vw, 1.25rem); background: var(--desk, var(--muted)); }
+.preview-stage-ratio { width: 100%; min-height: 0; flex: 1; aspect-ratio: 16 / 10; max-height: calc(100vh - 9rem); align-self: center; background: var(--background); border: 1px solid var(--border); overflow: hidden; }
+.preview-stage-ratio .stage { height: 100%; }
+.preview-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.7rem; }
+.preview-footer > div:first-child { min-width: 0; display: flex; gap: 0.6rem; align-items: baseline; overflow: hidden; }
+.preview-footer span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); }
+.preview-controls button { min-width: 2.5rem; font-size: 1.1rem; }
+.preview-empty { min-height: 16rem; display: grid; align-content: center; justify-items: center; gap: 0.7rem; padding: 2rem; text-align: center; }
+.preview-empty p { margin: 0; color: var(--muted-foreground); }
+
+@media (max-width: 620px) {
+  .preview-header { align-items: flex-start; }
+  .preview-actions { justify-content: flex-end; }
+  .preview-actions button:not(.primary) { display: none; }
+  .preview-workspace { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .thumbnail-rail { display: flex; gap: 0.35rem; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  .thumbnail { width: 9rem; flex: 0 0 9rem; margin: 0; }
+  .thumbnail[data-breakout='true'] { margin-left: 0; width: 9rem; }
+  .preview-footer > div:first-child span:last-child { display: none; }
+}

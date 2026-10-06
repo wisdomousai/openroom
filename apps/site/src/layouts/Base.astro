@@ -1,0 +1,92 @@
+---
+/**
+ * Base layout for the OpenRoom marketing/docs pages.
+ * Styling is the shared stylesheet (public/site.css). The landing page adds
+ * landing.css, painted with the app's default theme tokens (three surfaces,
+ * action blue + live orange, two-shadow allowance).
+ *
+ * One small progressive-enhancement script (`/webmcp.js`) registers WebMCP
+ * tools for browser agents when `navigator.modelContext` / `document.modelContext`
+ * is available; browsers without WebMCP no-op.
+ */
+interface Props {
+  title: string;
+  description: string;
+  /** Path relative to site root, e.g. "/". Used for canonical + OG URL. */
+  path: string;
+  /** JSON-LD graph objects, serialized verbatim into a script tag. */
+  jsonLd?: Record<string, unknown>[];
+  /** Landing mode: app-theme palette, chrome nav, sticky. */
+  landing?: boolean;
+}
+
+const { title, description, path, jsonLd = [], landing = false } = Astro.props;
+const canonical = new URL(path, Astro.site).toString();
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<meta name="description" content={description}>
+<link rel="canonical" href={canonical}>
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<meta name="author" content="OpenRoom">
+<meta name="msvalidate.01" content="FDAFAEA5954404FA5B818023463ACF89">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OpenRoom">
+<meta property="og:title" content={title}>
+<meta property="og:description" content={description}>
+<meta property="og:url" content={canonical}>
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content={title}>
+<meta name="twitter:description" content={description}>
+
+<!-- Discovery for AI agents and crawlers (llmstxt.org convention). -->
+<link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-readable site summary">
+<link rel="alternate" type="text/plain" href="/llms-full.txt" title="LLM-readable full documentation">
+<!-- Same URL also serves Markdown when clients send Accept: text/markdown. -->
+<link rel="alternate" type="text/markdown" href={canonical} title="Markdown representation">
+
+<link rel="stylesheet" href="/site.css">
+{landing && <link rel="stylesheet" href="/landing.css">}
+{jsonLd.length > 0 && (
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': jsonLd,
+  })} />
+)}
+</head>
+<body class={landing ? 'landing' : undefined}>
+
+<nav class="topnav">
+  <a class="brand" href="/"><img src="/favicon.svg" alt="" width="18" height="18">OpenRoom</a>
+  <a href="/docs/">Documentation</a>
+  <a href="/host/#/space">Workspace</a>
+  <a class="nav-optional" href="https://join.openroom.app/">Join a session</a>
+  <a class="nav-optional" href="/api/auth/google">Sign in</a>
+  <a class="nav-cta nav-optional" href="/api/auth/google">Sign up</a>
+</nav>
+
+<slot />
+
+<footer class="site page">
+  <p>OpenRoom (working name). Live polls, quizzes and Q&amp;A for tutoring, classrooms, training and meetings. Public beta.
+  <a href="/docs/">Documentation</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> ·
+  <a href="/llms.txt">llms.txt</a> ·
+  <a href="/sitemap-index.xml">Sitemap</a></p>
+</footer>
+
+<!-- WebMCP: register browser tools on page load (no-op without modelContext). -->
+<script src="/webmcp.js" defer></script>
+
+</body>
+</html>

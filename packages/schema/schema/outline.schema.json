@@ -1,0 +1,1010 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openroom.app/schema/outline.schema.json",
+  "title": "Outline",
+  "description": "OpenRoom Outline v1 — the JSON contents of a deck (steps + interactions). A live session runs this document.",
+  "type": "object",
+  "required": ["version", "meta", "steps", "interactions"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "meta": { "$ref": "#/$defs/meta" },
+    "design": {
+      "$ref": "#/$defs/deckDesign"
+    },
+    "defaults": { "$ref": "https://openroom.app/schema/session.schema.json#/$defs/defaults" },
+    "qna": { "$ref": "https://openroom.app/schema/session.schema.json#/$defs/qna" },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "interactions": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 200,
+      "items": { "$ref": "https://openroom.app/schema/draft-session.schema.json#/$defs/interaction" }
+    },
+    "homework": {
+      "description": "Not a slide. A page that travels with the file and never enters the running order. Prose, a list, typed tasks, or any mix.",
+      "$ref": "#/$defs/homework"
+    },
+    "recap": {
+      "description": "Not a slide. A page that travels with the file and never enters the running order.",
+      "$ref": "#/$defs/aside"
+    }
+  },
+  "$defs": {
+    "designColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "designImageUrl": {
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "^(https://|/api/assets/|/api/sessions/)"
+    },
+    "slideBackground": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "color"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "solid"
+            },
+            "color": {
+              "$ref": "#/$defs/designColor"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "from", "to", "angle"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "gradient"
+            },
+            "from": {
+              "$ref": "#/$defs/designColor"
+            },
+            "to": {
+              "$ref": "#/$defs/designColor"
+            },
+            "angle": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 360
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "focal", "overlay"],
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": ["url"]
+            },
+            {
+              "required": ["assetId"]
+            },
+            {
+              "required": ["resourceId"]
+            }
+          ],
+          "properties": {
+            "kind": {
+              "const": "image"
+            },
+            "url": {
+              "$ref": "#/$defs/designImageUrl"
+            },
+            "assetId": {
+              "$ref": "#/$defs/id"
+            },
+            "resourceId": {
+              "$ref": "#/$defs/id"
+            },
+            "focal": {
+              "type": "object",
+              "required": ["x", "y"],
+              "additionalProperties": false,
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "y": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              }
+            },
+            "overlay": {
+              "type": "object",
+              "required": ["color", "opacity"],
+              "additionalProperties": false,
+              "properties": {
+                "color": {
+                  "$ref": "#/$defs/designColor"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "slideTheme": {
+      "type": "object",
+      "required": ["family", "colors", "fonts"],
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "enum": ["clean", "paper", "board", "contrast", "color", "business"]
+        },
+        "colors": {
+          "type": "object",
+          "required": ["background", "foreground", "muted", "accent", "surface", "border", "charts"],
+          "additionalProperties": false,
+          "properties": {
+            "background": {
+              "$ref": "#/$defs/designColor"
+            },
+            "foreground": {
+              "$ref": "#/$defs/designColor"
+            },
+            "muted": {
+              "$ref": "#/$defs/designColor"
+            },
+            "accent": {
+              "$ref": "#/$defs/designColor"
+            },
+            "surface": {
+              "$ref": "#/$defs/designColor"
+            },
+            "border": {
+              "$ref": "#/$defs/designColor"
+            },
+            "charts": {
+              "type": "array",
+              "minItems": 6,
+              "maxItems": 12,
+              "items": {
+                "$ref": "#/$defs/designColor"
+              }
+            }
+          }
+        },
+        "fonts": {
+          "type": "object",
+          "required": ["heading", "body"],
+          "additionalProperties": false,
+          "properties": {
+            "heading": {
+              "enum": ["sans", "serif", "mono"]
+            },
+            "body": {
+              "enum": ["sans", "serif", "mono"]
+            }
+          }
+        }
+      }
+    },
+    "slideMaster": {
+      "type": "object",
+      "required": ["id", "name", "safeArea", "decoration"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "background": {
+          "$ref": "#/$defs/slideBackground"
+        },
+        "safeArea": {
+          "type": "number",
+          "minimum": 3,
+          "maximum": 12
+        },
+        "decoration": {
+          "enum": ["none", "rule", "corner"]
+        },
+        "footer": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "logo": {
+          "type": "object",
+          "required": ["alt"],
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": ["url"]
+            },
+            {
+              "required": ["assetId"]
+            },
+            {
+              "required": ["resourceId"]
+            }
+          ],
+          "properties": {
+            "url": {
+              "$ref": "#/$defs/designImageUrl"
+            },
+            "assetId": {
+              "$ref": "#/$defs/id"
+            },
+            "resourceId": {
+              "$ref": "#/$defs/id"
+            },
+            "alt": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "theme": {
+          "$ref": "#/$defs/slideTheme"
+        }
+      }
+    },
+    "deckDesign": {
+      "type": "object",
+      "required": ["aspectRatio", "theme", "masters", "defaultMasterId"],
+      "additionalProperties": false,
+      "properties": {
+        "aspectRatio": {
+          "enum": ["16:9", "16:10", "4:3"]
+        },
+        "theme": {
+          "$ref": "#/$defs/slideTheme"
+        },
+        "masters": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/slideMaster"
+          }
+        },
+        "defaultMasterId": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "slideDesign": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "masterId": {
+          "$ref": "#/$defs/id"
+        },
+        "background": {
+          "$ref": "#/$defs/slideBackground"
+        },
+        "hideMasterDecorations": {
+          "type": "boolean"
+        },
+        "templateId": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "meta": {
+      "type": "object",
+      "required": ["title"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "locale": { "type": "string", "pattern": "^[a-z]{2}(-[A-Za-z0-9]{2,8})?$" },
+        "source": { "type": "string", "maxLength": 500 },
+        "subject": { "type": "string", "maxLength": 100 },
+        "language": { "type": "string", "maxLength": 100 },
+        "level": { "type": "string", "maxLength": 100 },
+        "durationMinutes": { "type": "integer", "minimum": 1, "maximum": 480 },
+        "objectives": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+        },
+        "provenance": {
+          "type": "array",
+          "maxItems": 20,
+          "description": "Human-readable source labels only. Original school documents remain outside OpenRoom.",
+          "items": {
+            "type": "object",
+            "required": ["label"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "note": { "type": "string", "maxLength": 500 }
+            }
+          }
+        }
+      }
+    },
+    "partKey": {
+      "description": "A part of a step, derived from the step's own shape: header, stat, body, option-N, cell-N, materials, image, or el-{id} for a freeform object.",
+      "type": "string",
+      "pattern": "^(header|stat|body|materials|image|option-(0|[1-9][0-9]*)|cell-(0|[1-9][0-9]*)|el-[a-z0-9]+(-[a-z0-9]+)*)$"
+    },
+    "elementBox": {
+      "description": "Percent box on the 16:10 slide. Integers, origin top-left.",
+      "type": "object",
+      "required": ["x", "y", "w", "h"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "y": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "w": { "type": "integer", "minimum": 8, "maximum": 100 },
+        "h": { "type": "integer", "minimum": 8, "maximum": 100 }
+      }
+    },
+    "element": {
+      "oneOf": [
+        { "$ref": "#/$defs/textElement" },
+        { "$ref": "#/$defs/imageElement" },
+        { "$ref": "#/$defs/htmlElement" },
+        { "$ref": "#/$defs/iframeElement" },
+        { "$ref": "#/$defs/pdfElement" }
+      ]
+    },
+    "textSpan": {
+      "description": "One styled span. Spans must concatenate exactly to the element's plain `text`, which stays required so agents can keep authoring without styling.",
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "bold": { "type": "boolean" },
+        "italic": { "type": "boolean" },
+        "underline": { "type": "boolean" },
+        "size": {
+          "description": "Percent of the slide base font, 25-400. Scale-free: rendered as em so desk, wall, and phone scale as one slide.",
+          "type": "integer",
+          "minimum": 25,
+          "maximum": 400
+        },
+        "family": {
+          "description": "Closed token set resolved to a theme font per surface. Never raw CSS families.",
+          "type": "string",
+          "enum": ["default", "display", "serif", "mono"]
+        },
+        "color": {
+          "description": "Hex only - no names, no rgb(), nothing that can smuggle CSS.",
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        }
+      }
+    },
+    "spanList": {
+      "description": "Styled spans over one plain text field. Authoritative when present; concatenation must equal that field (semantic check).",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 400,
+      "items": { "$ref": "#/$defs/textSpan" }
+    },
+    "spanRows": {
+      "description": "Styled spans over a list of plain strings, aligned by index. A null entry is an unstyled line; the array may be shorter than the list it mirrors, never longer (semantic check).",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": { "oneOf": [{ "$ref": "#/$defs/spanList" }, { "type": "null" }] }
+    },
+    "textElement": {
+      "type": "object",
+      "required": ["id", "type", "text", "box"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "text" },
+        "text": { "type": "string", "maxLength": 4000 },
+        "spans": { "$ref": "#/$defs/spanList" },
+        "align": {
+          "description": "Element-level alignment. Default left when omitted.",
+          "type": "string",
+          "enum": ["left", "center", "right"]
+        },
+        "role": { "type": "string", "enum": ["heading", "body"] },
+        "box": { "$ref": "#/$defs/elementBox" }
+      }
+    },
+    "imageElement": {
+      "type": "object",
+      "required": ["id", "type", "alt", "box"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "image" },
+        "url": { "type": "string", "pattern": "^(https?://|/api/assets/)", "maxLength": 2000 },
+        "assetId": { "$ref": "#/$defs/id" },
+        "resourceId": { "$ref": "#/$defs/id" },
+        "alt": { "type": "string", "maxLength": 500 },
+        "caption": { "type": "string", "maxLength": 1000 },
+        "focal": {
+          "type": "string",
+          "enum": ["top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right"]
+        },
+        "box": { "$ref": "#/$defs/elementBox" }
+      }
+    },
+    "htmlElement": {
+      "type": "object",
+      "required": ["id", "type", "html", "box"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "html" },
+        "html": { "type": "string", "minLength": 1, "maxLength": 131072 },
+        "css": { "type": "string", "maxLength": 131072 },
+        "markdown": { "type": "string", "maxLength": 65536 },
+        "box": { "$ref": "#/$defs/elementBox" }
+      }
+    },
+    "iframeElement": {
+      "type": "object",
+      "required": ["id", "type", "url", "title", "box"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "iframe" },
+        "url": { "type": "string", "pattern": "^https://", "maxLength": 2000 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "box": { "$ref": "#/$defs/elementBox" }
+      }
+    },
+    "pdfElement": {
+      "type": "object",
+      "required": ["id", "type", "title", "box"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "pdf" },
+        "url": {
+          "type": "string",
+          "pattern": "^(https://|/api/assets/|/api/sessions/)",
+          "maxLength": 2000
+        },
+        "assetId": { "$ref": "#/$defs/id" },
+        "resourceId": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "box": { "$ref": "#/$defs/elementBox" }
+      },
+      "anyOf": [{ "required": ["url"] }, { "required": ["assetId"] }, { "required": ["resourceId"] }]
+    },
+    "elements": {
+      "description": "Extra objects on a freeform slide (title, statement, media, blank). Not allowed on wired kinds.",
+      "type": "array",
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/element" }
+    },
+    "layout": {
+      "description": "A typed arrangement of regions. Not CSS, not coordinates — OpenRoom chooses the pixels. Rejected when the step kind cannot fill it.",
+      "type": "string",
+      "enum": ["title", "text", "split", "grid", "media", "poll", "activity", "timer", "join", "blank"]
+    },
+    "reveal": {
+      "description": "All at once, or ordered groups of part keys. Parts left unplaced are revealed last, one group each.",
+      "oneOf": [
+        { "const": "together" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 40,
+            "items": { "$ref": "#/$defs/partKey" }
+          }
+        }
+      ]
+    },
+    "breakoutOf": {
+      "description": "Attaches this step to one part of a parent step as an on-demand detail. One level only.",
+      "type": "object",
+      "required": ["stepId", "afterKey"],
+      "additionalProperties": false,
+      "properties": {
+        "stepId": { "$ref": "#/$defs/id" },
+        "afterKey": { "$ref": "#/$defs/partKey" }
+      }
+    },
+    "stepBase": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": {
+          "type": "string",
+          "enum": ["title", "statement", "cards", "steps", "term", "activity", "timer", "media", "debrief", "break", "join", "blank", "interaction"]
+        },
+        "layout": { "$ref": "#/$defs/layout" },
+        "reveal": { "$ref": "#/$defs/reveal" },
+        "breakoutOf": { "$ref": "#/$defs/breakoutOf" },
+        "tutorNotes": { "type": "string", "maxLength": 5000 },
+        "design": {
+          "$ref": "#/$defs/slideDesign"
+        }
+      }
+    },
+    "titleStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["title"],
+          "properties": {
+            "kind": { "const": "title" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "bodySpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "body": { "type": "string", "maxLength": 3000 },
+            "media": {
+              "description": "Optional picture beside or under the title. The same shape a media step carries.",
+              "$ref": "#/$defs/media"
+            },
+            "elements": { "$ref": "#/$defs/elements" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "statementStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["body"],
+          "properties": {
+            "kind": { "const": "statement" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "bodySpans": { "$ref": "#/$defs/spanList" },
+            "statSpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "body": { "type": "string", "maxLength": 5000 },
+            "stat": { "type": "string", "maxLength": 100 },
+            "media": {
+              "description": "Optional picture beside the claim. The same shape a media step carries.",
+              "$ref": "#/$defs/media"
+            },
+            "elements": { "$ref": "#/$defs/elements" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "card": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "maxLength": 100 },
+        "text": { "type": "string", "maxLength": 1500 },
+        "textSpans": { "$ref": "#/$defs/spanList" },
+        "imageAssetId": { "$ref": "#/$defs/id" },
+        "lane": { "type": "integer", "enum": [0, 1] }
+      }
+    },
+    "cardsStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["title", "items"],
+          "properties": {
+            "kind": { "const": "cards" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "items": { "type": "array", "minItems": 2, "maxItems": 8, "items": { "$ref": "#/$defs/card" } },
+            "media": {
+              "description": "Optional picture with the heading. The cards themselves stay a grid.",
+              "$ref": "#/$defs/media"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "stepsStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["title", "items"],
+          "properties": {
+            "kind": { "const": "steps" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "items": { "type": "array", "minItems": 2, "maxItems": 12, "items": { "type": "string", "maxLength": 1000 } },
+            "itemsSpans": { "$ref": "#/$defs/spanRows" },
+            "media": {
+              "description": "Optional picture with the heading. The list stays the supporting region.",
+              "$ref": "#/$defs/media"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "termStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["term", "meaning"],
+          "properties": {
+            "kind": { "const": "term" },
+            "termSpans": { "$ref": "#/$defs/spanList" },
+            "meaningSpans": { "$ref": "#/$defs/spanList" },
+            "term": { "type": "string", "maxLength": 300 },
+            "meaning": { "type": "string", "maxLength": 3000 },
+            "example": { "type": "string", "maxLength": 3000 },
+            "exampleSpans": { "$ref": "#/$defs/spanList" },
+            "media": {
+              "description": "Optional picture beside the term. The same shape a media step carries.",
+              "$ref": "#/$defs/media"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "activityStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["title", "instructions"],
+          "properties": {
+            "kind": { "const": "activity" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "instructions": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "maxLength": 1000 } },
+            "instructionsSpans": { "$ref": "#/$defs/spanRows" },
+            "materialsSpans": { "$ref": "#/$defs/spanRows" },
+            "materials": {
+              "description": "What the learners need in front of them. Instructions are what they do; materials are what they need.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 12,
+              "items": { "type": "string", "maxLength": 200 }
+            },
+            "media": {
+              "description": "An optional picture beside the instructions. The same shape a media step carries.",
+              "$ref": "#/$defs/media"
+            },
+            "durationSec": { "type": "integer", "minimum": 1, "maximum": 7200 }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "aside": {
+      "description": "A title plus prose, a list, or both. Recap uses this shape.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "maxLength": 300 },
+        "body": { "type": "string", "maxLength": 5000 },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+        }
+      },
+      "anyOf": [{ "required": ["body"] }, { "required": ["items"] }]
+    },
+    "homework": {
+      "description": "A title plus prose, a list, typed tasks, or any mix. At least one of body, items, or tasks.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "maxLength": 300 },
+        "body": { "type": "string", "maxLength": 5000 },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+        },
+        "tasks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": { "$ref": "#/$defs/homeworkTask" }
+        }
+      },
+      "anyOf": [
+        { "required": ["body"] },
+        { "required": ["items"] },
+        { "required": ["tasks"] }
+      ]
+    },
+    "homeworkTask": {
+      "description": "One take-home task. A quiz points at an interaction already on the outline.",
+      "type": "object",
+      "required": ["id", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": {
+          "type": "string",
+          "enum": ["reading", "writing", "voice", "quiz"]
+        },
+        "title": { "type": "string", "maxLength": 300 },
+        "body": { "type": "string", "maxLength": 5000 },
+        "prompt": { "type": "string", "maxLength": 2000 },
+        "guidance": { "type": "string", "maxLength": 2000 },
+        "interactionId": { "$ref": "#/$defs/id" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "reading" } }, "required": ["kind"] },
+          "then": { "required": ["body"] }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": ["writing", "voice"]
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": { "required": ["prompt"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "quiz" } }, "required": ["kind"] },
+          "then": { "required": ["interactionId"] }
+        }
+      ]
+    },
+    "timerStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["seconds"],
+          "properties": {
+            "kind": { "const": "timer" },
+            "title": { "type": "string", "maxLength": 300 },
+            "body": { "type": "string", "maxLength": 3000 },
+            "seconds": { "type": "integer", "minimum": 1, "maximum": 7200 },
+            "style": {
+              "description": "How the timer is drawn. Default countdown when omitted.",
+              "type": "string",
+              "enum": ["countdown", "countup", "bar-empty", "bar-fill", "hourglass", "ring"]
+            },
+            "placement": {
+              "description": "Where the clock is drawn. Default slide when omitted.",
+              "type": "string",
+              "enum": ["slide", "corner"]
+            },
+            "persist": {
+              "description": "Keep the clock in the corner when the teacher moves on. Default true.",
+              "type": "boolean"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "media": {
+      "type": "object",
+      "required": ["type", "alt"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "audio"
+              }
+            }
+          },
+          "then": {
+            "required": ["listening"]
+          },
+          "else": {
+            "not": {
+              "required": ["listening"]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "type": { "type": "string", "enum": ["image", "video", "audio"] },
+        "listening": {
+          "type": "object",
+          "required": ["mode"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "enum": ["room", "individual"]
+            },
+            "transcript": {
+              "type": "string",
+              "maxLength": 12000
+            }
+          }
+        },
+        "assetId": { "$ref": "#/$defs/id" },
+        "url": { "type": "string", "pattern": "^(https?://|/api/assets/)", "maxLength": 2000 },
+        "resourceId": { "$ref": "#/$defs/id" },
+        "alt": { "type": "string", "maxLength": 500 },
+        "caption": { "type": "string", "maxLength": 1000 },
+        "focal": {
+          "description": "Which of nine named points to keep when the media region crops. A word, never a coordinate.",
+          "type": "string",
+          "enum": ["top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right"]
+        },
+        "aspect": {
+          "description": "Named frame shape for the media. Orientation follows the ratio (16:9 landscape, 9:16 portrait). Never free numbers or CSS.",
+          "type": "string",
+          "enum": ["16:9", "9:16", "4:3", "1:1"]
+        },
+        "place": {
+          "description": "Which slot the picture occupies on the slide. Default follows the step layout.",
+          "type": "string",
+          "enum": ["left", "right", "top", "bottom", "fill"]
+        },
+        "size": {
+          "description": "How much of the slide the picture takes, as a whole percent (20–100). Width for left/right, height for top/bottom.",
+          "type": "integer",
+          "minimum": 20,
+          "maximum": 100
+        }
+      },
+      "anyOf": [{ "required": ["assetId"] }, { "required": ["url"] }, { "required": ["resourceId"] }]
+    },
+    "mediaStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["media"],
+          "properties": {
+            "kind": { "const": "media" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "media": { "$ref": "#/$defs/media" },
+            "elements": { "$ref": "#/$defs/elements" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "debriefStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["title", "prompts"],
+          "properties": {
+            "kind": { "const": "debrief" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "prompts": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "maxLength": 1000 } },
+            "promptsSpans": { "$ref": "#/$defs/spanRows" },
+            "media": {
+              "description": "Optional picture with the heading. The prompts stay the list.",
+              "$ref": "#/$defs/media"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "breakStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["title"],
+          "properties": {
+            "kind": { "const": "break" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "bodySpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "body": { "type": "string", "maxLength": 3000 },
+            "minutes": { "type": "integer", "minimum": 1, "maximum": 120 }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "joinStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "properties": {
+            "kind": { "const": "join" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "blankStep": {
+      "description": "A freeform canvas slide: optionally a title, otherwise only boxed elements the author places.",
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "properties": {
+            "kind": { "const": "blank" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "title": { "type": "string", "maxLength": 300 },
+            "elements": { "$ref": "#/$defs/elements" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "interactionStep": {
+      "allOf": [
+        { "$ref": "#/$defs/stepBase" },
+        {
+          "type": "object",
+          "required": ["interactionId"],
+          "properties": {
+            "kind": { "const": "interaction" },
+            "titleSpans": { "$ref": "#/$defs/spanList" },
+            "bodySpans": { "$ref": "#/$defs/spanList" },
+            "interactionId": { "$ref": "#/$defs/id" },
+            "title": { "type": "string", "maxLength": 300 },
+            "body": { "type": "string", "maxLength": 3000 },
+            "media": {
+              "description": "Optional picture with the prompt. Options stay the supporting region.",
+              "$ref": "#/$defs/media"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/titleStep" },
+        { "$ref": "#/$defs/statementStep" },
+        { "$ref": "#/$defs/cardsStep" },
+        { "$ref": "#/$defs/stepsStep" },
+        { "$ref": "#/$defs/termStep" },
+        { "$ref": "#/$defs/activityStep" },
+        { "$ref": "#/$defs/timerStep" },
+        { "$ref": "#/$defs/mediaStep" },
+        { "$ref": "#/$defs/debriefStep" },
+        { "$ref": "#/$defs/breakStep" },
+        { "$ref": "#/$defs/joinStep" },
+        { "$ref": "#/$defs/blankStep" },
+        { "$ref": "#/$defs/interactionStep" }
+      ]
+    }
+  }
+}

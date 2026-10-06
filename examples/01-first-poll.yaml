@@ -1,0 +1,18 @@
+# STEP 1 — the smallest possible session: one multiple-choice poll.
+# Paste this into the console (or `openroom validate examples/01-first-poll.yaml`),
+# press "Start session", and you are live. Nothing else is required.
+version: 1
+meta:
+  title: My first poll
+
+interactions:
+  - id: lunch
+    type: choice
+    prompt: What should we grab for lunch?
+    options:
+      - id: pizza
+        label: Pizza
+      - id: ramen
+        label: Ramen
+      - id: salad
+        label: Salad

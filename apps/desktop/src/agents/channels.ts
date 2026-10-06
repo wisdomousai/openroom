@@ -1,0 +1,22 @@
+/** Single source of IPC channel names, imported by both main (ipc.ts) and preload. */
+export const AGENT_CHANNELS = {
+  list: 'desktop:agents:list',
+  login: 'desktop:agents:login',
+  loginOutput: 'desktop:agents:login-output',
+  listKeys: 'desktop:agents:list-keys',
+  setKey: 'desktop:agents:set-key',
+  clearKey: 'desktop:agents:clear-key',
+  pickAttachments: 'desktop:agents:pick-attachments',
+  pickFolders: 'desktop:agents:pick-folders',
+  savePasted: 'desktop:agents:save-pasted',
+  models: 'desktop:agents:models',
+  load: 'desktop:agents:load',
+  select: 'desktop:agents:select',
+  run: 'desktop:agents:run',
+  openCodex: 'desktop:agents:open-codex',
+  warmup: 'desktop:agents:warmup',
+  cancel: 'desktop:agents:cancel',
+  reset: 'desktop:agents:reset',
+  event: 'desktop:agents:event',
+  answer: 'desktop:agents:answer',
+} as const;

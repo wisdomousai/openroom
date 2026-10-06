@@ -1,0 +1,72 @@
+version: 1
+meta:
+  title: Exit ticket — end of session
+  description: >-
+    A five-minute close for any session: what stuck, what is still muddy, and how
+    confident the class feels. Run it in the last five minutes with results
+    hidden until you close each question.
+  locale: en
+defaults:
+  identityMode: anonymous
+  resultVisibility: hidden-until-close
+  allowAnswerChange: true
+
+interactions:
+  - id: understanding
+    type: scale
+    prompt: How well do you understand today's main idea?
+    display: dots
+    min: 1
+    max: 5
+    minLabel: Lost
+    maxLabel: I could teach it
+    allowDontKnow: true
+    pedagogy:
+      objective: Get a fast distribution of self-reported understanding.
+      durationSec: 45
+    notes: >-
+      Watch the spread, not the mean. A bimodal picture means you have two
+      classes in the session and need to split the next task.
+
+  - id: key-takeaway
+    type: text
+    prompt: In one sentence, what is the most important thing you learned today?
+    display: word-cloud
+    maxLength: 200
+    pedagogy:
+      objective: Force retrieval and reveal what the class actually encoded.
+      followUp: Compare the cloud against your stated learning objective out loud.
+      durationSec: 120
+
+  - id: muddiest-point
+    type: text
+    prompt: What is still muddy? Name the thing you would ask if nobody could see who asked.
+    display: list
+    maxLength: 240
+    pedagogy:
+      objective: Surface confusion anonymously (muddiest point technique).
+      durationSec: 120
+    notes: >-
+      Read them silently first. Pick the two most common and open the next
+      session with those.
+
+  - id: pace
+    type: choice
+    prompt: How was the pace today?
+    display: bars
+    options:
+      - id: too-slow
+        label: Too slow
+      - id: about-right
+        label: About right
+      - id: too-fast
+        label: Too fast
+    resultVisibility: live
+    pedagogy:
+      objective: Calibrate the next session.
+      durationSec: 30
+
+  - id: questions-for-next-time
+    type: qna
+    prompt: Anything you want covered next time?
+    display: list

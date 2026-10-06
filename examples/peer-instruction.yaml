@@ -1,0 +1,91 @@
+version: 1
+meta:
+  title: Peer instruction — Newton's third law
+  description: >-
+    ADVANCED example (not the default product path). Sets peerInstruction: true
+    so the host can optionally run a second vote after discussion. Normal plans
+    should omit that flag and just open → reveal → advance. See docs/AGENT.md.
+  locale: en
+  source: Adapted from the Force Concept Inventory tradition
+defaults:
+  identityMode: anonymous
+  resultVisibility: hidden-until-close
+  allowAnswerChange: true
+
+interactions:
+  - id: vote-1
+    type: choice
+    prompt: >-
+      A large truck collides head-on with a small car. During the collision, which
+      vehicle exerts the larger force on the other?
+    display: bars
+    peerInstruction: true
+    allowDontKnow: true
+    options:
+      - id: truck
+        label: The truck exerts the larger force on the car
+        misconception: Force conflated with mass or with damage sustained
+      - id: car
+        label: The car exerts the larger force on the truck
+        misconception: Over-correction; reversal of the mass intuition
+      - id: equal
+        label: Both exert the same magnitude of force on each other
+        correct: true
+      - id: depends-speed
+        label: It depends on which one was moving faster
+        misconception: Force conflated with speed or momentum
+    pedagogy:
+      objective: Expose the mass-implies-more-force misconception, then measure the shift.
+      explanation: >-
+        Newton's third law: the forces form an action-reaction pair, equal in
+        magnitude and opposite in direction, regardless of mass or speed. The car
+        is damaged more because the same force acting on a smaller mass produces a
+        much larger acceleration — damage is about acceleration, not force.
+      followUp: Show both rounds side by side and ask what changed a mind.
+      durationSec: 90
+    notes: >-
+      DO NOT reveal after round 1. If the correct share is between 30% and 70%,
+      close the vote and press "Start revote" — that band is where peer
+      instruction works best. Above 70%, explain briefly and move on. Below 30%,
+      reteach before the revote. Reveal only after round 2: that is the moment
+      both rounds become visible to the session.
+
+  - id: confidence-1
+    type: scale
+    prompt: How confident are you in that answer?
+    display: gauge
+    min: 1
+    max: 5
+    minLabel: Guessing
+    maxLabel: Certain
+    pedagogy:
+      objective: Pair correctness with confidence to spot confident wrong answers.
+      durationSec: 30
+
+  - id: discussion-argument
+    type: text
+    prompt: In one sentence, what argument did you use to convince your neighbour?
+    display: list
+    maxLength: 240
+    pedagogy:
+      objective: Capture the reasoning, not just the answer.
+      durationSec: 180
+    notes: Run the two-minute neighbour discussion first, then open this.
+
+  - id: confidence-2
+    type: scale
+    prompt: And how confident are you now?
+    display: gauge
+    min: 1
+    max: 5
+    minLabel: Guessing
+    maxLabel: Certain
+    resultVisibility: live
+    pedagogy:
+      objective: Show the class that confidence and correctness moved together.
+      durationSec: 30
+
+  - id: still-unsure
+    type: qna
+    prompt: What about this still does not sit right with you?
+    display: list

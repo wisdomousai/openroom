@@ -1,0 +1,10 @@
+/**
+ * Stage app entry stylesheet.
+ * Tailwind powers shadcn chart utilities from @openroom/charts;
+ * reset/ui keep projector chrome (join code, pending, discuss, ambient).
+ */
+@import './tailwind.css';
+@import '@openroom/charts/charts.css';
+@import './stage-reset.css';
+@import '@openroom/slides/outline-step.css';
+@import './stage-ui.css';

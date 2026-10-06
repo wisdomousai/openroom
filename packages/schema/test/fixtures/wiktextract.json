@@ -1,0 +1,3709 @@
+{
+ "Haus": {
+  "forms": [
+   {
+    "form": "Hauses",
+    "tags": [
+     "genitive"
+    ]
+   },
+   {
+    "form": "Häuser",
+    "tags": [
+     "plural"
+    ]
+   },
+   {
+    "form": "Häuschen",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häuslein",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häuselein",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häusle",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häusel",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häus'l",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häusl",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häusli",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häuslin",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häuselin",
+    "tags": [
+     "diminutive",
+     "neuter",
+     "rare"
+    ]
+   },
+   {
+    "form": "Häuserl",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Hauserl",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häusken",
+    "tags": [
+     "Ruhrdeutsch",
+     "also",
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häuseken",
+    "tags": [
+     "Berlinisch",
+     "also",
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häusgen",
+    "tags": [
+     "18th-ct.",
+     "diminutive",
+     "especially",
+     "neuter"
+    ]
+   },
+   {
+    "form": "Häusche",
+    "tags": [
+     "diminutive",
+     "neuter"
+    ]
+   },
+   {
+    "form": "strong",
+    "source": "declension",
+    "tags": [
+     "table-tags"
+    ]
+   },
+   {
+    "form": "de-ndecl",
+    "source": "declension",
+    "tags": [
+     "inflection-template"
+    ]
+   },
+   {
+    "form": "Haus",
+    "source": "declension",
+    "tags": [
+     "nominative",
+     "singular"
+    ]
+   },
+   {
+    "form": "Häuser",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "nominative",
+     "plural"
+    ]
+   },
+   {
+    "form": "Hauses",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "singular"
+    ]
+   },
+   {
+    "form": "Häuser",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "genitive",
+     "plural"
+    ]
+   },
+   {
+    "form": "Haus",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "singular"
+    ]
+   },
+   {
+    "form": "Hause",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "singular"
+    ]
+   },
+   {
+    "form": "Häusern",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "plural"
+    ]
+   },
+   {
+    "form": "Haus",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "singular"
+    ]
+   },
+   {
+    "form": "Häuser",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "plural"
+    ]
+   },
+   {
+    "form": "Hauß",
+    "tags": [
+     "alternative",
+     "obsolete"
+    ]
+   }
+  ],
+  "head_templates": [
+   {
+    "expansion": "Haus n (strong, genitive Hauses, plural Häuser, diminutive Häuschen n or Häuslein n or Häuselein n or Häusle n or Häusel n or Häus'l n or Häusl n or Häusli n or Häuslin n or (rare) Häuselin n or Häuserl n or Hauserl n or (also Ruhrdeutsch) Häusken n or (also Berlinisch) Häuseken n or (esp. 18th ct.) Häusgen n or Häusche n)"
+   }
+  ],
+  "lang_code": "de",
+  "pos": "noun",
+  "senses": [
+   {
+    "glosses": [
+     "house, building"
+    ],
+    "tags": [
+     "neuter",
+     "strong"
+    ]
+   },
+   {
+    "glosses": [
+     "home (in various phrases)"
+    ],
+    "tags": [
+     "neuter",
+     "strong"
+    ]
+   },
+   {
+    "glosses": [
+     "theatre"
+    ],
+    "tags": [
+     "neuter",
+     "strong"
+    ]
+   }
+  ],
+  "word": "Haus"
+ },
+ "gehen": {
+  "forms": [
+   {
+    "form": "geht",
+    "tags": [
+     "present",
+     "singular",
+     "third-person"
+    ]
+   },
+   {
+    "form": "ging",
+    "tags": [
+     "past"
+    ]
+   },
+   {
+    "form": "gegangen",
+    "tags": [
+     "participle",
+     "past"
+    ]
+   },
+   {
+    "form": "sein",
+    "tags": [
+     "auxiliary"
+    ]
+   },
+   {
+    "form": "strong",
+    "source": "conjugation",
+    "tags": [
+     "table-tags"
+    ]
+   },
+   {
+    "form": "de-conj",
+    "source": "conjugation",
+    "tags": [
+     "inflection-template"
+    ]
+   },
+   {
+    "form": "7 strong",
+    "source": "conjugation",
+    "tags": [
+     "class"
+    ]
+   },
+   {
+    "form": "sein",
+    "source": "conjugation",
+    "tags": [
+     "auxiliary"
+    ]
+   },
+   {
+    "form": "gehen",
+    "source": "conjugation",
+    "tags": [
+     "infinitive"
+    ]
+   },
+   {
+    "form": "gehend",
+    "source": "conjugation",
+    "tags": [
+     "participle",
+     "present"
+    ]
+   },
+   {
+    "form": "gegangen",
+    "source": "conjugation",
+    "tags": [
+     "participle",
+     "past"
+    ]
+   },
+   {
+    "form": "gehe",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "indicative",
+     "present",
+     "singular"
+    ]
+   },
+   {
+    "form": "gehen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "indicative",
+     "plural",
+     "present"
+    ]
+   },
+   {
+    "form": "gehe",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "gehen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "plural",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "gehst",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "present",
+     "second-person",
+     "singular"
+    ]
+   },
+   {
+    "form": "geht",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "plural",
+     "present",
+     "second-person"
+    ]
+   },
+   {
+    "form": "gehest",
+    "source": "conjugation",
+    "tags": [
+     "second-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "gehet",
+    "source": "conjugation",
+    "tags": [
+     "plural",
+     "second-person",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "geht",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "present",
+     "singular",
+     "third-person"
+    ]
+   },
+   {
+    "form": "gehen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "plural",
+     "present",
+     "third-person"
+    ]
+   },
+   {
+    "form": "gehe",
+    "source": "conjugation",
+    "tags": [
+     "singular",
+     "subjunctive",
+     "subjunctive-i",
+     "third-person"
+    ]
+   },
+   {
+    "form": "gehen",
+    "source": "conjugation",
+    "tags": [
+     "plural",
+     "subjunctive",
+     "subjunctive-i",
+     "third-person"
+    ]
+   },
+   {
+    "form": "ging",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "indicative",
+     "preterite",
+     "singular"
+    ]
+   },
+   {
+    "form": "gingen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "indicative",
+     "plural",
+     "preterite"
+    ]
+   },
+   {
+    "form": "ginge",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "gingen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "plural",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "gingst",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "preterite",
+     "second-person",
+     "singular"
+    ]
+   },
+   {
+    "form": "gingt",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "plural",
+     "preterite",
+     "second-person"
+    ]
+   },
+   {
+    "form": "gingest",
+    "source": "conjugation",
+    "tags": [
+     "second-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "gingst",
+    "source": "conjugation",
+    "tags": [
+     "second-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "ginget",
+    "source": "conjugation",
+    "tags": [
+     "plural",
+     "second-person",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "gingt",
+    "source": "conjugation",
+    "tags": [
+     "plural",
+     "second-person",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "ging",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "preterite",
+     "singular",
+     "third-person"
+    ]
+   },
+   {
+    "form": "gingen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "plural",
+     "preterite",
+     "third-person"
+    ]
+   },
+   {
+    "form": "ginge",
+    "source": "conjugation",
+    "tags": [
+     "singular",
+     "subjunctive",
+     "subjunctive-ii",
+     "third-person"
+    ]
+   },
+   {
+    "form": "gingen",
+    "source": "conjugation",
+    "tags": [
+     "plural",
+     "subjunctive",
+     "subjunctive-ii",
+     "third-person"
+    ]
+   },
+   {
+    "form": "geh",
+    "source": "conjugation",
+    "tags": [
+     "imperative",
+     "second-person",
+     "singular"
+    ]
+   },
+   {
+    "form": "gehe",
+    "source": "conjugation",
+    "tags": [
+     "imperative",
+     "second-person",
+     "singular"
+    ]
+   },
+   {
+    "form": "geht",
+    "source": "conjugation",
+    "tags": [
+     "imperative",
+     "plural",
+     "second-person"
+    ]
+   },
+   {
+    "form": "strong",
+    "source": "conjugation",
+    "tags": [
+     "table-tags"
+    ]
+   },
+   {
+    "form": "de-conj",
+    "source": "conjugation",
+    "tags": [
+     "inflection-template"
+    ]
+   },
+   {
+    "form": "7 strong",
+    "source": "conjugation",
+    "tags": [
+     "class"
+    ]
+   },
+   {
+    "form": "sein",
+    "source": "conjugation",
+    "tags": [
+     "auxiliary"
+    ]
+   },
+   {
+    "form": "bin gegangen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "indicative",
+     "multiword-construction",
+     "perfect",
+     "singular"
+    ]
+   },
+   {
+    "form": "sind gegangen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "indicative",
+     "multiword-construction",
+     "perfect",
+     "plural"
+    ]
+   },
+   {
+    "form": "sei gegangen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "multiword-construction",
+     "perfect",
+     "singular",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "seien gegangen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "multiword-construction",
+     "perfect",
+     "plural",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "bist gegangen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "multiword-construction",
+     "perfect",
+     "second-person",
+     "singular"
+    ]
+   },
+   {
+    "form": "seid gegangen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "multiword-construction",
+     "perfect",
+     "plural",
+     "second-person"
+    ]
+   },
+   {
+    "form": "seist gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "perfect",
+     "second-person",
+     "singular",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "seiest gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "perfect",
+     "second-person",
+     "singular",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "seiet gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "perfect",
+     "plural",
+     "second-person",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "ist gegangen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "multiword-construction",
+     "perfect",
+     "singular",
+     "third-person"
+    ]
+   },
+   {
+    "form": "sind gegangen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "multiword-construction",
+     "perfect",
+     "plural",
+     "third-person"
+    ]
+   },
+   {
+    "form": "sei gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "perfect",
+     "singular",
+     "subjunctive",
+     "third-person"
+    ]
+   },
+   {
+    "form": "seien gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "perfect",
+     "plural",
+     "subjunctive",
+     "third-person"
+    ]
+   },
+   {
+    "form": "war gegangen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "indicative",
+     "multiword-construction",
+     "pluperfect",
+     "singular"
+    ]
+   },
+   {
+    "form": "waren gegangen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "indicative",
+     "multiword-construction",
+     "pluperfect",
+     "plural"
+    ]
+   },
+   {
+    "form": "wäre gegangen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "multiword-construction",
+     "pluperfect",
+     "singular",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "wären gegangen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "multiword-construction",
+     "pluperfect",
+     "plural",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "warst gegangen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "multiword-construction",
+     "pluperfect",
+     "second-person",
+     "singular"
+    ]
+   },
+   {
+    "form": "wart gegangen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "multiword-construction",
+     "pluperfect",
+     "plural",
+     "second-person"
+    ]
+   },
+   {
+    "form": "wärst gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "pluperfect",
+     "second-person",
+     "singular",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "wärest gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "pluperfect",
+     "second-person",
+     "singular",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "wärt gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "pluperfect",
+     "plural",
+     "second-person",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "wäret gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "pluperfect",
+     "plural",
+     "second-person",
+     "subjunctive"
+    ]
+   },
+   {
+    "form": "war gegangen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "multiword-construction",
+     "pluperfect",
+     "singular",
+     "third-person"
+    ]
+   },
+   {
+    "form": "waren gegangen",
+    "source": "conjugation",
+    "tags": [
+     "indicative",
+     "multiword-construction",
+     "pluperfect",
+     "plural",
+     "third-person"
+    ]
+   },
+   {
+    "form": "wäre gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "pluperfect",
+     "singular",
+     "subjunctive",
+     "third-person"
+    ]
+   },
+   {
+    "form": "wären gegangen",
+    "source": "conjugation",
+    "tags": [
+     "multiword-construction",
+     "pluperfect",
+     "plural",
+     "subjunctive",
+     "third-person"
+    ]
+   },
+   {
+    "form": "gehen werden",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "infinitive",
+     "multiword-construction"
+    ]
+   },
+   {
+    "form": "werde gehen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-i",
+     "multiword-construction",
+     "singular",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "werden gehen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-i",
+     "multiword-construction",
+     "plural",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "werdest gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "multiword-construction",
+     "second-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "werdet gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "multiword-construction",
+     "plural",
+     "second-person",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "werde gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "multiword-construction",
+     "singular",
+     "subjunctive",
+     "subjunctive-i",
+     "third-person"
+    ]
+   },
+   {
+    "form": "werden gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "multiword-construction",
+     "plural",
+     "subjunctive",
+     "subjunctive-i",
+     "third-person"
+    ]
+   },
+   {
+    "form": "werde gehen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-i",
+     "indicative",
+     "multiword-construction",
+     "singular"
+    ]
+   },
+   {
+    "form": "werden gehen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-i",
+     "indicative",
+     "multiword-construction",
+     "plural"
+    ]
+   },
+   {
+    "form": "würde gehen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-i",
+     "multiword-construction",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "würden gehen",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-i",
+     "multiword-construction",
+     "plural",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "wirst gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "indicative",
+     "multiword-construction",
+     "second-person",
+     "singular"
+    ]
+   },
+   {
+    "form": "werdet gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "indicative",
+     "multiword-construction",
+     "plural",
+     "second-person"
+    ]
+   },
+   {
+    "form": "würdest gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "multiword-construction",
+     "second-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "würdet gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "multiword-construction",
+     "plural",
+     "second-person",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "wird gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "indicative",
+     "multiword-construction",
+     "singular",
+     "third-person"
+    ]
+   },
+   {
+    "form": "werden gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "indicative",
+     "multiword-construction",
+     "plural",
+     "third-person"
+    ]
+   },
+   {
+    "form": "würde gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "multiword-construction",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii",
+     "third-person"
+    ]
+   },
+   {
+    "form": "würden gehen",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-i",
+     "multiword-construction",
+     "plural",
+     "subjunctive",
+     "subjunctive-ii",
+     "third-person"
+    ]
+   },
+   {
+    "form": "gegangen sein werden",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "infinitive",
+     "multiword-construction"
+    ]
+   },
+   {
+    "form": "werde gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "singular",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "werden gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "plural",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "werdest gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "second-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "werdet gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "plural",
+     "second-person",
+     "subjunctive",
+     "subjunctive-i"
+    ]
+   },
+   {
+    "form": "werde gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "singular",
+     "subjunctive",
+     "subjunctive-i",
+     "third-person"
+    ]
+   },
+   {
+    "form": "werden gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "plural",
+     "subjunctive",
+     "subjunctive-i",
+     "third-person"
+    ]
+   },
+   {
+    "form": "werde gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-ii",
+     "indicative",
+     "multiword-construction",
+     "singular"
+    ]
+   },
+   {
+    "form": "werden gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-ii",
+     "indicative",
+     "multiword-construction",
+     "plural"
+    ]
+   },
+   {
+    "form": "würde gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "würden gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "first-person",
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "plural",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "wirst gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "indicative",
+     "multiword-construction",
+     "second-person",
+     "singular"
+    ]
+   },
+   {
+    "form": "werdet gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "indicative",
+     "multiword-construction",
+     "plural",
+     "second-person"
+    ]
+   },
+   {
+    "form": "würdest gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "second-person",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "würdet gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "plural",
+     "second-person",
+     "subjunctive",
+     "subjunctive-ii"
+    ]
+   },
+   {
+    "form": "wird gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "indicative",
+     "multiword-construction",
+     "singular",
+     "third-person"
+    ]
+   },
+   {
+    "form": "werden gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "indicative",
+     "multiword-construction",
+     "plural",
+     "third-person"
+    ]
+   },
+   {
+    "form": "würde gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "singular",
+     "subjunctive",
+     "subjunctive-ii",
+     "third-person"
+    ]
+   },
+   {
+    "form": "würden gegangen sein",
+    "source": "conjugation",
+    "tags": [
+     "future",
+     "future-ii",
+     "multiword-construction",
+     "plural",
+     "subjunctive",
+     "subjunctive-ii",
+     "third-person"
+    ]
+   },
+   {
+    "form": "geh'n",
+    "tags": [
+     "alternative"
+    ]
+   },
+   {
+    "form": "gehn",
+    "tags": [
+     "alternative"
+    ]
+   }
+  ],
+  "head_templates": [
+   {
+    "expansion": "gehen (class 7 strong, third-person singular present geht, past tense ging, past participle gegangen, auxiliary sein)"
+   }
+  ],
+  "lang_code": "de",
+  "pos": "verb",
+  "senses": [
+   {
+    "glosses": [
+     "to go, to walk"
+    ],
+    "tags": [
+     "class-7",
+     "intransitive",
+     "strong"
+    ]
+   },
+   {
+    "glosses": [
+     "to leave"
+    ],
+    "tags": [
+     "class-7",
+     "intransitive",
+     "strong"
+    ]
+   },
+   {
+    "glosses": [
+     "to leave, to take off (aeroplane, train)"
+    ],
+    "tags": [
+     "class-7",
+     "colloquial",
+     "intransitive",
+     "strong"
+    ]
+   },
+   {
+    "glosses": [
+     "to be going; to be all right [with dative ‘for someone’ and predicate adjective ‘in a particular way’] (idiomatically translated by English be doing or similar, with the dative object as the subject)"
+    ],
+    "tags": [
+     "class-7",
+     "impersonal",
+     "intransitive",
+     "strong"
+    ]
+   }
+  ],
+  "word": "gehen"
+ },
+ "hablo": {
+  "forms": [],
+  "head_templates": [
+   {
+    "expansion": "hablo"
+   }
+  ],
+  "lang_code": "es",
+  "pos": "verb",
+  "senses": [
+   {
+    "form_of": [
+     {
+      "word": "hablar"
+     }
+    ],
+    "glosses": [
+     "first-person singular present indicative of hablar"
+    ],
+    "tags": [
+     "first-person",
+     "form-of",
+     "indicative",
+     "present",
+     "singular"
+    ]
+   }
+  ],
+  "word": "hablo"
+ },
+ "mit": {
+  "forms": [
+   {
+    "form": "no-table-tags",
+    "source": "inflection",
+    "tags": [
+     "table-tags"
+    ]
+   },
+   {
+    "form": "inflection-table-top",
+    "source": "inflection",
+    "tags": [
+     "inflection-template"
+    ]
+   },
+   {
+    "form": "mit",
+    "source": "inflection",
+    "tags": [
+     "prepositional"
+    ]
+   },
+   {
+    "form": "womit",
+    "source": "inflection",
+    "tags": [
+     "error-unrecognized-form"
+    ]
+   },
+   {
+    "form": "damit",
+    "source": "inflection",
+    "tags": [
+     "error-unrecognized-form"
+    ]
+   },
+   {
+    "form": "hiermit",
+    "source": "inflection",
+    "tags": [
+     "error-unrecognized-form"
+    ]
+   },
+   {
+    "form": "m.",
+    "tags": [
+     "alternative"
+    ]
+   },
+   {
+    "form": "m/",
+    "tags": [
+     "alternative"
+    ]
+   }
+  ],
+  "head_templates": [
+   {
+    "expansion": "mit"
+   }
+  ],
+  "lang_code": "de",
+  "pos": "prep",
+  "senses": [
+   {
+    "glosses": [
+     "with (in the company of, alongside)"
+    ]
+   },
+   {
+    "glosses": [
+     "with, by (using as an instrument, by means of)"
+    ]
+   },
+   {
+    "glosses": [
+     "with (having a property, accessory or possession)"
+    ]
+   },
+   {
+    "glosses": [
+     "with (having a property, accessory or possession)",
+     "including, with ... included"
+    ]
+   }
+  ],
+  "word": "mit"
+ },
+ "schoen": {
+  "forms": [
+   {
+    "form": "schöner",
+    "tags": [
+     "masculine",
+     "nominative",
+     "singular",
+     "strong"
+    ]
+   },
+   {
+    "form": "schöner",
+    "tags": [
+     "comparative"
+    ]
+   },
+   {
+    "form": "am schönsten",
+    "tags": [
+     "superlative"
+    ]
+   },
+   {
+    "form": "no-table-tags",
+    "source": "declension",
+    "tags": [
+     "table-tags"
+    ]
+   },
+   {
+    "form": "de-adecl",
+    "source": "declension",
+    "tags": [
+     "inflection-template"
+    ]
+   },
+   {
+    "form": "schön",
+    "source": "declension",
+    "tags": [
+     "masculine",
+     "predicative",
+     "singular"
+    ]
+   },
+   {
+    "form": "schön",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "predicative",
+     "singular"
+    ]
+   },
+   {
+    "form": "schön",
+    "source": "declension",
+    "tags": [
+     "neuter",
+     "predicative",
+     "singular"
+    ]
+   },
+   {
+    "form": "schön",
+    "source": "declension",
+    "tags": [
+     "plural",
+     "predicative"
+    ]
+   },
+   {
+    "form": "schöner",
+    "source": "declension",
+    "tags": [
+     "masculine",
+     "nominative",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöne",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "nominative",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönes",
+    "source": "declension",
+    "tags": [
+     "neuter",
+     "nominative",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöne",
+    "source": "declension",
+    "tags": [
+     "nominative",
+     "plural",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönen",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "masculine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöner",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "genitive",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönen",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "neuter",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöner",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "plural",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönem",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "masculine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöner",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "feminine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönem",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "neuter",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "plural",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönen",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "masculine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöne",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "feminine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönes",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "neuter",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöne",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "plural",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "der schöne",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "includes-article",
+     "masculine",
+     "nominative",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schöne",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "feminine",
+     "includes-article",
+     "nominative",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "das schöne",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "includes-article",
+     "neuter",
+     "nominative",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schönen",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "includes-article",
+     "nominative",
+     "plural",
+     "weak"
+    ]
+   },
+   {
+    "form": "des schönen",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "genitive",
+     "includes-article",
+     "masculine",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schönen",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "feminine",
+     "genitive",
+     "includes-article",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "des schönen",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "genitive",
+     "includes-article",
+     "neuter",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schönen",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "genitive",
+     "includes-article",
+     "plural",
+     "weak"
+    ]
+   },
+   {
+    "form": "dem schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "includes-article",
+     "masculine",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "feminine",
+     "includes-article",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "dem schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "includes-article",
+     "neuter",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "den schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "includes-article",
+     "plural",
+     "weak"
+    ]
+   },
+   {
+    "form": "den schönen",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "includes-article",
+     "masculine",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schöne",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "feminine",
+     "includes-article",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "das schöne",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "includes-article",
+     "neuter",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schönen",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "includes-article",
+     "plural",
+     "weak"
+    ]
+   },
+   {
+    "form": "ein schöner",
+    "source": "declension",
+    "tags": [
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "nominative",
+     "singular"
+    ]
+   },
+   {
+    "form": "eine schöne",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "nominative",
+     "singular"
+    ]
+   },
+   {
+    "form": "ein schönes",
+    "source": "declension",
+    "tags": [
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "nominative",
+     "singular"
+    ]
+   },
+   {
+    "form": "schönen",
+    "source": "declension",
+    "tags": [
+     "indefinite",
+     "mixed",
+     "nominative",
+     "plural"
+    ]
+   },
+   {
+    "form": "keine schönen",
+    "source": "declension",
+    "tags": [
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "nominative",
+     "plural"
+    ]
+   },
+   {
+    "form": "eines schönen",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "einer schönen",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "eines schönen",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular"
+    ]
+   },
+   {
+    "form": "schönen",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "indefinite",
+     "mixed",
+     "plural"
+    ]
+   },
+   {
+    "form": "keiner schönen",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural"
+    ]
+   },
+   {
+    "form": "einem schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "einer schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "einem schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular"
+    ]
+   },
+   {
+    "form": "schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "indefinite",
+     "mixed",
+     "plural"
+    ]
+   },
+   {
+    "form": "keinen schönen",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural"
+    ]
+   },
+   {
+    "form": "einen schönen",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "eine schöne",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "ein schönes",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular"
+    ]
+   },
+   {
+    "form": "schönen",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "indefinite",
+     "mixed",
+     "plural"
+    ]
+   },
+   {
+    "form": "keine schönen",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural"
+    ]
+   },
+   {
+    "form": "no-table-tags",
+    "source": "declension",
+    "tags": [
+     "table-tags"
+    ]
+   },
+   {
+    "form": "de-adecl",
+    "source": "declension",
+    "tags": [
+     "inflection-template"
+    ]
+   },
+   {
+    "form": "schöner",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "masculine",
+     "predicative",
+     "singular"
+    ]
+   },
+   {
+    "form": "schöner",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "feminine",
+     "predicative",
+     "singular"
+    ]
+   },
+   {
+    "form": "schöner",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "neuter",
+     "predicative",
+     "singular"
+    ]
+   },
+   {
+    "form": "schöner",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "plural",
+     "predicative"
+    ]
+   },
+   {
+    "form": "schönerer",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "masculine",
+     "nominative",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönere",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "feminine",
+     "nominative",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöneres",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "neuter",
+     "nominative",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönere",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "nominative",
+     "plural",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "genitive",
+     "masculine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönerer",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "feminine",
+     "genitive",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "genitive",
+     "neuter",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönerer",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "genitive",
+     "plural",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönerem",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "masculine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönerer",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "feminine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönerem",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "neuter",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "plural",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöneren",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "masculine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönere",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "feminine",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schöneres",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "neuter",
+     "singular",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönere",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "plural",
+     "strong",
+     "without-article"
+    ]
+   },
+   {
+    "form": "der schönere",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "definite",
+     "includes-article",
+     "masculine",
+     "nominative",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schönere",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "definite",
+     "feminine",
+     "includes-article",
+     "nominative",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "das schönere",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "definite",
+     "includes-article",
+     "neuter",
+     "nominative",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "definite",
+     "includes-article",
+     "nominative",
+     "plural",
+     "weak"
+    ]
+   },
+   {
+    "form": "des schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "definite",
+     "genitive",
+     "includes-article",
+     "masculine",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "definite",
+     "feminine",
+     "genitive",
+     "includes-article",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "des schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "definite",
+     "genitive",
+     "includes-article",
+     "neuter",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "definite",
+     "genitive",
+     "includes-article",
+     "plural",
+     "weak"
+    ]
+   },
+   {
+    "form": "dem schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "definite",
+     "includes-article",
+     "masculine",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "definite",
+     "feminine",
+     "includes-article",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "dem schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "definite",
+     "includes-article",
+     "neuter",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "den schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "definite",
+     "includes-article",
+     "plural",
+     "weak"
+    ]
+   },
+   {
+    "form": "den schöneren",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "definite",
+     "includes-article",
+     "masculine",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schönere",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "definite",
+     "feminine",
+     "includes-article",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "das schönere",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "definite",
+     "includes-article",
+     "neuter",
+     "singular",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schöneren",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "definite",
+     "includes-article",
+     "plural",
+     "weak"
+    ]
+   },
+   {
+    "form": "ein schönerer",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "nominative",
+     "singular"
+    ]
+   },
+   {
+    "form": "eine schönere",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "nominative",
+     "singular"
+    ]
+   },
+   {
+    "form": "ein schöneres",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "nominative",
+     "singular"
+    ]
+   },
+   {
+    "form": "schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "indefinite",
+     "mixed",
+     "nominative",
+     "plural"
+    ]
+   },
+   {
+    "form": "keine schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "nominative",
+     "plural"
+    ]
+   },
+   {
+    "form": "eines schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "einer schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "feminine",
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "eines schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular"
+    ]
+   },
+   {
+    "form": "schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "genitive",
+     "indefinite",
+     "mixed",
+     "plural"
+    ]
+   },
+   {
+    "form": "keiner schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural"
+    ]
+   },
+   {
+    "form": "einem schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "einer schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "einem schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular"
+    ]
+   },
+   {
+    "form": "schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "indefinite",
+     "mixed",
+     "plural"
+    ]
+   },
+   {
+    "form": "keinen schöneren",
+    "source": "declension",
+    "tags": [
+     "comparative",
+     "dative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural"
+    ]
+   },
+   {
+    "form": "einen schöneren",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "eine schönere",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular"
+    ]
+   },
+   {
+    "form": "ein schöneres",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular"
+    ]
+   },
+   {
+    "form": "schöneren",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "indefinite",
+     "mixed",
+     "plural"
+    ]
+   },
+   {
+    "form": "keine schöneren",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "comparative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural"
+    ]
+   },
+   {
+    "form": "no-table-tags",
+    "source": "declension",
+    "tags": [
+     "table-tags"
+    ]
+   },
+   {
+    "form": "de-adecl",
+    "source": "declension",
+    "tags": [
+     "inflection-template"
+    ]
+   },
+   {
+    "form": "am schönsten",
+    "source": "declension",
+    "tags": [
+     "masculine",
+     "predicative",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "am schönsten",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "predicative",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "am schönsten",
+    "source": "declension",
+    "tags": [
+     "neuter",
+     "predicative",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "am schönsten",
+    "source": "declension",
+    "tags": [
+     "plural",
+     "predicative",
+     "superlative"
+    ]
+   },
+   {
+    "form": "schönster",
+    "source": "declension",
+    "tags": [
+     "masculine",
+     "nominative",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönste",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "nominative",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönstes",
+    "source": "declension",
+    "tags": [
+     "neuter",
+     "nominative",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönste",
+    "source": "declension",
+    "tags": [
+     "nominative",
+     "plural",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönsten",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "masculine",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönster",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "genitive",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönsten",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "neuter",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönster",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "plural",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönstem",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "masculine",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönster",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "feminine",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönstem",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "neuter",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "plural",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönsten",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "masculine",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönste",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "feminine",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönstes",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "neuter",
+     "singular",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "schönste",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "plural",
+     "strong",
+     "superlative",
+     "without-article"
+    ]
+   },
+   {
+    "form": "der schönste",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "includes-article",
+     "masculine",
+     "nominative",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schönste",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "feminine",
+     "includes-article",
+     "nominative",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "das schönste",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "includes-article",
+     "neuter",
+     "nominative",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schönsten",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "includes-article",
+     "nominative",
+     "plural",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "des schönsten",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "genitive",
+     "includes-article",
+     "masculine",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schönsten",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "feminine",
+     "genitive",
+     "includes-article",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "des schönsten",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "genitive",
+     "includes-article",
+     "neuter",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schönsten",
+    "source": "declension",
+    "tags": [
+     "definite",
+     "genitive",
+     "includes-article",
+     "plural",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "dem schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "includes-article",
+     "masculine",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "der schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "feminine",
+     "includes-article",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "dem schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "includes-article",
+     "neuter",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "den schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "definite",
+     "includes-article",
+     "plural",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "den schönsten",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "includes-article",
+     "masculine",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schönste",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "feminine",
+     "includes-article",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "das schönste",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "includes-article",
+     "neuter",
+     "singular",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "die schönsten",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "definite",
+     "includes-article",
+     "plural",
+     "superlative",
+     "weak"
+    ]
+   },
+   {
+    "form": "ein schönster",
+    "source": "declension",
+    "tags": [
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "nominative",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "eine schönste",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "nominative",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "ein schönstes",
+    "source": "declension",
+    "tags": [
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "nominative",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "schönsten",
+    "source": "declension",
+    "tags": [
+     "indefinite",
+     "mixed",
+     "nominative",
+     "plural",
+     "superlative"
+    ]
+   },
+   {
+    "form": "keine schönsten",
+    "source": "declension",
+    "tags": [
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "nominative",
+     "plural",
+     "superlative"
+    ]
+   },
+   {
+    "form": "eines schönsten",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "einer schönsten",
+    "source": "declension",
+    "tags": [
+     "feminine",
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "eines schönsten",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "schönsten",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "indefinite",
+     "mixed",
+     "plural",
+     "superlative"
+    ]
+   },
+   {
+    "form": "keiner schönsten",
+    "source": "declension",
+    "tags": [
+     "genitive",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural",
+     "superlative"
+    ]
+   },
+   {
+    "form": "einem schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "einer schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "einem schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "indefinite",
+     "mixed",
+     "plural",
+     "superlative"
+    ]
+   },
+   {
+    "form": "keinen schönsten",
+    "source": "declension",
+    "tags": [
+     "dative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural",
+     "superlative"
+    ]
+   },
+   {
+    "form": "einen schönsten",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "includes-article",
+     "indefinite",
+     "masculine",
+     "mixed",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "eine schönste",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "feminine",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "ein schönstes",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "neuter",
+     "singular",
+     "superlative"
+    ]
+   },
+   {
+    "form": "schönsten",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "indefinite",
+     "mixed",
+     "plural",
+     "superlative"
+    ]
+   },
+   {
+    "form": "keine schönsten",
+    "source": "declension",
+    "tags": [
+     "accusative",
+     "includes-article",
+     "indefinite",
+     "mixed",
+     "negative",
+     "plural",
+     "superlative"
+    ]
+   }
+  ],
+  "head_templates": [
+   {
+    "expansion": "schön (strong nominative masculine singular schöner, comparative schöner, superlative am schönsten)"
+   }
+  ],
+  "lang_code": "de",
+  "pos": "adj",
+  "senses": [
+   {
+    "glosses": [
+     "beautiful, lovely, pretty, handsome"
+    ]
+   },
+   {
+    "glosses": [
+     "good, great, splendid"
+    ]
+   },
+   {
+    "glosses": [
+     "nice, pleasant"
+    ]
+   }
+  ],
+  "word": "schön"
+ }
+}

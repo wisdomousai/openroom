@@ -1,0 +1,18 @@
+{
+  "name": "openroom-site",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "prebuild": "node scripts/publish-agent-skills.mjs",
+    "build": "astro build",
+    "preview": "astro preview",
+    "publish-skills": "node scripts/publish-agent-skills.mjs"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.4.1",
+    "astro": "^5.13.0"
+  }
+}

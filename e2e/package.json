@@ -1,0 +1,18 @@
+{
+  "name": "@openroom/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.54.2",
+    "typescript": "^5.7.0",
+    "yaml": "^2.6.1"
+  }
+}

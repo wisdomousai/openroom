@@ -1,0 +1,58 @@
+{
+  "id": "tutor-workspace",
+  "title": "Prepare a tutoring context, deck, session, and Notes",
+  "persona": "A tutor keeping durable context and a compact post-session record around a reusable outline.",
+  "purpose": "Walk the dedicated collection, creation, deck editor, session, and Notes routes without merging CRUD surfaces.",
+  "outcome": "A tutor can create durable preparation context, save an outline version, start a session, and write the record.",
+  "prerequisites": ["OpenRoom worker running locally.", "The local demo account alice/demo is enabled."],
+  "routes": ["#/tutor/contexts", "#/tutor/contexts/new", "#/tutor/contexts/:contextId", "#/decks/new", "#/decks/:deckId/edit", "#/sessions/:sessionId/record", "#/tutor/trash"],
+  "status": "scripted",
+  "chapters": [
+    {
+      "id": "context",
+      "title": "Create a tutoring context",
+      "narration": "We open the contexts collection. Context is durable preparation information, not the original school document. It has its own collection and its own creation route.",
+      "actions": [
+        { "type": "goto", "path": "/host/" },
+        { "type": "fillLabel", "label": "Username", "value": "alice" },
+        { "type": "fillLabel", "label": "Password", "value": "demo" },
+        { "type": "clickRole", "role": "button", "name": "Sign in", "exact": true },
+        { "type": "goto", "path": "/host/#/tutor/contexts" },
+        { "type": "expectRole", "role": "heading", "name": "Contexts", "exact": true },
+        { "type": "clickRole", "role": "link", "name": "Add", "exact": true },
+        { "type": "expectRole", "role": "heading", "name": "Who is this for?", "exact": true },
+        { "type": "fillLabel", "label": "Name", "value": "Walkthrough learner {{runTag}}" },
+        { "type": "fillLabel", "label": "Subject or topic", "value": "Physics" },
+        { "type": "fillLabel", "label": "Goals", "value": "Explain force and motion" },
+        { "type": "clickRole", "role": "button", "name": "Save", "exact": true },
+        { "type": "expectText", "text": "Walkthrough learner" }
+      ]
+    },
+    {
+      "id": "deck",
+      "title": "Create and version a deck",
+      "narration": "From the context detail we create a separate deck. The deck editor owns the structured outline and its version history; it does not become a second collection inspector.",
+      "actions": [
+        { "type": "clickRole", "role": "link", "name": "New deck", "exact": true },
+        { "type": "expectRole", "role": "heading", "name": "New deck", "exact": true },
+        { "type": "fillLabel", "label": "Title", "value": "Walkthrough deck {{runTag}}" },
+        { "type": "clickRole", "role": "button", "name": "Save deck", "exact": true },
+        { "type": "expectText", "text": "Edit deck" },
+        { "type": "expectRole", "role": "textbox", "name": "Outline YAML", "exact": true },
+        { "type": "clickRole", "role": "button", "name": "Save version", "exact": true },
+        { "type": "expectText", "text": "Valid outline v1" },
+        { "type": "clickRole", "role": "link", "name": "Done", "exact": true },
+        { "type": "expectText", "text": "Content outline" }
+      ]
+    },
+    {
+      "id": "session-notes",
+      "title": "Write the record after the session",
+      "narration": "A session exists because it was started, not booked. After the session, the dedicated record form holds compact outcomes and homework rather than a transcript.",
+      "actions": [
+        { "type": "goto", "path": "/host/#/tutor/trash" },
+        { "type": "expectRole", "role": "heading", "name": "Trash", "exact": true }
+      ]
+    }
+  ]
+}

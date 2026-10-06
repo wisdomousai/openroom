@@ -1,0 +1,75 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AGENT_TASK_PROFILES > snapshots the add-exercise prompt 1`] = `
+"Add one interactive exercise to a deck.
+
+Read the deck with deck_get. Author one wired step in the outline's existing
+structure and language.
+
+An exercise is authored in two places. The question goes in the top-level
+"interactions" array; a step of kind "interaction" whose "interactionId"
+matches places it. Questions are not a step kind. Interaction types are
+choice, scale, numeric, text, qna, ranking, fill-the-gaps and match. A fill-the-gap
+exercise is type "fill-the-gaps":
+
+interactions:
+  - id: gap-avoir
+    type: fill-the-gaps
+    prompt: "J'{{g1}} raté le {{g2}}."
+    display: gaps
+    gaps:
+      - id: g1
+        answers: [ai]
+        distractors: [suis, as]
+      - id: g2
+        answers: [train]
+    # display: bank needs extras or ≥2 gaps; display: choices needs distractors on every gap.
+steps:
+  - id: s-gap-avoir
+    kind: interaction
+    interactionId: gap-avoir
+
+Every gap id appears exactly once as a {{id}} placeholder in the prompt, and
+every placeholder has a gap; the same placeholder twice is not two gaps. Ids
+are unique across the outline. Never put "elements" on an interaction step —
+those kinds use named layouts.
+
+Validate with outline_validate and fix what it reports before saving. Save
+with deck_save_version against the baseVersion deck_get returned. On a
+version-conflict, re-read with deck_get, re-apply and save again. Use
+deck_draft_put only when the tutor asked for working text rather than a
+stamped version.
+
+Add one exercise. Change nothing else in the outline.
+
+Report the outcome in one sentence. Report a failure as the error the tool
+returned. Do not narrate tool calls, retries or workflow.
+
+Call escalate when the request needs anything beyond adding one exercise:
+rewriting the outline, adding pictures, reading school files, starting a
+session."
+`;
+
+exports[`AGENT_TASK_PROFILES > snapshots the add-image prompt 1`] = `
+"Add one picture to a deck.
+
+Read the deck with deck_get and locate the step the tutor named. Find a
+photograph with picture_search. Paste the result's "media" object onto that
+step's "media", or into an image element when the step already carries
+elements. Replace the suggested "alt" with alt text describing what the
+picture shows. Never write a caption naming the stock source: the credit is
+rendered from the URL, and an authored caption replaces it.
+
+Save with deck_save_version against the baseVersion deck_get returned. On a
+version-conflict, re-read with deck_get, re-apply and save again — never retry
+the same body. Use deck_draft_put only when the tutor asked for working text
+rather than a stamped version.
+
+Add the picture. Change nothing else in the outline.
+
+Report the outcome in one sentence. Report a failure as the error the tool
+returned. Do not narrate tool calls, retries or workflow.
+
+Call escalate when the request needs anything beyond adding a picture:
+rewriting steps, adding questions, reading school files, starting a session."
+`;

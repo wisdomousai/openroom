@@ -1,0 +1,80 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openroom",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["17 * * * *", "*/5 * * * *"] },
+  // Apex + www Custom Domains (Worker is origin; CF manages DNS on deploy).
+  // Keep workers.dev as an explicit fallback during cutover.
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "openroom.app", "custom_domain": true },
+    { "pattern": "www.openroom.app", "custom_domain": true },
+    { "pattern": "join.openroom.app", "custom_domain": true }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "SESSIONS", "class_name": "SessionDO" }]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RoomDO"]
+    },
+    {
+      "tag": "v2",
+      "renamed_classes": [{ "from": "RoomDO", "to": "SessionDO" }]
+    }
+  ],
+  // Control plane (identity, auth sessions, deck library, live-session directory).
+  // `database_id` is a placeholder: the integrator replaces it with the id
+  // printed by `wrangler d1 create openroom`. Miniflare/vitest ignores it.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "openroom",
+      "database_id": "9351f347-be1c-441b-a61f-79b966b7d481",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Media plane: uploaded pictures and video for the deck editor media library.
+  // Objects are written under `assets/<uuid>` and served back through
+  // `GET /api/assets/<uuid>` (see src/assets.ts). Miniflare/vitest simulates
+  // this bucket locally from the binding alone — no extra dev config.
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "openroom-media",
+      "preview_bucket_name": "openroom-media-preview"
+    }
+  ],
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    // Marketing owns `/`; join SPA is under `/join/` (rewritten on join host).
+    // Do not SPA-fallback unknown apex paths to the join app.
+    "not_found_handling": "404-page",
+    // Worker first for everything: OAuth discovery lives at /.well-known/* and
+    // the fetch handler already proxies non-API traffic to ASSETS.
+    "run_worker_first": true
+  },
+  // Public vars (not secrets). DEMO_AUTH stays out of production — set it in
+  // .dev.vars for local dev only (alice/bob/cara, password: demo).
+  //
+  // JOIN_ORIGIN is the production participant host. wrangler dev also loads
+  // these vars, so apps/worker/.dev.vars must clear it (JOIN_ORIGIN=) or every
+  // local "Join" link and QR points at join.openroom.app instead of /join/.
+  "vars": {
+    "JOIN_ORIGIN": "https://join.openroom.app"
+  }
+  // Secrets (set with `wrangler secret put`, or .dev.vars locally):
+  //   TOKEN_SECRET — HMAC key for capability tokens
+  //   ADMIN_KEY    — shared admin key required by POST /api/rooms (ops override)
+  //   GOOGLE_CLIENT_ID     — Google OAuth client id (unset ⇒ /api/auth/google 501s)
+  //   GOOGLE_CLIENT_SECRET — Google OAuth client secret
+  //   PIXABAY_API_KEY      — stock photo search (deck editor Stock tab; unset ⇒ 501)
+  //   OPENAI_APPS_CHALLENGE — plain-text token at GET /.well-known/openai-apps-challenge
+  // Optional vars (endpoint overrides, defaulted in src/auth.ts):
+  //   GOOGLE_AUTH_URL, GOOGLE_TOKEN_URL
+}
