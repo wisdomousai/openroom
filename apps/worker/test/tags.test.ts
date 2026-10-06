@@ -46,11 +46,9 @@ function asUser(cookie: string, path: string, init: RequestInit = {}): Promise<R
 /** A space with one deck in it, which is the thing we tag. */
 async function seedDeck(): Promise<{ cookie: string; spaceId: string; deckId: string }> {
   const { cookie } = await seedSession();
-  const { contextId } = await createSmokeContext((path, init) => asUser(cookie, path, init ?? {}));
-  const spaces = (await (await asUser(cookie, '/api/my/spaces')).json()) as {
-    spaces: { id: string }[];
-  };
-  const spaceId = spaces.spaces[0]!.id;
+  // The context's own space: the personal space shares its updated_at to the
+  // millisecond often enough that the first listed space is not a stable pick.
+  const { contextId, spaceId } = await createSmokeContext((path, init) => asUser(cookie, path, init ?? {}));
   const res = await asUser(cookie, '/api/decks', {
     method: 'POST',
     body: JSON.stringify({ title: 'Passé composé', contextId, spaceId }),
