@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { request } from '../api/client';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
 
 interface Connection { id: string; name: string; origin: string }
 export function ConnectedApps({ signedIn }: { signedIn: boolean }) {

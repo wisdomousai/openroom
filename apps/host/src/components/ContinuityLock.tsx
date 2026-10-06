@@ -11,7 +11,7 @@ import { Lock } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { to } from '../destinations';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 /** The worker's 403 code for a space owner without `continuity`. */
 export const CONTINUITY_REQUIRED = 'continuity-required';

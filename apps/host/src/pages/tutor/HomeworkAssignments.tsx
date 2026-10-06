@@ -1,12 +1,12 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { HOMEWORK_TASK_MAX, type HomeworkAudience, type PublishedHomeworkTask } from '@openroom/schema';
 import type { ContextLearner } from '../../api';
-import { Button } from '../../components/ui/button';
-import { Checkbox } from '../../components/ui/checkbox';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Textarea } from '../../components/ui/textarea';
+import { Button } from '@openroom/ui/components/button';
+import { Checkbox } from '@openroom/ui/components/checkbox';
+import { Input } from '@openroom/ui/components/input';
+import { Label } from '@openroom/ui/components/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
+import { Textarea } from '@openroom/ui/components/textarea';
 
 const names = { reading: 'Reading', writing: 'Writing', voice: 'Voice response', quiz: 'Practice' };
 

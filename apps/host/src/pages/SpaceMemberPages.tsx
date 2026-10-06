@@ -22,13 +22,13 @@ import {
   ManagementTable,
   RowActions,
 } from '../components/ManagementTable';
-import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { DropdownMenuItem } from '../components/ui/dropdown-menu';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Badge } from '@openroom/ui/components/badge';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent } from '@openroom/ui/components/card';
+import { DropdownMenuItem } from '@openroom/ui/components/dropdown-menu';
+import { Input } from '@openroom/ui/components/input';
+import { Label } from '@openroom/ui/components/label';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
 import { to } from '../destinations';
 import { useAuth } from '../useAuth';
 import { LoadState, PageHeading, messageOf } from './tutor/shared';

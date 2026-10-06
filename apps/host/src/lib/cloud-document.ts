@@ -1,6 +1,6 @@
 import { parseOutline, stringifyOpenRoomFile, type Outline, type OpenRoomFileV1 } from '@openroom/schema';
 import { addDeckVersion, getDeck, getDeckDraft, getDeckFileLink, linkDeckFile } from '../api';
-import { blankDeck, downloadDeckFile, renameDeck } from './deck-document';
+import { blankDeck, downloadDeckFile, renameDeck } from '@openroom/editor';
 import { portableDeck } from './portable-deck';
 
 /** Read acknowledged draft content; a failed read must never silently export an older deck. */

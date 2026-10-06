@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { billingKey, billingMessage, cancelCheckout, capabilityLabel, getBilling, getPlans, openPortal, planPrice, startCheckout, subscriptionLabel, syncBilling } from '../billing/api';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
 import { to } from '../destinations';
 import type { AuthSession } from '../useAuth';
 import { PageHeading } from './tutor/shared';

@@ -17,8 +17,8 @@ import type { WorkspaceExperience } from '@openroom/schema';
 import { getSpaceTree, setSpaceLanguages, updateSpaceSettings } from '../api';
 import { ExperienceFields } from '../components/ExperienceFields';
 import { LanguagePairFields, useLanguagePair } from '../components/LanguagePairFields';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent } from '@openroom/ui/components/card';
 import { Link } from '@tanstack/react-router';
 
 import { to } from '../destinations';

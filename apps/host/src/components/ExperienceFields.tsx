@@ -1,6 +1,6 @@
 import { WORKSPACE_EXPERIENCES, type WorkspaceExperience } from '@openroom/schema';
 import { EXPERIENCES } from '../shell/experiences';
-import { cn } from '../lib/utils';
+import { cn } from '@openroom/ui/utils';
 
 export function ExperienceFields({ value, onChange, disabled = false }: {
   value: WorkspaceExperience;

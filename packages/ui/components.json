@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "../../apps/host/src/index.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@openroom/ui/components",
+    "ui": "@openroom/ui/components",
+    "utils": "@openroom/ui/utils",
+    "lib": "@openroom/ui",
+    "hooks": "@openroom/ui/hooks"
+  }
+}

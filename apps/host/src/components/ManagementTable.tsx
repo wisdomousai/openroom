@@ -10,7 +10,7 @@ import {
 import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Search } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogClose,
@@ -19,15 +19,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
+} from '@openroom/ui/components/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import { Input } from './ui/input';
+} from '@openroom/ui/components/dropdown-menu';
+import { Input } from '@openroom/ui/components/input';
 import {
   Table,
   TableBody,
@@ -35,7 +35,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from './ui/table';
+} from '@openroom/ui/components/table';
 
 export function CollectionToolbar({
   value,

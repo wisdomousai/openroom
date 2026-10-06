@@ -7,12 +7,12 @@ import { getSessionItem, listAllSpaces, listContexts, listDecks, type ContextSum
 import { EXPERIENCES } from './experiences';
 import { SpaceSwitcher } from './SpaceSwitcher';
 import { PersonBadge } from '../components/PersonBadge';
-import { ThemeStudio } from '../components/ThemeStudio';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
+import { ThemeStudio } from '@openroom/ui/theme-studio';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
 import { initials } from '../lib/initials';
 import { groupSpaces } from '../lib/members';
-import { cn } from '../lib/utils';
+import { cn } from '@openroom/ui/utils';
 import { to } from '../destinations';
 import { useAuth } from '../useAuth';
 

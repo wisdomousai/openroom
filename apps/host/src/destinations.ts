@@ -23,12 +23,7 @@
  * copied to another device.
  */
 
-export interface LibraryPlace {
-  spaceId: string | null | undefined;
-  folderId?: string | null;
-  itemId?: string | null;
-  contextId?: string | null;
-}
+import type { LibraryPlace } from '@openroom/editor';
 
 const opt = (value: string | null | undefined): string | undefined => value ?? undefined;
 

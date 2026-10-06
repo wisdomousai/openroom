@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { createDeck } from '../../api';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { to } from '../../destinations';
-import { blankDeck } from '../../lib/deck-document';
+import { blankDeck } from '@openroom/editor';
 import { invalidateManagementData } from '../../query-client';
 
 /** Creating is an entry into the editor, never a metadata form. */

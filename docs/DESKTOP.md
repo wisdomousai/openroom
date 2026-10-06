@@ -18,7 +18,7 @@ The executable contract and merge algorithm live in `packages/schema/src/openroo
 
 ## Native responsibilities
 
-`apps/desktop` is an Electron shell around the built React host client. It owns:
+`apps/desktop` is an Electron shell around the built React host client (`apps/host`, copied in by `apps/desktop/scripts/copy-host.mjs`). The deck editor, presenter and live console in that client come from `packages/editor`; the host wraps the document window (`#/desktop/file`) in `DesktopFileEditorServices`, which offers no draft saves, learner work or brand kits because a local file has no space or person. The editor reaches the preload bridge only as the `desktop` member of `EditorServices`. It owns:
 
 - macOS and Windows `.openroom` file association;
 - one native window per open file and OS recent documents;

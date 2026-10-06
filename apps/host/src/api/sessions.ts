@@ -1,6 +1,6 @@
 import type { HomeworkAudience } from '@openroom/schema';
 import type { DeckShape, Outline, PresentationPosition, SessionStatus } from '@openroom/schema';
-import type { ApiErrorBody } from '../types';
+import type { ApiErrorBody, ExportFormat, SessionContext } from '@openroom/editor';
 import {
   ApiError,
   baseUrl,
@@ -222,18 +222,6 @@ export async function fetchStageToken(sessionCode: string, hostToken: string): P
   return data.stageToken;
 }
 
-/** What a session was launched for; `context: null` means it is a shared session. */
-export interface SessionContext {
-  context: {
-    id: string;
-    kind: string | null;
-    displayName: string | null;
-    level: string | null;
-    nextNote?: string | null;
-  } | null;
-  session: { id: string; title: string } | null;
-}
-
 /**
  * The console's mode is derived from this, not from a control: a session either
  * came from a run with a context (tutoring) or it did not (shared). Host token
@@ -246,8 +234,6 @@ export async function fetchSessionContext(sessionCode: string, hostToken: string
   if (!res.ok) throw new ApiError(res.status, `Could not load the session's context (HTTP ${res.status})`);
   return (await res.json()) as SessionContext;
 }
-
-export type ExportFormat = 'csv' | 'json' | 'ballots';
 
 export function exportUrl(sessionCode: string, format: ExportFormat): string {
   return `${baseUrl}/api/sessions/${encodeURIComponent(sessionCode)}/export?format=${format}`;

@@ -1,3 +1,4 @@
+import { CloudEditorServices, DesktopFileEditorServices } from './editor-services';
 import { BrandKitPage, BrandKitsPage } from './pages/BrandKitPages';
 import {
   createHashHistory,
@@ -12,9 +13,7 @@ import { createContext, lazy, Suspense, useCallback, useContext, useEffect, type
 
 import { to, type LinkTarget } from './destinations';
 
-import { LiveHost } from './LiveHost';
-import { PresenterRemote } from './PresenterRemote';
-import { QnaDesk } from './QnaDesk';
+import { LiveHost, PresenterRemote, QnaDesk, type StoredSession } from '@openroom/editor';
 import { LearnerPage } from './pages/LearnerPage';
 import { DeckEditorPage } from './pages/DeckEditorPage';
 import { DesktopFileEditor } from './pages/DesktopFileEditor';
@@ -39,11 +38,10 @@ import { SessionNotesPage } from './pages/tutor/SessionNotes';
 import { TutoringTrashPage } from './pages/tutor/Trash';
 import { WorkspaceShell } from './shell/WorkspaceShell';
 import { loadLiveSession, saveLiveSession } from './storage';
-import { ToastRegion, useToasts } from './toasts';
-import type { StoredSession } from './types';
+import { ToastRegion, useToasts } from '@openroom/ui/toasts';
 import { useAuth, type AuthSession } from './useAuth';
-import { Alert, AlertDescription, AlertTitle } from './components/ui/alert';
-import { Button } from './components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@openroom/ui/components/alert';
+import { Button } from '@openroom/ui/components/button';
 
 type Notify = (message: string, tone?: 'info' | 'error') => void;
 
@@ -85,7 +83,9 @@ function RootLayout() {
 
   return (
     <AppServicesContext.Provider value={{ session, notify: push, openSession, exitToLibrary }}>
-      <Outlet />
+      <CloudEditorServices>
+        <Outlet />
+      </CloudEditorServices>
       <ToastRegion toasts={toasts} />
       {TanStackDevelopmentTools ? <Suspense fallback={null}><TanStackDevelopmentTools /></Suspense> : null}
     </AppServicesContext.Provider>
@@ -321,7 +321,7 @@ const savedResultsRoute = createRoute({ getParentRoute: () => rootRoute, path: '
   return <SignedInGate><Suspense fallback={<p className="p-6">Loading saved results…</p>}><SavedResultsPage key={`${session.user?.id}:${archiveId}`} userId={session.user?.id ?? ''} archiveId={archiveId} /></Suspense></SignedInGate>;
 } });
 
-const desktopFileRoute = createRoute({ getParentRoute: () => rootRoute, path: '/desktop/file', component: DesktopFileEditor });
+const desktopFileRoute = createRoute({ getParentRoute: () => rootRoute, path: '/desktop/file', component: () => <DesktopFileEditorServices><DesktopFileEditor /></DesktopFileEditorServices> });
 const desktopPresentationRoute = createRoute({ getParentRoute: () => rootRoute, path: '/desktop/present', component: DesktopPresentationPage });
 
 /**

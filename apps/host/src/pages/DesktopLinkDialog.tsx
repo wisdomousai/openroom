@@ -15,7 +15,7 @@ import {
   type FolderSummary,
   type MySpace,
 } from '../api';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog';
+} from '@openroom/ui/components/dialog';
 
 interface FolderChoice extends FolderSummary { depth: number }
 

@@ -1,5 +1,5 @@
 import { badgeChart, initials, type BadgeChart } from '../lib/initials';
-import { cn } from '../lib/utils';
+import { cn } from '@openroom/ui/utils';
 
 const CHART_BG: Record<BadgeChart, string> = {
   'chart-1': 'bg-[color-mix(in_oklab,var(--chart-1)_18%,var(--background))]',

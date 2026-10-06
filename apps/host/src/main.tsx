@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import { App } from './App';
-import { bootstrapTheme, ThemeProvider } from './lib/theme';
-import { TooltipProvider } from './components/ui/tooltip';
+import { bootstrapTheme, ThemeProvider } from '@openroom/ui/theme-provider';
+import { TooltipProvider } from '@openroom/ui/components/tooltip';
 import { queryClient } from './query-client';
 
 // Paint the stored theme before the first React frame.

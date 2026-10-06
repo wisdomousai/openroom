@@ -2,8 +2,8 @@ import { WORKSPACE_EXPERIENCES } from '@openroom/schema';
 import { useNavigate } from '@tanstack/react-router';
 import { Check, ChevronDown, Plus } from 'lucide-react';
 import type { MySpace } from '../api';
-import { Button } from '../components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { Button } from '@openroom/ui/components/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@openroom/ui/components/dropdown-menu';
 import { to } from '../destinations';
 import { EXPERIENCES } from './experiences';
 

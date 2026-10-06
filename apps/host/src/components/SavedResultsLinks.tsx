@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { listSavedResults, type ResultsScope } from '../api/saved-results';
 import { to } from '../destinations';
 import { useAuth } from '../useAuth';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 /** Result files belong to their deck, alongside its Notes; they are not a session directory. */
 export function SavedResultsLinks({ compact = false, ...scope }: ResultsScope & { compact?: boolean }) {

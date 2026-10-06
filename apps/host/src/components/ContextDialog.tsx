@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { contextFromFields, fieldsFromContext, type ContextFields } from '../lib/context-fields';
 import { givenName, possessive } from '../lib/initials';
 import { ContextFieldsEditor } from './ContextFieldsEditor';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogBody,
@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
+} from '@openroom/ui/components/dialog';
 
 interface Props {
   open: boolean;

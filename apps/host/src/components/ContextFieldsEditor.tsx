@@ -3,9 +3,9 @@ import {
   LANGUAGE_LEVEL_CHIPS,
   type ContextFields,
 } from '../lib/context-fields';
-import { cn } from '../lib/utils';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
+import { cn } from '@openroom/ui/utils';
+import { Input } from '@openroom/ui/components/input';
+import { Textarea } from '@openroom/ui/components/textarea';
 
 function Chip({
   label,

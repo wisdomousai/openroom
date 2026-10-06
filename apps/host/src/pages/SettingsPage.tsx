@@ -18,11 +18,11 @@ import {
   RowActions,
 } from '../components/ManagementTable';
 import type { AuthSession } from '../useAuth';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { DropdownMenuItem } from '../components/ui/dropdown-menu';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
+import { DropdownMenuItem } from '@openroom/ui/components/dropdown-menu';
+import { Input } from '@openroom/ui/components/input';
+import { Label } from '@openroom/ui/components/label';
 import { Link } from '@tanstack/react-router';
 
 import { to } from '../destinations';

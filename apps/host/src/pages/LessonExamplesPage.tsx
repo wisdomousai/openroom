@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { createDeck, getSpaceTree } from '../api';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { to } from '../destinations';
 import { LESSON_EXAMPLES, lessonExample } from '../lib/lesson-examples';
 import { getBreadcrumbTrail } from '../lib/folder-tree';
 import { invalidateManagementData } from '../query-client';
-import { SlideThumbnail } from './deck-edit/SlideThumbnail';
+import { SlideThumbnail } from '@openroom/editor';
 import { LoadState, PageHeading, messageOf } from './tutor/shared';
 
 export default function LessonExamplesPage({ spaceId, folderId, contextId }: { spaceId: string; folderId: string | null; contextId: string | null }) {

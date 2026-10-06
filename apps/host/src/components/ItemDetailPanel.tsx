@@ -4,11 +4,11 @@ import { Link } from '@tanstack/react-router';
 import type { FolderSummary, SpaceTreeDeck, SpaceTreeRecord } from '../api';
 import { homeworkLine, recapLine, slidesLine, type DeckContentsMeta } from '../lib/contents-meta';
 import { ROW_DRAG_MIME, serializeRows } from '../lib/row-drag';
-import { cn } from '../lib/utils';
+import { cn } from '@openroom/ui/utils';
 import { to } from '../destinations';
 import { DeckPreview } from './DeckThumb';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
 import { MoveTreePicker } from './MoveTreePicker';
 import { SavedResultsLinks } from './SavedResultsLinks';
 

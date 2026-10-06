@@ -8,7 +8,7 @@ import {
   extractMessage,
   request,
 } from './client';
-import type { ApiErrorBody } from '../types';
+import type { ApiErrorBody } from '@openroom/editor';
 import { listAllSpaces } from './spaces';
 
 export type { MediaAssetSummary };

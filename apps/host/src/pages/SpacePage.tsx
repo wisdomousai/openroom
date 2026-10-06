@@ -39,7 +39,7 @@ import {
 } from '../components/ItemDetailPanel';
 import { PersonBadge } from '../components/PersonBadge';
 import { TreeRail } from '../components/TreeRail';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { formatContentsMeta } from '../lib/contents-meta';
 import { collectDescendantIds, getBreadcrumbTrail } from '../lib/folder-tree';
 import { givenName } from '../lib/initials';
@@ -51,7 +51,7 @@ import { parseRows, ROW_DRAG_MIME, type DragRow } from '../lib/row-drag';
 import { to } from '../destinations';
 import { invalidateManagementData } from '../query-client';
 import type { AuthSession } from '../useAuth';
-import type { StoredSession } from '../types';
+import type { StoredSession } from '@openroom/editor';
 import { stringifyOpenRoomFile, type OpenRoomFileV1 } from '@openroom/schema';
 
 interface Props {

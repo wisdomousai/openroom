@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { defaultDeckDesign, DECK_ASPECT_RATIOS, SLIDE_THEME_FAMILIES } from '../../packages/schema/src/deck-design';
 import { SLIDE_TEMPLATES } from '../../packages/schema/src/slide-templates';
 import type { Outline } from '../../packages/schema/src/outline-types';
-import { insertTemplate } from '../../apps/host/src/pages/deck-edit/outline-edit/templates';
+import { insertTemplate } from '../../packages/editor/src/deck-edit/outline-edit/templates';
 import { waitForWorker } from '../fixtures/session';
 
 const CSRF = { 'x-openroom-csrf': '1' };

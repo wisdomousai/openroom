@@ -22,11 +22,12 @@ import {
 import { HomeworkAssignments } from './HomeworkAssignments';
 import { clearSessionNotes, readSessionNotes, writeSessionNotes } from '../../lib/scratchpad';
 import { useAuth } from '../../useAuth';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent } from '../../components/ui/card';
-import { Label } from '../../components/ui/label';
-import { Textarea } from '../../components/ui/textarea';
-import { to, type LibraryPlace } from '../../destinations';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent } from '@openroom/ui/components/card';
+import { Label } from '@openroom/ui/components/label';
+import { Textarea } from '@openroom/ui/components/textarea';
+import type { LibraryPlace } from '@openroom/editor';
+import { to } from '../../destinations';
 import { invalidateManagementData } from '../../query-client';
 import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../../components/ContinuityLock';
 import {

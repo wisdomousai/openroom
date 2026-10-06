@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { encodeVoiceWav, VOICE_MAX_SECONDS, VOICE_SAMPLE_RATE, VOICE_SOURCE_MAX_BYTES } from '@openroom/schema';
 import { ApiError, uploadLearnerVoice, type LearnerHomeworkTask } from '../../api';
 import { PrivateAudio, audioTime } from '../../components/PrivateAudio';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { useLearnerLanguage } from '../../lib/learner-language';
 import type { LearnerMessage } from '../../lib/learner-copy';
 

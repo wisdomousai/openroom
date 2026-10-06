@@ -10,8 +10,8 @@ import {
   type ContextDetail,
 } from '../../api';
 import { ContextFieldsEditor } from '../../components/ContextFieldsEditor';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
 import {
   contextFromFields,
   fieldsFromContext,

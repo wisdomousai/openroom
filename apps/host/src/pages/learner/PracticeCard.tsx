@@ -3,9 +3,9 @@ import { useLearnerLanguage } from '../../lib/learner-language';
 import { ArrowDown, ArrowUp, Check, RotateCcw } from 'lucide-react';
 import { assessHomework, initialHomeworkAnswer, type HomeworkPracticeAnswer } from '@openroom/schema';
 import { ApiError, type LearnerPracticeItem } from '../../api';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
 
 export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
   item: LearnerPracticeItem;
