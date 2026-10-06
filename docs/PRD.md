@@ -974,7 +974,7 @@ examples/
 docs/
 ```
 
-Licensing is a decision to lock before implementation. The source direction proposes AGPL for the hosted server and web applications, with more permissive licensing considered for protocols, schemas, and SDKs to encourage interoperability.
+Licensing is a decision to lock before implementation. The source direction proposes AGPL for the hosted server and web applications, with more permissive licensing considered for protocols, schemas, and SDKs to encourage interoperability. Decided: the core (packages, relay, stage, participant, Office, Desktop) is MIT and the workspace (workspace client, workspace Worker, site) is AGPL-3.0-only; `LICENSING.md` maps every directory.
 
 ## 17. Delivery plan
 

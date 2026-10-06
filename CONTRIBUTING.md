@@ -19,9 +19,11 @@ Every contributor signs the [Contributor License Agreement](CLA.md) once, throug
 the CLA check that appears on their first pull request. A pull request cannot be
 merged until it is signed.
 
-OpenRoom is released under the AGPL and is also offered under a commercial
-licence. The CLA gives the maintainer the right to include your contribution in
-both. You keep the copyright to your work.
+OpenRoom's core is released under the MIT licence and its workspace under the
+AGPL ([`LICENSING.md`](LICENSING.md) maps each directory). OpenRoom is also offered
+under a commercial licence. The CLA covers contributions to either half and gives
+the maintainer the right to include your contribution in the open-source and the
+commercial releases. You keep the copyright to your work.
 
 ## Security
 

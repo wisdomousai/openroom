@@ -67,8 +67,9 @@ and protocols), `docs/DESKTOP.md` (the native client and `.openroom` files) and
 ## Layout
 
 The repository has two halves. The **core** makes and presents decks and runs live
-sessions, and builds on its own (`bun run build:core`). The **workspace** organises
-decks for a signed-in teacher and is the web host.
+sessions; it is MIT-licensed and builds on its own (`bun run build:core`). The
+**workspace** organises decks for a signed-in teacher and is the web host; it is
+AGPL-3.0-only. [`LICENSING.md`](LICENSING.md) maps every directory to its licence.
 
 ### Core
 
@@ -224,14 +225,16 @@ a class: Notes, homework, learner links and identified sessions. The code is the
 
 ## License
 
-The application is licensed under the [GNU AGPL v3](LICENSE). The client
-libraries other programs build on, `packages/sdk`, `packages/schema` and
-`packages/cli`, are [MIT](packages/sdk/LICENSE).
+The core is [MIT](packages/sdk/LICENSE): every package under `packages/`, the relay,
+stage, participant, Office and Desktop apps, `examples/` and `plugin/`. The workspace
+is the [GNU AGPL v3](LICENSE) (AGPL-3.0-only): `apps/workspace`,
+`apps/workspace-worker`, `apps/site` and `e2e/`. [`LICENSING.md`](LICENSING.md) maps
+every directory to its licence.
 
 ### Commercial licence and support
 
-Organisations that cannot use AGPL software, or that want to self-host with a
-support agreement, can license OpenRoom commercially. Write to
+Organisations that cannot use the AGPL-licensed workspace, or that want to
+self-host with a support agreement, can license OpenRoom commercially. Write to
 [hello@openroom.app](mailto:hello@openroom.app).
 
 Contributions are accepted under the [Contributor License Agreement](CLA.md);
