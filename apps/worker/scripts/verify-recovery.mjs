@@ -56,8 +56,9 @@ async function open(persist) {
   const relayOptions = unstable_getMiniflareWorkerOptions(relayConfigFile).workerOptions;
   runtime = new Miniflare({ host: '127.0.0.1', port: 0, cf: false, resourcePersistencePath: resolve(persist, 'v3'),
     workers: [
-      { ...workerOptions, name: config.name, modules: true, modulesRoot: bundleDir, scriptPath: resolve(bundleDir, 'index.js') },
-      { ...relayOptions, name: relayConfig.name, modules: true, modulesRoot: relayBundleDir, scriptPath: resolve(relayBundleDir, 'index.js') },
+      // Each worker needs its own asset service name (assets.workerName); see verification-runtime.mjs.
+      { ...workerOptions, assets: { ...workerOptions.assets, workerName: config.name }, name: config.name, modules: true, modulesRoot: bundleDir, scriptPath: resolve(bundleDir, 'index.js') },
+      { ...relayOptions, assets: { ...relayOptions.assets, workerName: relayConfig.name }, name: relayConfig.name, modules: true, modulesRoot: relayBundleDir, scriptPath: resolve(relayBundleDir, 'index.js') },
       ...externalWorkers,
     ] });
   await runtime.ready;

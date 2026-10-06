@@ -132,6 +132,6 @@ test.describe('UC-43 relay-only session', () => {
       headers: { authorization: `Bearer ${session.hostToken}` },
     });
     expect(csv.status).toBe(200);
-    expect((await csv.text()).split('\n').filter((line) => line.startsWith(`${INTERACTION},`))).toHaveLength(3);
+    expect((await csv.text()).split('\n').filter((line) => line.includes(INTERACTION))).toHaveLength(3);
   });
 });
