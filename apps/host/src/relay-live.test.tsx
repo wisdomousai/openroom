@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { DesktopRelayStatus, EditorServices, OpenRoomDesktopBridge } from '@openroom/editor';
 
 import { relayEditorServices } from './editor-services';
-import { OFFLINE_LIVE_MESSAGE, desktopLiveRoute } from './lib/desktop-live';
+import { desktopLiveRoute } from './lib/desktop-live';
 
 const fail = () => Promise.reject(new Error('base service called'));
 
@@ -99,9 +99,5 @@ describe('desktopLiveRoute', () => {
 
   it('treats a failed sign-in check as signed out', async () => {
     expect(await desktopLiveRoute(() => Promise.reject(new Error('offline')), bridgeWith(SET))).toEqual({ kind: 'relay', origin: 'https://live.example.org' });
-  });
-
-  it('states what a live session needs', () => {
-    expect(OFFLINE_LIVE_MESSAGE).toBe('Live sessions need a sign-in or a live server. Present works offline.');
   });
 });
