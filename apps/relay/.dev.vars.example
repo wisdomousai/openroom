@@ -3,5 +3,3 @@
 TOKEN_SECRET=dev-secret-change-me
 # Bearer key for POST /api/sessions. Unset: session creation is disabled.
 RELAY_KEY=dev-relay
-# Clear the production join host so join links point at /join/ on this origin.
-JOIN_ORIGIN=

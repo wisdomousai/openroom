@@ -13,7 +13,6 @@ export default defineConfig({
         bindings: {
           TOKEN_SECRET: 'test-secret',
           RELAY_KEY: 'test-relay-key',
-          JOIN_ORIGIN: 'https://join.openroom.app',
         },
       },
     }),

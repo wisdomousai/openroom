@@ -61,7 +61,8 @@ describe('POST /api/sessions', () => {
     const created = await createSessionWithOutline(SMOKE_OUTLINE);
     expect(created.sessionCode).toMatch(/^[A-Z0-9]+$/);
     expect(created.code).toBe(created.sessionCode);
-    expect(created.joinUrl).toBe(`https://join.openroom.app/?code=${created.sessionCode}`);
+    // The relay default writes join links on its own origin.
+    expect(created.joinUrl).toBe(`/join/?code=${created.sessionCode}`);
 
     const host = await stateJson(created.sessionCode, created.hostToken, 'host');
     expect(host.status).toBe('lobby');

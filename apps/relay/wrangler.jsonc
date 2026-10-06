@@ -26,10 +26,11 @@
     // Worker first: `/` redirects to /join/ and the join host rewrites to it.
     "run_worker_first": true
   },
-  // JOIN_ORIGIN is the participant host written into join links and QR
-  // codes. apps/relay/.dev.vars must clear it (JOIN_ORIGIN=) for local dev.
+  // JOIN_ORIGIN is the participant host written into the join links of
+  // sessions this relay creates. Empty: `/join/?code=…` on the relay's own
+  // origin. Hosted, the control plane creates sessions and writes its own.
   "vars": {
-    "JOIN_ORIGIN": "https://join.openroom.app"
+    "JOIN_ORIGIN": ""
   }
   // Secrets (`wrangler secret put`, or .dev.vars locally):
   //   TOKEN_SECRET — HMAC key for session capability tokens; must equal the
