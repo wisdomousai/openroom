@@ -7,6 +7,7 @@ import {
   ipcMain,
   Menu,
   protocol,
+  safeStorage,
   screen,
   session,
   shell,
@@ -31,6 +32,7 @@ import {
   withDesktopAuthFlag,
 } from './auth-navigation.js';
 import { prepareDesktopDeckHandoff } from './deck-handoff.js';
+import { createRelayStore, defaultRelayFile } from './relay.js';
 import { desktopMcpSocketPath, startDesktopMcpServer } from './mcp-host.js';
 import { adoptLoginShellPath } from './shell-path.js';
 import { startDesktopUpdateChecks } from './updates.js';
@@ -81,6 +83,12 @@ let presentationState: PresentationState | null = null;
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 const rendererRoot = app.isPackaged ? join(app.getAppPath(), 'renderer') : resolve(moduleDir, '../renderer');
 const onlineOrigin = (process.env['OPENROOM_ORIGIN'] ?? 'https://openroom.app').replace(/\/$/, '');
+
+// Signed out, live sessions run on the teacher's own relay; see relay.ts.
+const relay = createRelayStore({
+  file: () => defaultRelayFile(app.getPath('userData')),
+  safeStorage: () => safeStorage ?? null,
+});
 
 function recoveryDir(): string { return join(app.getPath('userData'), 'recovery'); }
 function settingsDir(): string { return join(app.getPath('userData'), 'state'); }
@@ -165,7 +173,9 @@ async function protocolResponse(request: Request): Promise<Response> {
       headers.delete('host');
       const init: RequestInit = { method: request.method, headers, redirect: 'follow' };
       if (request.method !== 'GET' && request.method !== 'HEAD') init.body = await request.arrayBuffer();
-      return session.defaultSession.fetch(`${onlineOrigin}${url.pathname}${url.search}`, init);
+      // Sessions created on the relay keep talking to it; everything else is the control plane.
+      const origin = relay.originFor(url.pathname) ?? onlineOrigin;
+      return session.defaultSession.fetch(`${origin}${url.pathname}${url.search}`, init);
     }
     const local = safeRendererPath(url);
     if (local === null) return new Response('Forbidden', { status: 403 });
@@ -534,6 +544,21 @@ function installIpc(): void {
   ipcMain.on('desktop:control-origin', (event) => {
     event.returnValue = onlineOrigin;
   });
+  ipcMain.handle('desktop:relay:status', () => relay.status());
+  ipcMain.handle('desktop:relay:save', async (_event, input: { origin?: unknown; key?: unknown }) => {
+    try {
+      const origin = typeof input?.origin === 'string' ? input.origin : '';
+      const key = typeof input?.key === 'string' ? input.key : '';
+      return { ok: true, status: await relay.save({ origin, key }) };
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : String(error) };
+    }
+  });
+  ipcMain.handle('desktop:relay:clear', async () => {
+    try { return { ok: true, status: await relay.clear() }; }
+    catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; }
+  });
+  ipcMain.handle('desktop:relay:start-session', (_event, outline: unknown) => relay.startSession(outline));
   ipcMain.handle('desktop:show-in-folder', (event) => { const path = stateFor(event.sender).path; if (path) shell.showItemInFolder(path); });
   ipcMain.handle('desktop:list-displays', () => screen.getAllDisplays().map((display, index) => ({
     id: String(display.id), label: displayLabel(display, index), primary: display.id === screen.getPrimaryDisplay().id, external: !display.internal,
@@ -765,6 +790,7 @@ app.on('second-instance', (_event, argv) => {
 const lock = app.requestSingleInstanceLock();
 if (!lock) app.quit();
 else void app.whenReady().then(async () => {
+  await relay.hydrate();
   protocol.handle('openroom', protocolResponse);
   session.defaultSession.webRequest.onBeforeRequest({ urls: ['https://local.openroom.invalid/*'] }, (details, callback) => {
     const resourceId = new URL(details.url).pathname.replace(/^\//, '');

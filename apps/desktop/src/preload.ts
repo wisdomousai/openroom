@@ -38,6 +38,10 @@ contextBridge.exposeInMainWorld('openroomDesktop', {
   onDocumentChanged: (listener: Listener<unknown>) => subscribe('desktop:document-changed', listener),
   onDeckSaved: (listener: Listener<unknown>) => subscribe('desktop:deck-saved', listener),
   openSignIn: () => ipcRenderer.invoke('desktop:open-sign-in'),
+  relayStatus: () => ipcRenderer.invoke('desktop:relay:status'),
+  saveRelay: (input: { origin: string; key?: string }) => ipcRenderer.invoke('desktop:relay:save', input),
+  clearRelay: () => ipcRenderer.invoke('desktop:relay:clear'),
+  relayStartSession: (outline: unknown) => ipcRenderer.invoke('desktop:relay:start-session', outline),
   // Sandboxed preload: no relative imports, so channel names are inline literals.
   // src/agents/channels.test.ts asserts they stay in sync with AGENT_CHANNELS.
   listAgentHosts: () => ipcRenderer.invoke('desktop:agents:list'),
