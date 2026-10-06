@@ -8,7 +8,7 @@ import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { BrandKitPreview } from '../components/BrandKitPreview';
 import { to } from '../destinations';
-import { DeckDesignPanel } from './deck-edit/properties/deck-design';
+import { DeckDesignPanel } from '../../../../packages/editor/src/deck-edit/properties/deck-design';
 import { LoadState, PageHeading, messageOf } from './tutor/shared';
 
 export function BrandKitsPage({ spaceId, trashed = false }: { spaceId: string; trashed?: boolean }) {

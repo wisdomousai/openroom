@@ -1,4 +1,4 @@
-import type { ApiErrorBody, SessionError } from '../types';
+import type { ApiErrorBody, SessionError } from '../../../../packages/editor/src/types';
 
 export const baseUrl = ''; // same origin (docs/CONTRACTS.md §HTTP API)
 

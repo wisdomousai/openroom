@@ -6,7 +6,7 @@ import {
   parseVersionConflict,
   restoreInteraction,
 } from './session-conflict';
-import type { ChoiceInteraction, Session } from '../types';
+import type { ChoiceInteraction, Session } from '../../../../packages/editor/src/types';
 
 function conflictError(): ApiError {
   return new ApiError(409, 'conflict', 'E_VERSION_CONFLICT', [], {

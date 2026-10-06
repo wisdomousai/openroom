@@ -1,4 +1,4 @@
-import type { PresentCursor } from './presenter/cursor';
+import type { PresentCursor } from '../../../packages/editor/src/presenter/cursor';
 import type { OpenRoomFileResourceV1 } from '@openroom/schema';
 
 export interface DesktopDocumentSnapshot {

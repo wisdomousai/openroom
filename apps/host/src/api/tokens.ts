@@ -52,6 +52,6 @@ export async function listMySessions(): Promise<MySession[]> {
   return body.sessions ?? [];
 }
 
-export function facilitateSession(code: string): Promise<import('../types').StoredSession> {
+export function facilitateSession(code: string): Promise<import('../../../../packages/editor/src/types').StoredSession> {
   return request(`/api/my/sessions/${encodeURIComponent(code)}/facilitate`, { method: 'POST', mutating: true });
 }

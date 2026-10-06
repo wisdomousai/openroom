@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@openroom/charts": "workspace:*",
+    "@openroom/editor": "workspace:*",
     "@openroom/schema": "workspace:*",
     "@openroom/sdk": "workspace:*",
     "@openroom/slides": "workspace:*",

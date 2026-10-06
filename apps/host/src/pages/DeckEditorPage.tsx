@@ -1,4 +1,4 @@
-import { blankDeck, renameDeck, questionReadinessMessage } from '../lib/deck-document';
+import { blankDeck, renameDeck, questionReadinessMessage } from '../../../../packages/editor/src/deck-document';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { parseOutline, slideEmbedCode } from '@openroom/schema';
@@ -8,15 +8,15 @@ import { invalidateManagementData } from '../query-client';
 import { addDeckVersion, getDeck, getDeckDraft, getDeckFileLink, putDeckDraft } from '../api';
 import { desktopBridge } from '../desktop-bridge';
 import { startSessionFromDeck } from '../lib/library-actions';
-import { AgentPane } from './AgentPane';
-import { seedAgentWithReading } from './agent-chat';
-import { DeckEditor } from './deck-edit/DeckEditor';
-import { DeckEditorTopBar } from './deck-edit/DeckEditorTopBar';
-import { Presenter, type PresentationPosition } from '../presenter/Presenter';
+import { AgentPane } from '../../../../packages/editor/src/agent/AgentPane';
+import { seedAgentWithReading } from '../../../../packages/editor/src/agent/agent-chat';
+import { DeckEditor } from '../../../../packages/editor/src/deck-edit/DeckEditor';
+import { DeckEditorTopBar } from '../../../../packages/editor/src/deck-edit/DeckEditorTopBar';
+import { Presenter, type PresentationPosition } from '../../../../packages/editor/src/presenter/Presenter';
 import { downloadCloudDocument } from '../lib/cloud-document';
-import { useDraftSave } from './deck-edit/useDraftSave';
+import { useDraftSave } from '../../../../packages/editor/src/deck-edit/useDraftSave';
 import { to } from '../destinations';
-import type { StoredSession } from '../types';
+import type { StoredSession } from '../../../../packages/editor/src/types';
 import { sessionStartMessage } from '../components/ContinuityLock';
 
 

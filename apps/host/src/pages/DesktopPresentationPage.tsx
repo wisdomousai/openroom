@@ -1,4 +1,4 @@
-import { useStageMirror } from '../live/useStageMirror';
+import { useStageMirror } from '../../../../packages/editor/src/live/useStageMirror';
 import { StageView } from '@openroom/stage-src/StageView';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -9,7 +9,7 @@ import {
 } from '@openroom/schema';
 
 import { desktopBridge, type DesktopPresentationState } from '../desktop-bridge';
-import { PresentStage, presentableSteps } from '../presenter/PresentationStage';
+import { PresentStage, presentableSteps } from '../../../../packages/editor/src/presenter/PresentationStage';
 
 function parseState(state: DesktopPresentationState | null): { outline: Outline; state: DesktopPresentationState } | null {
   if (state === null) return null;

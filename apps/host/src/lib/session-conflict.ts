@@ -3,7 +3,7 @@
  * (testable without a DOM).
  */
 import { ApiError } from '../api';
-import type { Interaction, Session } from '../types';
+import type { Interaction, Session } from '../../../../packages/editor/src/types';
 
 export interface VersionConflict {
   latestVersion: number;

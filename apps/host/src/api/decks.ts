@@ -4,7 +4,7 @@ import type {
   DeckShape,
   Outline,
 } from '@openroom/schema';
-import type { ApiErrorBody } from '../types';
+import type { ApiErrorBody } from '../../../../packages/editor/src/types';
 import { ApiError, baseUrl, extractMessage, request } from './client';
 import type { SessionSummary } from './sessions';
 

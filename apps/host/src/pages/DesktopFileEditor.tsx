@@ -1,4 +1,4 @@
-import { blankDeck, renameDeck, questionReadinessMessage } from '../lib/deck-document';
+import { blankDeck, renameDeck, questionReadinessMessage } from '../../../../packages/editor/src/deck-document';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   editableOutlineForOpenRoomFile,
@@ -19,7 +19,7 @@ import { stringify } from 'yaml';
 
 import { to } from '../destinations';
 import { desktopBridge, type DesktopDocumentChanged } from '../desktop-bridge';
-import { AgentPane } from './AgentPane';
+import { AgentPane } from '../../../../packages/editor/src/agent/AgentPane';
 import {
   addDeckVersion,
   startSessionFromOutline,
@@ -31,11 +31,11 @@ import {
   uploadAsset,
 } from '../api';
 import { Button } from '@openroom/ui/components/button';
-import { DeckEditor } from './deck-edit/DeckEditor';
-import { Presenter, type PresentationPosition } from '../presenter/Presenter';
-import { DeckEditorTopBar } from './deck-edit/DeckEditorTopBar';
+import { DeckEditor } from '../../../../packages/editor/src/deck-edit/DeckEditor';
+import { Presenter, type PresentationPosition } from '../../../../packages/editor/src/presenter/Presenter';
+import { DeckEditorTopBar } from '../../../../packages/editor/src/deck-edit/DeckEditorTopBar';
 import { startSessionFromDeck } from '../lib/library-actions';
-import type { StoredSession } from '../types';
+import type { StoredSession } from '../../../../packages/editor/src/types';
 import { DesktopLinkDialog } from './DesktopLinkDialog';
 import { sessionStartMessage } from '../components/ContinuityLock';
 

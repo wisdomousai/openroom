@@ -1,3 +1,4 @@
+import './stage.css';
 import { BrandKitPage, BrandKitsPage } from './pages/BrandKitPages';
 import {
   createHashHistory,
@@ -12,9 +13,9 @@ import { createContext, lazy, Suspense, useCallback, useContext, useEffect, type
 
 import { to, type LinkTarget } from './destinations';
 
-import { LiveHost } from './LiveHost';
-import { PresenterRemote } from './PresenterRemote';
-import { QnaDesk } from './QnaDesk';
+import { LiveHost } from '../../../packages/editor/src/live/LiveHost';
+import { PresenterRemote } from '../../../packages/editor/src/live/PresenterRemote';
+import { QnaDesk } from '../../../packages/editor/src/live/QnaDesk';
 import { LearnerPage } from './pages/LearnerPage';
 import { DeckEditorPage } from './pages/DeckEditorPage';
 import { DesktopFileEditor } from './pages/DesktopFileEditor';
@@ -40,7 +41,7 @@ import { TutoringTrashPage } from './pages/tutor/Trash';
 import { WorkspaceShell } from './shell/WorkspaceShell';
 import { loadLiveSession, saveLiveSession } from './storage';
 import { ToastRegion, useToasts } from '@openroom/ui/toasts';
-import type { StoredSession } from './types';
+import type { StoredSession } from '../../../packages/editor/src/types';
 import { useAuth, type AuthSession } from './useAuth';
 import { Alert, AlertDescription, AlertTitle } from '@openroom/ui/components/alert';
 import { Button } from '@openroom/ui/components/button';

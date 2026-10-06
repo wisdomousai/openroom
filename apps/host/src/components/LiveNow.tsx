@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { facilitateSession } from '../api/tokens';
 import { useQuery } from '@tanstack/react-query';
 import { listMySessions } from '../api';
-import type { StoredSession } from '../types';
+import type { StoredSession } from '../../../../packages/editor/src/types';
 import { Button } from '@openroom/ui/components/button';
 
 export function LiveNow({ onOpen }: { onOpen: (session: StoredSession) => void }) {

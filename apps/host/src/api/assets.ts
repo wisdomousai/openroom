@@ -8,7 +8,7 @@ import {
   extractMessage,
   request,
 } from './client';
-import type { ApiErrorBody } from '../types';
+import type { ApiErrorBody } from '../../../../packages/editor/src/types';
 import { listAllSpaces } from './spaces';
 
 export type { MediaAssetSummary };
