@@ -4,8 +4,7 @@ import type {
   DeckShape,
   Outline,
 } from '@openroom/schema';
-import type { ApiErrorBody } from '@openroom/editor';
-import { ApiError, baseUrl, extractMessage, request } from './client';
+import { ApiError, request } from './client';
 import type { SessionSummary } from './sessions';
 
 export interface DeckSummary {
@@ -67,22 +66,6 @@ export async function listDecks(options: {
 export function getDeck(id: string, version?: number): Promise<DeckDetailResponse> {
   const query = version === undefined ? '' : `?version=${encodeURIComponent(String(version))}`;
   return request(`/api/decks/${encodeURIComponent(id)}${query}`);
-}
-
-export async function getDeckIfChanged(
-  id: string,
-  etag: string,
-): Promise<{ changed: false; etag: string } | { changed: true; etag: string | null; detail: DeckDetailResponse }> {
-  const res = await fetch(`${baseUrl}/api/decks/${encodeURIComponent(id)}`, {
-    headers: { 'if-none-match': etag },
-    credentials: 'same-origin',
-  });
-  if (res.status === 304) return { changed: false, etag: res.headers.get('etag') ?? etag };
-  const body = await res.json().catch(() => null) as (DeckDetailResponse & ApiErrorBody) | null;
-  if (!res.ok || body?.deck === undefined) {
-    throw new ApiError(res.status, extractMessage(body, `Request failed (HTTP ${res.status})`));
-  }
-  return { changed: true, etag: res.headers.get('etag'), detail: body };
 }
 
 export async function createDeck(input: {
@@ -163,17 +146,6 @@ export function linkDeckFile(
     mutating: true,
     body: JSON.stringify({ fileId }),
   });
-}
-
-export function reportDeckFileLocation(
-  id: string,
-  deviceId: string,
-  input: Omit<DeckFileLocation, 'deviceId' | 'lastSeenAt'> & { fileId: string },
-): Promise<{ location: DeckFileLocation }> {
-  return request(
-    `/api/decks/${encodeURIComponent(id)}/file-locations/${encodeURIComponent(deviceId)}`,
-    { method: 'PUT', mutating: true, body: JSON.stringify(input) },
-  );
 }
 
 /**

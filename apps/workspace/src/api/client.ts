@@ -10,14 +10,6 @@ export interface DeletionIntent {
   confirmationUrl: string;
 }
 
-export interface StartSessionResponse {
-  sessionCode: string;
-  code: string;
-  hostToken: string;
-  stageToken: string;
-  joinUrl?: string;
-}
-
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string | undefined;

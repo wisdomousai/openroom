@@ -1,4 +1,4 @@
-import { CloudEditorServices, DesktopFileEditorServices } from './editor-services';
+import { CloudEditorServices } from './editor-services';
 import { BrandKitPage, BrandKitsPage } from './pages/BrandKitPages';
 import {
   createHashHistory,
@@ -16,8 +16,6 @@ import { to, type LinkTarget } from './destinations';
 import { LiveHost, PresenterRemote, QnaDesk, type StoredSession } from '@openroom/editor';
 import { LearnerPage } from './pages/LearnerPage';
 import { DeckEditorPage } from './pages/DeckEditorPage';
-import { DesktopFileEditor } from './pages/DesktopFileEditor';
-import { DesktopPresentationPage } from './pages/DesktopPresentationPage';
 import { SpaceEditPage } from './pages/SpaceEditPage';
 import { SpaceNewPage } from './pages/SpaceNewPage';
 import { SpaceInvitePage, SpaceMemberEditPage, SpaceMembersPage } from './pages/SpaceMemberPages';
@@ -321,8 +319,6 @@ const savedResultsRoute = createRoute({ getParentRoute: () => rootRoute, path: '
   return <SignedInGate><Suspense fallback={<p className="p-6">Loading saved results…</p>}><SavedResultsPage key={`${session.user?.id}:${archiveId}`} userId={session.user?.id ?? ''} archiveId={archiveId} /></Suspense></SignedInGate>;
 } });
 
-const desktopFileRoute = createRoute({ getParentRoute: () => rootRoute, path: '/desktop/file', component: () => <DesktopFileEditorServices><DesktopFileEditor /></DesktopFileEditorServices> });
-const desktopPresentationRoute = createRoute({ getParentRoute: () => rootRoute, path: '/desktop/present', component: DesktopPresentationPage });
 
 /**
  * Sessions have no collection route: a session is started, never scheduled, and
@@ -442,8 +438,6 @@ const routeTree = rootRoute.addChildren([
   deckNewRoute,
   deckEditRoute,
   savedResultsRoute,
-  desktopFileRoute,
-  desktopPresentationRoute,
   learnRoute,
   liveSessionRoute,
   liveRemoteRoute,

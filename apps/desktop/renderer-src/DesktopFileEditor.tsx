@@ -41,13 +41,13 @@ import {
   startCreatedSession,
   uploadEphemeralSessionResource,
   uploadAsset,
-} from '../api';
+  sessionStartMessage,
+  startSessionFromDeck,
+} from './api';
 import { Button } from '@openroom/ui/components/button';
-import { startSessionFromDeck } from '../lib/library-actions';
 import { DesktopLinkDialog } from './DesktopLinkDialog';
-import { sessionStartMessage } from '../components/ContinuityLock';
-import { RelayLiveServices } from '../editor-services';
-import { OFFLINE_LIVE_MESSAGE, desktopLiveRoute, type DesktopLiveRoute } from '../lib/desktop-live';
+import { RelayLiveServices } from './relay-live';
+import { OFFLINE_LIVE_MESSAGE, desktopLiveRoute, type DesktopLiveRoute } from './desktop-live';
 
 
 function newFile(): OpenRoomFileV1 {

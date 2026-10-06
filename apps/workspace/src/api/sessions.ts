@@ -1,5 +1,5 @@
 import type { HomeworkAudience } from '@openroom/schema';
-import type { DeckShape, Outline, PresentationPosition, SessionStatus } from '@openroom/schema';
+import type { DeckShape, PresentationPosition, SessionStatus } from '@openroom/schema';
 import type { ApiErrorBody, ExportFormat, SessionContext } from '@openroom/editor';
 import {
   ApiError,
@@ -8,7 +8,6 @@ import {
   extractMessage,
   request,
   type DeletionIntent,
-  type StartSessionResponse,
 } from './client';
 
 export interface SessionSummary {
@@ -147,37 +146,6 @@ export function requestPermanentDeletion(
     method: 'POST',
     mutating: true,
   });
-}
-
-export function startSessionFromOutline(outline: Outline): Promise<StartSessionResponse> {
-  return request<StartSessionResponse>('/api/sessions', {
-    method: 'POST',
-    mutating: true,
-    body: JSON.stringify({ outline }),
-  });
-}
-
-export async function uploadEphemeralSessionResource(
-  sessionCode: string,
-  hostToken: string,
-  resourceId: string,
-  contentType: string,
-  sha256: string,
-  bytes: Uint8Array,
-): Promise<void> {
-  const response = await fetch(
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionCode)}/assets/${encodeURIComponent(resourceId)}`,
-    {
-      method: 'PUT',
-      headers: {
-        authorization: `Bearer ${hostToken}`,
-        'content-type': contentType,
-        'x-openroom-sha256': sha256,
-      },
-      body: Uint8Array.from(bytes).buffer,
-    },
-  );
-  if (!response.ok) throw new ApiError(response.status, `Could not upload ${resourceId} (HTTP ${response.status})`);
 }
 
 export async function startCreatedSession(sessionCode: string, hostToken: string, cursor?: PresentationPosition): Promise<void> {

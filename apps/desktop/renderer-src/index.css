@@ -1,0 +1,12 @@
+/* Scans this renderer only, not the Electron main process beside it. */
+@import 'tailwindcss' source('.');
+/* Stage viz + shared charts package (the live console's StageView). */
+@source "../../stage/src";
+@source "../../../packages/charts/src";
+/* Shared shadcn primitives and toasts. */
+@source "../../../packages/ui/src/**/*.tsx";
+/* Deck editor, presenter and live console. */
+@source "../../../packages/editor/src";
+@import '@openroom/charts/charts.css';
+/* Token bridge, type scale and base styles; must follow the Tailwind import. */
+@import '@openroom/ui/theme.css';
