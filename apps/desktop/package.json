@@ -8,8 +8,9 @@
   "description": "OpenRoom desktop client",
   "main": "dist/main.js",
   "scripts": {
-    "build": "bun run --filter openroom-workspace build && bun run build:from-host",
-    "build:from-host": "tsc -p tsconfig.json && node scripts/bundle-preload.mjs && node scripts/copy-workspace.mjs",
+    "build": "bun run build:core && node scripts/copy-workspace.mjs --build",
+    "build:core": "tsc -p tsconfig.json && node scripts/bundle-preload.mjs",
+    "copy:workspace": "node scripts/copy-workspace.mjs",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "start": "bun run build && electron .",

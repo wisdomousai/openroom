@@ -61,7 +61,7 @@ if (filters.length > 0) {
 
 console.log('Building desktop shell…');
 await run('bun', ['run', '--filter', 'openroom-desktop', 'build']);
-await run('bun', ['run', 'build:worker']);
+await run('bun', ['run', '--filter', 'openroom-relay', '--filter', 'openroom-workspace-worker', 'build']);
 console.log('Applying local D1 migrations…');
 await new Promise((resolvePromise, reject) => {
   const child = spawn('bunx', ['wrangler', 'd1', 'migrations', 'apply', 'openroom', '--local'], {
