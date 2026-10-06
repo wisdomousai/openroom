@@ -11,7 +11,8 @@ packages/domain        @openroom/domain   — pure TS session state machine, com
 packages/cli           @openroom/cli      — `openroom` CLI: init/validate/preview (+ session commands hitting the HTTP API)
 packages/sdk           @openroom/sdk      — tiny browser client: join, snapshot fetch, WS+polling sync, command submit
 packages/ui            @openroom/ui       — typed theme-token system: 5 built-in themes x light/dark, CSS-variable emission
-apps/worker            — Cloudflare Worker router + SessionDO Durable Object + static asset serving
+apps/worker            — control plane Worker: router, D1/R2, accounts, session creation; binds the relay's SessionDO
+apps/relay             — relay Worker (`openroom-relay`): SessionDO Durable Object, live session API, stage + participant apps
 apps/participant       — participant web app (Vite + React + @openroom/charts)
 apps/stage             — projector stage view (Vite + React + GSAP + Three + @openroom/charts)
 apps/host              — host console (Vite + React + shadcn + @openroom/charts)
@@ -289,6 +290,12 @@ stays hidden during discussion in multi-slide decks as well as poll-only decks.
 ## HTTP API (worker)
 
 Base: same origin. JSON everywhere. Static apps: participant at `/`, stage at `/stage/`, host at `/host/`.
+The control plane serves every route below. `/join/`, `/stage/` and the `join.` host are
+forwarded to the relay over the `RELAY` service binding; the live routes
+(`/api/sessions/:code/{state,commands,export,ws,stage-token,assets/*}` and `/api/join`)
+run on the control plane with the relay's `openroom-relay/live` module against the
+cross-script `SESSIONS` namespace. A relay deployed alone serves the subset in
+[Relay API](#relay-api).
 
 ```
 POST /api/sessions                          host-auth'd (session cookie + CSRF header, or `x-openroom-admin: <ADMIN_KEY secret>`)
@@ -450,7 +457,7 @@ GET  /api/sessions/:sessionCode/ws?token=...     WebSocket upgrade (hibernation 
                                          the latest stored revision, including newer coalesced ballots. Client sends nothing except pings.
 ```
 
-Tokens: HMAC-SHA256 signed via WebCrypto, format `base64url(payload).base64url(sig)`, payload `{ sessionCode, role, participantId?, exp }` (exp: participant 6h, host/stage 12h). Secret from env `TOKEN_SECRET`. Implement sign/verify in `apps/worker/src/tokens.ts`.
+Tokens: HMAC-SHA256 signed via WebCrypto, format `base64url(payload).base64url(sig)`, payload `{ sessionCode, role, participantId?, exp }` (exp: participant 6h, host/stage 12h). Secret from env `TOKEN_SECRET`, the same value on the control plane and the relay. Sign/verify in `apps/relay/src/tokens.ts`.
 
 SessionDO: SQLite-backed Durable Object named `SessionDO`, id = `idFromName(sessionCode)`. Session code mapping in KV-less MVP: sessionCode IS derived — `sessionCode = code` (the code is the session id), `idFromName(code)`. Persists `state` as JSON in one SQLite row (MVP simplification; measured normalization later), `idempotency` table (key, resultJson, ts), and optional live-only embedded resources in `session_assets` plus 1 MiB `session_asset_chunks`. Start refuses a session whose referenced resources are missing. Single-range GET/HEAD serves those bytes inline; the existing 24-hour session `deleteAll()` removes them with all other session state. The alarm prunes idempotency rows older than 1h. Uses `ctx.acceptWebSocket()` hibernation API + `setWebSocketAutoResponse` for pings. Coalesced notify runs on two channels (broadcast immediately if that channel's last broadcast is older than its interval, else `ctx.storage.setAlarm` — no `setTimeout`): lifecycle (host commands → all sockets, 250ms) and results (ballots/joins → `getWebSockets('host'|'stage')`, 1s, plus `'participant'` sockets only when `resultsVisible(state, activeInteractionId)`; audience computed at send time). A lifecycle broadcast clears any pending results tick — everyone just refetched. This keeps per-round work linear in participants: without it every ballot notified every participant and each notified participant refetched a snapshot (quadratic). Session auto-expiry: alarm ends sessions idle 12h. Optional countdown: when an open interaction has `closesAt` (from the session's `timerSec`), the same multiplexed alarm applies host `interaction.close` at that deadline — no speed scoring.
 
@@ -458,7 +465,39 @@ Presentation contexts, decks (content metadata), immutable deck versions, sessio
 
 Retention (PRD DATA-04), served by the same multiplexed alarm: `PURGE_AFTER_MS = 30 * 60 * 1000` and `DELETE_AFTER_MS = 24 * 60 * 60 * 1000`, both measured from `meta.endedAt` — recorded when a session reaches `ended` by command OR by the idle auto-end. At `endedAt + PURGE_AFTER_MS` the DO applies `purgeBallots`, persists and broadcasts `session.changed` once. At `endedAt + DELETE_AFTER_MS` it closes remaining WebSockets and calls `ctx.storage.deleteAll()`, dropping the in-memory state copy too, so join/state/export take the same 404 path as an uninitialized session. The alarm always re-arms to the nearest remaining deadline (pending broadcast, housekeeping, active `closesAt`, purge, delete); after the wipe there is none.
 
-Worker env bindings (wrangler.jsonc): `SESSIONS: DurableObjectNamespace`, `TOKEN_SECRET`, `ADMIN_KEY`, `ASSETS` (static assets with `not_found_handling: single-page-application` per app dir). Router: hono or hand-rolled — hand-rolled preferred (few routes).
+Worker env bindings (wrangler.jsonc): `SESSIONS: DurableObjectNamespace` (control plane: `script_name: "openroom-relay"`), `RELAY: Fetcher` (control plane → relay service binding), `TOKEN_SECRET`, `ADMIN_KEY`, `ASSETS` (static assets with `not_found_handling: single-page-application` per app dir). Router: hono or hand-rolled — hand-rolled preferred (few routes).
+
+### Relay API
+
+`apps/relay` deployed alone (`openroom-relay`, a route or `workers_dev`). Env: `SESSIONS`
+(own `SessionDO`, migration `v1 new_sqlite_classes`), `ASSETS` (`public/join`,
+`public/stage`), secrets `TOKEN_SECRET` and `RELAY_KEY`, var `JOIN_ORIGIN` (empty:
+join links are `/join/?code=…` on the relay). No D1, no R2, no accounts.
+
+```
+GET  /api/health                          → { status: 'ok' }
+POST /api/sessions                        Authorization: Bearer <RELAY_KEY>
+                                         body { outline: Outline | string (YAML), participantLimit?: positive integer }
+                                         → 201 { sessionCode, code, hostToken, stageToken, joinUrl }
+                                         403 creation-disabled (no RELAY_KEY) · 401 unauthorized (missing/wrong key)
+                                         400 invalid-json | missing-outline | invalid-participant-limit · 422 { errors } (invalid outline)
+                                         422 identity-mode-unavailable (identified or roster outline)
+                                         no participant limit unless the body sets one
+POST /api/join                            body { code, recoveryHandle? } — anonymous and pseudonymous sessions, as above
+                                         contextLink or rosterInvite → 403 identified-join-unavailable
+                                         409 session-full when participantLimit is reached
+GET  /api/sessions/:code/state            as above
+POST /api/sessions/:code/commands         as above; the host may run every host command
+GET  /api/sessions/:code/export           as above; format=ballots allowed for the host; no archive (ended sessions follow DO retention)
+GET  /api/sessions/:code/ws               as above
+GET  /api/sessions/:code/stage-token      host token → { stageToken }
+PUT|GET|HEAD /api/sessions/:code/assets/:resourceId  as above
+GET  /                                    302 → /join/ (query kept) · /join/, /stage/ → participant and stage apps
+```
+
+The relay refuses a host token that carries a `userId` (`403 account-session`): a
+control-plane session never runs under relay rules. Relay host tokens carry
+`facilitatorId: 'creator'` and no account.
 
 ## SDK (browser client)
 

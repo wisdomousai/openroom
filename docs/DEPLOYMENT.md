@@ -2,8 +2,18 @@
 
 The workflow is [`.github/workflows/verify.yml`](../.github/workflows/verify.yml).
 GitHub Actions runs checks on pull requests targeting `main`, pushes to `main`, and
-manual runs. Production is the `openroom` Worker serving `openroom.app`,
-`www.openroom.app`, and `join.openroom.app`.
+manual runs. Production is two Workers:
+
+| Worker | Source | Serves |
+| --- | --- | --- |
+| `openroom` (control plane) | `apps/worker` | `openroom.app`, `www.openroom.app`, `join.openroom.app`; D1, R2, accounts, session creation, the live API front door |
+| `openroom-relay` (live plane) | `apps/relay` | No public route (`workers_dev: false`). Owns `SessionDO`; serves `/join/`, `/stage/` and the `join.` host through the control plane's `RELAY` service binding |
+
+The control plane binds `SessionDO` from the relay with `script_name: "openroom-relay"`
+([Durable Object bindings](https://developers.cloudflare.com/workers/wrangler/configuration/#durable-objects))
+and forwards the live pages over a service binding
+([service bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/)).
+Both resolve only if the relay is deployed, so **the relay always deploys first**.
 
 ## Release sequence
 
@@ -14,15 +24,19 @@ manual runs. Production is the `openroom` Worker serving `openroom.app`,
    for the commit. Retain this artifact and browser evidence for seven days.
 4. For `main`, enter the `production` job after verification succeeds. Skip a build
    if a newer commit is already on `main`.
-5. Restore the artifact, apply pending D1 migrations, and deploy the Worker with
-   the verified static assets. The deployment job performs no frontend rebuild.
+5. Restore the artifact, deploy the relay with its verified stage and participant
+   assets, then apply pending D1 migrations and deploy the control plane with its
+   verified static assets. The deployment job performs no frontend rebuild.
 6. Verify production health and compare app entry points, manual chapters, search
-   data, screenshots, and linked assets with the build using SHA-256 hashes. HTML
+   data, screenshots, and linked assets with the build using SHA-256 hashes. `/join/`
+   and `/stage/` are compared with `apps/relay/public`, the rest with
+   `apps/worker/public`. HTML
    comparison excludes Cloudflare's injected challenge and analytics scripts and
    normalizes whitespace between tags; other assets require an exact byte match.
 
 Pull requests have no production credentials. All jobs use read-only repository
-permissions; the Cloudflare token is exposed only to the migration/deployment step.
+permissions; the Cloudflare token is exposed only to the two deployment steps, which
+run only in the canonical repository.
 Official Actions are pinned to commit revisions. Production deployments run one
 at a time and are not interrupted by newer pushes. A manual workflow run deploys
 only when its selected branch is `main`.
@@ -55,6 +69,18 @@ gh secret set CLOUDFLARE_API_TOKEN --env production
 gh variable set CLOUDFLARE_ACCOUNT_ID --body YOUR_ACCOUNT_ID
 ```
 
+Worker secrets are set once per Worker with `wrangler secret put` (hidden prompt),
+not through GitHub:
+
+| Worker | Secret | Note |
+| --- | --- | --- |
+| `openroom-relay` (`cd apps/relay`) | `TOKEN_SECRET` | The **same value** as the control plane's; both sign and verify session capability tokens |
+| `openroom` (`cd apps/worker`) | `TOKEN_SECRET`, `ADMIN_KEY`, Google and Paddle values | As before |
+
+Hosted, the relay has no `RELAY_KEY`: only the control plane creates sessions, and
+`POST /api/sessions` on the relay answers `403 creation-disabled`. Set the relay's
+`TOKEN_SECRET` before the first relay deploy; without it no session token verifies.
+
 Do not place credentials in YAML, commit them, or include them in issue comments.
 Once configuration is complete, push `main` and open **Actions → OpenRoom CI/CD**.
 The run must show successful verification and deployment jobs. Without the account
@@ -84,9 +110,18 @@ bun run deploy
 node scripts/ci/verify-deployment.mjs https://openroom.app
 ```
 
-`bun run deploy` rebuilds the app before uploading. The CI job intentionally invokes
-Wrangler directly after restoring its verified build. Calling the Worker package's
-deploy script alone collects existing app output without rebuilding it.
+`bun run deploy` rebuilds the app, deploys the relay, then the control plane. The CI
+job intentionally invokes Wrangler directly in `apps/relay` and then `apps/worker`
+after restoring its verified build. Calling either package's deploy script alone
+collects existing app output without rebuilding it.
+
+### Moving `SessionDO` to the relay
+
+The control plane's migration `v3` (`deleted_classes: ["SessionDO"]`) deletes its
+own `SessionDO` namespace on the first deploy after the move; the relay's `v1`
+creates the new one. Sessions running at that moment end: their state is not moved.
+Ended-session archives in R2 and durable session rows in D1 are unaffected. Deploy
+outside teaching hours.
 
 ## Failures and recovery
 
@@ -99,7 +134,8 @@ If the production check fails after an upload, inspect the failed path and the
 Cloudflare deployment before rerunning. The workflow reports the failure and leaves
 the deployed version visible; it does not reverse database changes automatically.
 
-For a Worker-only regression, inspect versions and roll back from `apps/worker`:
+For a Worker-only regression, inspect versions and roll back from `apps/worker` or
+`apps/relay`:
 
 ```sh
 bun x --no-install wrangler deployments list
@@ -107,7 +143,9 @@ bun x --no-install wrangler rollback VERSION_ID
 ```
 
 Confirm that the previous Worker is compatible with the current database before
-rollback. Native Desktop distribution, signing, notarization, and native PowerPoint
+rollback. Do not roll the control plane back past the `SessionDO` move: a version
+that defines the class locally conflicts with migration `v3`. Roll the relay back
+independently; the control plane keeps binding whatever relay version is live. Native Desktop distribution, signing, notarization, and native PowerPoint
 acceptance remain separate release tasks.
 
 References: [GitHub deployment environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments),

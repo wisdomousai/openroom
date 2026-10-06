@@ -14,6 +14,7 @@ relative to the repository root.
 - [The agent sidebar](#the-agent-sidebar)
 - [MCP and CLI first](#mcp-and-cli-first)
 - [The document is the contract](#the-document-is-the-contract)
+- [Live sessions: control plane and relay](#live-sessions-control-plane-and-relay)
 - [Paying for tokens: bring your own agent](#paying-for-tokens-bring-your-own-agent)
 - [Trust boundaries](#trust-boundaries)
 - [Discoverable by machines](#discoverable-by-machines)
@@ -41,14 +42,21 @@ flowchart TB
   M --> Agents
   Agents -->|stdio MCP sidecar| S
   X["External agents: Claude Code, Codex,<br/>any MCP client, the openroom CLI"] -->|openroom mcp| S
-  S -->|signed in| W["Hosted service: same tools at /api/mcp,<br/>library, live sessions"]
+  subgraph Hosted["Hosted service"]
+    W["Control plane (apps/worker): accounts, library,<br/>same tools at /api/mcp, session creation"]
+    RL["Relay (apps/relay): SessionDO,<br/>live API, stage and join pages"]
+    W -->|SessionDO by script_name<br/>+ RELAY service binding| RL
+  end
+  S -->|signed in| W
   R -->|signed in| W
+  R -.->|signed out, live server set| SR["Self-hosted relay<br/>(apps/relay, RELAY_KEY)"]
 ```
 
 The app works offline. A deck is a file the teacher owns, like a PowerPoint file.
-Signing in adds the online library, sharing and live sessions. Agents never talk to
-the editor UI. They talk to the same MCP tools as every other client, and the
-editor shows what they saved.
+Signing in adds the online library, sharing and live sessions. Signed out, a
+teacher with a live server (their own relay) can still run anonymous and
+pseudonymous live sessions. Agents never talk to the editor UI. They talk to the
+same MCP tools as every other client, and the editor shows what they saved.
 
 ## "Make me a slide with a picture of a cat"
 
@@ -212,6 +220,75 @@ flowchart TB
 - **Every write is conditional.** Agents and people save against the revision they
   read. A conflict returns the latest revision instead of overwriting it.
 
+## Live sessions: control plane and relay
+
+The live plane is its own Worker. `apps/relay` (`openroom-relay`) owns the
+`SessionDO` class, one Durable Object per session, and serves everything a running
+session needs: state, commands, the WebSocket, per-session assets (SQLite chunks in
+the session's object), anonymous and pseudonymous joins, and the stage and
+participant apps. It has no D1, no R2 and no accounts. `apps/worker` (`openroom`) is
+the control plane: accounts, spaces, decks, billing, MCP and the API catalog.
+
+```mermaid
+flowchart LR
+  subgraph Hosted["openroom.app / join.openroom.app"]
+    CP["Control plane<br/>apps/worker"]
+    RE["Relay<br/>apps/relay"]
+    DO[("SessionDO<br/>one per session")]
+    CP -->|"SESSIONS: script_name openroom-relay"| DO
+    CP -->|"RELAY service binding:<br/>/join/*, /stage/*, join host"| RE
+    RE --> DO
+  end
+  subgraph Own["A relay deployed alone"]
+    R2["Relay<br/>apps/relay + RELAY_KEY"]
+    DO2[("SessionDO")]
+    R2 --> DO2
+  end
+  B["Browser, Desktop signed in,<br/>CLI, MCP"] --> CP
+  D["Desktop signed out,<br/>any script with the key"] --> R2
+```
+
+**Hosted, the control plane creates every session.** `POST /api/sessions`,
+`/api/sessions/:id/launch` and the MCP and CLI session tools run on the control plane: it
+checks the account, the plan and the deck, then initialises the session object through
+its cross-script `SESSIONS` binding (`script_name: "openroom-relay"`) and signs the
+host and stage tokens with the shared `TOKEN_SECRET`. The control plane also answers
+`/api/sessions/:code/*` and `/api/join` itself, so it can check that a connection is
+still active, verify roster invites and learner links against D1, and archive a
+session when it ends. The session logic it runs is the relay's own module
+(`openroom-relay/live`) with a control-plane authority. The live pages
+(`/join/`, `/stage/`, the `join.` host) are forwarded to the relay over the `RELAY`
+service binding, so participant URLs are unchanged. The hosted relay has no public
+route (`workers_dev: false`) and no `RELAY_KEY`; it never creates a session on its
+own.
+
+**On a relay deployed alone, the key creates sessions.** `POST /api/sessions` with
+`Authorization: Bearer <RELAY_KEY>` and an outline returns the session code, host and
+stage tokens and a join link on the relay. Identified and roster sessions are refused
+(they need workspace records), as are identified joins; anonymous and pseudonymous
+sessions run in full, with ballots export and no participant limit unless the request
+sets `participantLimit`. Without `RELAY_KEY`, creation is off. The API is in
+`docs/CONTRACTS.md`; deployment is in `docs/DEPLOYMENT.md`.
+
+**Desktop picks the server when a session starts** (`apps/host/src/lib/desktop-live.ts`):
+
+| State | Start live | Present |
+| --- | --- | --- |
+| Signed in | Control plane, as for every hosted deck | Offline |
+| Signed out, live server set | The teacher's relay | Offline |
+| Signed out, no live server | Off: "Live sessions need a sign-in or a live server." | Offline |
+
+The live server (relay address and key) is set in Settings or from the document
+window. The key is sealed with the OS keychain like the API-key host's keys, and only
+the main process sends it, as the bearer of `POST /api/sessions` on that relay
+(`apps/desktop/src/relay.ts`). The main process records each relay session's code, so
+the `openroom://app/api/sessions/<code>/…` proxy sends that session's state, commands,
+assets and exports to the relay. The editor does not branch on the server:
+`RelayLiveServices` (`apps/host/src/editor-services.tsx`) narrows `EditorServices` for
+the session, pointing join and stage links at the relay and dropping what the relay
+does not hold (saved session record, saved results, remote and Q&A links for other
+devices).
+
 ## Paying for tokens: bring your own agent
 
 OpenRoom hosts no model, proxies no tokens and resells nothing. Every agent turn runs
@@ -256,8 +333,10 @@ little:
   where they belong (`AGENTS.md`, "Credential boundary invariant").
 - **The renderer is sandboxed.** It has context isolation, no Node integration and a
   narrow preload bridge (`apps/desktop/src/preload.ts`, `channels.ts`).
-- **No model on the hot path.** Live voting runs on one Durable Object per session.
-  No model call, D1, R2 or queue sits between a vote and its result.
+- **No model on the hot path.** Live voting runs on one Durable Object per session in
+  the relay. No model call, D1, R2 or queue sits between a vote and its result.
+- **A relay key stays in the main process.** The live server key is sealed with the
+  OS keychain and never crosses the preload bridge (`apps/desktop/src/relay.ts`).
 
 ## Discoverable by machines
 
@@ -286,6 +365,7 @@ little:
    and their keys in the OS keychain.
 7. If users pay per token, route small requests to small agents, and keep cached
    prefixes free of per-user bytes.
-8. Keep models off the latency-critical path.
+8. Keep models off the latency-critical path, and the live plane deployable on its
+   own.
 9. Publish machine-readable descriptions of everything: OpenAPI, MCP server card,
    agent card, `llms.txt`.
