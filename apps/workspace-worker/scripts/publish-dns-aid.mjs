@@ -6,9 +6,9 @@
  * Optional: CLOUDFLARE_ZONE_ID (otherwise resolved by zone name).
  *
  * Usage:
- *   bun apps/worker/scripts/publish-dns-aid.mjs
- *   bun apps/worker/scripts/publish-dns-aid.mjs --dry-run
- *   bun apps/worker/scripts/publish-dns-aid.mjs --dnssec
+ *   bun apps/workspace-worker/scripts/publish-dns-aid.mjs
+ *   bun apps/workspace-worker/scripts/publish-dns-aid.mjs --dry-run
+ *   bun apps/workspace-worker/scripts/publish-dns-aid.mjs --dnssec
  *
  * Spec: docs/dns-aid.md
  */

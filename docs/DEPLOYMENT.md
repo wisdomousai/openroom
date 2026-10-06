@@ -6,7 +6,7 @@ manual runs. Production is two Workers:
 
 | Worker | Source | Serves |
 | --- | --- | --- |
-| `openroom` (control plane) | `apps/worker` | `openroom.app`, `www.openroom.app`, `join.openroom.app`; D1, R2, accounts, session creation, the live API front door |
+| `openroom` (control plane) | `apps/workspace-worker` | `openroom.app`, `www.openroom.app`, `join.openroom.app`; D1, R2, accounts, session creation, the live API front door |
 | `openroom-relay` (live plane) | `apps/relay` | No public route (`workers_dev: false`). Owns `SessionDO`; serves `/join/`, `/stage/` and the `join.` host through the control plane's `RELAY` service binding |
 
 The control plane binds `SessionDO` from the relay with `script_name: "openroom-relay"`
@@ -30,7 +30,7 @@ Both resolve only if the relay is deployed, so **the relay always deploys first*
 6. Verify production health and compare app entry points, manual chapters, search
    data, screenshots, and linked assets with the build using SHA-256 hashes. `/join/`
    and `/stage/` are compared with `apps/relay/public`, the rest with
-   `apps/worker/public`. HTML
+   `apps/workspace-worker/public`. HTML
    comparison excludes Cloudflare's injected challenge and analytics scripts and
    normalizes whitespace between tags; other assets require an exact byte match.
 
@@ -75,7 +75,7 @@ not through GitHub:
 | Worker | Secret | Note |
 | --- | --- | --- |
 | `openroom-relay` (`cd apps/relay`) | `TOKEN_SECRET` | The **same value** as the control plane's; both sign and verify session capability tokens |
-| `openroom` (`cd apps/worker`) | `TOKEN_SECRET`, `ADMIN_KEY`, Google and Paddle values | As before |
+| `openroom` (`cd apps/workspace-worker`) | `TOKEN_SECRET`, `ADMIN_KEY`, Google and Paddle values | As before |
 
 Hosted, the relay has no `RELAY_KEY`: only the control plane creates sessions, and
 `POST /api/sessions` on the relay answers `403 creation-disabled`. Set the relay's
@@ -111,7 +111,7 @@ node scripts/ci/verify-deployment.mjs https://openroom.app
 ```
 
 `bun run deploy` rebuilds the app, deploys the relay, then the control plane. The CI
-job intentionally invokes Wrangler directly in `apps/relay` and then `apps/worker`
+job intentionally invokes Wrangler directly in `apps/relay` and then `apps/workspace-worker`
 after restoring its verified build. Calling either package's deploy script alone
 collects existing app output without rebuilding it.
 
@@ -134,7 +134,7 @@ If the production check fails after an upload, inspect the failed path and the
 Cloudflare deployment before rerunning. The workflow reports the failure and leaves
 the deployed version visible; it does not reverse database changes automatically.
 
-For a Worker-only regression, inspect versions and roll back from `apps/worker` or
+For a Worker-only regression, inspect versions and roll back from `apps/workspace-worker` or
 `apps/relay`:
 
 ```sh

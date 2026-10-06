@@ -77,7 +77,7 @@ period, are excluded too.
    occupied bucket; each write also requires an absent key. Read back the bytes
    and verify SHA-256. R2's [conditional write contract](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/#conditional-operations)
    prevents silently overwriting a concurrent writer's object.
-5. Apply `recoveryPreparation` from `apps/worker/src/operations/recovery.ts` as one
+5. Apply `recoveryPreparation` from `apps/workspace-worker/src/operations/recovery.ts` as one
    database batch, using the actual recovery time. These statements invalidate
    restored credentials and stale derived access before users reach the target.
 6. Set a new `TOKEN_SECRET` and use the fresh live-object namespace. Restore other

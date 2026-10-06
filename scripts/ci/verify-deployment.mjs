@@ -6,7 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const assets = resolve(root, 'apps/worker/public');
+const assets = resolve(root, 'apps/workspace-worker/public');
 // The stage and participant apps ship with the relay; openroom.app forwards to it.
 const relayAssets = resolve(root, 'apps/relay/public');
 const assetRoot = (path) => (/^\/(?:join|stage)\//.test(path) ? relayAssets : assets);

@@ -1,5 +1,5 @@
 {
-  "name": "openroom-worker",
+  "name": "openroom-workspace-worker",
   "version": "0.1.0",
   "private": true,
   "license": "AGPL-3.0-only",

@@ -164,7 +164,7 @@ condensed face.
 
 Weights are **400 and 600 only**.
 
-Console type scale (`apps/host/src/index.css`). Six reading steps:
+Console type scale (`apps/workspace/src/index.css`). Six reading steps:
 
 | Token | Size / weight | Job |
 | --- | --- | --- |

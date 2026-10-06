@@ -18,7 +18,7 @@ The executable contract and merge algorithm live in `packages/schema/src/openroo
 
 ## Native responsibilities
 
-`apps/desktop` is an Electron shell around the built React host client (`apps/host`, copied in by `apps/desktop/scripts/copy-host.mjs`). The deck editor, presenter and live console in that client come from `packages/editor`; the host wraps the document window (`#/desktop/file`) in `DesktopFileEditorServices`, which offers no draft saves, learner work or brand kits because a local file has no space or person. The editor reaches the preload bridge only as the `desktop` member of `EditorServices`. It owns:
+`apps/desktop` is an Electron shell around the built React workspace client (`apps/workspace`, copied into `renderer/host` by `apps/desktop/scripts/copy-workspace.mjs`). The deck editor, presenter and live console in that client come from `packages/editor`; the host wraps the document window (`#/desktop/file`) in `DesktopFileEditorServices`, which offers no draft saves, learner work or brand kits because a local file has no space or person. The editor reaches the preload bridge only as the `desktop` member of `EditorServices`. It owns:
 
 - macOS and Windows `.openroom` file association;
 - one native window per open file and OS recent documents;
@@ -35,9 +35,11 @@ The renderer has context isolation, sandboxing, no Node integration, and a narro
 
 An open file takes a `{file}.openroom.lock` (`host: desktop`). The app also listens on `mcp.sock` under userData. `openroom mcp` probes that socket first and reverse-proxies JSON-RPC there; if the app is not running it hosts the file itself, or falls through to `https://openroom.app/api/mcp`. Headless will not write a file the window has open. Desktop-launched CLIs talk to the same socket through a stdio sidecar (`ELECTRON_RUN_AS_NODE`), so they do not need `openroom` on PATH.
 
+The core build (`bun run build:core`) compiles only the main process and the preload. A checkout without `apps/workspace` has no renderer bundle; `copy-workspace.mjs` skips the copy and leaves `renderer/` empty.
+
 ## Live sessions
 
-Desktop reads where to start a live session when the teacher presses Start (`apps/host/src/lib/desktop-live.ts`):
+Desktop reads where to start a live session when the teacher presses Start (`apps/workspace/src/lib/desktop-live.ts`):
 
 | State | Start | Present |
 | --- | --- | --- |

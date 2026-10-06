@@ -1,5 +1,5 @@
 /**
- * API helpers for journey tests — same shape as apps/worker/test/helpers.ts,
+ * API helpers for journey tests — same shape as apps/workspace-worker/test/helpers.ts,
  * talking to a real wrangler dev server over HTTP.
  */
 import { readFileSync } from 'node:fs';

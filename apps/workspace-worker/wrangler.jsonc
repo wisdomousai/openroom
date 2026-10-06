@@ -74,7 +74,7 @@
   // .dev.vars for local dev only (alice/bob/cara, password: demo).
   //
   // JOIN_ORIGIN is the production participant host. wrangler dev also loads
-  // these vars, so apps/worker/.dev.vars must clear it (JOIN_ORIGIN=) or every
+  // these vars, so apps/workspace-worker/.dev.vars must clear it (JOIN_ORIGIN=) or every
   // local "Join" link and QR points at join.openroom.app instead of /join/.
   "vars": {
     "JOIN_ORIGIN": "https://join.openroom.app"

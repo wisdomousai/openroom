@@ -1,6 +1,6 @@
 /**
  * Local dev for both Workers: the relay (apps/relay, port 8790) and the control
- * plane (apps/worker, the front door on 8787 unless arguments say otherwise).
+ * plane (apps/workspace-worker, the front door on 8787 unless arguments say otherwise).
  *
  * Two `wrangler dev` processes, not one `wrangler dev -c … -c …`: a single
  * Miniflare backs every Worker's static assets with one shared disk, so the
@@ -40,4 +40,4 @@ process.once('SIGTERM', () => stop(0));
 
 // Each process needs its own inspector port; the control plane keeps the default.
 start('relay', 'apps/relay', ['--port', '8790', '--inspector-port', '9230']);
-start('control plane', 'apps/worker', process.argv.slice(2));
+start('control plane', 'apps/workspace-worker', process.argv.slice(2));

@@ -1,4 +1,4 @@
-# openroom-worker
+# openroom-workspace-worker
 
 ## Database schema
 

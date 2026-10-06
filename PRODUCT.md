@@ -51,7 +51,7 @@ Six interaction types are implemented: choice, scale, numeric, text, Q&A and ran
 
 ## Evidence on Hand
 
-Working production deployment with ~512 automated tests; examples/ directory of real deck outlines (exit-ticket, peer-instruction, ranking). No testimonials, customers, benchmarks or pricing exist — never invent them. Source not yet published; license undecided (AGPL under consideration).
+Working production deployment with ~512 automated tests; examples/ directory of real deck outlines (exit-ticket, peer-instruction, ranking). No testimonials, customers, benchmarks or pricing exist — never invent them. Source not yet published; licensing: core MIT, workspace AGPL-3.0-only (LICENSING.md).
 
 ## Product Principles
 

@@ -149,7 +149,7 @@ export function AccountPanel({ session }: { session: AuthSession }) {
           {devLoginOnly && !showDemo ? (
             <p className="text-xs text-muted-foreground">
               Local Desktop uses demo accounts. Set <code className="rounded bg-muted px-1 py-0.5">DEMO_AUTH=1</code> in{' '}
-              <code className="rounded bg-muted px-1 py-0.5">apps/worker/.dev.vars</code> and restart.
+              <code className="rounded bg-muted px-1 py-0.5">apps/workspace-worker/.dev.vars</code> and restart.
             </p>
           ) : null}
 

@@ -1,6 +1,6 @@
 /** Prepare a support repair file. Deliberately has no network/database client. */
 import { readFile, writeFile } from 'node:fs/promises';
-import { billingRetrySql } from '../apps/worker/src/billing/support-retry';
+import { billingRetrySql } from '../apps/workspace-worker/src/billing/support-retry';
 
 const [caseFile, outputFile, ...extra] = process.argv.slice(2);
 if (!caseFile || !outputFile || extra.length) throw new Error('Usage: bun run billing:retry <case.json> <repair.sql>');

@@ -1,5 +1,5 @@
 /*
-  # Same policy as the control plane (apps/worker/public/_headers): the stage
+  # Same policy as the control plane (apps/workspace-worker/public/_headers): the stage
   # and participant bundles ship no first-party inline scripts; 'unsafe-inline'
   # covers Cloudflare edge injections only. img/media/frame allow https: for
   # picture, video, and web-page slides authored in Prep.

@@ -74,7 +74,7 @@ upstream matching its listening origin. Custom-domain routes otherwise make
 Wrangler expose the production hostname inside the local request:
 
 ```sh
-cd apps/worker
+cd apps/workspace-worker
 bunx wrangler dev --local --ip 127.0.0.1 --port 8787 --local-upstream 127.0.0.1:8787 --persist-to /tmp/openroom-office-dev
 ```
 

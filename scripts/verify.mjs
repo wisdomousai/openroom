@@ -32,7 +32,6 @@ if (!options.includes('--build-only')) {
   for (const project of projects) if (project.scripts?.typecheck) await run(bun, ['run', 'typecheck'], { cwd: project.directory });
   for (const project of projects) if (project.scripts?.test) await run(bun, ['run', 'test', '--maxWorkers=2'], { cwd: project.directory });
 }
-await run(bun, ['run', 'build:apps'], { cwd: root });
-await run(bun, ['run', 'build:from-host'], { cwd: resolve(root, 'apps/desktop') });
-await run(bun, ['run', 'build:worker'], { cwd: root });
+await run(bun, ['run', 'build:core-apps'], { cwd: root });
+await run(bun, ['run', 'build:workspace'], { cwd: root });
 console.log(options.includes('--build-only') ? 'All application builds completed.' : 'All repository checks and application builds completed.');

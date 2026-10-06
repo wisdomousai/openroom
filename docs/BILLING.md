@@ -35,7 +35,7 @@ Set these Worker variables independently for each billed deployment:
 | `PADDLE_API_KEY` | Server-only API key from the matching Paddle environment |
 | `PADDLE_CLIENT_TOKEN` | Public Paddle.js client token: `test_…` for sandbox, `live_…` for production |
 
-Local values belong in `apps/worker/.dev.vars`; the checked-in
+Local values belong in `apps/workspace-worker/.dev.vars`; the checked-in
 `.dev.vars.example` contains empty slots. Store the API key and webhook secret as
 Worker secrets. The API key is never returned to any client. Sandbox and production need separate D1 databases, notification
 destinations and secrets. Price IDs do not identify their environment by prefix;
@@ -61,7 +61,7 @@ and annual prices where applicable. Monetary amounts and currency remain in
 Paddle. No prices are invented or embedded in application code.
 
 Capabilities are validated against `ENTITLEMENT_FLAGS` in
-`apps/worker/src/entitlements.ts`. Unknown or duplicate capability names, malformed
+`apps/workspace-worker/src/entitlements.ts`. Unknown or duplicate capability names, malformed
 price IDs, empty catalogs and mismatched environments invalidate configuration.
 The reserved `connectors` flag is also rejected: archive delivery workflows are
 not implemented and cannot be offered as a paid capability. Account connections

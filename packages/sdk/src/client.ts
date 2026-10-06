@@ -18,7 +18,7 @@ export type FetchLike = (
     /**
      * JSON bodies are strings. Raw bytes are here for the media plane, whose
      * upload route takes the file itself as the body rather than a multipart
-     * envelope (see `decks.ts` / `apps/worker/src/assets.ts`).
+     * envelope (see `decks.ts` / `apps/workspace-worker/src/assets.ts`).
      */
     body?: string | Uint8Array | ArrayBuffer;
     signal?: AbortSignal;

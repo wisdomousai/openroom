@@ -1,7 +1,7 @@
 /**
  * D1 control-plane schema — the single source of truth.
  *
- * Every file under `apps/worker/migrations/` is GENERATED from this module by
+ * Every file under `apps/workspace-worker/migrations/` is GENERATED from this module by
  * drizzle-kit. Never handwrite SQL there. To change the schema:
  *
  *   1. edit this file

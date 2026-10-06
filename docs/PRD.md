@@ -974,7 +974,7 @@ examples/
 docs/
 ```
 
-Licensing is a decision to lock before implementation. The source direction proposes AGPL for the hosted server and web applications, with more permissive licensing considered for protocols, schemas, and SDKs to encourage interoperability.
+Licensing is a decision to lock before implementation. The source direction proposes AGPL for the hosted server and web applications, with more permissive licensing considered for protocols, schemas, and SDKs to encourage interoperability. Decided: the core (packages, relay, stage, participant, Office, Desktop) is MIT and the workspace (workspace client, workspace Worker, site) is AGPL-3.0-only; `LICENSING.md` maps every directory.
 
 ## 17. Delivery plan
 
@@ -1163,7 +1163,7 @@ These platform assumptions must be rechecked before implementation if Cloudflare
 
 ## 22. Risks and accepted tradeoffs
 
-- **Single-cloud coupling (accepted, contained).** The cost model, the Durable Object session, and the one-command deploy path all assume Cloudflare — the price of near-zero marginal session cost, accepted deliberately. The containment is architectural: the coupling lives entirely in `apps/worker`; the domain is platform-free, which keeps the single-node Node/SQLite adapter (§16 tier 2) an adapter-sized effort rather than a rewrite. Docker-orchestrated multi-node hosting remains a non-goal.
+- **Single-cloud coupling (accepted, contained).** The cost model, the Durable Object session, and the one-command deploy path all assume Cloudflare — the price of near-zero marginal session cost, accepted deliberately. The containment is architectural: the coupling lives entirely in `apps/workspace-worker`; the domain is platform-free, which keeps the single-node Node/SQLite adapter (§16 tier 2) an adapter-sized effort rather than a rewrite. Docker-orchestrated multi-node hosting remains a non-goal.
 - **Slide-integration platform constraints (mitigated).** Neither Office.js task panes nor Apps Script add-ons run during presentation mode; automatic slide-bound activation depends on workarounds (content add-ins, companion remote, browser extension). Mitigation: the tiered integration model, the INT-00 spike, and the decision that the deck, not the slide file, owns the sequence.
 - **Incumbent response (watched).** Incumbents are shipping AI authoring, which erodes convenience-based differentiation. Mitigation: anchor on pricing structure, portability, self-hosting, and participant-data posture, which their business models resist copying.
 - **Episodic usage and retention (designed for).** Weekly-at-best usage makes habit fragile. Mitigation: the reuse loop (deck library, versioned reuse), the public deck library, and the second-session-in-30-days activation metric.
