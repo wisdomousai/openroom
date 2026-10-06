@@ -165,6 +165,28 @@ export interface DesktopDocumentChanged {
   source: string;
 }
 
+/** The live server (an OpenRoom relay) a signed-out desktop presents through. The key never crosses the bridge. */
+export interface DesktopRelayStatus {
+  origin: string | null;
+  hasKey: boolean;
+  /** Set by OPENROOM_RELAY_ORIGIN / OPENROOM_RELAY_KEY; not editable here. */
+  fromEnv: boolean;
+  /** False without an OS keychain: the key can only come from the environment. */
+  keychain: boolean;
+}
+
+export interface DesktopRelaySession {
+  sessionCode: string;
+  code: string;
+  hostToken: string;
+  stageToken: string;
+  /** Absolute participant link on the relay. */
+  joinUrl: string;
+  origin: string;
+}
+
+export type DesktopRelayResult<T> = ({ ok: true } & T) | { ok: false; message: string };
+
 export interface OpenRoomDesktopBridge {
   /** Control-plane origin Electron is pointed at (LAN IP when using `bun desktop`). */
   controlOrigin: string;
@@ -205,6 +227,12 @@ export interface OpenRoomDesktopBridge {
   /** An agent stamped a version of this hosted deck (embedded pane or Codex terminal). */
   onDeckSaved(listener: (event: { deckId: string }) => void): () => void;
   openSignIn(): Promise<{ ok: true }>;
+  relayStatus(): Promise<DesktopRelayStatus>;
+  /** A non-empty key replaces the stored one; an empty key keeps it for the same server. */
+  saveRelay(input: { origin: string; key?: string }): Promise<DesktopRelayResult<{ status: DesktopRelayStatus }>>;
+  clearRelay(): Promise<DesktopRelayResult<{ status: DesktopRelayStatus }>>;
+  /** Create a session on the relay; its API calls then route to the relay by session code. */
+  relayStartSession(outline: unknown): Promise<DesktopRelayResult<{ session: DesktopRelaySession }>>;
   listAgentHosts(): Promise<DesktopAgentHost[]>;
   loginAgentHost(host: DesktopAgentHostId): Promise<{ ok: true }>;
   listAgentKeys(): Promise<DesktopAgentKeys>;

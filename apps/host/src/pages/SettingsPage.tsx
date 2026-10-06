@@ -3,6 +3,8 @@ import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { AccountPanel } from '../AccountPanel';
 import { ConnectedApps } from '../components/ConnectedApps';
+import { LiveServerCard, liveServerBridge } from '../components/LiveServer';
+import { desktopBridge } from '../desktop-bridge';
 import {
   listApiTokens,
   mintApiToken,
@@ -205,6 +207,7 @@ interface Props {
 
 export function SettingsPage({ session }: Props) {
   const signedIn = session.user !== null && session.user !== undefined;
+  const relayBridge = liveServerBridge(desktopBridge());
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6">
@@ -217,6 +220,7 @@ export function SettingsPage({ session }: Props) {
       <Card><CardHeader><CardTitle className="text-base">Billing</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Choose a plan or manage your subscription, payment details and invoices.</p><Button asChild variant="outline"><Link {...to.billing()}>Open billing</Link></Button></CardContent></Card>
       <AgentAccessCard signedIn={signedIn} />
       <ConnectedApps signedIn={signedIn} />
+      {relayBridge === null ? null : <LiveServerCard bridge={relayBridge} />}
 
       <Card>
         <CardHeader>

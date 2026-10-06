@@ -1,0 +1,7 @@
+# `bun run build` (scripts/collect-assets.mjs) copies the built stage and
+# participant apps here.
+public/*
+!public/_headers
+!public/favicon.svg
+# `bun run bundle` output (vitest auxiliary worker for apps/worker).
+dist/

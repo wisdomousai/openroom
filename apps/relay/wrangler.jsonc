@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The live plane: SessionDO, session snapshot/command/WebSocket routes,
+  // per-session assets, anonymous/pseudonymous join, and the stage and
+  // participant apps. No D1, no R2. Deployed alone it is a complete live
+  // system; deployed next to the control plane (apps/worker, script
+  // "openroom") it owns the SessionDO namespace that the control plane binds
+  // with `script_name: "openroom-relay"`.
+  "name": "openroom-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Hosted: reachable only through the control plane's RELAY service binding
+  // (openroom.app, join.openroom.app). Self-hosting the relay alone: set
+  // `workers_dev: true` or add a route, then `wrangler secret put RELAY_KEY`.
+  "workers_dev": false,
+  "durable_objects": {
+    "bindings": [{ "name": "SESSIONS", "class_name": "SessionDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionDO"] }],
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // Worker first: `/` redirects to /join/ and the join host rewrites to it.
+    "run_worker_first": true
+  },
+  // JOIN_ORIGIN is the participant host written into the join links of
+  // sessions this relay creates. Empty: `/join/?code=…` on the relay's own
+  // origin. Hosted, the control plane creates sessions and writes its own.
+  "vars": {
+    "JOIN_ORIGIN": ""
+  }
+  // Secrets (`wrangler secret put`, or .dev.vars locally):
+  //   TOKEN_SECRET — HMAC key for session capability tokens; must equal the
+  //                  control plane's TOKEN_SECRET when both are deployed
+  //   RELAY_KEY    — bearer key for POST /api/sessions (unset ⇒ creation off)
+}

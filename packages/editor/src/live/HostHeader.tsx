@@ -109,6 +109,8 @@ export function HostHeader({
 }: HostHeaderProps) {
   const services = useEditorServices();
   const { navigate, shareUrl } = services.navigation;
+  const remoteLink = shareUrl('remote', sessionCode, hostToken);
+  const qnaLink = hasQna ? shareUrl('qna', sessionCode, hostToken) : null;
 
   return (
     <header className="flex h-11 shrink-0 items-center gap-3.5 bg-chrome px-4" data-theme-surface="">
@@ -180,18 +182,19 @@ export function HostHeader({
             <Smartphone aria-hidden="true" />
             Remote
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => {
-              const url = shareUrl('remote', sessionCode, hostToken);
-              void navigator.clipboard.writeText(url).then(
-                () => push('Remote link copied'),
-                () => push('Could not copy link', 'error'),
-              );
-            }}
-          >
-            <Copy aria-hidden="true" />
-            Copy remote link
-          </DropdownMenuItem>
+          {remoteLink === null ? null : (
+            <DropdownMenuItem
+              onSelect={() => {
+                void navigator.clipboard.writeText(remoteLink).then(
+                  () => push('Remote link copied'),
+                  () => push('Could not copy link', 'error'),
+                );
+              }}
+            >
+              <Copy aria-hidden="true" />
+              Copy remote link
+            </DropdownMenuItem>
+          )}
           {hasQna ? (
             <DropdownMenuItem
               onSelect={() => {
@@ -202,11 +205,10 @@ export function HostHeader({
               Q&A desk
             </DropdownMenuItem>
           ) : null}
-          {hasQna ? (
+          {qnaLink !== null ? (
             <DropdownMenuItem
               onSelect={() => {
-                const url = shareUrl('qna', sessionCode, hostToken);
-                void navigator.clipboard.writeText(url).then(
+                void navigator.clipboard.writeText(qnaLink).then(
                   () => push('Link copied'),
                   () => push('Could not copy link', 'error'),
                 );

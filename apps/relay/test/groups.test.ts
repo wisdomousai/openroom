@@ -90,7 +90,7 @@ describe('group responses over HTTP and WebSocket', () => {
   });
 
   it('rejects group Q&A at outline validation', async () => {
-    const res = await worker.fetch(new Request(`${BASE}/api/sessions`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-openroom-admin': 'test-admin' },
+    const res = await worker.fetch(new Request(`${BASE}/api/sessions`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer test-relay-key' },
       body: JSON.stringify({ outline: { ...outline, interactions: [{ id: 'decision', type: 'qna', prompt: 'Ask a question', responseMode: 'group' }] } }) }), env as never);
     expect(res.status).toBe(422);
   });

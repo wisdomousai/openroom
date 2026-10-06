@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
 import type { RecapCandidates } from '@openroom/schema';
 import { BASE, call, command, createSessionWithOutline, join, SMOKE_OUTLINE } from './helpers.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import { SESSION_COOKIE, CSRF_HEADER } from '../src/auth.js';
 
 const outline = { ...SMOKE_OUTLINE, qna: { enabled: true }, interactions: [...SMOKE_OUTLINE.interactions,

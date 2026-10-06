@@ -12,7 +12,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
 import { embedCheckRoute, embedImportRoute, embedTargetIssue, framingRefusal } from '../src/embed-route.js';
 import worker from '../src/index.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import { BASE } from './helpers.js';
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;

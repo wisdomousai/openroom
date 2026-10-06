@@ -14,9 +14,16 @@
     { "pattern": "www.openroom.app", "custom_domain": true },
     { "pattern": "join.openroom.app", "custom_domain": true }
   ],
+  // The live plane is the relay Worker (apps/relay, script "openroom-relay").
+  // SESSIONS binds the relay's SessionDO namespace so launches, facilitator
+  // registration, recap, archive and the MCP/A2A tools reach a session in one
+  // hop; RELAY forwards the stage and participant pages. Deploy the relay
+  // first: both bindings resolve against the deployed script.
   "durable_objects": {
-    "bindings": [{ "name": "SESSIONS", "class_name": "SessionDO" }]
+    "bindings": [{ "name": "SESSIONS", "class_name": "SessionDO", "script_name": "openroom-relay" }]
   },
+  "services": [{ "binding": "RELAY", "service": "openroom-relay" }],
+  // v3 removes the class this script used to own; the relay declares it anew.
   "migrations": [
     {
       "tag": "v1",
@@ -25,6 +32,10 @@
     {
       "tag": "v2",
       "renamed_classes": [{ "from": "RoomDO", "to": "SessionDO" }]
+    },
+    {
+      "tag": "v3",
+      "deleted_classes": ["SessionDO"]
     }
   ],
   // Control plane (identity, auth sessions, deck library, live-session directory).
@@ -52,8 +63,8 @@
   "assets": {
     "directory": "public",
     "binding": "ASSETS",
-    // Marketing owns `/`; join SPA is under `/join/` (rewritten on join host).
-    // Do not SPA-fallback unknown apex paths to the join app.
+    // Marketing owns `/`. /join/, /stage/ and the join host are the relay's
+    // (forwarded over RELAY). Do not SPA-fallback unknown apex paths.
     "not_found_handling": "404-page",
     // Worker first for everything: OAuth discovery lives at /.well-known/* and
     // the fetch handler already proxies non-API traffic to ASSETS.
@@ -69,8 +80,8 @@
     "JOIN_ORIGIN": "https://join.openroom.app"
   }
   // Secrets (set with `wrangler secret put`, or .dev.vars locally):
-  //   TOKEN_SECRET — HMAC key for capability tokens
-  //   ADMIN_KEY    — shared admin key required by POST /api/rooms (ops override)
+  //   TOKEN_SECRET — HMAC key for capability tokens; same value as the relay's
+  //   ADMIN_KEY    — ops override for POST /api/sessions (x-openroom-admin)
   //   GOOGLE_CLIENT_ID     — Google OAuth client id (unset ⇒ /api/auth/google 501s)
   //   GOOGLE_CLIENT_SECRET — Google OAuth client secret
   //   PIXABAY_API_KEY      — stock photo search (deck editor Stock tab; unset ⇒ 501)

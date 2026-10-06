@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { SESSION_COOKIE } from '../src/auth.js';
 import worker from '../src/index.js';
 import { parsePixabayHits, stockRoute } from '../src/stock.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import { BASE } from './helpers.js';
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;

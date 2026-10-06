@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
 import { BASE, call, SMOKE_OUTLINE } from './helpers.js';
 import { SESSION_COOKIE, CSRF_HEADER } from '../src/auth.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import { sha256Hex } from '../src/api-tokens.js';
 
 async function account() {

@@ -8,8 +8,8 @@ notes after each lesson, and a private link where each student finds their
 homework.
 
 The hosted version is at **[openroom.app](https://openroom.app)**. This repository
-is the whole application: Worker, browser apps, Desktop, CLI, MCP server and the
-agent skills.
+is the whole application: the control-plane and relay Workers, browser apps,
+Desktop, CLI, MCP server and the agent skills.
 
 ## A reference for AI-first desktop apps
 
@@ -32,10 +32,11 @@ agents are first-class users and not an add-on? The answers in this code base:
 - **Discoverable by machines.** `/llms.txt`, a generated OpenAPI document, an MCP
   server card, an A2A agent card, OAuth metadata for MCP clients, and installable
   skills under `plugin/` (prepare a lesson, port a deck, run a session).
-- **The live plane is boring on purpose.** One Durable Object per session owns
-  ballots and aggregates; clients use hibernating WebSockets with a polling
-  fallback. Sessions forget by default: ballots 30 minutes after the end, the
-  session itself after 24 hours.
+- **The live plane is boring on purpose, and separable.** One Durable Object per
+  session owns ballots and aggregates; clients use hibernating WebSockets with a
+  polling fallback. Sessions forget by default: ballots 30 minutes after the end,
+  the session itself after 24 hours. That object lives in its own Worker, the
+  relay (`apps/relay`), which also runs on its own as a complete live system.
 
 ```mermaid
 flowchart LR
@@ -45,11 +46,13 @@ flowchart LR
     C[CLI]
     M[MCP clients]
   end
-  B & D & C & M --> W[Worker: one application service layer]
+  B & D & C & M --> W[Control plane Worker: one application service layer]
   W --> DB[(D1: accounts, spaces, decks, records)]
   W --> R2[(R2: media)]
-  W --> DO[Session Durable Object, one per live session]
+  W -->|SessionDO by script_name, RELAY service binding| RL[Relay Worker: live API, stage and join pages]
+  RL --> DO[Session Durable Object, one per live session]
   DO <-->|WebSocket / polling| B
+  D -.->|signed out, own live server| RL
 ```
 
 The full walkthrough, with diagrams of the agent sidebar, the MCP backends and a
@@ -69,7 +72,8 @@ and protocols), `docs/DESKTOP.md` (the native client and `.openroom` files) and
 | `packages/domain` | Pure live-session state machine: commands, revisions, aggregates, blocklist, snapshots |
 | `packages/sdk` | Tiny browser client (snapshot fetch, WS + polling fallback, command submit) |
 | `packages/cli` | `openroom` CLI: init, validate, preview, `deck` and `session` control |
-| `apps/worker` | Worker router + `SessionDO` Durable Object + static asset serving |
+| `apps/worker` | Control plane Worker: accounts, spaces, decks, billing, MCP, session creation; forwards live pages to the relay |
+| `apps/relay` | Relay Worker: `SessionDO`, live session API and WebSocket, per-session assets, anonymous/pseudonymous join, stage and participant apps; runs alone with `RELAY_KEY` |
 | `apps/participant` | Participant join app (`join.openroom.app`, also `/join/` locally) |
 | `apps/stage` | Projector stage view (`/stage/`) — code + QR, animated live results |
 | `packages/editor` | Deck editor, presenter and live console; reaches its host only through the `EditorServices` port |
@@ -113,7 +117,7 @@ portless proxy start
 - `https://openroom.localhost` — apex (marketing, `/host/`, `/stage/`, `/api/`)
 - `https://join.openroom.localhost` — participant SPA served at `/`, via a static alias
   (`portless alias join.openroom 8787`). This is the only local way to exercise the `join.*`
-  hostname branch in `apps/worker/src/join-url.ts`.
+  hostname branch in `apps/relay/src/join-url.ts`.
 
 In a linked git worktree the branch name is prepended: `https://fix-ui.openroom.localhost`.
 
@@ -121,9 +125,17 @@ In a linked git worktree the branch name is prepended: `https://fix-ui.openroom.
 Playwright journeys are unaffected. Two escape hatches:
 
 ```sh
-bun run dev:worker   # wrangler dev directly, no portless needed
+bun run dev:worker   # both Workers through wrangler dev directly, no portless needed
 PORTLESS=0 bun dev   # same, through the portless CLI but bypassing the proxy
+bun run dev:relay    # the relay alone on :8790 (RELAY_KEY=dev-relay in apps/relay/.dev.vars)
 ```
+
+`bun dev` and `dev:worker` run both Workers as two `wrangler dev` processes
+(`scripts/dev-workers.mjs`): the control plane on 8787, the relay on 8790. The control
+plane reaches the relay through its bindings, connected by Wrangler's local dev registry. One
+`wrangler dev -c … -c …` does not work: Miniflare backs both Workers' static assets with one
+disk, so the relay would serve the control plane's files for `/stage/` and `/join/`. Copy `apps/relay/.dev.vars.example` to
+`apps/relay/.dev.vars` next to the worker's; both need the same `TOKEN_SECRET`.
 
 Because the port is pinned, a stale wrangler already holding 8787 makes the new one fall back to
 8788 and the named URL 404s. `portless prune` clears orphans left by a crashed session.
@@ -144,18 +156,46 @@ See `docs/journeys/README.md` for the document → test → iterate loop.
 
 ## Self-host
 
-Everything runs on Cloudflare: Workers, Durable Objects, D1 and R2. Point the
-`routes` and the D1 `database_id` in `apps/worker/wrangler.jsonc` at your own
-account, then from the repo root:
+Everything runs on Cloudflare. There are two ways to host it.
+
+### Relay only: live sessions, no accounts
+
+The relay (`apps/relay`) is a complete live system on Workers and Durable Objects
+alone: no D1, no R2, no sign-in. Whoever holds `RELAY_KEY` creates sessions;
+participants join anonymously or with a pseudonymous handle on the relay's own join
+page, and the stage runs there too. Identified and roster sessions need the full
+deployment.
+
+```sh
+bun run build
+cd apps/relay
+# give it a public address: "workers_dev": true or a route in wrangler.jsonc
+wrangler secret put TOKEN_SECRET
+wrangler secret put RELAY_KEY
+bun run deploy
+```
+
+Create a session with `POST /api/sessions` and `Authorization: Bearer <RELAY_KEY>`
+(`docs/CONTRACTS.md`, "Relay API"), or point OpenRoom Desktop at it: Settings →
+**Live server** (address + key). Signed out, Desktop then starts live sessions on
+that relay.
+
+### Full: workspace, library and live sessions
+
+Point the `routes` and the D1 `database_id` in `apps/worker/wrangler.jsonc` at your
+own account, then from the repo root:
 
 ```sh
 wrangler login
 bun run deploy
 ```
 
-`bun run deploy` rebuilds every package and app before uploading. Required secrets:
-`TOKEN_SECRET` (capability signing) and `ADMIN_KEY` (operator key), set with
-`wrangler secret put <NAME>`. Google sign-in is optional (`GOOGLE_CLIENT_ID`,
+`bun run deploy` rebuilds every package and app, deploys the relay, then the control
+plane, which binds the relay's `SessionDO` by script name and forwards `/join/`,
+`/stage/` and the `join.` host to it. Required secrets: `TOKEN_SECRET` (capability
+signing, the same value on both Workers) and `ADMIN_KEY` (operator key, control
+plane), set with `wrangler secret put <NAME>`. The relay needs no `RELAY_KEY` here:
+the control plane creates sessions. Google sign-in is optional (`GOOGLE_CLIENT_ID`,
 `GOOGLE_CLIENT_SECRET`). Never set `DEMO_AUTH` in production.
 
 A deployment without Paddle billing configured has every feature unlocked. The

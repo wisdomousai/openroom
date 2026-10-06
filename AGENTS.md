@@ -18,6 +18,7 @@ When adding a surface, ask: does this help open a deck, share a space, or teach 
 
 - Keep durable business records in D1. Use a Durable Object only for the live state and coordination of one session.
 - Do not put D1, R2, queues, workflows, or model calls on the ballot hot path.
+- Two Workers. `apps/relay` (`openroom-relay`) is the live plane: it owns `SessionDO`, the live session routes (state, commands, WebSocket, export, stage token, per-session assets), anonymous/pseudonymous join, and the stage and participant apps. It has no D1 or R2 and runs alone as a complete live system, where `RELAY_KEY` gates `POST /api/sessions`. `apps/worker` (`openroom`) is the control plane: accounts, spaces, decks, billing, MCP, and every hosted session creation. It binds `SessionDO` cross-script (`script_name: "openroom-relay"`), answers the live API itself through the shared `openroom-relay/live` module with its own authority (D1 rechecks, archives, identified and roster joins), and forwards `/join/`, `/stage/` and the `join.` host to the relay over the `RELAY` service binding. Live logic lives once, in `apps/relay/src`; the control plane never copies it. Deploy the relay first.
 - Heavy outline preparation happens in the teacher's **own** agent, through one of two doors:
   an **external agent** (any MCP client, the CLI, or the public API), or the **OpenRoom
   Desktop "Prepare this deck" pane**, which executes the agent locally: the Claude / Codex
@@ -38,7 +39,8 @@ When adding a surface, ask: does this help open a deck, share a space, or teach 
 - The deck editor, presenter and live console live in `packages/editor` (`@openroom/editor`); `apps/host` is the workspace shell around them (router, query cache, API client, Library, settings). The editor reaches the host only through its port, `EditorServices` in `packages/editor/src/services.tsx`:
   - The editor never imports from `apps/`, and never uses `@tanstack/react-query` or `@tanstack/react-router`. Data reads arrive as host-supplied hooks; links and navigation arrive as `EditorDestination`s the host resolves to routes. `packages/editor/src/boundary.test.ts` enforces this.
   - Workspace features (draft saves, learner work, brand kits, version history, language pair, live scratchpad, saved results) are optional `slots`. An absent slot means its affordance is not rendered — never a disabled control or an error.
-  - The host adapters are `CloudEditorServices` and `DesktopFileEditorServices` in `apps/host/src/editor-services.tsx`, the one place the editor meets the API client, router, query cache and device storage. Shadcn primitives, `cn`, toasts and the theme provider live in `packages/ui`.
+  - The host adapters are `CloudEditorServices` and `DesktopFileEditorServices` in `apps/host/src/editor-services.tsx`, the one place the editor meets the API client, router, query cache and device storage. `RelayLiveServices` narrows either one for a Desktop session on the teacher's relay (signed out, live server set): relay join/stage links, no saved record or results, `shareUrl` null. Shadcn primitives, `cn`, toasts and the theme provider live in `packages/ui`.
+  - Server differences belong in an adapter, not in the editor. Desktop chooses the server at start (`apps/host/src/lib/desktop-live.ts`: signed in → control plane, signed out with a live server → relay, otherwise Present only), and the main process routes a relay session's `/api/sessions/<code>/…` calls to its relay (`apps/desktop/src/relay.ts`).
 
 ## Credential boundary invariant
 
@@ -49,7 +51,7 @@ credential is ever converted into another. Keep this true in code review:
 | --- | --- | --- |
 | `or_session` cookie (+ CSRF header on writes) | who the tutor is | the control plane only |
 | Personal API token `orpat_…` | the same tutor, headless | the same control plane, minus final purge |
-| Session capability token (`tokens.ts`) | a seat in one live session | exactly that session |
+| Session capability token (`apps/relay/src/tokens.ts`) | a seat in one live session | exactly that session |
 | **Context access link `orlnk_…`** | possession of one context's learner credential | exactly that context's learner-visible records |
 | **Roster invite `orinv_…`** | this named seat on one session's roster | join **that one session** as that host-authored name |
 
@@ -70,6 +72,12 @@ context link cannot enter a roster session; a roster token cannot enter an
 identified session. Roster sessions may join from the lobby (a committee files in
 before the host starts). Do not extend the tutoring start-gate to them. The
 blast radius of a leaked invite is exactly one session.
+
+`RELAY_KEY` is an operator key for one relay deployment, not a sixth family: it
+creates sessions on that relay and nothing else. Host tokens a relay issues carry no
+`userId`, and the relay refuses account-bound host tokens (`403 account-session`), so
+a control-plane session never runs under relay rules. Desktop keeps the key in the OS
+keychain and only the main process sends it.
 
 Paid memory (archives, named ballot export, connectors) is a control-plane
 entitlement, not a credential. Paddle-managed accounts read verified subscription

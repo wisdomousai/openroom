@@ -2,7 +2,7 @@ import { normalizeSessionCode, type Command } from '@openroom/domain';
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { readEntitlements } from './entitlements.js';
-import { signToken } from './tokens.js';
+import { signToken } from 'openroom-relay/tokens';
 
 type FacilitationEnv = ControlEnv & { SESSIONS: DurableObjectNamespace };
 export interface FacilitatorAccess { id: string; name: string; canRecover: boolean }

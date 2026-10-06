@@ -266,8 +266,11 @@ export interface EditorServices {
   navigation: {
     navigate(destination: EditorDestination, options?: { replace?: boolean }): void;
     Link: ComponentType<EditorLinkProps>;
-    /** Absolute link handed to another device: the phone remote or the Q&A desk. */
-    shareUrl(surface: 'remote' | 'qna', sessionCode: string, hostToken: string): string;
+    /**
+     * Absolute link handed to another device: the phone remote or the Q&A desk.
+     * Null when the server running the session does not serve that surface.
+     */
+    shareUrl(surface: 'remote' | 'qna', sessionCode: string, hostToken: string): string | null;
   };
   /** The desktop shell's bridge; null in a browser. */
   desktop: OpenRoomDesktopBridge | null;

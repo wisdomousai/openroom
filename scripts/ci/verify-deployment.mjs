@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const assets = resolve(root, 'apps/worker/public');
+// The stage and participant apps ship with the relay; openroom.app forwards to it.
+const relayAssets = resolve(root, 'apps/relay/public');
+const assetRoot = (path) => (/^\/(?:join|stage)\//.test(path) ? relayAssets : assets);
 const origin = new URL(process.argv[2] ?? 'https://openroom.app');
 assert.equal(origin.protocol, 'https:', 'A production HTTPS origin is required');
 assert.equal(origin.pathname, '/', 'Pass an origin without a path');
@@ -54,8 +57,9 @@ const pending = new Set(['/', '/host/', '/join/', '/stage/', '/office/taskpane.h
 const checked = new Set();
 for (const path of pending) {
   assert.ok(path.startsWith('/') && !path.startsWith('//'), `Expected a local asset: ${path}`);
-  const file = resolve(assets, `.${path.endsWith('/') ? `${path}index.html` : path}`);
-  assert.ok(file.startsWith(`${assets}/`), `Asset outside public directory: ${path}`);
+  const base = assetRoot(path);
+  const file = resolve(base, `.${path.endsWith('/') ? `${path}index.html` : path}`);
+  assert.ok(file.startsWith(`${base}/`), `Asset outside public directory: ${path}`);
   const expected = await readFile(file);
   const comparable = file.endsWith('.html') ? htmlContent : (bytes) => bytes;
   await request(path, (_response, bytes) => assert.equal(digest(comparable(bytes)), digest(comparable(expected)), `${path}: deployed asset differs from the build`));

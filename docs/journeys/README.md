@@ -71,6 +71,7 @@ and themes are document content and may use the saved design system's gradients.
 | UC-32 | Shared brand kits | contrast + logo/master authoring + deck copy + trash/restore + scrolling | `e2e/journeys/UC-32-brand-kits.spec.ts` | green in Chromium |
 | UC-31 | Co-facilitation and presenter handoff | shared access + moderation + remote + recovery + removal | `e2e/journeys/UC-31-co-facilitation.spec.ts` | green in Chromium |
 | UC-30 | Workshop sequences and shared group responses | editing + group assignment + spokesperson handoff + private updates | `e2e/journeys/UC-30-workshop-groups.spec.ts` | green in Chromium |
+| UC-43 | Relay-only session | `examples/seg-camp.yaml` · `myth-great-idea` on a relay without a control plane | `e2e/journeys/UC-43-relay-only.spec.ts` | green in Chromium (needs `OPENROOM_RELAY_URL` + `OPENROOM_RELAY_KEY`) |
 
 Status values: `planned` · `draft` · `red` · `green`.
 
@@ -90,9 +91,10 @@ Each journey doc must include:
 ## Running journeys
 
 ```bash
-# Terminal A — build static apps into the worker, then serve
+# Terminal A — build static apps into the Workers, then serve the control
+# plane with the relay behind it on 8787
 bun run build
-cd apps/worker && bun run dev
+bun dev
 
 # Terminal B — against http://127.0.0.1:8787 (or OPENROOM_URL)
 bun run test:e2e
@@ -100,6 +102,10 @@ bun run test:e2e
 
 Admin key for session create comes from `apps/worker/.dev.vars` (`ADMIN_KEY`).
 Override with `OPENROOM_ADMIN_KEY` if needed.
+
+UC-43 runs against a relay alone: `bun run dev:relay` (port 8790) and
+`OPENROOM_RELAY_URL=http://127.0.0.1:8790 OPENROOM_RELAY_KEY=dev-relay`.
+`bun run verify:browser` starts both runtimes and sets these variables.
 
 For the OAuth journey, start Wrangler with `--local-upstream 127.0.0.1:8787` so
 the request origin matches the browser despite production custom-domain routes.

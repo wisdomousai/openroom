@@ -6,6 +6,9 @@
  *  - `DesktopFileEditorServices` wraps the desktop document window
  *    (`#/desktop/file`). A local file has no space or person, so it carries no
  *    draft writes, learner work or brand kits.
+ *  - `RelayLiveServices` narrows either one for a session that runs on the
+ *    desktop's relay (signed out, live server set): links point at the relay,
+ *    and nothing reads workspace records the relay does not have.
  *
  * This is the one place the editor meets the API client, the router, the query
  * cache and this device's storage.
@@ -18,6 +21,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { StageView } from '@openroom/stage-src/StageView';
 import {
   EditorServicesProvider,
+  useEditorServices,
   type EditorDestination,
   type EditorLinkProps,
   type EditorServices,
@@ -193,4 +197,47 @@ export function CloudEditorServices({ children }: { children: ReactNode }) {
 
 export function DesktopFileEditorServices({ children }: { children: ReactNode }) {
   return <EditorServicesProvider services={useHostEditorServices(FILE_SLOTS)}>{children}</EditorServicesProvider>;
+}
+
+/**
+ * The live services for a session on a relay at `origin`.
+ *
+ * The session's own API calls (state, commands, assets, export, stage token)
+ * need no change: the desktop shell routes `/api/sessions/<code>/…` of a relay
+ * session to the relay. What changes is everything the relay does not hold:
+ * there is no saved session record or Library place, no saved results, and no
+ * remote or Q&A desk page on another device. Join and stage links are the
+ * relay's own pages.
+ */
+export function relayEditorServices(base: EditorServices, origin: string): EditorServices {
+  const relay = `${origin.replace(/\/$/, '')}/`;
+  const { SavedResults: _savedResults, ...slots } = base.slots;
+  return {
+    ...base,
+    live: {
+      ...base.live,
+      fetchSessionContext: () => Promise.resolve({ context: null, session: null }),
+      getSessionItem: () => Promise.reject(new Error('This session has no saved record.')),
+      stageUrl: (sessionCode, stageToken) =>
+        new URL(`stage/?session=${encodeURIComponent(sessionCode)}&token=${encodeURIComponent(stageToken)}`, relay).toString(),
+      joinUrl: (code, serverJoinUrl) => {
+        const fallback = `join/?code=${encodeURIComponent(code)}`;
+        try {
+          const url = new URL(serverJoinUrl ?? fallback, relay);
+          return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : new URL(fallback, relay).toString();
+        } catch {
+          return new URL(fallback, relay).toString();
+        }
+      },
+    },
+    navigation: { ...base.navigation, shareUrl: () => null },
+    slots,
+  };
+}
+
+/** Pass-through without a relay origin; the relay adapter with one. */
+export function RelayLiveServices({ origin, children }: { origin: string | null; children: ReactNode }) {
+  const base = useEditorServices();
+  const services = useMemo(() => (origin === null ? base : relayEditorServices(base, origin)), [base, origin]);
+  return <EditorServicesProvider services={services}>{children}</EditorServicesProvider>;
 }

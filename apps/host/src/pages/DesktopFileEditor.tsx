@@ -31,6 +31,7 @@ import { stringify } from 'yaml';
 import { desktopBridge } from '../desktop-bridge';
 import {
   addDeckVersion,
+  fetchMe,
   startSessionFromOutline,
   getDeck,
   getDeckIfChanged,
@@ -43,6 +44,9 @@ import { Button } from '@openroom/ui/components/button';
 import { startSessionFromDeck } from '../lib/library-actions';
 import { DesktopLinkDialog } from './DesktopLinkDialog';
 import { sessionStartMessage } from '../components/ContinuityLock';
+import { LiveServerDialog, liveServerBridge } from '../components/LiveServer';
+import { RelayLiveServices } from '../editor-services';
+import { OFFLINE_LIVE_MESSAGE, desktopLiveRoute, type DesktopLiveRoute } from '../lib/desktop-live';
 
 
 function newFile(): OpenRoomFileV1 {
@@ -74,6 +78,10 @@ export function DesktopFileEditor() {
   const [activeStepId, setActiveStepId] = useState<string>();
   const [device, setDevice] = useState<{ id: string; name: string; origin: string } | null>(null);
   const [showLink, setShowLink] = useState(false);
+  const [showLiveServer, setShowLiveServer] = useState(false);
+  const [liveRoute, setLiveRoute] = useState<DesktopLiveRoute | null>(null);
+  /** Set while the presenter runs a session on the relay; the live services follow it. */
+  const [relayOrigin, setRelayOrigin] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'local' | 'checking' | 'synced' | 'offline' | 'conflict'>('local');
   const [syncConflict, setSyncConflict] = useState<{ outline: Outline; version: number; hash: string } | null>(null);
   const recoveryTimer = useRef<number | null>(null);
@@ -105,6 +113,13 @@ export function DesktopFileEditor() {
       setError(cause instanceof Error ? cause.message : 'Could not open this file');
     });
   }, [bridge]);
+
+  const relayBridge = liveServerBridge(bridge);
+  const signedIn = useCallback(async () => (await fetchMe()) !== null, []);
+  const refreshLiveRoute = useCallback(() => {
+    void desktopLiveRoute(signedIn, relayBridge).then(setLiveRoute);
+  }, [relayBridge, signedIn]);
+  useEffect(() => { refreshLiveRoute(); }, [refreshLiveRoute]);
 
   const validation = useMemo(() => (source === '' ? null : parseOutline(source, 'yaml')), [source]);
   const dirty = source !== savedSource || path === null;
@@ -363,8 +378,12 @@ export function DesktopFileEditor() {
     setStarting(true);
     setError(null);
     try {
+      // Sign-in can change while the file is open, so the route is read now.
+      const route = await desktopLiveRoute(signedIn, relayBridge);
+      setLiveRoute(route);
+      if (route.kind === 'offline') throw new Error(OFFLINE_LIVE_MESSAGE);
       const currentFile = updateOpenRoomFileOutline(file, validation.outline);
-      if (file.remote) {
+      if (route.kind === 'workspace' && file.remote) {
         const materialized = materializeOpenRoomFile(currentFile);
         if (!materialized.ok) throw new Error('The linked deck has local resources that need to be synced first.');
         const saved = await addDeckVersion(file.remote.deckId, materialized.outline, file.remote.baseVersion);
@@ -373,7 +392,15 @@ export function DesktopFileEditor() {
         return startSessionFromDeck({ ...detail.deck, currentVersion: saved.version }, { spaceId: detail.deck.spaceId, folderId: detail.deck.folderId }, cursor);
       }
       const embeddedOutline = currentFile.outline;
-      const created = await startSessionFromOutline(embeddedOutline);
+      let created: Omit<StoredSession, 'title' | 'createdAt'>;
+      if (route.kind === 'relay' && relayBridge !== null) {
+        const result = await relayBridge.relayStartSession(embeddedOutline);
+        if (!result.ok) throw new Error(result.message);
+        created = result.session;
+        setRelayOrigin(result.session.origin);
+      } else {
+        created = await startSessionFromOutline(embeddedOutline);
+      }
       for (const resourceId of outlineResourceIds(embeddedOutline)) {
         const resource = file.resources?.[resourceId];
         if (resource === undefined) throw new Error(`Embedded resource ${resourceId} is missing from this file.`);
@@ -394,6 +421,7 @@ export function DesktopFileEditor() {
         createdAt: Date.now(),
       };
     } catch (cause) {
+      setRelayOrigin(null);
       setError(sessionStartMessage(cause, 'Could not start the session.'));
       throw cause;
     } finally {
@@ -414,8 +442,8 @@ export function DesktopFileEditor() {
         status={{ state: saving ? 'saving' : dirty ? 'dirty' : 'saved', label: saving ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved', retrying: false, savedAt: null }}
         fileStatus={<span className="text-caption text-muted-foreground">{file.remote ? syncStatus === 'synced' ? 'Synced' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'checking' ? 'Syncing…' : 'Offline' : 'Local file'}</span>}
         onPresent={() => { setStartImmediately(false); setPresentFrom(0); }} canPresent={validation?.ok === true}
-        onStart={() => { setStartImmediately(true); setPresentFrom(0); }} canStart={validation?.ok === true} starting={starting} error={error}
-        startIssue={validation?.ok ? questionReadinessMessage(validation.outline) : null}
+        onStart={() => { setStartImmediately(true); setPresentFrom(0); }} canStart={validation?.ok === true && liveRoute?.kind !== 'offline'} starting={starting} error={error}
+        startIssue={validation?.ok ? questionReadinessMessage(validation.outline) ?? (liveRoute?.kind === 'offline' ? OFFLINE_LIVE_MESSAGE : null) : null}
       />
         {syncConflict === null ? null : (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-destructive/5 px-5 py-2" role="alert">
@@ -456,6 +484,7 @@ export function DesktopFileEditor() {
                 <Button size="sm" variant="subtle" disabled={dirty || syncStatus === 'checking'} onClick={() => void syncNow()}>Sync now</Button>
                 <Button asChild size="sm" variant="subtle"><a href={`${file.remote.origin}host/#/decks/${encodeURIComponent(file.remote.deckId)}/edit`}>Open online</a></Button>
               </> : <Button size="sm" variant="subtle" onClick={() => setShowLink(true)}>Save to workspace…</Button>}
+              {relayBridge === null ? null : <Button size="sm" variant="subtle" onClick={() => setShowLiveServer(true)}>Live server…</Button>}
             </>}
             onEmbeddedResource={(resourceId, resource) => {
               setFile((current) => current === null ? current : {
@@ -468,8 +497,13 @@ export function DesktopFileEditor() {
         <AgentPane onBeforeRun={flushForAgent} />
       </div>
       {presentFrom === null || validation?.ok !== true ? null : (
-        <Presenter outline={validation.outline} fromStep={presentFrom} startImmediately={startImmediately} documentSource={serialized(false)} onStart={startSession} onClose={(stepId) => { setActiveStepId(stepId); setPresentFrom(null); }} />
+        <RelayLiveServices origin={relayOrigin}>
+          <Presenter outline={validation.outline} fromStep={presentFrom} startImmediately={startImmediately} documentSource={serialized(false)} onStart={startSession} onClose={(stepId) => { setActiveStepId(stepId); setPresentFrom(null); setRelayOrigin(null); }} />
+        </RelayLiveServices>
       )}
+      {showLiveServer && relayBridge !== null ? (
+        <LiveServerDialog bridge={relayBridge} onClose={() => setShowLiveServer(false)} onChange={refreshLiveRoute} />
+      ) : null}
       {showLink && device !== null ? (
         <DesktopLinkDialog
           file={validation?.ok ? updateOpenRoomFileOutline(file, validation.outline) : file}

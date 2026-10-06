@@ -27,12 +27,27 @@ The executable contract and merge algorithm live in `packages/schema/src/openroo
 - verified package extraction and local embedded-resource resolution without exposing filesystem access to the renderer;
 - display enumeration and a separate full-screen audience window;
 - a presenter strip on the teacher window, with keyboard and button navigation;
-- an allowlisted same-origin `/api` proxy to the configured OpenRoom origin;
+- an allowlisted same-origin `/api` proxy to the configured OpenRoom origin, or, for a session created on the teacher's live server, to that relay;
+- the live server setting (relay address and key, key in the OS keychain);
 - running an agent chat through the embedded Claude or Codex harness, or the in-process API-key host, against the open file through the desktop MCP socket. Auth is the teacher's own subscription sign-in or their own provider API key; the key is stored in the OS keychain and reaches only that provider.
 
 The renderer has context isolation, sandboxing, no Node integration, and a narrow preload bridge. Offline file editing and offline presentation require no account. The online workspace remains the hosted client and uses the ordinary `or_session` credential boundary. Google sign-in is the browser-only interactive authentication: Desktop opens `/api/auth/google?desktop=1` in the system browser and receives the session back on `openroom://auth/desktop?ticket=`. It does not forward Google’s own redirect, which would split the PKCE cookie.
 
 An open file takes a `{file}.openroom.lock` (`host: desktop`). The app also listens on `mcp.sock` under userData. `openroom mcp` probes that socket first and reverse-proxies JSON-RPC there; if the app is not running it hosts the file itself, or falls through to `https://openroom.app/api/mcp`. Headless will not write a file the window has open. Desktop-launched CLIs talk to the same socket through a stdio sidecar (`ELECTRON_RUN_AS_NODE`), so they do not need `openroom` on PATH.
+
+## Live sessions
+
+Desktop reads where to start a live session when the teacher presses Start (`apps/host/src/lib/desktop-live.ts`):
+
+| State | Start | Present |
+| --- | --- | --- |
+| Signed in | Control plane (`openroom.app` or `OPENROOM_ORIGIN`), as today | Offline |
+| Signed out, live server set | The teacher's relay (`apps/relay`) | Offline |
+| Signed out, no live server | Off; the deck bar says live sessions need a sign-in or a live server | Offline |
+
+The live server is an OpenRoom relay deployed alone (README, "Relay only"). Its address and `RELAY_KEY` are set under Settings → **Live server**, or **Live server…** in the document window. `apps/desktop/src/relay.ts` keeps both in `live-server.json` under Desktop's application data: the key sealed with Electron `safeStorage` and written `0600`, exactly like the API-key host's keys, and a computer without a keychain is told so. `OPENROOM_RELAY_ORIGIN` and `OPENROOM_RELAY_KEY` supply both from the environment (read, never written). The address must be `https://`, or `http://` on loopback for `bun run dev:relay`.
+
+Starting on the relay: the renderer hands the file's outline to the main process (`relayStartSession`), which sends `POST /api/sessions` with the key as bearer. The key never crosses the preload bridge. The main process records the session code with its relay for 24 hours, so the `openroom://app/api/sessions/<code>/…` proxy sends that session's state polling, commands, resource uploads, exports and stage token to the relay; the audience window follows the same route. The renderer then uploads embedded resources and starts the session exactly as for a hosted session. `RelayLiveServices` gives the live console relay join and stage links, no saved session record or results, and no remote or Q&A desk links for other devices. Relay sessions are anonymous or pseudonymous; an identified or roster deck is refused with the relay's reason.
 
 ## Link and sync
 

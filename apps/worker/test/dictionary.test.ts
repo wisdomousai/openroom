@@ -5,7 +5,7 @@ import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
 import { dictionaryRoute } from '../src/dictionary-route.js';
 import { isLookupWord, languageCode, lemmaTarget, resolveEntry, wordPath } from '../src/dictionary.js';
 import worker from '../src/index.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import { BASE, createSmokeContext } from './helpers.js';
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;

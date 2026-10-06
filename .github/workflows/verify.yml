@@ -48,7 +48,7 @@ jobs:
         run: bun run verify:browser --config manual/playwright.config.ts
       - name: Package the verified build
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: tar -czf "$RUNNER_TEMP/openroom-build.tar.gz" packages/*/dist apps/worker/public
+        run: tar -czf "$RUNNER_TEMP/openroom-build.tar.gz" packages/*/dist apps/worker/public apps/relay/public
       - name: Keep the verified build for deployment
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -120,7 +120,19 @@ jobs:
       - name: Restore the verified build
         if: steps.current.outputs.deploy == 'true'
         run: tar -xzf "$RUNNER_TEMP/openroom-build.tar.gz"
-      - name: Apply migrations and deploy the verified build
+      # The relay owns SessionDO; the control plane binds it by script name and
+      # forwards the live pages to it, so the relay always deploys first.
+      - name: Deploy the relay (live plane)
+        if: steps.current.outputs.deploy == 'true'
+        working-directory: apps/relay
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Set the production CLOUDFLARE_API_TOKEN secret.' >&2; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Set the production CLOUDFLARE_ACCOUNT_ID variable.' >&2; exit 1; }
+          bun x --no-install wrangler deploy
+      - name: Apply migrations and deploy the control plane
         if: steps.current.outputs.deploy == 'true'
         working-directory: apps/worker
         env:

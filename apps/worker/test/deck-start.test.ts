@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
 import { call, createSessionWithOutline, SMOKE_OUTLINE } from './helpers';
-import { signCookieValue } from '../src/tokens';
+import { signCookieValue } from '../src/cookies.js';
 import { SESSION_COOKIE, CSRF_HEADER } from '../src/auth';
 
 async function user() {

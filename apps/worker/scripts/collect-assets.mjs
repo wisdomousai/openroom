@@ -3,9 +3,10 @@
  * Collect the built front-ends into `public/` so the ASSETS binding can
  * serve them:
  *
- *   ../participant/dist  → public/join/   (hostname join.openroom.app rewrites / → here)
- *   ../stage/dist        → public/stage/
- *   ../host/dist  → public/host/
+ *   ../host/dist    → public/host/
+ *   ../office/dist  → public/office/
+ *
+ * The stage and participant apps ship with the relay (apps/relay).
  *
  * Plus the built Astro marketing site in ../site:
  *
@@ -69,8 +70,6 @@ async function collectSiteDist() {
 }
 
 const anyDist =
-  (await exists(join(appsRoot, 'participant', 'dist'))) ||
-  (await exists(join(appsRoot, 'stage', 'dist'))) ||
   (await exists(join(appsRoot, 'host', 'dist'))) ||
   (await exists(join(appsRoot, 'office', 'dist')));
 
@@ -78,12 +77,9 @@ if (!anyDist) {
   console.log('[collect-assets] no sibling app builds found; nothing to do');
 } else {
   await cleanPublic();
-  // Participant under /join/ so marketing owns apex `/` for crawlers.
-  await collect('participant', join(publicDir, 'join'));
-  await collect('stage', join(publicDir, 'stage'));
   await collect('host', join(publicDir, 'host'));
   await collect('office', join(publicDir, 'office'));
 }
 
-// Site last: owns root index.html (SEO landing). Must not overwrite /join/.
+// Site last: owns root index.html (SEO landing).
 await collectSiteDist();

@@ -1,0 +1,5 @@
+# HMAC key for session capability tokens (host, stage, participant).
+# The control plane (apps/worker) must use the same value.
+TOKEN_SECRET=dev-secret-change-me
+# Bearer key for POST /api/sessions. Unset: session creation is disabled.
+RELAY_KEY=dev-relay

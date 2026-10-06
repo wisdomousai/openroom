@@ -11,7 +11,7 @@ import {
   hasEntitlement,
   parseEntitlements,
 } from '../src/entitlements.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import worker from '../src/index.js';
 import { BASE, SMOKE_OUTLINE, call } from './helpers.js';
 
