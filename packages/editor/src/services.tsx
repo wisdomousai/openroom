@@ -4,7 +4,7 @@
  * The deck editor, presenter and live console never reach a server, a router,
  * a query cache or browser storage directly: every such call goes through
  * `EditorServices`, supplied once by `EditorServicesProvider`. The web host and
- * the desktop file window each build one (apps/host/src/editor-services.tsx).
+ * the desktop file window each build one (apps/workspace/src/editor-services.tsx).
  *
  * Required groups are what making and presenting a deck needs. `slots` are
  * workspace features; an absent slot means its affordance is not rendered.

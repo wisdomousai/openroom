@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Journey tests hit a running worker (built static apps + API).
- * Start with: `bun run build && cd apps/worker && bun run dev`
+ * Start with: `bun run build && cd apps/workspace-worker && bun run dev`
  * Override base with OPENROOM_URL.
  */
 const baseURL = process.env.OPENROOM_URL ?? 'http://127.0.0.1:8787';

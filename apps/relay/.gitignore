@@ -3,5 +3,5 @@
 public/*
 !public/_headers
 !public/favicon.svg
-# `bun run bundle` output (vitest auxiliary worker for apps/worker).
+# `bun run bundle` output (vitest auxiliary worker for apps/workspace-worker).
 dist/

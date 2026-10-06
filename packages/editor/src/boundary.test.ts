@@ -60,7 +60,7 @@ describe('editor boundary', () => {
 
   it('recognises each kind of escape', () => {
     const file = join(SOURCE_ROOT, 'live', 'LiveHost.tsx');
-    expect(boundaryProblem(file, '../../../../apps/host/src/api')).toMatch(/leaves the package/);
+    expect(boundaryProblem(file, '../../../../apps/workspace/src/api')).toMatch(/leaves the package/);
     expect(boundaryProblem(file, '@/api')).toMatch(/imports an app/);
     expect(boundaryProblem(file, '@tanstack/react-query')).toMatch(/belongs to the host/);
     expect(boundaryProblem(file, '@tanstack/react-router')).toMatch(/belongs to the host/);

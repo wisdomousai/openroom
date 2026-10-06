@@ -98,7 +98,7 @@ export function isMediaAssetContentType(contentType: string): boolean {
  *
  * Unauthenticated by design: the id is an unguessable UUID and acts as the
  * capability, so the stage, a participant phone, and a learner holding no
- * session can all render the same picture (see apps/worker/src/assets.ts).
+ * session can all render the same picture (see apps/workspace-worker/src/assets.ts).
  */
 export function mediaAssetPath(assetId: string): string {
   return `/api/assets/${encodeURIComponent(assetId)}`;

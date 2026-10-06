@@ -114,7 +114,7 @@ function withOauth(definition: ToolDefinition): ToolDefinition {
 /**
  * Pixabay answers at most 500 hits, and the stock route pages them 24 at a
  * time. Stated here rather than imported: this package never depends on the
- * worker. Keep it aligned with STOCK_MAX_PAGE in apps/worker/src/stock.ts.
+ * worker. Keep it aligned with STOCK_MAX_PAGE in apps/workspace-worker/src/stock.ts.
  */
 const PICTURE_MAX_PAGE = 21;
 

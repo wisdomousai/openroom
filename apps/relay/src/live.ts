@@ -2,7 +2,7 @@
  * The live plane's HTTP surface, shared by both Workers.
  *
  * The relay (`src/index.ts`) mounts these routes on its own origin with a
- * standalone authority. The control plane (`apps/worker`) mounts the same
+ * standalone authority. The control plane (`apps/workspace-worker`) mounts the same
  * routes at the openroom.app front door with an authority that rechecks
  * account access in D1. Either way the session itself is one `SessionDO`
  * namespace, owned by the relay script; every route here is a thin

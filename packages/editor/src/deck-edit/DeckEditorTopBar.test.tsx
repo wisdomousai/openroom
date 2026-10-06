@@ -12,7 +12,7 @@ import { IDLE_STATUS, type DraftStatus } from './useDraftSave';
 /*
  * The bar's links are destinations the host resolves; the in-memory services
  * render each one as a readable href. The host's own routes are checked in
- * apps/host (editor-services.test.tsx).
+ * apps/workspace (editor-services.test.tsx).
  */
 const services = memoryEditorServices();
 

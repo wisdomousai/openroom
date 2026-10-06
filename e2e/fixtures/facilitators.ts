@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createHmac } from 'node:crypto';
 import type { BrowserContext } from '@playwright/test';
 
-const workerDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../apps/worker');
+const workerDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../apps/workspace-worker');
 
 export function facilitatorAccounts(options: { branding?: boolean; keep?: boolean; rawExport?: boolean } = {}) {
   const origin = process.env.OPENROOM_URL ?? 'http://127.0.0.1:8787';

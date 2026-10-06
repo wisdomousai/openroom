@@ -3,8 +3,8 @@
  * Collect the built front-ends into `public/` so the ASSETS binding can
  * serve them:
  *
- *   ../host/dist    → public/host/
- *   ../office/dist  → public/office/
+ *   ../workspace/dist → public/host/
+ *   ../office/dist    → public/office/
  *
  * The stage and participant apps ship with the relay (apps/relay).
  *
@@ -70,14 +70,14 @@ async function collectSiteDist() {
 }
 
 const anyDist =
-  (await exists(join(appsRoot, 'host', 'dist'))) ||
+  (await exists(join(appsRoot, 'workspace', 'dist'))) ||
   (await exists(join(appsRoot, 'office', 'dist')));
 
 if (!anyDist) {
   console.log('[collect-assets] no sibling app builds found; nothing to do');
 } else {
   await cleanPublic();
-  await collect('host', join(publicDir, 'host'));
+  await collect('workspace', join(publicDir, 'host'));
   await collect('office', join(publicDir, 'office'));
 }
 

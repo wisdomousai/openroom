@@ -3,7 +3,7 @@
   // The live plane: SessionDO, session snapshot/command/WebSocket routes,
   // per-session assets, anonymous/pseudonymous join, and the stage and
   // participant apps. No D1, no R2. Deployed alone it is a complete live
-  // system; deployed next to the control plane (apps/worker, script
+  // system; deployed next to the control plane (apps/workspace-worker, script
   // "openroom") it owns the SessionDO namespace that the control plane binds
   // with `script_name: "openroom-relay"`.
   "name": "openroom-relay",
