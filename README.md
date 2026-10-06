@@ -88,7 +88,7 @@ AGPL-3.0-only. [`LICENSING.md`](LICENSING.md) maps every directory to its licenc
 | `apps/participant` | Participant join app (`join.openroom.app`, also `/join/` locally) |
 | `apps/stage` | Projector stage view (`/stage/`) — code + QR, animated live results |
 | `apps/office` | PowerPoint add-in (`/office/`) — OpenRoom slides and session controls inside PowerPoint |
-| `apps/desktop` | Electron client — offline `.openroom` files, recovery, OS integration and external-display presentation |
+| `apps/desktop` | Electron client — offline `.openroom` files, recovery, OS integration and external-display presentation; its file and presentation windows are its own renderer (`renderer-src`), which mounts `packages/editor` |
 | `examples/` | Example decks (validated in CI) |
 | `plugin/` | Agent plugin: MCP server declaration and skills |
 
@@ -96,7 +96,7 @@ AGPL-3.0-only. [`LICENSING.md`](LICENSING.md) maps every directory to its licenc
 
 | Path | What |
 | --- | --- |
-| `apps/workspace` | Workspace client (`/host/`) — shell, Library, spaces and folders, students and classes, Notes, learner page, billing, settings, and the `EditorServices` adapters around `packages/editor` |
+| `apps/workspace` | Workspace client (`/host/`) — shell, Library, spaces and folders, students and classes, Notes, learner page, billing, settings, and the `EditorServices` adapter around `packages/editor`; Desktop loads its build for the signed-in workspace pages |
 | `apps/workspace-worker` | Control plane Worker: accounts, spaces, decks, billing, MCP, session creation; forwards live pages to the relay |
 | `apps/site` | Marketing/docs site (Astro) — landing (`/`), docs (`/docs/`), `llms.txt`, sitemap |
 | `e2e/` | Playwright journeys that enforce the `docs/journeys/` contracts |
@@ -108,7 +108,7 @@ AGPL-3.0-only. [`LICENSING.md`](LICENSING.md) maps every directory to its licenc
 ```sh
 bun install
 bun run build       # all packages + apps (build:core, then build:workspace)
-bun run build:core  # core only: packages, relay, stage, participant, office, Desktop main and preload
+bun run build:core  # core only: packages, relay, stage, participant, office, Desktop main, preload and renderer
 bun run test        # all unit/integration tests (vitest)
 bun run typecheck
 ```

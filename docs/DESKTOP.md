@@ -18,7 +18,12 @@ The executable contract and merge algorithm live in `packages/schema/src/openroo
 
 ## Native responsibilities
 
-`apps/desktop` is an Electron shell around the built React workspace client (`apps/workspace`, copied into `renderer/host` by `apps/desktop/scripts/copy-workspace.mjs`). The deck editor, presenter and live console in that client come from `packages/editor`; the host wraps the document window (`#/desktop/file`) in `DesktopFileEditorServices`, which offers no draft saves, learner work or brand kits because a local file has no space or person. The editor reaches the preload bridge only as the `desktop` member of `EditorServices`. It owns:
+`apps/desktop` is an Electron shell with two renderer bundles under `renderer/`, both served from `openroom://app`:
+
+- **Core renderer** (`renderer/core`, MIT): the file window (`/core/index.html#/file`) and the presentation window (`#/present`). Its source is `apps/desktop/renderer-src`, built by `bun run build:core`, so every build has it. It mounts `packages/editor` (deck editor, presenter, live console) with `DesktopFileEditorServices` (`renderer-src/editor-services.tsx`), which offers no draft saves, learner work, brand kits or other workspace slots because a local file has no space or person. Its API client (`renderer-src/api.ts`) covers only the routes these windows call.
+- **Workspace bundle** (`renderer/host`, AGPL-3.0-only): the built workspace client (`apps/workspace`), copied in by `apps/desktop/scripts/copy-workspace.mjs`. It serves the signed-in workspace pages a file window links to: the Library, a session's console, remote, Q&A desk, recap and Notes, and plans.
+
+The core renderer asks for `/host/index.html` once at start. When the build has no workspace bundle, links to workspace pages are not rendered and any navigation to one shows "This build has no workspace."; editing, presenting and relay sessions are unaffected. The main process serves only files inside `renderer/core` and `renderer/host` (`apps/desktop/src/renderer-path.ts`). The editor reaches the preload bridge only as the `desktop` member of `EditorServices`. Desktop owns:
 
 - macOS and Windows `.openroom` file association;
 - one native window per open file and OS recent documents;
@@ -35,11 +40,11 @@ The renderer has context isolation, sandboxing, no Node integration, and a narro
 
 An open file takes a `{file}.openroom.lock` (`host: desktop`). The app also listens on `mcp.sock` under userData. `openroom mcp` probes that socket first and reverse-proxies JSON-RPC there; if the app is not running it hosts the file itself, or falls through to `https://openroom.app/api/mcp`. Headless will not write a file the window has open. Desktop-launched CLIs talk to the same socket through a stdio sidecar (`ELECTRON_RUN_AS_NODE`), so they do not need `openroom` on PATH.
 
-The core build (`bun run build:core`) compiles only the main process and the preload. A checkout without `apps/workspace` has no renderer bundle; `copy-workspace.mjs` skips the copy and leaves `renderer/` empty.
+The core build (`bun run build:core`) compiles the main process and the preload and builds the core renderer into `renderer/core`. A checkout without `apps/workspace` has no workspace bundle; `copy-workspace.mjs` skips the copy and `renderer/` holds only `core`. Desktop's source never imports a workspace app; `apps/desktop/src/core-boundary.test.ts` enforces this.
 
 ## Live sessions
 
-Desktop reads where to start a live session when the teacher presses Start (`apps/workspace/src/lib/desktop-live.ts`):
+Desktop reads where to start a live session when the teacher presses Start (`apps/desktop/renderer-src/desktop-live.ts`):
 
 | State | Start | Present |
 | --- | --- | --- |
@@ -49,7 +54,7 @@ Desktop reads where to start a live session when the teacher presses Start (`app
 
 The live server is an OpenRoom relay deployed alone (README, "Relay only"). Its address and `RELAY_KEY` are set under Settings → **Live server**, or **Live server…** in the document window. `apps/desktop/src/relay.ts` keeps both in `live-server.json` under Desktop's application data: the key sealed with Electron `safeStorage` and written `0600`, exactly like the API-key host's keys, and a computer without a keychain is told so. `OPENROOM_RELAY_ORIGIN` and `OPENROOM_RELAY_KEY` supply both from the environment (read, never written). The address must be `https://`, or `http://` on loopback for `bun run dev:relay`.
 
-Starting on the relay: the renderer hands the file's outline to the main process (`relayStartSession`), which sends `POST /api/sessions` with the key as bearer. The key never crosses the preload bridge. The main process records the session code with its relay for 24 hours, so the `openroom://app/api/sessions/<code>/…` proxy sends that session's state polling, commands, resource uploads, exports and stage token to the relay; the audience window follows the same route. The renderer then uploads embedded resources and starts the session exactly as for a hosted session. `RelayLiveServices` gives the live console relay join and stage links, no saved session record or results, and no remote or Q&A desk links for other devices. Relay sessions are anonymous or pseudonymous; an identified or roster deck is refused with the relay's reason.
+Starting on the relay: the renderer hands the file's outline to the main process (`relayStartSession`), which sends `POST /api/sessions` with the key as bearer. The key never crosses the preload bridge. The main process records the session code with its relay for 24 hours, so the `openroom://app/api/sessions/<code>/…` proxy sends that session's state polling, commands, resource uploads, exports and stage token to the relay; the audience window follows the same route. The renderer then uploads embedded resources and starts the session exactly as for a hosted session. `RelayLiveServices` (`apps/desktop/renderer-src/relay-live.tsx`) gives the live console relay join and stage links, no saved session record or results, and no remote or Q&A desk links for other devices. Relay sessions are anonymous or pseudonymous; an identified or roster deck is refused with the relay's reason.
 
 ## Link and sync
 
@@ -80,7 +85,7 @@ Packaged Mac/Windows clients check `OPENROOM_UPDATE_URL` (or the reserved `/desk
 
 ### Local packages and signed release candidates
 
-`make` stages the built renderer, main/preload bundles, local-agent skills and real
+`make` stages the built renderer bundles (`renderer/core`, plus `renderer/host` when built), main/preload bundles, local-agent skills and real
 agent runtime files in `apps/desktop/.forge-app`. Its explicit Forge project marker
 prevents Forge from walking up and packaging workspace dependency symlinks. The
 staged app reads its product version from `apps/desktop/package.json` and pins the

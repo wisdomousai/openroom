@@ -42,8 +42,8 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Copy practice/corrections into slides or homework | review, homework | `PracticePicker.tsx`, `FeedbackPicker.tsx`, outline-edit practice/corrections |
 | Results archive, HTML/CSV/JSON exports | results | `pages/SavedResultsPage.tsx`, Worker `archives.ts`, `export.ts` |
 | Selected workshop recap and revision refresh | results | `pages/SessionRecapPage.tsx`, Worker recap endpoint |
-| Desktop open/save/recovery/locking/offline | desktop | `pages/DesktopFileEditor.tsx`, `apps/desktop/src/main.ts` |
-| Desktop linking, resources, sync conflict, start | desktop | `pages/DesktopLinkDialog.tsx`, `DesktopFileEditor.tsx`, package materialization |
+| Desktop open/save/recovery/locking/offline | desktop | `apps/desktop/renderer-src/DesktopFileEditor.tsx`, `apps/desktop/src/main.ts` |
+| Desktop linking, resources, sync conflict, start | desktop | `apps/desktop/renderer-src/DesktopLinkDialog.tsx`, `DesktopFileEditor.tsx`, package materialization |
 | Local agent hosts, provider keys, model choice | desktop-agents | Desktop agent pane and `apps/desktop/src/agents/` |
 | Agent attachments, reference folders, chats, interruption | desktop-agents | Desktop agent conversation and workspace services |
 | PowerPoint local setup, embeds, rehearsal, composition | powerpoint | `apps/office/README.md`, taskpane/content app, Office adapter |
