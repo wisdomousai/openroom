@@ -5,7 +5,7 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev -c wrangler.jsonc -c ../relay/wrangler.jsonc",
     "deploy": "node scripts/collect-assets.mjs && wrangler deploy",
     "build": "node scripts/collect-assets.mjs",
     "typecheck": "tsc --noEmit",

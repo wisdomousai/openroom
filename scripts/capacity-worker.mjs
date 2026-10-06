@@ -1,6 +1,6 @@
-/** Local capacity instrumentation. Production and browser verification use the original entry. */
-import worker from '../apps/worker/src/index.ts';
-export * from '../apps/worker/src/index.ts';
+/** Local capacity instrumentation around the relay. Production and browser verification use the original entry. */
+import worker from '../apps/relay/src/index.ts';
+export * from '../apps/relay/src/index.ts';
 
 export default {
   ...worker,

@@ -1,26 +1,41 @@
-/** Serve the actual bundled Worker through Miniflare, without the Wrangler dev proxy. */
+/**
+ * Serve actual bundled Workers through one Miniflare, without the Wrangler dev
+ * proxy. The first config/bundle pair answers on the port; the others are
+ * reachable only through bindings (the control plane's cross-script SessionDO
+ * and RELAY service binding resolve to the relay listed after it).
+ */
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
 import { unstable_getMiniflareWorkerOptions } from 'wrangler';
 
-const [configFile, bundleFile, persist, portValue, ...extra] = process.argv.slice(2);
+const [persist, portValue, ...pairs] = process.argv.slice(2);
 const port = Number(portValue);
-if (!configFile || !bundleFile || !persist || extra.length || !Number.isInteger(port) || port < 1 || port > 65535) {
-  throw new Error('Usage: verification-runtime.mjs <local-config> <bundle> <persist> <port>');
+if (!persist || !Number.isInteger(port) || port < 1 || port > 65535 || pairs.length === 0 || pairs.length % 2 !== 0) {
+  throw new Error('Usage: verification-runtime.mjs <persist> <port> <local-config> <bundle> [<local-config> <bundle> ...]');
 }
-const config = JSON.parse(await readFile(configFile, 'utf8'));
-if (config.name !== 'openroom-verification' || config.vars?.ADMIN_KEY !== 'dev-admin' || config.routes || config.account_id) {
-  throw new Error('Only the disposable verification configuration is supported.');
+const workers = [];
+const external = [];
+for (let index = 0; index < pairs.length; index += 2) {
+  const configFile = pairs[index];
+  const bundleFile = pairs[index + 1];
+  const config = JSON.parse(await readFile(configFile, 'utf8'));
+  const disposable =
+    typeof config.name === 'string' &&
+    config.name.endsWith('-verification') &&
+    !config.routes &&
+    !config.account_id &&
+    (config.vars?.ADMIN_KEY === 'dev-admin' || config.vars?.RELAY_KEY === 'dev-relay');
+  if (!disposable) throw new Error('Only the disposable verification configurations are supported.');
+  const { workerOptions, externalWorkers } = unstable_getMiniflareWorkerOptions(configFile);
+  workers.push({ ...workerOptions, name: config.name, modules: true, modulesRoot: dirname(bundleFile), scriptPath: bundleFile });
+  external.push(...externalWorkers);
 }
-const { workerOptions, externalWorkers } = unstable_getMiniflareWorkerOptions(configFile);
+const named = new Set(workers.map((worker) => worker.name));
 const runtime = new Miniflare({
   host: '127.0.0.1', port, cf: false,
   resourcePersistencePath: resolve(persist, 'v3'),
-  workers: [
-    { ...workerOptions, name: config.name, modules: true, modulesRoot: dirname(bundleFile), scriptPath: bundleFile },
-    ...externalWorkers,
-  ],
+  workers: [...workers, ...external.filter((worker) => !named.has(worker.name))],
 });
 const stopped = new Promise((accept) => {
   process.once('SIGINT', accept);

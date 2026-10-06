@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Local Desktop: worker on 0.0.0.0:8787, Electron + join links on the LAN IP.
+ * Local Desktop: control plane + relay on 0.0.0.0:8787, Electron + join links on the LAN IP.
  * Usage: bun desktop
  */
 import { spawn } from 'node:child_process';
@@ -61,7 +61,7 @@ if (filters.length > 0) {
 
 console.log('Building desktop shell…');
 await run('bun', ['run', '--filter', 'openroom-desktop', 'build']);
-await run('bun', ['run', '--filter', 'openroom-worker', 'build']);
+await run('bun', ['run', 'build:worker']);
 console.log('Applying local D1 migrations…');
 await new Promise((resolvePromise, reject) => {
   const child = spawn('bunx', ['wrangler', 'd1', 'migrations', 'apply', 'openroom', '--local'], {

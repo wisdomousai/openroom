@@ -1,4 +1,4 @@
-/** Exercise the shipped SDK against real local HTTP/WS services, never a hosted target. */
+/** Exercise the shipped SDK against a real local relay (HTTP/WS), never a hosted target. */
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -9,8 +9,8 @@ import { createSessionClient } from '../packages/sdk/dist/index.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(root, 'e2e/verification-output/capacity/metrics.json');
 const origin = process.env.OPENROOM_URL;
-if (!origin || !/^http:\/\/127\.0\.0\.1:\d+$/.test(origin) || !process.env.OPENROOM_E2E_PERSIST_TO || process.env.OPENROOM_ADMIN_KEY !== 'dev-admin') {
-  throw new Error('Run bun run verify:capacity to create an isolated local Worker. Hosted targets are not supported.');
+if (!origin || !/^http:\/\/127\.0\.0\.1:\d+$/.test(origin) || !process.env.OPENROOM_E2E_PERSIST_TO || process.env.OPENROOM_RELAY_KEY !== 'dev-relay') {
+  throw new Error('Run bun run verify:capacity to create an isolated local relay. Hosted targets are not supported.');
 }
 const count = 500;
 const concurrency = 25;
@@ -72,10 +72,10 @@ async function parallel(items, operation) {
     while (next < items.length) { const index = next++; await operation(items[index], index); }
   }));
 }
-async function request(path, { token, body, admin = false } = {}) {
+async function request(path, { token, body, relayKey = false } = {}) {
   const response = await fetch(`${origin}${path}`, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(admin ? { 'x-openroom-admin': 'dev-admin' } : {}) },
+    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...(relayKey ? { authorization: 'Bearer dev-relay' } : {}) },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.any([stop.signal, AbortSignal.timeout(30_000)]),
   });
@@ -160,7 +160,7 @@ async function answerRound(id, live) {
   console.log(`${id}: ${accepted.length} answers, ${duplicateSample.length * 2} duplicate replays; ballot p95 ${measured.ballotRoundTrip.p95Ms} ms (local Worker ${measured.localWorkerRequest.p95Ms} ms); host-update p95 ${measured.hostAggregateReceiptAfterAck.p95Ms} ms.`);
 }
 try {
-  session = await request('/api/sessions', { admin: true, body: { outline: {
+  session = await request('/api/sessions', { relayKey: true, body: { outline: {
     version: 1, meta: { title: 'Isolated capacity verification' }, defaults: { identityMode: 'anonymous', allowAnswerChange: true },
     interactions: ['hidden', 'visible'].map((id) => ({ id, type: 'choice', prompt: 'Choose A or B', notes: privateNotes, resultVisibility: id === 'hidden' ? 'hidden-until-close' : 'live', options: [{ id: 'a', label: 'A', correct: true }, { id: 'b', label: 'B' }] })),
   } } });

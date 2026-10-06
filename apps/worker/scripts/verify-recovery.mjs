@@ -34,13 +34,32 @@ config.workers_dev = false;
 for (const field of ['$schema', 'routes', 'env', 'triggers', 'observability', 'account_id']) delete config[field];
 for (const database of config.d1_databases) { database.migrations_dir = resolve(workerDir, database.migrations_dir); delete database.remote; }
 for (const bucket of config.r2_buckets) delete bucket.remote;
+// Live sessions run in the relay; it is bound by script name, as deployed.
+const relayDir = resolve(workerDir, '../relay');
+const relayConfigFile = resolve(temporary, 'relay.json'), relayBundleDir = resolve(temporary, 'relay');
+const relayConfig = parse(await readFile(resolve(relayDir, 'wrangler.jsonc'), 'utf8'));
+relayConfig.name = 'openroom-recovery-relay';
+relayConfig.main = resolve(relayDir, relayConfig.main);
+relayConfig.assets.directory = resolve(relayDir, relayConfig.assets.directory);
+relayConfig.workers_dev = false;
+for (const field of ['$schema', 'routes', 'env', 'triggers', 'observability', 'account_id']) delete relayConfig[field];
+for (const binding of config.durable_objects.bindings) if (binding.script_name) binding.script_name = relayConfig.name;
+for (const service of config.services ?? []) service.service = relayConfig.name;
 await writeFile(configFile, JSON.stringify(config), { mode: 0o600 });
 const wrangler = (...args) => run(bun, ['x', 'wrangler', ...args, '--config', configFile], { cwd: workerDir, env: process.env });
 let runtime;
 async function open(persist) {
+  // The relay signs and verifies with the control plane's current TOKEN_SECRET.
+  relayConfig.vars = { TOKEN_SECRET: config.vars.TOKEN_SECRET, JOIN_ORIGIN: '' };
+  await writeFile(relayConfigFile, JSON.stringify(relayConfig), { mode: 0o600 });
   const { workerOptions, externalWorkers } = unstable_getMiniflareWorkerOptions(configFile);
+  const relayOptions = unstable_getMiniflareWorkerOptions(relayConfigFile).workerOptions;
   runtime = new Miniflare({ host: '127.0.0.1', port: 0, cf: false, resourcePersistencePath: resolve(persist, 'v3'),
-    workers: [{ ...workerOptions, name: config.name, modules: true, modulesRoot: bundleDir, scriptPath: resolve(bundleDir, 'index.js') }, ...externalWorkers] });
+    workers: [
+      { ...workerOptions, name: config.name, modules: true, modulesRoot: bundleDir, scriptPath: resolve(bundleDir, 'index.js') },
+      { ...relayOptions, name: relayConfig.name, modules: true, modulesRoot: relayBundleDir, scriptPath: resolve(relayBundleDir, 'index.js') },
+      ...externalWorkers,
+    ] });
   await runtime.ready;
   return runtime;
 }
@@ -57,6 +76,9 @@ async function fingerprints(db) {
 try {
   await wrangler('d1', 'migrations', 'apply', 'DB', '--local', '--persist-to', sourceState);
   await wrangler('deploy', '--dry-run', '--outdir', bundleDir);
+  relayConfig.vars = { TOKEN_SECRET: config.vars.TOKEN_SECRET, JOIN_ORIGIN: '' };
+  await writeFile(relayConfigFile, JSON.stringify(relayConfig), { mode: 0o600 });
+  await run(bun, ['x', 'wrangler', 'deploy', '--dry-run', '--config', relayConfigFile, '--outdir', relayBundleDir], { cwd: relayDir, env: process.env });
   const capturedAt = Date.now(), recoveredAt = capturedAt + 60_000;
   await open(sourceState);
   const fixture = await seedRecoveryFixture(runtime, capturedAt);
