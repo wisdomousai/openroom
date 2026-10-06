@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { deckAspectRatio, resolveRevealOrder, stringifyOpenRoomFile, type Outline, type PresentationPosition } from '@openroom/schema';
 import { usePresentationKeys } from './usePresentationKeys';
 import { LiveHost } from '../LiveHost';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { desktopBridge, type DesktopDisplay } from '../desktop-bridge';
 import { PresentStage, presentableSteps } from './PresentationStage';
 import { advance, atEnd, atStart, openCursor, retreat, type PresentCursor } from './cursor';

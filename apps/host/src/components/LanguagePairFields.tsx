@@ -20,7 +20,7 @@ import {
   type SpaceLanguages,
 } from '@openroom/schema';
 
-import { Label } from './ui/label';
+import { Label } from '@openroom/ui/components/label';
 import {
   Select,
   SelectContent,
@@ -28,7 +28,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './ui/select';
+} from '@openroom/ui/components/select';
 
 function label(choice: LanguageChoice): string {
   return choice.endonym === choice.name ? choice.name : `${choice.name} — ${choice.endonym}`;

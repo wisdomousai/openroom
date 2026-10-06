@@ -3,7 +3,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { acceptInvite, getHomeSummary, myInvites } from '../api';
 import { invalidateManagementData } from '../query-client';
 import { to } from '../destinations';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 /** Invitations and unfinished Notes remain reachable from the Library. */
 export function WorkspaceUpdates({ contextId }: { contextId: string | null }) {

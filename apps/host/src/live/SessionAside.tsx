@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 
-import { Button } from '../components/ui/button';
-import { Textarea } from '../components/ui/textarea';
+import { Button } from '@openroom/ui/components/button';
+import { Textarea } from '@openroom/ui/components/textarea';
 import { QnaQuestionList } from '../QnaDesk';
 import { stepLabel } from './utils';
 import type { RailItem } from '../snapshot';

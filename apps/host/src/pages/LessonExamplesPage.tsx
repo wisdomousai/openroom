@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { createDeck, getSpaceTree } from '../api';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { to } from '../destinations';
 import { LESSON_EXAMPLES, lessonExample } from '../lib/lesson-examples';
 import { getBreadcrumbTrail } from '../lib/folder-tree';

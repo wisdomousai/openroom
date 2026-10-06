@@ -7,8 +7,8 @@ import {
   type ContextKind,
 } from '../../api';
 import { getBreadcrumbTrail } from '../../lib/folder-tree';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
 import { Link } from '@tanstack/react-router';
 
 import { to } from '../../destinations';

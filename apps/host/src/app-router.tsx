@@ -39,11 +39,11 @@ import { SessionNotesPage } from './pages/tutor/SessionNotes';
 import { TutoringTrashPage } from './pages/tutor/Trash';
 import { WorkspaceShell } from './shell/WorkspaceShell';
 import { loadLiveSession, saveLiveSession } from './storage';
-import { ToastRegion, useToasts } from './toasts';
+import { ToastRegion, useToasts } from '@openroom/ui/toasts';
 import type { StoredSession } from './types';
 import { useAuth, type AuthSession } from './useAuth';
-import { Alert, AlertDescription, AlertTitle } from './components/ui/alert';
-import { Button } from './components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@openroom/ui/components/alert';
+import { Button } from '@openroom/ui/components/button';
 
 type Notify = (message: string, tone?: 'info' | 'error') => void;
 

@@ -5,7 +5,7 @@ import type { SpaceSettings } from '@openroom/schema';
 
 import { contextChips, contextIsEmpty, fieldsFromContext } from '../lib/context-fields';
 import { givenName } from '../lib/initials';
-import { cn } from '../lib/utils';
+import { cn } from '@openroom/ui/utils';
 
 interface Props {
   displayName: string;

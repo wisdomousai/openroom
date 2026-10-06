@@ -7,11 +7,11 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ResultsPreview } from './Results';
 import { QuestionRailFooter } from './QuestionRailFooter';
-import { Badge } from './components/ui/badge';
-import { Button } from './components/ui/button';
-import { Card } from './components/ui/card';
-import { DialogFooter } from './components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
+import { Badge } from '@openroom/ui/components/badge';
+import { Button } from '@openroom/ui/components/button';
+import { Card } from '@openroom/ui/components/card';
+import { DialogFooter } from '@openroom/ui/components/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
 
 describe('component rendering', () => {
   it('live peer-instruction shows current-round bars only (dead-simple default)', () => {

@@ -11,8 +11,8 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
   ContextMenuTrigger,
-} from '../../components/ui/context-menu';
-import { cn } from '../../lib/utils';
+} from '@openroom/ui/components/context-menu';
+import { cn } from '@openroom/ui/utils';
 import { LayoutThumb } from './LayoutThumb';
 import { SlideThumbnail } from './SlideThumbnail';
 import {

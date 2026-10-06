@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { iframeUrlIssue } from '@openroom/schema';
 
 import { checkEmbeddable, type EmbedCheck } from '../../api';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
+} from '@openroom/ui/components/dialog';
+import { Input } from '@openroom/ui/components/input';
 
 /** What a refusal is called, in the teacher's words. */
 export function embedRefusalText(reason: Exclude<EmbedCheck, { embeddable: true }>['reason']): string {

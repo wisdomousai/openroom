@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AudioPlayer } from '@openroom/slides';
 import type { OutlineMedia } from '@openroom/schema';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 export interface ListeningSettings { stepId: string; mode: 'room' | 'individual'; transcriptShown: boolean }
 type ListeningChange = Pick<ListeningSettings, 'stepId'> & Partial<Omit<ListeningSettings, 'stepId'>>;

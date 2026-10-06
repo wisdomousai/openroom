@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Button } from './components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -8,10 +8,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './components/ui/dialog';
-import { Input } from './components/ui/input';
-import { Label } from './components/ui/label';
-import { Textarea } from './components/ui/textarea';
+} from '@openroom/ui/components/dialog';
+import { Input } from '@openroom/ui/components/input';
+import { Label } from '@openroom/ui/components/label';
+import { Textarea } from '@openroom/ui/components/textarea';
 
 export type LiveInsertKind = 'term' | 'statement' | 'question';
 

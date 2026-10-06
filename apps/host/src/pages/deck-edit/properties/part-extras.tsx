@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { OutlineStep } from '@openroom/schema';
 
-import { Button } from '../../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   canAddListItem,
   canRemoveListItem,

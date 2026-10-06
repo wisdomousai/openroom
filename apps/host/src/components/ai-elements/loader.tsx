@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@openroom/ui/utils";
 import type { HTMLAttributes } from "react";
 
 type LoaderIconProps = {

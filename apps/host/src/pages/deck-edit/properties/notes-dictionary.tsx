@@ -2,7 +2,7 @@ import { DictionaryTable } from '@openroom/slides';
 import { useQuery } from '@tanstack/react-query';
 
 import { ApiError, lookupDictionary } from '../../../api';
-import { Textarea } from '../../../components/ui/textarea';
+import { Textarea } from '@openroom/ui/components/textarea';
 import { stepTitle } from '../outline-edit';
 import type { PropertiesPanelProps } from './shared';
 

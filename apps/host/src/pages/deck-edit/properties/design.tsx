@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { type OutlineAside, type OutlineStep } from '@openroom/schema';
 
-import { Input } from '../../../components/ui/input';
-import { Textarea } from '../../../components/ui/textarea';
-import { cn } from '../../../lib/utils';
+import { Input } from '@openroom/ui/components/input';
+import { Textarea } from '@openroom/ui/components/textarea';
+import { cn } from '@openroom/ui/utils';
 import { LAYOUT_WORDS, LayoutThumb } from '../LayoutThumb';
 import { stepMedia } from '../outline-edit';
 import type { PropertiesPanelProps } from './shared';

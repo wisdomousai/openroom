@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 
 import type { FolderSummary } from '../api';
 import { buildFolderTree, getFolderAncestors, type FolderTreeNode } from '../lib/folder-tree';
-import { cn } from '../lib/utils';
-import { Input } from './ui/input';
+import { cn } from '@openroom/ui/utils';
+import { Input } from '@openroom/ui/components/input';
 
 export interface MoveTreePickerProps {
   spaceName: string;

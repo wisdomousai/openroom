@@ -12,8 +12,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { DictionaryEntry, FormSection } from '@openroom/schema';
 
-import { Button } from './components/ui/button';
-import { cn } from './lib/utils';
+import { Button } from '@openroom/ui/components/button';
+import { cn } from '@openroom/ui/utils';
 
 /** What the lookup produced for the word under the card. */
 export type BreakoutLookup =

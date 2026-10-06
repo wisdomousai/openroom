@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Outline, OutlineStep } from '@openroom/schema';
 
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { cn } from '../../lib/utils';
+} from '@openroom/ui/components/dialog';
+import { cn } from '@openroom/ui/utils';
 import { stepTitle } from './outline-edit';
 
 export type BreakoutPick = 'prepared' | 'blank' | 'poll';

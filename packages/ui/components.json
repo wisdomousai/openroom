@@ -5,16 +5,16 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/index.css",
+    "css": "../../apps/host/src/index.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@/components",
-    "utils": "@openroom/ui/utils",
+    "components": "@openroom/ui/components",
     "ui": "@openroom/ui/components",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "utils": "@openroom/ui/utils",
+    "lib": "@openroom/ui",
+    "hooks": "@openroom/ui/hooks"
   }
 }

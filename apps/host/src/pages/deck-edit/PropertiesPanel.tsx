@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { BrandKitPicker } from './properties/brand-kit';
-import { Button } from '../../components/ui/button';
-import { cn } from '../../lib/utils';
+import { Button } from '@openroom/ui/components/button';
+import { cn } from '@openroom/ui/utils';
 
 import { VersionHistory } from '../../components/VersionHistory';
 import { AsideDesign, DesignState } from './properties/design';

@@ -20,8 +20,8 @@ import {
 import {
   ContextMenu,
   ContextMenuTrigger,
-} from '../../components/ui/context-menu';
-import { Button } from '../../components/ui/button';
+} from '@openroom/ui/components/context-menu';
+import { Button } from '@openroom/ui/components/button';
 import { SlideOverflowNotice } from './SlideOverflowNotice';
 import { useSlideOverflow, type SlideOverflowIssue } from './slide-overflow';
 import { BlockedEmbedNotices } from './BlockedEmbedNotice';

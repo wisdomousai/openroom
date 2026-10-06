@@ -31,17 +31,17 @@ import {
   type LearnerPracticeItem,
   type LearnerSession,
 } from '../api';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Textarea } from '../components/ui/textarea';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
+import { Textarea } from '@openroom/ui/components/textarea';
 import { recordItemLabel, recordItemUrl } from '../lib/context-links';
 import { VoiceTask } from './learner/VoiceTask';
 import { PrivateAudio } from '../components/PrivateAudio';
 import { PracticeCard } from './learner/PracticeCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
 import { LearnerLanguageProvider, useLearnerLanguage } from '../lib/learner-language';
 import { learnerLanguageNames, type LearnerLocale } from '../lib/learner-copy';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
 
 function Frame({ children }: { children: ReactNode }) {
   const { locale, copy, setLocale } = useLearnerLanguage();

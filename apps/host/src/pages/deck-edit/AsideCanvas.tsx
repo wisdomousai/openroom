@@ -1,16 +1,16 @@
 import { useLayoutEffect, useRef } from 'react';
 import { isHomeworkQuizType, type HomeworkTask, type Interaction, type OutlineAside } from '@openroom/schema';
 
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../components/ui/select';
-import { Textarea } from '../../components/ui/textarea';
+} from '@openroom/ui/components/select';
+import { Textarea } from '@openroom/ui/components/textarea';
 
 /**
  * Homework or recap — one page on the desk, not a slide.

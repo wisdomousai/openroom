@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 import type { SpaceMember, SpaceRole } from '../api';
 import { givenName, possessive } from '../lib/initials';
 import { inviteEmailError } from '../lib/members';
-import { cn } from '../lib/utils';
+import { cn } from '@openroom/ui/utils';
 import { PersonBadge } from './PersonBadge';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogBody,
@@ -14,8 +14,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
-import { Input } from './ui/input';
+} from '@openroom/ui/components/dialog';
+import { Input } from '@openroom/ui/components/input';
 
 export type InviteIntent = 'teach-edit' | 'teach' | 'read';
 

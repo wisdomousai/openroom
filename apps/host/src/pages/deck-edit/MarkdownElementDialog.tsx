@@ -4,7 +4,7 @@ import { HtmlHost } from '@openroom/slides';
 
 import { ApiError, importReadingMaterial } from '../../api';
 import { desktopBridge } from '../../desktop-bridge';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
-import { Textarea } from '../../components/ui/textarea';
+} from '@openroom/ui/components/dialog';
+import { Input } from '@openroom/ui/components/input';
+import { Textarea } from '@openroom/ui/components/textarea';
 
 /**
  * Reading material: a slide of prose the learner scrolls.

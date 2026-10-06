@@ -39,7 +39,7 @@ import {
 } from '../components/ItemDetailPanel';
 import { PersonBadge } from '../components/PersonBadge';
 import { TreeRail } from '../components/TreeRail';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { formatContentsMeta } from '../lib/contents-meta';
 import { collectDescendantIds, getBreadcrumbTrail } from '../lib/folder-tree';
 import { givenName } from '../lib/initials';

@@ -8,7 +8,7 @@ import {
   type MarkShape,
 } from '@openroom/sdk';
 
-import { cn } from '../lib/utils';
+import { cn } from '@openroom/ui/utils';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -16,7 +16,7 @@ import {
   ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from '../components/ui/context-menu';
+} from '@openroom/ui/components/context-menu';
 
 const INK_SWATCH: Record<InkColor, string> = {
   red: 'bg-destructive',

@@ -1,6 +1,6 @@
 import { stepElements, type OutlineStep } from '@openroom/schema';
 
-import { Button } from '../../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { partLabel } from '../outline-edit';
 import { CommitTextarea, Section } from './shared';
 

@@ -47,7 +47,7 @@ import {
   type OutlineStep,
 } from '@openroom/schema';
 
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,10 +55,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../../components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { ToggleGroup, ToggleGroupItem } from '../../components/ui/toggle-group';
-import { cn } from '../../lib/utils';
+} from '@openroom/ui/components/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@openroom/ui/components/toggle-group';
+import { cn } from '@openroom/ui/utils';
 import { PLAN_FILE, deckGetCommand, outlineValidateCommand } from './agent-commands';
 import { ElementLayoutThumb, LayoutThumb, LAYOUT_WORDS } from './LayoutThumb';
 import {

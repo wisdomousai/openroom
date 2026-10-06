@@ -1,4 +1,4 @@
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import type { SlideOverflowIssue } from './slide-overflow';
 
 export function SlideOverflowNotice({ issues, onReview }: { issues: SlideOverflowIssue[]; onReview: () => void }) {

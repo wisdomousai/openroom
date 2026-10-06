@@ -12,9 +12,9 @@ import {
   type OutlineMedia,
 } from '@openroom/schema';
 
-import { Button } from '../../../components/ui/button';
-import { Slider } from '../../../components/ui/slider';
-import { cn } from '../../../lib/utils';
+import { Button } from '@openroom/ui/components/button';
+import { Slider } from '@openroom/ui/components/slider';
+import { cn } from '@openroom/ui/utils';
 import { stepMedia } from '../outline-edit';
 import { CommitTextarea, Section } from './shared';
 

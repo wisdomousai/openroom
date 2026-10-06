@@ -8,7 +8,7 @@ import { Link } from '@tanstack/react-router';
 import { Lock } from 'lucide-react';
 
 import { to } from '../destinations';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 /** True once a limited session holds as many participants as it admits. */
 export function sessionFull(joined: number, limit: number | undefined): boolean {

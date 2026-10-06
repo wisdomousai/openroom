@@ -32,17 +32,17 @@ import {
   PromptInputTools,
 } from '../components/ai-elements/prompt-input';
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '../components/ai-elements/reasoning';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@openroom/ui/components/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../components/ui/select';
-import { cn } from '../lib/utils';
+} from '@openroom/ui/components/select';
+import { cn } from '@openroom/ui/utils';
 import { Check, FolderOpen, Paperclip, Settings2 } from 'lucide-react';
 import {
   agentChatStore,

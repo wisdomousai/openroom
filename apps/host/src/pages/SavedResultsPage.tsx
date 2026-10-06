@@ -5,7 +5,7 @@ import { savedResultsHtml, type SavedResultsDocument } from '@openroom/schema';
 import { ApiError } from '../api/client';
 import { getSavedResults } from '../api/saved-results';
 import { to } from '../destinations';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 const number = (value: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
 

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { DeckDesign } from '@openroom/schema';
 import { listBrandKits } from '../../../api/brand-kits';
-import { Button } from '../../../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { Button } from '@openroom/ui/components/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
 import { Section } from './shared';
 
 export function BrandKitPicker({ spaceId, onApply }: { spaceId: string; onApply: (design: DeckDesign) => void }) {

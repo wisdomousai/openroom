@@ -3,7 +3,7 @@ import { pdfUrlIssue, type OpenRoomFileResourceV1, type OutlinePdfElement } from
 
 import { ApiError, assetUrl, uploadAsset } from '../../api';
 import { desktopBridge } from '../../desktop-bridge';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
+} from '@openroom/ui/components/dialog';
+import { Input } from '@openroom/ui/components/input';
 
 type PdfSource = Pick<OutlinePdfElement, 'url' | 'assetId' | 'resourceId'>;
 

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { SLIDE_TEMPLATES, WORKSHOP_SEQUENCES, type Outline, type SlideTemplateCategory } from '@openroom/schema';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody } from '../../components/ui/dialog';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody } from '@openroom/ui/components/dialog';
 import { SlideThumbnail } from './SlideThumbnail';
 
 export function TemplateGallery({ open, onOpenChange, outline, onPick, onWorkshop, onBlank }: {

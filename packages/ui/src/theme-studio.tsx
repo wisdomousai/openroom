@@ -10,19 +10,19 @@
  */
 import * as React from 'react';
 import { Check, Palette, Lock, Sparkles } from 'lucide-react';
-import type { ThemeId, ThemeMode } from '@openroom/ui';
-import { getTheme } from '@openroom/ui';
+import type { ThemeId, ThemeMode } from './index.js';
+import { getTheme } from './index.js';
 import {
   previewStyle,
   swatchColors,
   THEME_CHOICES,
   useTheme,
   type ModeSetting,
-} from '../lib/theme';
-import { cn } from '../lib/utils';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Alert, AlertDescription } from './ui/alert';
+} from './theme-provider.js';
+import { cn } from './utils.js';
+import { Badge } from './components/badge.js';
+import { Button } from './components/button.js';
+import { Alert, AlertDescription } from './components/alert.js';
 import {
   Dialog,
   DialogBody,
@@ -32,11 +32,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from './ui/dialog';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Separator } from './ui/separator';
-import { Switch } from './ui/switch';
+} from './components/dialog.js';
+import { Label } from './components/label.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/select.js';
+import { Separator } from './components/separator.js';
+import { Switch } from './components/switch.js';
 
 /** A miniature of the product rendered entirely in another theme's tokens. */
 function ThemePreview({ themeId, mode }: { themeId: ThemeId; mode: ThemeMode }) {

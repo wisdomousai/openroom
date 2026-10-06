@@ -12,7 +12,7 @@ import {
 
 import { stageUrlFor } from '../api';
 import { qnaShareUrl, remoteShareUrl, to, type LibraryPlace } from '../destinations';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { SessionFullNotice } from '../components/SessionFullNotice';
 import {
   DropdownMenu,
@@ -21,8 +21,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
-import { Hint } from '../components/ui/tooltip';
+} from '@openroom/ui/components/dropdown-menu';
+import { Hint } from '@openroom/ui/components/tooltip';
 import type { ConnectionStatus } from '../types';
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {

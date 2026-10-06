@@ -24,11 +24,11 @@ import {
   type MintedContextLink,
 } from '../../api';
 import { ConfirmActionDialog } from '../../components/ManagementTable';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
+import { Badge } from '@openroom/ui/components/badge';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
+import { Input } from '@openroom/ui/components/input';
+import { Label } from '@openroom/ui/components/label';
 import {
   Select,
   SelectContent,
@@ -36,7 +36,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../components/ui/select';
+} from '@openroom/ui/components/select';
 import {
   learnerLinkUrl,
   linkState,

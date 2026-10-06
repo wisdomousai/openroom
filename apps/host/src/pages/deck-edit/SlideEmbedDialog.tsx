@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@openroom/ui/components/dialog';
 
 export function SlideEmbedDialog({ stepId, prepare, onClose }: { stepId: string | null; prepare: (stepId: string) => Promise<string>; onClose: () => void }) {
   const [code, setCode] = useState(''), [error, setError] = useState(''), [copied, setCopied] = useState(false);

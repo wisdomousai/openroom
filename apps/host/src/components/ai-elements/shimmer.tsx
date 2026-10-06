@@ -1,5 +1,5 @@
 
-import { cn } from "@/lib/utils";
+import { cn } from "@openroom/ui/utils";
 import { motion } from "motion/react";
 import {
   type CSSProperties,

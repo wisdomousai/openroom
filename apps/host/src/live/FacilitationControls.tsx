@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { HostCommand, HostSnapshot } from '../types';
-import { Button } from '../components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { Button } from '@openroom/ui/components/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@openroom/ui/components/dropdown-menu';
 
 export function FacilitationControls({ snapshot, run }: {
   snapshot: HostSnapshot | null;

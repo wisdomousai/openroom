@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SessionGroupView } from '@openroom/sdk';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
 import type { HostCommand, HostSnapshot } from '../types';
 
 export function GroupsPanel({ snapshot, run, ended }: {

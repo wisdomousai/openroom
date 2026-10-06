@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { OpenRoomFileResourceV1, SlideImageSource } from '@openroom/schema';
 import { assetUrl, uploadAsset } from '../../../api';
 import { desktopBridge } from '../../../desktop-bridge';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
 
 /** A design image uses the same local import or space upload as slide content. */
 export function DesignImagePicker({ label, value, spaceId, onEmbedded, onChange }: {

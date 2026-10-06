@@ -3,6 +3,8 @@
 /* Stage viz + shared charts package (LiveHost embed + ResultsPreview). */
 @source "../../stage/src";
 @source "../../../packages/charts/src";
+/* Shared shadcn primitives, toasts and the theme studio. */
+@source "../../../packages/ui/src/**/*.tsx";
 @import '@openroom/charts/charts.css';
 
 /*

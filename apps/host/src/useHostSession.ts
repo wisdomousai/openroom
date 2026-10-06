@@ -16,7 +16,7 @@ import {
   sessionOf,
   statusOf,
 } from './snapshot';
-import { useToasts } from './toasts';
+import { useToasts } from '@openroom/ui/toasts';
 import type {
   ConnectionStatus,
   HostCommand,

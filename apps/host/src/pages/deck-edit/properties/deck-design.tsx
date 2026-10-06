@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { defaultDeckDesign, resolveSlideDesign, slideTheme, SLIDE_THEME_FAMILIES, DECK_ASPECT_RATIOS, type SlideBackground, type SlideMaster, type SlideFont } from '@openroom/schema';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
-import { cn } from '../../../lib/utils';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
+import { cn } from '@openroom/ui/utils';
 import { Section, type PropertiesPanelProps } from './shared';
 import { DesignImagePicker } from './design-image';
 

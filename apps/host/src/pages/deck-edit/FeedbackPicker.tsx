@@ -1,6 +1,6 @@
 import type { LearnerCorrection } from '@openroom/schema';
 import type { ContextReturned } from '../../api';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 export function FeedbackPicker({ corrections, onInsert }: { corrections: ContextReturned['corrections']; onInsert: (correction: LearnerCorrection) => void }) {
   if (corrections.length === 0) return null;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { createDeck } from '../../api';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { to } from '../../destinations';
 import { blankDeck } from '../../lib/deck-document';
 import { invalidateManagementData } from '../../query-client';

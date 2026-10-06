@@ -15,9 +15,9 @@ import {
   type OutlineTimerStyle,
 } from '@openroom/schema';
 
-import { Textarea } from '../../../components/ui/textarea';
-import { Input } from '../../../components/ui/input';
-import { cn } from '../../../lib/utils';
+import { Textarea } from '@openroom/ui/components/textarea';
+import { Input } from '@openroom/ui/components/input';
+import { cn } from '@openroom/ui/utils';
 import type { ListTarget, PictureTarget } from '../outline-edit';
 import type { SlideOverflowIssue } from '../slide-overflow';
 

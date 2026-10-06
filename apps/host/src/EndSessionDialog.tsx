@@ -1,4 +1,4 @@
-import { Button } from './components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './components/ui/dialog';
+} from '@openroom/ui/components/dialog';
 
 /**
  * The one end-of-session confirmation, shared by the console and the remote so

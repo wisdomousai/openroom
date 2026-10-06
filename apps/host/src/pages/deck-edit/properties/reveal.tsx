@@ -1,7 +1,7 @@
 import type { OutlineStep } from '@openroom/schema';
 
-import { Button } from '../../../components/ui/button';
-import { cn } from '../../../lib/utils';
+import { Button } from '@openroom/ui/components/button';
+import { cn } from '@openroom/ui/utils';
 import { mergeNext, movePart, splitPart } from '../../../lib/reveal-order';
 import { partLabel } from '../outline-edit';
 import type { PropertiesPanelProps } from './shared';

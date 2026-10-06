@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AudioComment } from '@openroom/schema';
 import { ApiError, baseUrl, CSRF_HEADERS } from '../api/client';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { useLearnerLanguage } from '../lib/learner-language';
 import type { LearnerMessage } from '../lib/learner-copy';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@openroom/ui/components/dialog';
 
 export function audioTime(atMs: number): string {
   const seconds = Math.floor(atMs / 1000);

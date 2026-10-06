@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { DISPLAY_LABELS, displaysFor } from './builder/displays';
-import { cn } from './lib/utils';
+import { cn } from '@openroom/ui/utils';
 import type { InteractionType } from './types';
 
 const MENU_LABELS: Record<string, string> = {

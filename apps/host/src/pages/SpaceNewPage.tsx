@@ -4,8 +4,8 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import type { WorkspaceExperience } from '@openroom/schema';
 import { createSpace } from '../api';
 import { ExperienceFields } from '../components/ExperienceFields';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
 import { to } from '../destinations';
 import { messageOf } from './tutor/shared';
 

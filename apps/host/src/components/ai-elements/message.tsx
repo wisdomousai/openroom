@@ -1,16 +1,16 @@
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@openroom/ui/components/button";
 import {
   ButtonGroup,
   ButtonGroupText,
-} from "@/components/ui/button-group";
+} from "@openroom/ui/components/button-group";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+} from "@openroom/ui/components/tooltip";
+import { cn } from "@openroom/ui/utils";
 import type { FileUIPart, UIMessage } from "ai";
 import {
   ChevronLeftIcon,

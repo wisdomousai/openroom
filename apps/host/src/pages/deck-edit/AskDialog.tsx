@@ -13,7 +13,7 @@ import {
   type Interaction,
 } from '@openroom/schema';
 
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -21,9 +21,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
-import { cn } from '../../lib/utils';
+} from '@openroom/ui/components/dialog';
+import { Input } from '@openroom/ui/components/input';
+import { cn } from '@openroom/ui/utils';
 
 export type AskKind = 'choice' | 'ranking' | 'fill-the-gaps' | 'match' | 'text';
 

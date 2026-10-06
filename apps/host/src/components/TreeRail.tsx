@@ -7,15 +7,15 @@ import {
   getFolderAncestors,
   type FolderTreeNode,
 } from '../lib/folder-tree';
-import { cn } from '../lib/utils';
-import { Input } from './ui/input';
+import { cn } from '@openroom/ui/utils';
+import { Input } from '@openroom/ui/components/input';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from './ui/context-menu';
+} from '@openroom/ui/components/context-menu';
 
 /** The folder verbs the rail can perform. Omitted for a read-only role. */
 export interface FolderActions {

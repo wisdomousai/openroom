@@ -3,8 +3,8 @@ import type { OpenRoomFileResourceV1, OutlineMedia } from '@openroom/schema';
 import { AudioPlayer } from '@openroom/slides';
 import { ApiError, assetUrl, uploadAsset } from '../../../api';
 import { desktopBridge } from '../../../desktop-bridge';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
 import { CommitTextarea, Section } from './shared';
 
 export function AudioSection({ media, spaceId, onChange, onEmbedded }: {

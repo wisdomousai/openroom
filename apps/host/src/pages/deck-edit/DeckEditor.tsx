@@ -16,7 +16,7 @@ import {
 import { getContextReturned } from '../../api';
 
 import { SessionErrorList } from '../../components/SessionErrorList';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { VersionHistory } from '../../components/VersionHistory';
 import { TemplateGallery } from './TemplateGallery';
 import { AskDialog } from './AskDialog';

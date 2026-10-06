@@ -3,7 +3,7 @@ import { stringify } from 'yaml';
 import type { Outline } from '@openroom/schema';
 
 import { getDeck, listDeckVersions } from '../api';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 function when(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {

@@ -3,9 +3,9 @@ import { Link } from '@tanstack/react-router';
 import { recapHtml, type RecapCandidates, type RecapSelection, type SessionRecap } from '@openroom/schema';
 import { request, ApiError } from '../api/client';
 import { to } from '../destinations';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
+import { Button } from '@openroom/ui/components/button';
+import { Input } from '@openroom/ui/components/input';
+import { Textarea } from '@openroom/ui/components/textarea';
 import type { StoredSession } from '../types';
 
 function download(body: string, type: string, name: string) {

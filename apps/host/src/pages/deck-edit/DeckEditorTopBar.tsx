@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Input } from '../../components/ui/input';
+import { Input } from '@openroom/ui/components/input';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 
 import type { LinkTarget } from '../../destinations';
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import type { DraftStatus } from './useDraftSave';
 
 /**

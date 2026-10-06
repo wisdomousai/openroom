@@ -19,7 +19,7 @@ import {
   themeToCssVars,
   type ThemeId,
   type ThemeMode,
-} from '@openroom/ui';
+} from './index.js';
 
 export type ModeSetting = ThemeMode | 'system';
 

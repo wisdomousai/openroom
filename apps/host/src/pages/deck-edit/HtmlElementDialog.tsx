@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { elementMarkupIssue } from '@openroom/schema';
 
-import { Button } from '../../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { Textarea } from '../../components/ui/textarea';
+} from '@openroom/ui/components/dialog';
+import { Textarea } from '@openroom/ui/components/textarea';
 
 /**
  * Markup + optional CSS for one HTML/SVG object. A dialog because a code box

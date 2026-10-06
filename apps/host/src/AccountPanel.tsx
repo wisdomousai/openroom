@@ -4,17 +4,17 @@ import { demoLogin, logout, signInUrl } from './api';
 import { desktopBridge } from './desktop-bridge';
 import { useDevLoginOnly } from './lib/local-auth';
 import type { AuthSession } from './useAuth';
-import { Button } from './components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
-import { Input } from './components/ui/input';
-import { Label } from './components/ui/label';
+import { Button } from '@openroom/ui/components/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
+import { Input } from '@openroom/ui/components/input';
+import { Label } from '@openroom/ui/components/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './components/ui/select';
+} from '@openroom/ui/components/select';
 
 /** Shared password for every static demo account (dev only). */
 const DEMO_PASSWORD = 'demo';

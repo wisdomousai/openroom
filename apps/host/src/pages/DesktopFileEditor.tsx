@@ -30,7 +30,7 @@ import {
   uploadEphemeralSessionResource,
   uploadAsset,
 } from '../api';
-import { Button } from '../components/ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { DeckEditor } from './deck-edit/DeckEditor';
 import { Presenter, type PresentationPosition } from '../presenter/Presenter';
 import { DeckEditorTopBar } from './deck-edit/DeckEditorTopBar';

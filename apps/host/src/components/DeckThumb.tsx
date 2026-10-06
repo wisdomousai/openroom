@@ -1,4 +1,4 @@
-import { cn } from '../lib/utils';
+import { cn } from '@openroom/ui/utils';
 
 interface Props {
   /** Folder rows show a count instead of a wireframe. */

@@ -1,5 +1,5 @@
 import type { SessionError } from '../types';
-import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@openroom/ui/components/alert';
 
 /** Server-side outline validation errors, with their stable codes and pointers. */
 export function SessionErrorList({

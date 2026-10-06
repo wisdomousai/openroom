@@ -12,11 +12,11 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { to } from './destinations';
 import { useSessionExit } from './live/useSessionExit';
-import { Alert, AlertDescription } from './components/ui/alert';
-import { Button } from './components/ui/button';
-import { ToastRegion } from './toasts';
+import { Alert, AlertDescription } from '@openroom/ui/components/alert';
+import { Button } from '@openroom/ui/components/button';
+import { ToastRegion } from '@openroom/ui/toasts';
 import { useHostSession } from './useHostSession';
-import { cn } from './lib/utils';
+import { cn } from '@openroom/ui/utils';
 import type { ConnectionStatus, HostQnaView, StoredSession } from './types';
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {

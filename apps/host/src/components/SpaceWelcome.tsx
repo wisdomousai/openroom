@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import type { WorkspaceExperience } from '@openroom/schema';
 import { createDeck } from '../api';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 import { starterDeck } from '../lib/starter-decks';
 import { to } from '../destinations';
 import { invalidateManagementData } from '../query-client';

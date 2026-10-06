@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { OpenRoomFileResourceV1, OutlineMedia } from '@openroom/schema';
 
 import { ApiError, listAssets, searchStock, uploadAsset, assetUrl, type StockHit, type MediaAssetSummary } from '../../api';
-import { Button } from '../../components/ui/button';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Button } from '@openroom/ui/components/button';
+import { Checkbox } from '@openroom/ui/components/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
-import { cn } from '../../lib/utils';
+} from '@openroom/ui/components/dialog';
+import { Input } from '@openroom/ui/components/input';
+import { cn } from '@openroom/ui/utils';
 import { desktopBridge } from '../../desktop-bridge';
 
 type PictureTab = 'computer' | 'stock' | 'space' | 'upload' | 'link';

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 
 import type { DesktopAgentQuestion, DesktopAgentQuestionAnswer } from '../desktop-bridge';
-import { Button } from '../components/ui/button';
-import { Checkbox } from '../components/ui/checkbox';
-import { Input } from '../components/ui/input';
-import { cn } from '../lib/utils';
+import { Button } from '@openroom/ui/components/button';
+import { Checkbox } from '@openroom/ui/components/checkbox';
+import { Input } from '@openroom/ui/components/input';
+import { cn } from '@openroom/ui/utils';
 
 export interface AgentQuestionCardProps {
   id: string;

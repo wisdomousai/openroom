@@ -6,10 +6,10 @@ import {
 } from '@openroom/schema';
 import { TIMER_TEXT_TOKENS, expandTimerText } from '@openroom/slides';
 
-import { Button } from '../../../components/ui/button';
-import { Checkbox } from '../../../components/ui/checkbox';
-import { Input } from '../../../components/ui/input';
-import { cn } from '../../../lib/utils';
+import { Button } from '@openroom/ui/components/button';
+import { Checkbox } from '@openroom/ui/components/checkbox';
+import { Input } from '@openroom/ui/components/input';
+import { cn } from '@openroom/ui/utils';
 import { stepMinutes, stepSeconds } from '../outline-edit';
 import { Section } from './shared';
 

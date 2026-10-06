@@ -3,7 +3,7 @@ import { facilitateSession } from '../api/tokens';
 import { useQuery } from '@tanstack/react-query';
 import { listMySessions } from '../api';
 import type { StoredSession } from '../types';
-import { Button } from './ui/button';
+import { Button } from '@openroom/ui/components/button';
 
 export function LiveNow({ onOpen }: { onOpen: (session: StoredSession) => void }) {
   const [joining, setJoining] = useState<string | null>(null);

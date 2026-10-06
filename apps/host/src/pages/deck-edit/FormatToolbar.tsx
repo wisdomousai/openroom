@@ -10,17 +10,17 @@ import {
 } from 'lucide-react';
 import type { SpanFontFamily, TextElementAlignment } from '@openroom/schema';
 
-import { Button } from '../../components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Button } from '@openroom/ui/components/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@openroom/ui/components/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../components/ui/select';
-import { Toggle } from '../../components/ui/toggle';
-import { ToggleGroup, ToggleGroupItem } from '../../components/ui/toggle-group';
+} from '@openroom/ui/components/select';
+import { Toggle } from '@openroom/ui/components/toggle';
+import { ToggleGroup, ToggleGroupItem } from '@openroom/ui/components/toggle-group';
 import { togglePatch, toolbarState, type StyledTarget, type ToggleKey } from './format-toolbar-state';
 import type { SpanFormat } from './spans';
 import { partSelection } from './selection-offsets';

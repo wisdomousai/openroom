@@ -7,9 +7,9 @@ import {
   type MarkShape,
 } from '@openroom/sdk';
 
-import { Button } from './components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { cn } from './lib/utils';
+import { Button } from '@openroom/ui/components/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
+import { cn } from '@openroom/ui/utils';
 
 const INK_SWATCH: Record<InkColor, string> = {
   red: 'bg-destructive',

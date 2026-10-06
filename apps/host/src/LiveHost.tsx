@@ -22,13 +22,13 @@ import { to } from './destinations';
 import { sessionThemeCommand } from './sdk';
 import { desktopBridge } from './desktop-bridge';
 import { EndSessionDialog } from './EndSessionDialog';
-import { ToastRegion } from './toasts';
+import { ToastRegion } from '@openroom/ui/toasts';
 import { saveLiveSession } from './storage';
-import { useTheme } from './lib/theme';
+import { useTheme } from '@openroom/ui/theme-provider';
 import { LanguagePairFields } from './components/LanguagePairFields';
-import { ThemeStudio } from './components/ThemeStudio';
-import { Alert, AlertDescription } from './components/ui/alert';
-import { Button } from './components/ui/button';
+import { ThemeStudio } from '@openroom/ui/theme-studio';
+import { Alert, AlertDescription } from '@openroom/ui/components/alert';
+import { Button } from '@openroom/ui/components/button';
 import {
   aggregateOf,
   audienceSeesResults,
