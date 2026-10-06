@@ -298,6 +298,8 @@ export interface HostSnapshot {
   joined?: number;
   answered?: number;
   participantCount?: number;
+  /** Most participants the session admits; absent when unlimited. */
+  participantLimit?: number;
   answeredCount?: number;
   /** Absolute ms auto-close deadline for the active interaction, when armed. */
   closesAt?: number;

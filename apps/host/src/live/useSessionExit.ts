@@ -22,6 +22,8 @@ export interface SessionExit {
   /** The durable session id, when this session has one. */
   sessionId: string | null;
   deckPlace: DeckPlace | null;
+  /** Owner or editor of the session's space; false until known and without a durable session. */
+  canEdit: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
   const [probeFailed, setProbeFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [deckPlace, setDeckPlace] = useState<DeckPlace | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   const retryProbe = useCallback(() => {
     setProbeFailed(false);
@@ -84,8 +87,9 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     if (sessionId === null) return;
     let cancelled = false;
     getSessionItem(sessionId)
-      .then(({ session }) => {
+      .then(({ session, canEdit: editable }) => {
         if (cancelled) return;
+        setCanEdit(editable);
         setDeckPlace({
           spaceId: session.spaceId,
           folderId: session.folderId,
@@ -94,7 +98,9 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
       })
       .catch(() => {
         /* a co-host who is not a member of the space reads no row: fall back to the Library root */
-        if (!cancelled) setDeckPlace(null);
+        if (cancelled) return;
+        setDeckPlace(null);
+        setCanEdit(false);
       });
     return () => {
       cancelled = true;
@@ -117,5 +123,5 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     clearLiveSession(sessionCode);
   }, [ended, probe, sessionCode, sessionId]);
 
-  return { context, probe, probeFailed, retryProbe, sessionId, deckPlace };
+  return { context, probe, probeFailed, retryProbe, sessionId, deckPlace, canEdit };
 }

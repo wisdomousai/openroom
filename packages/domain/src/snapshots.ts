@@ -559,6 +559,8 @@ export interface HostSnapshot {
   joinPath: string;
   activeInteractionId: string | null;
   participantCount: number;
+  /** Most participants the session admits; absent when unlimited. */
+  participantLimit?: number;
   expectedAnswerCount: number;
   answeredCount: number;
   interactions: HostInteractionSummary[];
@@ -645,6 +647,7 @@ export function hostSnapshot(input: SessionState): HostSnapshot {
     if (record.handle !== undefined) handles[id] = record.handle;
   }
   if (Object.keys(handles).length > 0) snapshot.handles = handles;
+  if (state.participantLimit !== undefined) snapshot.participantLimit = state.participantLimit;
   if (state.endedAt !== undefined) snapshot.endedAt = state.endedAt;
   if (state.purgedAt !== undefined) snapshot.purgedAt = state.purgedAt;
   return snapshot;

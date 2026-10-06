@@ -36,6 +36,10 @@ A space shares one Library tree. Put material for a different membership group i
 
 Check outcomes, question text, homework, and feedback for private information before sharing. Selecting a learner response for a new teaching slide can expose its wording to the future audience; edit that wording deliberately.
 
+## Session size
+
+A live session admits **50 participants** unless the space owner's plan includes **Sessions over 50 participants** when the session starts. A plan change during the session does not change its limit. Once the session is full, a new participant sees **This session is full.**; a participant already admitted can always return with the same browser, handle, access link, or roster invitation. Installations without billing have no limit.
+
 ## Live-session retention
 
 The live retention clocks begin when the session ends, including an automatic end after **12 hours of inactivity**.

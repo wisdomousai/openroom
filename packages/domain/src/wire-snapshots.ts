@@ -186,6 +186,7 @@ export function hostWireSnapshot(state: SessionState): Json {
     joinUrl: snapshot.joinPath,
     frozen: snapshot.frozen,
     participantCount: snapshot.participantCount,
+    ...(snapshot.participantLimit === undefined ? {} : { participantLimit: snapshot.participantLimit }),
     expectedAnswerCount: snapshot.expectedAnswerCount,
     groups: snapshot.groups,
     participants: snapshot.participants,

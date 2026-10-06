@@ -28,7 +28,7 @@ export function createSession(
   document: Session | Outline,
   code: string,
   now: number,
-  options?: { outlineVersion?: number; facilitator?: { id: string; name: string } },
+  options?: { outlineVersion?: number; facilitator?: { id: string; name: string }; participantLimit?: number },
 ): SessionState {
   const outline = asOutline(document);
   const normalized = normalizeSession(toSession(outline));
@@ -69,8 +69,18 @@ export function createSession(
     interactions,
     qna: emptyQnaState(normalized.qna.enabled),
     participants: {},
+    ...(options?.participantLimit === undefined ? {} : { participantLimit: options.participantLimit }),
     frozen: false,
   };
+}
+
+/**
+ * Whether a genuinely new participant would exceed the session's limit.
+ * Re-entry with an existing seat or handle is not an admission and is never
+ * checked against it.
+ */
+export function participantLimitReached(state: SessionState): boolean {
+  return state.participantLimit !== undefined && Object.keys(state.participants).length >= state.participantLimit;
 }
 
 /** Classroom poll lists compile to interaction steps whose id equals the question id. */

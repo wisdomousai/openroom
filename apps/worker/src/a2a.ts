@@ -66,7 +66,7 @@ function makeDeps(env: Env, identity: A2aIdentity): ToolDeps {
         if (await sessionQuotaExceeded(env, identity.userId, now)) {
           throw new Error('session-quota');
         }
-        const created = await createSessionFromOutline(env, validation.outline);
+        const created = await createSessionFromOutline(env, validation.outline, { entitlementOwnerId: identity.userId });
         if (!created.ok) throw new Error('session-init-failed');
         await recordLiveSession(env, created.session.code, identity.userId, validation.outline.meta.title, now);
         return created.session;

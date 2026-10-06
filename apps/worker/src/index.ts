@@ -91,7 +91,7 @@ import {
   listArchivesRoute,
   maybeArchiveEndedSession,
 } from './archives.js';
-import { readEntitlements, sessionEntitlementOwner } from './entitlements.js';
+import { readEntitlements, sessionEntitlementOwner, sessionParticipantLimit } from './entitlements.js';
 import { contextOwnerId, ownerHasContinuity, requireIdentifiedSessionAccess } from './continuity-access.js';
 import { requireControlUser } from './control-auth.js';
 import { paddleWebhookRoute } from './billing/webhook';
@@ -201,7 +201,8 @@ async function authenticate(
  *
  * Cookie, PAT and OAuth clients share account quotas, paid-access checks and
  * ownership. The admin key remains an unquota'd ops override and creates an
- * unowned session. These control-plane checks never run on the ballot hot path.
+ * unowned session with no participant limit. These control-plane checks never
+ * run on the ballot hot path.
  */
 export interface CreatedSession {
   /** The session's identity: the DO's name and the code participants type in. */
@@ -235,6 +236,9 @@ export async function createSessionFromOutline(
     if (blocked) return { ok: false, response: blocked };
   }
   const sessionCode = options.reservedCode ?? generateSessionCode();
+  // Read once here and carried into the DO, so joins never touch D1. A retried
+  // durable launch whose DO already exists keeps the limit it was created with.
+  const participantLimit = await sessionParticipantLimit(env, options.entitlementOwnerId ?? options.user?.id ?? null);
 
   const initResponse = await stub(env, sessionCode).fetch(doUrl('/__init'), {
     method: 'POST',
@@ -242,6 +246,7 @@ export async function createSessionFromOutline(
     body: JSON.stringify({
       outline,
       sessionCode,
+      ...(participantLimit === null ? {} : { participantLimit }),
       ...(options.initialFacilitator ? { facilitator: options.initialFacilitator } : options.user ? { facilitator: { id: options.user.id, name: options.user.name?.trim().slice(0, 200) || 'Presenter' } } : {}),
       ...(options.outlineVersion === undefined ? {} : { outlineVersion: options.outlineVersion }),
     }),
@@ -332,6 +337,7 @@ export async function launchSessionForUser(
   const created = await createSessionFromOutline(env, validation.outline, {
     outlineVersion: input.version,
     user,
+    entitlementOwnerId,
     reservedCode: reserved.code,
     initialFacilitator: { id: reserved.user_id, name: reserved.name?.trim().slice(0, 200) || 'Presenter' },
     ...(input.connectionId ? { connectionId: input.connectionId } : {}),

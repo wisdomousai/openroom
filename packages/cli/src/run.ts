@@ -1,3 +1,5 @@
+import { FREE_SESSION_PARTICIPANT_LIMIT } from '@openroom/schema';
+
 import { flagBool, parseArgs, UsageError } from './args.js';
 import type { FetchLike } from './api.js';
 import { CliError, defaultIo, Reporter, type Io } from './output.js';
@@ -27,6 +29,9 @@ Usage:
   openroom deck start <id> [--version <n>] [--title <text>]
                                            file a session and open the live console
                                            (all deck commands take --url <base> --token <bearer>)
+                                           a session admits ${FREE_SESSION_PARTICIPANT_LIMIT} participants unless the
+                                           space owner holds largeSessions; further new joins
+                                           answer 409 session-full, re-entry always works
 
   openroom api <METHOD> </api/tutoring/...> --url <base> --token <bearer>
                [--body <json> | --file <json-or-yaml>]

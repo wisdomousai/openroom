@@ -237,3 +237,4 @@ export { validateBrandKit, brandPaletteIssues, colorContrast, type BrandKit, typ
 
 export * from './presentation-composition.js';
 export * from './slide-embed.js';
+export { FREE_SESSION_PARTICIPANT_LIMIT } from './session-limits.js';

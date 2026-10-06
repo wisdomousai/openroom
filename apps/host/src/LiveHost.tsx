@@ -575,6 +575,8 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
         learnerName={learner?.displayName}
         sessionTitle={sessionTitle}
         joined={joined}
+        participantLimit={snapshot?.participantLimit}
+        canManagePlan={exit.canEdit}
         answered={answered}
         groupAnswers={snapshot?.interaction?.responseMode === 'group'}
         frozen={frozen}

@@ -264,7 +264,8 @@ async function sessionStatus(
   reporter.line(
     `  active:   ${activeId === null || activeId === undefined ? '—' : `${String(activeId)}${active === undefined ? '' : ` [${active.status}]`}`}`,
   );
-  reporter.line(`  joined:   ${String(joined)}   answered: ${String(answered)}`);
+  const limit = snapshot['participantLimit'];
+  reporter.line(`  joined:   ${String(joined)}${typeof limit === 'number' ? ` of ${String(limit)}` : ''}   answered: ${String(answered)}`);
   reporter.emit({ ok: true, ...snapshot });
   return 0;
 }

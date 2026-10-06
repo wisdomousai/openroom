@@ -210,8 +210,11 @@ On openroom.app the teaching loop is the paid `continuity` capability of the
 space owner: context links and people, learner work, session Notes, and creating
 identified sessions answer `403 continuity-required` without it. Contexts of
 every kind, trash, restore and permanent deletion never need it. Decks,
-anonymous and pseudonymous sessions, the CLI and MCP are free; a self-hosted
-deployment without billing holds every capability. The `openroom_api`
+anonymous and pseudonymous sessions, the CLI and MCP are free. A live session
+admits at most 50 participants unless the space owner holds `largeSessions` when
+it starts; a new participant beyond that gets `409 session-full` on join, and an
+admitted participant can always re-enter. A self-hosted deployment without
+billing holds every capability. The `openroom_api`
 description carries the exact paths.
 
 Wired kinds (`interaction`, `activity`, `timer`, `join`, `break`) may carry

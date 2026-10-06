@@ -1,3 +1,5 @@
+import { FREE_SESSION_PARTICIPANT_LIMIT } from '@openroom/schema';
+
 import { ApiError, request } from '../api/client';
 
 export interface BillingStatus {
@@ -55,6 +57,7 @@ export function capabilityLabel(capability: string): string {
     case 'keep': return 'Saved session archives';
     case 'rawExport': return 'Named response exports';
     case 'branding': return 'Shared brand kits';
+    case 'largeSessions': return `Sessions over ${FREE_SESSION_PARTICIPANT_LIMIT} participants`;
     case 'connectors': return 'Connected workflows';
     default: return 'Named session invites';
   }

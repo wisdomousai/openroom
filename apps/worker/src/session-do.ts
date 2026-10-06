@@ -51,6 +51,7 @@ import {
   createSession,
   ensureQna,
   generateHandle,
+  participantLimitReached,
   purgeBallots,
   resultsVisible,
   sessionOf,
@@ -531,8 +532,14 @@ export class SessionDO implements DurableObject {
       sessionCode: string;
       outlineVersion?: number;
       facilitator?: { id: string; name: string };
+      /** Captured by the Worker from the owner's billing; absent admits any number. */
+      participantLimit?: number;
     };
     if (this.#load() !== null) return json({ error: 'already-initialized' }, 409);
+    const participantLimit =
+      Number.isInteger(body.participantLimit) && (body.participantLimit as number) > 0
+        ? (body.participantLimit as number)
+        : undefined;
     const now = Date.now();
     const resourceIds = outlineResourceIds(body.outline);
     if (resourceIds.length > 0) this.#setMetaText('resourceIds', JSON.stringify(resourceIds));
@@ -540,6 +547,7 @@ export class SessionDO implements DurableObject {
     const state = createSession(sessionOutline, body.sessionCode, now, {
       outlineVersion: body.outlineVersion ?? 1,
       ...(body.facilitator ? { facilitator: body.facilitator } : {}),
+      ...(participantLimit === undefined ? {} : { participantLimit }),
     });
     this.#persist(state);
     this.#setMeta('lastActivity', now);
@@ -711,6 +719,14 @@ export class SessionDO implements DurableObject {
           handle: identityName,
         });
       }
+    }
+
+    /*
+     * Everything above re-enters an admitted participant and returns before
+     * here, so only a genuinely new participant meets the session's limit.
+     */
+    if (participantLimitReached(state)) {
+      return json({ error: 'session-full', message: 'This session is full.' }, 409);
     }
 
     const participantId = crypto.randomUUID();

@@ -495,11 +495,13 @@ export async function joinSession(
   });
   if (!res.ok) {
     let message = `Could not join session (${res.status})`;
+    let code: string | undefined;
     try {
       const body = (await res.json()) as {
         error?: string | { message?: string };
         message?: string;
       };
+      if (typeof body?.error === 'string') code = body.error;
       message =
         (typeof body?.error === 'object' ? body.error.message : undefined) ??
         body?.message ??
@@ -507,16 +509,19 @@ export async function joinSession(
     } catch {
       /* keep default message */
     }
-    throw new JoinError(message, res.status);
+    throw new JoinError(message, res.status, code);
   }
   return (await res.json()) as JoinResult;
 }
 
 export class JoinError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  /** The server's stable error code, e.g. `session-full`, when it sent one. */
+  readonly code: string | undefined;
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = 'JoinError';
     this.status = status;
+    this.code = code;
   }
 }

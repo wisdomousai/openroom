@@ -1,3 +1,4 @@
+import { FREE_SESSION_PARTICIPANT_LIMIT } from '@openroom/schema';
 import { jsonHeaders } from './headers';
 
 /**
@@ -224,7 +225,10 @@ export function openapiDocument(origin: string): unknown {
               description:
                 'Handle recovery is unavailable for this session, a context link was offered to a ' +
                 'session that is not identified (identified-join-unavailable), or the identified ' +
-                'session has not been started yet (session-not-started)',
+                'session has not been started yet (session-not-started), or the session admits no new ' +
+                'participant (session-full): without the space owner\'s largeSessions capability at start a ' +
+                `session admits ${FREE_SESSION_PARTICIPANT_LIMIT} participants. Re-entry with an existing ` +
+                'recovery handle, access link or roster invite is never refused for size',
             },
             '429': { description: 'Too many failed recovery attempts' },
           },

@@ -899,6 +899,8 @@ export interface HostSnapshot {
   joinUrl: string;
   frozen: boolean;
   participantCount: number;
+  /** Most participants the session admits; absent when unlimited. Fixed at creation. */
+  participantLimit?: number;
   expectedAnswerCount?: number;
   answeredCount: number;
   activeInteractionId: string | null;

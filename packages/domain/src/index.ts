@@ -10,7 +10,7 @@ export {
   WORD_TERMS,
   type BlocklistMatch,
 } from './blocklist.js';
-export { createSession, isPollOnlyOutline, sessionOf } from './create-session.js';
+export { createSession, isPollOnlyOutline, participantLimitReached, sessionOf } from './create-session.js';
 export { interactionView, participantWireSnapshot, stageWireSnapshot, hostWireSnapshot, type Json as WireJson } from './wire-snapshots.js';
 export {
   emptyQnaState,

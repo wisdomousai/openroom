@@ -9,6 +9,7 @@ export interface Entitlements {
   branding: boolean;
   team: boolean;
   continuity: boolean;
+  largeSessions: boolean;
   connectors: boolean;
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { joinSession } from '@openroom/sdk';
 import { JoinScreen } from './join';
+import { joinErrorMessage } from './join-error';
 import { LiveScreen } from './live/screen';
 import {
   clearSession,
@@ -68,7 +69,7 @@ export function App() {
       rememberSessionInUrl(next.sessionCode);
       setSession(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Join failed.');
+      setError(joinErrorMessage(err));
     } finally {
       setJoining(false);
     }

@@ -24,6 +24,7 @@ Select **Settings → Open billing**. Review the current plan and the available 
 | Shared spaces | Invite colleagues to a shared Library and work together. |
 | Connected workflows | Use entitled external account integrations. |
 | Named session invites | Issue individual roster invitations for one session. |
+| Sessions over 50 participants | Admit more than 50 participants to one live session. |
 
 For shared-space work, the relevant owner entitlement supplies paid features. Invitees use their assigned space role; they do not each need a separate licence for that shared workspace.
 

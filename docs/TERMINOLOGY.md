@@ -251,7 +251,7 @@ it grants no access and does not change document content or available editing to
 3. **Present** shows the current content. **Start session** enables participation without changing the current slide/reveal position.
 4. **Edit deck** returns to that slide. **Live now** in the Library reopens a running session; **Notes** stays linked to its session.
 
-Students and classes are free. Paid plans add shared workspaces (`team`), saved results (`keep`), and the teaching loop (`continuity`, shown as **Homework and Notes**): Notes, homework, learner links, learner work and identified sessions, in Tutoring and Classroom alike. Member invitations create workspace membership; student access links only unlock one context's learner-visible records.
+Students and classes are free. Paid plans add shared workspaces (`team`), saved results (`keep`), sessions over 50 participants (`largeSessions`, shown as **Sessions over 50 participants**; a full free session says **Session full** to the host and **This session is full.** to the participant), and the teaching loop (`continuity`, shown as **Homework and Notes**): Notes, homework, learner links, learner work and identified sessions, in Tutoring and Classroom alike. Member invitations create workspace membership; student access links only unlock one context's learner-visible records.
 
 
 ---

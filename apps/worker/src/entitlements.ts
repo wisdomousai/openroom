@@ -7,6 +7,7 @@
  * A deployment with no `PADDLE_ENVIRONMENT` has no billing at all (self-hosted):
  * every account holds every capability except the reserved `connectors`.
  */
+import { FREE_SESSION_PARTICIPANT_LIMIT } from '@openroom/schema';
 import type { ControlEnv } from './auth.js';
 import { billingSubscriptions, subscriptionAccessUntil } from './billing/access';
 
@@ -17,6 +18,7 @@ export const ENTITLEMENT_FLAGS = [
   'branding',
   'team',
   'continuity',
+  'largeSessions',
   'connectors',
 ] as const;
 
@@ -31,6 +33,7 @@ export const FREE_ENTITLEMENTS: Entitlements = {
   branding: false,
   team: false,
   continuity: false,
+  largeSessions: false,
   connectors: false,
 };
 
@@ -42,6 +45,7 @@ export const SELF_HOSTED_ENTITLEMENTS: Entitlements = {
   branding: true,
   team: true,
   continuity: true,
+  largeSessions: true,
   connectors: false,
 };
 
@@ -101,4 +105,16 @@ export async function sessionEntitlementOwner(env: ControlEnv, code: string): Pr
   return env.DB.prepare(`SELECT CASE WHEN l.space_id IS NULL THEN l.user_id ELSE s.owner_user_id END AS userId,
     l.space_id AS spaceId FROM live_sessions l LEFT JOIN spaces s ON s.id = l.space_id WHERE l.code = ?1`)
     .bind(code).first<{ userId: string | null; spaceId: string | null }>();
+}
+
+/**
+ * The audience limit a new live session carries into its Durable Object, read
+ * once at creation from the billing owner (`null` admits any number). Joins
+ * never read D1, and a lapse mid-session never removes anyone. A session with
+ * no account owner (the ops admin key) is an unowned ops session and unlimited,
+ * as it is for every other owner check.
+ */
+export async function sessionParticipantLimit(env: ControlEnv, ownerId: string | null): Promise<number | null> {
+  if (ownerId === null) return null;
+  return (await readEntitlements(env, ownerId)).largeSessions ? null : FREE_SESSION_PARTICIPANT_LIMIT;
 }

@@ -317,6 +317,9 @@ POST /api/join                           body { code, recoveryHandle?, contextLi
                                          (the tutor pressing start is the gate; anonymous / pseudonymous
                                          sessions are unaffected and still admit lobby joins).
                                          Re-presenting the same link re-enters as the same participantId.
+                                         A new participant past the session's participantLimit (50 unless the
+                                         owner held largeSessions at creation) → 409 session-full; re-entry by
+                                         handle, link or roster seat is never refused for size.
                                          A live session with no durable session row has no context, hence NO link
                                          can ever identify into it.
 POST /api/mcp                            stateless MCP endpoint (Streamable HTTP, JSON only, no SSE/sessions)
@@ -586,7 +589,7 @@ subscription state; neither client requests nor checkout redirects can grant
 access. Interface preferences live separately in `users.prefs`. Closed allowlist; unknown keys are ignored; only JSON `true` sets a flag:
 
 ```
-{ keep, roster, rawExport, branding, team, continuity, connectors }  // all boolean, default false
+{ keep, roster, rawExport, branding, team, continuity, largeSessions, connectors }  // all boolean, default false
 ```
 
 | Flag | Unlocks |
@@ -597,6 +600,7 @@ access. Interface preferences live separately in `users.prefs`. Closed allowlist
 | `branding` | Create and edit shared brand kits; existing kits and designs remain readable after downgrade |
 | `team` | Invite and admit new space members; start new shared sessions. Existing paid session collaboration continues while membership remains valid |
 | `continuity` | The teaching loop: session Notes (`/api/sessions/{id}/record`, including `nextNote` and homework), context people and access links, returned and learner work, creating identified sessions, and `/api/learner/*`. Read from the space owner. Denied as `403 continuity-required` (learner routes: the revoked-link `401`). Contexts themselves, trash, restore, permanent deletion and link revocation are never gated |
+| `largeSessions` | A live session admits more than `FREE_SESSION_PARTICIPANT_LIMIT` (50) participants. Read from the space owner (the personal creator outside a space) once, at session creation, and carried into the DO; joins never read D1 and a later lapse changes nothing for that session. Admin-key sessions have no owner and no limit. Without it, a new participant past the limit receives `409 session-full` from `POST /api/join`; re-entry by an admitted participant (recovery handle, access link or roster seat) is always admitted. The host snapshot carries `participantLimit` when one applies |
 | `connectors` | Reserved, unimplemented archive delivery workflows; rejected in Paddle price catalogs |
 
 Free hosts see every flag `false`. A deployment without `PADDLE_ENVIRONMENT` is

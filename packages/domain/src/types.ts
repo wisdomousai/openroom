@@ -239,6 +239,12 @@ export interface SessionState {
   /** session-wide audience Q&A; disabled-and-empty unless the outline enables it */
   qna: QnaState;
   participants: Record<string, ParticipantRecord>;
+  /**
+   * Most participants this session admits. Fixed at creation from the space
+   * owner's billing (`largeSessions`); absent admits any number. Re-entry of an
+   * admitted participant never counts against it.
+   */
+  participantLimit?: number;
   groups?: Record<string, SessionGroup>;
   /** Ephemeral tutor ink. Cleared on outline navigation and session end. */
   marks?: SessionMark[];

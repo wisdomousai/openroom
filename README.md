@@ -154,8 +154,8 @@ bun run deploy
 
 A deployment without Paddle billing configured has every feature unlocked. The
 hosted version is free for building decks and running classes, and charges for
-shared spaces, saved results, and the loop around a class: Notes, homework,
-learner links and identified sessions. The code is the same. Billing setup is in `docs/BILLING.md`, and CI deployment in
+shared spaces, saved results, sessions over 50 participants, and the loop around
+a class: Notes, homework, learner links and identified sessions. The code is the same. Billing setup is in `docs/BILLING.md`, and CI deployment in
 `docs/DEPLOYMENT.md`.
 
 ## License

@@ -13,6 +13,7 @@ import {
 import { stageUrlFor } from '../api';
 import { qnaShareUrl, remoteShareUrl, to, type LibraryPlace } from '../destinations';
 import { Button } from '../components/ui/button';
+import { SessionFullNotice } from '../components/SessionFullNotice';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +47,10 @@ export interface HostHeaderProps {
   learnerName?: string | null;
   sessionTitle: string;
   joined: number;
+  /** Most participants the session admits; absent when unlimited. */
+  participantLimit?: number;
+  /** Space owner or editor: may follow the full-session notice to Plans. */
+  canManagePlan?: boolean;
   answered: number;
   groupAnswers?: boolean;
   frozen: boolean;
@@ -79,6 +84,8 @@ export function HostHeader({
   learnerName,
   sessionTitle,
   joined,
+  participantLimit,
+  canManagePlan = false,
   answered,
   groupAnswers,
   frozen,
@@ -132,6 +139,7 @@ export function HostHeader({
         <strong className="font-semibold text-foreground">{joined}</strong> joined ·{' '}
         <strong className="font-semibold text-foreground">{answered}</strong> {groupAnswers ? (answered === 1 ? 'group answer' : 'group answers') : 'answered'}
       </span>
+      <SessionFullNotice joined={joined} limit={participantLimit} canManagePlan={canManagePlan} />
       <Button type="button" variant="subtle" size="sm" disabled={ended || !canPresent} onClick={onToggleFreeze}>
         {frozen ? 'Unfreeze' : 'Freeze'}
       </Button>

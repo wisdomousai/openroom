@@ -15,6 +15,7 @@
  */
 
 import {
+  FREE_SESSION_PARTICIPANT_LIMIT,
   OUTLINE_STEP_KINDS,
   isTutoringApiPath,
   TUTORING_API_PATH_PATTERN,
@@ -26,6 +27,11 @@ import {
 } from '@openroom/schema';
 
 import { OUTLINE_SCHEMA_RESOURCE_URI } from './schema-resource.js';
+
+/** One sentence for every tool that starts a live session. */
+const AUDIENCE_LIMIT =
+  `A session admits at most ${FREE_SESSION_PARTICIPANT_LIMIT} participants unless the space owner (the personal owner outside a space) holds the largeSessions capability when it starts; ` +
+  'a new participant beyond that receives 409 session-full on join, while admitted participants can always re-enter. Deployments without billing hold every capability. ';
 
 export interface SessionCommandOptions {
   idempotencyKey?: string;
@@ -173,7 +179,8 @@ const TOOLS: ToolDefinition[] = [
       'Create a live session from an Outline v1 document (YAML/JSON text or object). ' +
       'SimpleSession (title + questions) and classroom poll lists compile to an outline of interaction steps. ' +
       'Returns the join code, joinUrl, hostToken and stageToken. Use session_command for live control. ' +
-      'defaults.identityMode roster requires the roster capability and identified requires the continuity capability (403 roster-required / continuity-required).',
+      'defaults.identityMode roster requires the roster capability and identified requires the continuity capability (403 roster-required / continuity-required). ' +
+      AUDIENCE_LIMIT,
     inputSchema: {
       type: 'object',
       properties: {
@@ -390,6 +397,7 @@ const TOOLS: ToolDefinition[] = [
       'default. Returns the session code, join code, joinUrl, hostToken and stageToken, plus the sessionId and ' +
       'the deck version delivered. Only a stamped version can launch — a deck with no content ' +
       'answers deck-content-not-found. An identified deck needs the space owner’s continuity capability (403 continuity-required). ' +
+      AUDIENCE_LIMIT +
       'Use session_command for live control afterwards.',
     inputSchema: {
       type: 'object',

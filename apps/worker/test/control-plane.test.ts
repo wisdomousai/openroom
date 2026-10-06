@@ -78,6 +78,7 @@ describe('sessions and /api/me', () => {
       branding: false,
       team: false,
       continuity: false,
+      largeSessions: false,
       connectors: false,
     });
   });

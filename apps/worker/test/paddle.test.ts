@@ -40,6 +40,7 @@ async function account() {
 describe('Paddle trust and configuration', () => {
   it('requires an explicit environment and valid price-to-capability catalog', () => {
     expect(paddleCatalog(configured)?.prices[PRICE]?.capabilities).toEqual(['team', 'keep']);
+    expect(paddleCatalog({ ...configured, PADDLE_PRICE_CATALOG: JSON.stringify({ environment: 'sandbox', prices: { [PRICE]: { name: 'Company', capabilities: ['largeSessions'] } } }) })?.prices[PRICE]?.capabilities).toEqual(['largeSessions']);
     expect(paddleCatalog({})).toBeNull();
     expect(paddleCatalog({ ...configured, PADDLE_ENVIRONMENT: 'live' })).toBeNull();
     expect(paddleCatalog({ ...configured, PADDLE_PRICE_CATALOG: JSON.stringify({ environment: 'sandbox', prices: { [PRICE]: { name: 'Unavailable workflow', capabilities: ['connectors'] } } }) })).toBeNull();
