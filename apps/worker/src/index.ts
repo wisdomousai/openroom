@@ -1,16 +1,20 @@
 /**
- * OpenRoom Worker router (hand-rolled).
+ * OpenRoom control-plane Worker router (hand-rolled).
  *
- * Everything under /api/* is handled here; every other request is served from
- * the static asset binding. Marketing owns apex `/`; the participant join SPA
- * lives under `/join/` and is rewritten to `/` on `join.openroom.app`. HTML
- * security headers come from `public/_headers`; API responses get `no-store` +
- * JSON content type here. Marketing HTML also negotiates `Accept: text/markdown`
+ * The front door for openroom.app and join.openroom.app. Everything under
+ * /api/* is handled here, the live session routes included: they are the
+ * relay's implementation (`openroom-relay/live`) run under this deployment's
+ * authority, talking to the relay's SessionDO namespace directly (cross-script
+ * binding). The stage and participant apps (`/stage/`, `/join/`, the join
+ * host) are forwarded to the relay Worker over the RELAY service binding;
+ * every other request is served from this Worker's static asset binding.
+ * Marketing owns apex `/`. HTML security headers come from `public/_headers`;
+ * API responses get `no-store` + JSON content type here. Marketing HTML also negotiates `Accept: text/markdown`
  * into an agent-oriented Markdown twin of the same URL. Well-known discovery (OAuth metadata, RFC 9727 API
  * catalog) is handled before ASSETS so static hosting cannot swallow it.
  */
 
-import { generateSessionCode, normalizeSessionCode, type Command } from '@openroom/domain';
+import { generateSessionCode, normalizeSessionCode } from '@openroom/domain';
 import { serveOffice } from './office';
 import { resumeSessionRoute } from './deck-start';
 import { startPresentationRoute } from './presentation-start';
@@ -71,9 +75,32 @@ import {
 } from './roster.js';
 import { handleLearnerApi } from './learner.js';
 import { cleanupRetainedMedia } from './operations/retention.js';
-import { absolutizeJoinUrl, isJoinHost, joinUrlForCode } from './join-url.js';
+import { absolutizeJoinUrl, isJoinHost } from 'openroom-relay/join-url';
+import {
+  authenticate as authenticateLive,
+  commandRoute as liveCommandRoute,
+  exportRoute as liveExportRoute,
+  initSession,
+  isLivePagePath,
+  issueSessionTokens,
+  joinRoute as liveJoinRoute,
+  json,
+  readJson,
+  sessionAssetRoute as liveSessionAssetRoute,
+  sessionDoUrl as doUrl,
+  sessionStub as stub,
+  stageTokenRoute as liveStageTokenRoute,
+  stateRoute as liveStateRoute,
+  withApiHeaders,
+  wsRoute as liveWsRoute,
+  type CreatedSession,
+  type JoinIdentity,
+  type Live,
+  type LiveAuth,
+  type LiveAuthority,
+} from 'openroom-relay/live';
+import type { Role } from 'openroom-relay/tokens';
 import { negotiateMarkdown } from './markdown-negotiation.js';
-import { SessionDO } from './session-do.js';
 import {
   confirmPermanentDeletionRoute,
   deletionConfirmationPage,
@@ -84,7 +111,6 @@ import { handleAssetApi } from './assets.js';
 import { homeRoute } from './home.js';
 import { prefsRoute } from './prefs.js';
 import { endSessionForCode, type SessionLaunchInput } from './delivery/index.js';
-import { extractToken, signToken, verifyToken, type Role, type TokenPayload } from './tokens.js';
 import {
   archivedBallotsCsv,
   downloadArchiveRoute,
@@ -97,12 +123,14 @@ import { requireControlUser } from './control-auth.js';
 import { paddleWebhookRoute } from './billing/webhook';
 import { reconcileBilling } from './billing/reconcile';
 import { billingRoute } from './billing/routes';
-import { parseExportFormat } from './export.js';
 
-export { SessionDO };
+export type { CreatedSession };
 
 export interface Env extends ControlEnv {
+  /** The relay's SessionDO namespace (`script_name: "openroom-relay"`). */
   SESSIONS: DurableObjectNamespace;
+  /** The relay Worker: serves the stage and participant apps. */
+  RELAY: Fetcher;
   ASSETS: Fetcher;
   /** Uploaded pictures and video for the deck editor media library (assets.ts). */
   MEDIA: R2Bucket;
@@ -114,84 +142,42 @@ export interface Env extends ControlEnv {
   OPENAI_APPS_CHALLENGE?: string;
 }
 
-const JSON_HEADERS = {
-  'content-type': 'application/json; charset=utf-8',
-  'cache-control': 'no-store',
-  'x-content-type-options': 'nosniff',
-  'referrer-policy': 'no-referrer',
-};
-
-function json(body: unknown, status = 200, extra: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...JSON_HEADERS, ...extra },
-  });
+/**
+ * The control plane's authority over the shared live routes. Account-bound
+ * host tokens are rechecked against D1 on every call (revoked connection,
+ * removed facilitator); `session.end` archives; ballots exports follow the
+ * owner's paid access and fall back to the archive.
+ */
+function controlAuthority(env: Env): LiveAuthority<FacilitatorAccess> {
+  return {
+    async host(payload, sessionCode) {
+      if (payload.userId === undefined) return { ok: true, canRecover: true };
+      if (payload.connectionId && !(await connectionActive(env, payload.connectionId, payload.userId))) {
+        return { ok: false, response: json({ error: 'connection-revoked' }, 403) };
+      }
+      const facilitator = await facilitatorAccess(env, sessionCode, payload.userId);
+      if (!facilitator) return { ok: false, response: json({ error: 'session-access-revoked' }, 403) };
+      return { ok: true, grant: facilitator, canRecover: facilitator.canRecover };
+    },
+    commandAllowed: (grant, sessionCode, command) => facilitatorCommandAllowed(env, sessionCode, grant, command),
+    sessionEnded: (sessionCode) => finishEndedSession(env, sessionCode),
+    mayExportBallots: (sessionCode) => ownerMayExportBallots(env, sessionCode),
+    archivedBallots: (sessionCode) => archivedBallotsCsv(env, sessionCode),
+  };
 }
 
-/** Re-emit a DO response with the API security headers attached. */
-function relay(response: Response): Response {
-  if (response.status === 101 || response.status === 304) return response;
-  const headers = new Headers(response.headers);
-  for (const [key, value] of Object.entries(JSON_HEADERS)) {
-    if (key === 'content-type' && headers.has('content-type')) continue;
-    headers.set(key, value);
-  }
-  return new Response(response.body, { status: response.status, headers });
+function liveFor(env: Env): Live<FacilitatorAccess> {
+  return { env, authority: controlAuthority(env) };
 }
 
-function stub(env: Env, sessionCode: string): DurableObjectStub {
-  return env.SESSIONS.get(env.SESSIONS.idFromName(sessionCode));
-}
-
-/** Internal DO URL — the hostname is irrelevant, only the path is routed. */
-function doUrl(path: string, params: Record<string, string> = {}): string {
-  const url = new URL(`https://session.internal${path}`);
-  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
-  return url.toString();
-}
-
-async function readJson(request: Request): Promise<Record<string, unknown> | null> {
-  try {
-    const body: unknown = await request.json();
-    if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
-    return body as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-type AuthResult =
-  | { ok: true; payload: TokenPayload; facilitator?: FacilitatorAccess }
-  | { ok: false; response: Response };
-
-async function authenticate(
+function authenticate(
   request: Request,
   url: URL,
   env: Env,
   sessionCode: string,
   requiredRole?: Role,
-): Promise<AuthResult> {
-  const token = extractToken(request, url);
-  if (token === null) {
-    return { ok: false, response: json({ error: 'missing-token' }, 401) };
-  }
-  const verified = await verifyToken(env.TOKEN_SECRET, token);
-  if (!verified.ok) {
-    return { ok: false, response: json({ error: 'invalid-token', reason: verified.reason }, 401) };
-  }
-  if (verified.payload.sessionCode !== sessionCode) {
-    return { ok: false, response: json({ error: 'session-mismatch' }, 403) };
-  }
-  if (requiredRole !== undefined && verified.payload.role !== requiredRole) {
-    return { ok: false, response: json({ error: 'role-mismatch' }, 403) };
-  }
-  if (verified.payload.role === 'host' && verified.payload.userId !== undefined) {
-    if (verified.payload.connectionId && !await connectionActive(env, verified.payload.connectionId, verified.payload.userId)) return { ok: false, response: json({ error: 'connection-revoked' }, 403) };
-    const facilitator = await facilitatorAccess(env, sessionCode, verified.payload.userId);
-    if (!facilitator) return { ok: false, response: json({ error: 'session-access-revoked' }, 403) };
-    return { ok: true, payload: verified.payload, facilitator };
-  }
-  return { ok: true, payload: verified.payload };
+): Promise<LiveAuth<FacilitatorAccess>> {
+  return authenticateLive(liveFor(env), request, url, sessionCode, requiredRole);
 }
 
 /* ------------------------------------------------------------------ routes */
@@ -204,15 +190,6 @@ async function authenticate(
  * unowned session with no participant limit. These control-plane checks never
  * run on the ballot hot path.
  */
-export interface CreatedSession {
-  /** The session's identity: the DO's name and the code participants type in. */
-  sessionCode: string;
-  /** The same string, under the name the join field uses. */
-  code: string;
-  hostToken: string;
-  stageToken: string;
-  joinUrl: string;
-}
 
 /**
  * The auth-free core of session creation: init the DO, sign the token pair.
@@ -240,37 +217,26 @@ export async function createSessionFromOutline(
   // durable launch whose DO already exists keeps the limit it was created with.
   const participantLimit = await sessionParticipantLimit(env, options.entitlementOwnerId ?? options.user?.id ?? null);
 
-  const initResponse = await stub(env, sessionCode).fetch(doUrl('/__init'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      outline,
-      sessionCode,
-      ...(participantLimit === null ? {} : { participantLimit }),
-      ...(options.initialFacilitator ? { facilitator: options.initialFacilitator } : options.user ? { facilitator: { id: options.user.id, name: options.user.name?.trim().slice(0, 200) || 'Presenter' } } : {}),
-      ...(options.outlineVersion === undefined ? {} : { outlineVersion: options.outlineVersion }),
-    }),
+  const initResponse = await initSession(env, {
+    outline,
+    sessionCode,
+    ...(participantLimit === null ? {} : { participantLimit }),
+    ...(options.initialFacilitator ? { facilitator: options.initialFacilitator } : options.user ? { facilitator: { id: options.user.id, name: options.user.name?.trim().slice(0, 200) || 'Presenter' } } : {}),
+    ...(options.outlineVersion === undefined ? {} : { outlineVersion: options.outlineVersion }),
   });
   if (!initResponse.ok) {
     const alreadyInitialized = options.reservedCode && initResponse.status === 409 && (await initResponse.clone().json() as { error?: string }).error === 'already-initialized';
-    if (!alreadyInitialized) return { ok: false, response: relay(initResponse) };
+    if (!alreadyInitialized) return { ok: false, response: withApiHeaders(initResponse) };
   }
 
-  const [hostToken, stageToken] = await Promise.all([
-    signToken(env.TOKEN_SECRET, { sessionCode, role: 'host', ...(options.user ? { facilitatorId: options.user.id, userId: options.user.id, ...(options.connectionId ? { connectionId: options.connectionId } : {}) } : {}) }),
-    signToken(env.TOKEN_SECRET, { sessionCode, role: 'stage' }),
-  ]);
-
-  return {
-    ok: true,
-    session: {
-      sessionCode,
-      code: sessionCode,
-      hostToken,
-      stageToken,
-      joinUrl: joinUrlForCode(env, sessionCode),
-    },
-  };
+  const session = await issueSessionTokens(
+    env,
+    sessionCode,
+    options.user
+      ? { facilitatorId: options.user.id, userId: options.user.id, ...(options.connectionId ? { connectionId: options.connectionId } : {}) }
+      : {},
+  );
+  return { ok: true, session };
 }
 
 /** Shared launch service for browser REST, MCP, and future CLI calls. */
@@ -333,7 +299,7 @@ export async function launchSessionForUser(
   const before = await stub(env, reserved.code).fetch(doUrl('/__state', { role: 'stage' }));
   if (before.status === 404 && now - reserved.created_at > 10 * 60_000) return json({ error: 'session-expired' }, 410);
   if (before.ok && (await before.json() as { status: string }).status === 'ended') return json({ error: 'session-already-ended' }, 409);
-  if (!before.ok && before.status !== 404) return relay(before);
+  if (!before.ok && before.status !== 404) return withApiHeaders(before);
   const created = await createSessionFromOutline(env, validation.outline, {
     outlineVersion: input.version,
     user,
@@ -463,47 +429,20 @@ async function createLiveSessionRoute(request: Request, env: Env): Promise<Respo
   return json({ ...created.session }, 201);
 }
 
-async function sessionAssetRoute(
-  request: Request,
-  url: URL,
-  env: Env,
-  sessionCode: string,
-  resourceId: string,
-): Promise<Response> {
-  if (request.method === 'PUT') {
-    const auth = await authenticate(request, url, env, sessionCode, 'host');
-    if (!auth.ok) return auth.response;
-  } else if (request.method !== 'GET' && request.method !== 'HEAD') {
-    return json({ error: 'method-not-allowed' }, 405);
-  }
-  const headers = new Headers();
-  for (const name of ['content-type', 'content-length', 'x-openroom-sha256', 'range']) {
-    const value = request.headers.get(name);
-    if (value !== null) headers.set(name, value);
-  }
-  const response = await stub(env, sessionCode).fetch(doUrl(`/__assets/${encodeURIComponent(resourceId)}`), {
-    method: request.method,
-    headers,
-    ...(request.method === 'PUT' ? { body: request.body } : {}),
-  });
-  return new Response(response.body, { status: response.status, headers: response.headers });
+/**
+ * POST /api/join on the front door. Anonymous and pseudonymous joins need
+ * nothing beyond the shared live route; an invite credential is verified here
+ * against D1 and only its resolved name and seat key reach the session.
+ */
+function joinRoute(request: Request, env: Env): Promise<Response> {
+  return liveJoinRoute(env, request, normalizeSessionCode, (body, code) => resolveJoinIdentity(env, body, code));
 }
 
-async function joinRoute(request: Request, env: Env): Promise<Response> {
-  const body = await readJson(request);
-  const rawCode = typeof body?.code === 'string' ? body.code : '';
-  if (rawCode === '') return json({ error: 'missing-code' }, 400);
-  const code = normalizeSessionCode(rawCode);
-  if (
-    body !== null &&
-    Object.prototype.hasOwnProperty.call(body, 'recoveryHandle') &&
-    typeof body.recoveryHandle !== 'string'
-  ) {
-    return json({ error: 'invalid-handle', message: 'Enter your session handle.' }, 400);
-  }
-  const recoveryHandle =
-    typeof body?.recoveryHandle === 'string' ? body.recoveryHandle : undefined;
-
+async function resolveJoinIdentity(
+  env: Env,
+  body: Record<string, unknown>,
+  code: string,
+): Promise<{ ok: true; identity?: JoinIdentity } | { ok: false; response: Response }> {
   /*
    * Optional context access link. Two independent checks, both required:
    *
@@ -522,29 +461,28 @@ async function joinRoute(request: Request, env: Env): Promise<Response> {
    * back into a context credential.
    */
   if (
-    body !== null &&
     Object.prototype.hasOwnProperty.call(body, 'contextLink') &&
     Object.prototype.hasOwnProperty.call(body, 'rosterInvite')
   ) {
-    return json({ error: 'conflicting-credentials', message: 'Use one kind of invite.' }, 400);
+    return { ok: false, response: json({ error: 'conflicting-credentials', message: 'Use one kind of invite.' }, 400) };
   }
 
-  let identity: { displayName: string; seatKey: string } | undefined;
-  if (body !== null && Object.prototype.hasOwnProperty.call(body, 'rosterInvite')) {
+  if (Object.prototype.hasOwnProperty.call(body, 'rosterInvite')) {
     if (typeof body.rosterInvite !== 'string' || body.rosterInvite === '') {
-      return json({ error: 'invalid-roster-invite', message: 'That invite is not valid.' }, 400);
+      return { ok: false, response: json({ error: 'invalid-roster-invite', message: 'That invite is not valid.' }, 400) };
     }
     const seat = await verifyRosterInvite(env, body.rosterInvite, code);
     if (seat === null) {
-      return json(
-        { error: 'roster-invite-invalid', message: 'That invite is not valid for this session.' },
-        403,
-      );
+      return {
+        ok: false,
+        response: json({ error: 'roster-invite-invalid', message: 'That invite is not valid for this session.' }, 403),
+      };
     }
-    identity = { displayName: seat.displayName, seatKey: seat.seatId };
-  } else if (body !== null && Object.prototype.hasOwnProperty.call(body, 'contextLink')) {
+    return { ok: true, identity: { displayName: seat.displayName, seatKey: seat.seatId } };
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'contextLink')) {
     if (typeof body.contextLink !== 'string' || body.contextLink === '') {
-      return json({ error: 'invalid-context-link', message: 'That access link is not valid.' }, 400);
+      return { ok: false, response: json({ error: 'invalid-context-link', message: 'That access link is not valid.' }, 400) };
     }
     const link = await verifyContextLink(env, body.contextLink);
     const sessionContextId = await contextIdForSessionCode(env, code);
@@ -552,65 +490,14 @@ async function joinRoute(request: Request, env: Env): Promise<Response> {
       // One indistinguishable answer for "bad link", "revoked link", "expired
       // link", and "right link, wrong session": a probing holder learns nothing
       // about which sessions exist or which context a code belongs to.
-      return json(
-        { error: 'context-link-invalid', message: 'That access link is not valid for this session.' },
-        403,
-      );
+      return {
+        ok: false,
+        response: json({ error: 'context-link-invalid', message: 'That access link is not valid for this session.' }, 403),
+      };
     }
-    identity = { displayName: link.displayName, seatKey: link.learnerId };
+    return { ok: true, identity: { displayName: link.displayName, seatKey: link.learnerId } };
   }
-
-  const response = await stub(env, code).fetch(doUrl('/__join'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      ...(recoveryHandle === undefined ? {} : { recoveryHandle }),
-      ...(identity === undefined ? {} : { identity }),
-    }),
-  });
-  if (!response.ok) return relay(response);
-
-  const result = (await response.json()) as {
-    sessionCode: string;
-    participantId: string;
-    identityMode?: string;
-    handle?: string;
-  };
-  const participantToken = await signToken(env.TOKEN_SECRET, {
-    sessionCode: result.sessionCode,
-    role: 'participant',
-    participantId: result.participantId,
-  });
-  return json({
-    sessionCode: result.sessionCode,
-    participantToken,
-    participantId: result.participantId,
-    ...(result.identityMode === undefined ? {} : { identityMode: result.identityMode }),
-    ...(result.handle === undefined ? {} : { handle: result.handle }),
-  });
-}
-
-async function stateRoute(
-  request: Request,
-  url: URL,
-  env: Env,
-  sessionCode: string,
-): Promise<Response> {
-  const requestedRole = url.searchParams.get('role');
-  const auth = await authenticate(request, url, env, sessionCode);
-  if (!auth.ok) return auth.response;
-  if (requestedRole !== null && requestedRole !== auth.payload.role) {
-    return json({ error: 'role-mismatch' }, 403);
-  }
-
-  const params: Record<string, string> = { role: auth.payload.role };
-  if (auth.payload.facilitatorId) params.facilitatorId = auth.payload.facilitatorId;
-  if (auth.payload.role === 'host') params.canRecover = String(auth.facilitator?.canRecover ?? true);
-  const after = url.searchParams.get('afterRevision');
-  if (after !== null) params.afterRevision = after;
-  if (auth.payload.participantId !== undefined) params.participantId = auth.payload.participantId;
-
-  return relay(await stub(env, sessionCode).fetch(doUrl('/__state', params)));
+  return { ok: true };
 }
 
 /**
@@ -683,99 +570,12 @@ async function sessionContextRoute(
   });
 }
 
-async function commandRoute(
-  request: Request,
-  url: URL,
-  env: Env,
-  sessionCode: string,
-): Promise<Response> {
-  const auth = await authenticate(request, url, env, sessionCode);
-  if (!auth.ok) return auth.response;
-
-  const body = await readJson(request);
-  if (body === null) return json({ ok: false, error: 'invalid-json' }, 400);
-
-  // Both client shapes are accepted: the SDK posts { idempotencyKey, command }
-  // and the host posts { idempotencyKey, expectedRevision, command }.
-  const command = body.command as Command | undefined;
-  if (typeof command !== 'object' || command === null || typeof command.command !== 'string') {
-    return json({ ok: false, error: { code: 'E_INVALID_COMMAND', message: 'missing command' } }, 422);
-  }
-  if (auth.facilitator && !await facilitatorCommandAllowed(env, sessionCode, auth.facilitator, command)) {
-    return json({ ok: false, error: { code: 'E_FORBIDDEN', message: 'Presentation access has changed.' } }, 403);
-  }
-  const idempotencyKey =
-    typeof body.idempotencyKey === 'string' && body.idempotencyKey !== ''
-      ? body.idempotencyKey
-      : crypto.randomUUID();
-  const expectedRevision =
-    typeof body.expectedRevision === 'number' && Number.isFinite(body.expectedRevision)
-      ? body.expectedRevision
-      : undefined;
-
-  // The actor is ALWAYS derived from the verified token; a client-sent actor is
-  // ignored outright (PRD §12: never embed host authority in a client).
-  const envelope = {
-    idempotencyKey,
-    ...(expectedRevision === undefined ? {} : { expectedRevision }),
-    actor: {
-      role: auth.payload.role,
-      ...(auth.payload.facilitatorId ? { facilitatorId: auth.payload.facilitatorId } : {}),
-      ...(auth.payload.participantId === undefined
-        ? {}
-        : { participantId: auth.payload.participantId }),
-    },
-    command,
-  };
-
-  const response = await stub(env, sessionCode).fetch(doUrl('/__command'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(envelope),
-  });
-
-  if (response.ok && command.command === 'session.end') {
-    await finishEndedSession(env, sessionCode);
-  }
-
-  return relay(response);
-}
-
 /** Called only after the DO accepts an end command, from REST and MCP alike. */
 export async function finishEndedSession(env: Env, sessionCode: string): Promise<void> {
   await endSessionForCode(env, sessionCode);
   await maybeArchiveEndedSession(env, sessionCode, (format, allowBallots) =>
     stub(env, sessionCode).fetch(doUrl('/__export', { format, ...(allowBallots ? { allowBallots: '1' } : {}) })),
   );
-}
-
-async function exportRoute(
-  request: Request,
-  url: URL,
-  env: Env,
-  sessionCode: string,
-): Promise<Response> {
-  const auth = await authenticate(request, url, env, sessionCode, 'host');
-  if (!auth.ok) return auth.response;
-  const format = parseExportFormat(url.searchParams.get('format'));
-  const allowBallots = format === 'ballots' && (await ownerMayExportBallots(env, sessionCode));
-  const exported = await stub(env, sessionCode).fetch(
-    doUrl('/__export', { format, ...(allowBallots ? { allowBallots: '1' } : {}) }),
-  );
-  if (format === 'ballots' && exported.status === 410) {
-    const archived = await archivedBallotsCsv(env, sessionCode);
-    if (archived !== null) {
-      return new Response(archived, {
-        status: 200,
-        headers: {
-          'content-type': 'text/csv; charset=utf-8',
-          'cache-control': 'no-store',
-          'content-disposition': `attachment; filename="openroom-${sessionCode}-ballots.csv"`,
-        },
-      });
-    }
-  }
-  return relay(exported);
 }
 
 /**
@@ -790,37 +590,7 @@ async function ownerMayExportBallots(env: Env, sessionCode: string): Promise<boo
   return entitlements.rawExport;
 }
 
-async function wsRoute(request: Request, url: URL, env: Env, sessionCode: string): Promise<Response> {
-  const auth = await authenticate(request, url, env, sessionCode);
-  if (!auth.ok) return auth.response;
-  return stub(env, sessionCode).fetch(doUrl('/__ws', { role: auth.payload.role, ...(auth.payload.participantId ? { participantId: auth.payload.participantId } : {}) }), {
-    headers: request.headers,
-  });
-}
-
 /* ------------------------------------------------------------------ static */
-
-/**
- * Serve the participant SPA for `join.*` hosts by mapping `/` → `/join/`.
- * The Vite build uses `base: '/join/'`, so asset URLs already include that
- * prefix and pass through unchanged.
- */
-async function serveJoinHost(request: Request, env: Env, url: URL): Promise<Response> {
-  let path = url.pathname;
-  if (path === '/' || path === '') {
-    path = '/join/';
-  } else if (!path.startsWith('/join/') && path !== '/join') {
-    // Client-side route on the join host — serve the SPA shell.
-    return env.ASSETS.fetch(new Request(new URL('/join/index.html', url.origin).toString(), request));
-  }
-  const assetUrl = new URL(path, url.origin);
-  assetUrl.search = url.search;
-  const res = await env.ASSETS.fetch(new Request(assetUrl.toString(), request));
-  if (res.status === 404 && request.method === 'GET') {
-    return env.ASSETS.fetch(new Request(new URL('/join/index.html', url.origin).toString(), request));
-  }
-  return res;
-}
 
 /** Marketing host: SEO landing at `/`, legacy redirects, then ASSETS. */
 async function serveMarketingHost(request: Request, env: Env, url: URL): Promise<Response> {
@@ -842,7 +612,10 @@ async function serveMarketingHost(request: Request, env: Env, url: URL): Promise
 }
 
 async function serveStatic(request: Request, env: Env, url: URL): Promise<Response> {
-  if (isJoinHost(url.hostname)) return serveJoinHost(request, env, url);
+  // The stage and participant apps ship with the relay; the join host, /join/
+  // and /stage/ forward to it over the service binding. Same origin, so every
+  // /api/* call those apps make still lands on this front door.
+  if (isJoinHost(url.hostname) || isLivePagePath(url.pathname)) return env.RELAY.fetch(request);
   if (url.pathname === '/billing/pay') {
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', { status: 405 });
     const asset = await env.ASSETS.fetch(new Request(new URL('/host/checkout', url.origin), { method: request.method }));
@@ -964,10 +737,10 @@ export default {
 
     const sessionAssetMatch = /^\/api\/sessions\/([^/]+)\/assets\/([^/]+)$/.exec(path);
     if (sessionAssetMatch !== null) {
-      return sessionAssetRoute(
+      return liveSessionAssetRoute(
+        liveFor(env),
         request,
         url,
-        env,
         normalizeSessionCode(decodeURIComponent(sessionAssetMatch[1] as string)),
         decodeURIComponent(sessionAssetMatch[2] as string),
       );
@@ -1174,25 +947,26 @@ export default {
     if (sessionMatch !== null) {
       const sessionCode = normalizeSessionCode(decodeURIComponent(sessionMatch[1] as string));
       const leaf = sessionMatch[2];
+      // Live routes: the relay's implementation, under this deployment's
+      // authority (account rechecks, archive on end, paid ballots export).
+      const live = liveFor(env);
       if (leaf === 'state' && request.method === 'GET') {
-        return stateRoute(request, url, env, sessionCode);
+        return liveStateRoute(live, request, url, sessionCode);
       }
       if (leaf === 'commands' && request.method === 'POST') {
-        return commandRoute(request, url, env, sessionCode);
+        return liveCommandRoute(live, request, url, sessionCode);
       }
       if (leaf === 'export' && request.method === 'GET') {
-        return exportRoute(request, url, env, sessionCode);
+        return liveExportRoute(live, request, url, sessionCode);
       }
       if (leaf === 'recap' && (request.method === 'GET' || request.method === 'POST')) {
         const auth = await authenticate(request, url, env, sessionCode, 'host');
         if (!auth.ok) return auth.response;
-        return relay(await forwardRecap(request, env, sessionCode));
+        return withApiHeaders(await forwardRecap(request, env, sessionCode));
       }
       if (leaf === 'ws') {
-        return wsRoute(request, url, env, sessionCode);
+        return liveWsRoute(live, request, url, sessionCode);
       }
-      // The host can always re-mint the projector URL — a console recovered
-      // from a link on another machine has no stored stage token.
       if (leaf === 'context' && request.method === 'GET') {
         return sessionContextRoute(request, url, env, sessionCode);
       }
@@ -1212,10 +986,7 @@ export default {
         );
       }
       if (leaf === 'stage-token' && request.method === 'GET') {
-        const auth = await authenticate(request, url, env, sessionCode, 'host');
-        if (!auth.ok) return auth.response;
-        const stageToken = await signToken(env.TOKEN_SECRET, { sessionCode, role: 'stage' });
-        return json({ stageToken });
+        return liveStageTokenRoute(live, request, url, sessionCode);
       }
       return json({ error: 'method-not-allowed' }, 405);
     }

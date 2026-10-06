@@ -1,0 +1,10 @@
+/*
+  # Same policy as the control plane (apps/worker/public/_headers): the stage
+  # and participant bundles ship no first-party inline scripts; 'unsafe-inline'
+  # covers Cloudflare edge injections only. img/media/frame allow https: for
+  # picture, video, and web-page slides authored in Prep.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src 'self' https:; connect-src 'self' ws: wss: https://cloudflareinsights.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), microphone=(), camera=()

@@ -12,13 +12,9 @@
 import { env, runInDurableObject } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 
-import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
-import worker from '../src/index.js';
-import { signCookieValue } from '../src/tokens.js';
-import { BASE, createSessionWithOutline, join, stateJson } from './helpers.js';
+import { command, createSessionWithOutline, join, stateJson } from './helpers.js';
 import type { SessionDO } from '../src/session-do.js';
 
-const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 
 /** A tutoring outline whose one block is split down the middle. */
 const SPLIT_OUTLINE = {
@@ -51,61 +47,12 @@ const SPLIT_OUTLINE = {
   ],
 };
 
-async function seedCookie(): Promise<string> {
-  const userId = `lane-user-${crypto.randomUUID()}`;
-  const now = Date.now();
-  await env.DB.prepare(
-    `INSERT INTO users (id, google_sub, email, name, created_at, entitlements)
-     VALUES (?1, ?2, ?3, ?4, ?5, '{}')`,
-  )
-    .bind(userId, `sub-${userId}`, `${userId}@example.com`, 'Lane Tutor', now)
-    .run();
-  const sessionId = crypto.randomUUID();
-  await env.DB.prepare(
-    'INSERT INTO auth_sessions (id, user_id, created_at, expires_at) VALUES (?1, ?2, ?3, ?4)',
-  )
-    .bind(sessionId, userId, now, now + 86_400_000)
-    .run();
-  const signed = await signCookieValue(TOKEN_SECRET, sessionId);
-  return `${SESSION_COOKIE}=${encodeURIComponent(signed)}`;
-}
-
-function asBrowser(cookie: string, path: string, init: RequestInit = {}): Promise<Response> {
-  const headers = new Headers(init.headers);
-  headers.set('cookie', cookie);
-  headers.set('content-type', 'application/json');
-  headers.set(CSRF_HEADER, '1');
-  return worker.fetch(new Request(`${BASE}${path}`, { ...init, headers }), env as never);
-}
-
-/** A started outline session, reached the way the tutor reaches it. */
+/** A started outline session. */
 async function outlineSession(): Promise<{ code: string; sessionCode: string; hostToken: string }> {
-  const cookie = await seedCookie();
-  const contextResponse = await asBrowser(cookie, '/api/tutoring/contexts', {
-    method: 'POST',
-    body: JSON.stringify({ displayName: 'Camille', kind: 'person', context: { level: 'B1' } }),
-  });
-  expect(contextResponse.status).toBe(201);
-  const contextId = ((await contextResponse.json()) as { context: { id: string } }).context.id;
-
-  const deckResponse = await asBrowser(cookie, '/api/decks', {
-    method: 'POST',
-    body: JSON.stringify({
-      contextId,
-      outline: SPLIT_OUTLINE,
-      shape: 'tutoring',
-      createSession: true,
-    }),
-  });
-  expect(deckResponse.status).toBe(201);
-  const sessionId = ((await deckResponse.json()) as { session: { id: string } }).session.id;
-
-  const launched = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
-    method: 'POST',
-    body: JSON.stringify({ start: true }),
-  });
-  expect(launched.status).toBe(201);
-  return (await launched.json()) as { code: string; sessionCode: string; hostToken: string };
+  const created = await createSessionWithOutline(SPLIT_OUTLINE);
+  const started = await command(created.sessionCode, created.hostToken, { command: 'session.start' });
+  expect(started.status).toBe(200);
+  return created;
 }
 
 async function laneOf(

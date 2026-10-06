@@ -2,7 +2,7 @@ import { env } from 'cloudflare:test';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker from '../src/index';
 import { sha256Hex } from '../src/api-tokens';
-import { signCookieValue } from '../src/tokens';
+import { signCookieValue } from '../src/cookies.js';
 import { billingRetrySql, prepareBillingRetry } from '../src/billing/support-retry';
 
 const PRICE = 'pri_01gsz8x8sawmvhz1pv30nge1ke', OTHER = 'pri_01gsz91wy9k1yn7kx82aafwvea';

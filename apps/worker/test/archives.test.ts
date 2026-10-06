@@ -5,7 +5,7 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import worker from '../src/index.js';
 import { BASE, SMOKE_OUTLINE, command } from './helpers.js';
 import { expireSessionArchives, maybeArchiveEndedSession } from '../src/archives.js';

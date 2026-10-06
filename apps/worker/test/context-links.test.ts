@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
 import worker from '../src/index.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import { BASE, command, stateJson } from './helpers.js';
 import {
   LEARNER_AUTH_FAILURE_LIMIT,

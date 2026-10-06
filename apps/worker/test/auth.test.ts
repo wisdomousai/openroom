@@ -7,7 +7,7 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 
-import { signToken } from '../src/tokens.js';
+import { signToken } from 'openroom-relay/tokens';
 import { call, command, createLiveSession, createSessionWithOutline, getState, join, SMOKE_OUTLINE } from './helpers.js';
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;

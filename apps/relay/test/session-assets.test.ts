@@ -85,7 +85,7 @@ describe('ephemeral session resources', () => {
       { id: 'opening', kind: 'title', title: 'Discuss the evidence' },
       { id: 'closing', kind: 'title', title: 'Make a decision', design: { background: image(ids[2]!) } },
     ] };
-    const response = await call('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json', 'x-openroom-admin': 'test-admin' }, body: JSON.stringify({ outline: deck }) });
+    const response = await call('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer test-relay-key' }, body: JSON.stringify({ outline: deck }) });
     expect(response.status).toBe(201);
     const created = await response.json() as { sessionCode: string; code: string; hostToken: string; stageToken: string };
     const blocked = await command(created.sessionCode, created.hostToken, { command: 'session.start' });
@@ -112,7 +112,7 @@ describe('ephemeral session resources', () => {
     const audioOutline = { version: 1, meta: { title: 'Portable listening' }, interactions: [], steps: [{
       id: 'audio', kind: 'media', media: { type: 'audio', resourceId, alt: 'An appointment', listening: { mode: 'individual', transcript: 'Private until shown' } },
     }] };
-    const createdResponse = await call('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json', 'x-openroom-admin': 'test-admin' }, body: JSON.stringify({ outline: audioOutline }) });
+    const createdResponse = await call('/api/sessions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer test-relay-key' }, body: JSON.stringify({ outline: audioOutline }) });
     expect(createdResponse.status).toBe(201);
     const created = await createdResponse.json() as { sessionCode: string; code: string; hostToken: string; stageToken: string };
     const bytes = encodeVoiceWav(new Float32Array(16000));
@@ -142,7 +142,7 @@ describe('ephemeral session resources', () => {
   it('requires referenced bytes before start and serves PDF ranges from the session object', async () => {
     const createdResponse = await call('/api/sessions', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-openroom-admin': 'test-admin' },
+      headers: { 'content-type': 'application/json', authorization: 'Bearer test-relay-key' },
       body: JSON.stringify({ outline }),
     });
     if (createdResponse.status !== 201) throw new Error(await createdResponse.text());

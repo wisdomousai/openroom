@@ -7,7 +7,7 @@
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { readEntitlements, sessionEntitlementOwner } from './entitlements.js';
-import { parseExportFormat } from './export.js';
+import { parseExportFormat } from 'openroom-relay/export';
 import type { SavedResults, SavedResultsFile } from '@openroom/schema';
 
 export interface ArchiveEnv extends ControlEnv {

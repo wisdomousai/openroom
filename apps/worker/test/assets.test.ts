@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { encodeVoiceWav } from '@openroom/schema';
 
 import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
-import { signCookieValue } from '../src/tokens.js';
+import { signCookieValue } from '../src/cookies.js';
 import worker from '../src/index.js';
 import { BASE } from './helpers.js';
 

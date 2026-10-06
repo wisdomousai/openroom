@@ -17,12 +17,9 @@
 
 import { readEntitlements } from './entitlements.js';
 import type { PaddleEnv } from './billing/paddle';
-import {
-  signCookieValue,
-  signToken,
-  verifyCookieValue,
-  type Role,
-} from './tokens.js';
+import { signToken, type Role } from 'openroom-relay/tokens';
+
+import { signCookieValue, verifyCookieValue } from './cookies.js';
 
 /* ----------------------------------------------------------------- config */
 

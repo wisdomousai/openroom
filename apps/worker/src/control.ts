@@ -9,7 +9,7 @@
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { facilitatorAccess } from './facilitation.js';
-import { signToken } from './tokens.js';
+import { signToken } from 'openroom-relay/tokens';
 import { readEntitlements } from './entitlements.js';
 
 /** PRD-level guard rail: 20 sessions per rolling 24h per host. */

@@ -6,7 +6,7 @@
 import { env } from 'cloudflare:test';
 import worker, { type Env } from '../src/index';
 import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth';
-import { signCookieValue } from '../src/tokens';
+import { signCookieValue } from '../src/cookies.js';
 import { sha256Hex } from '../src/api-tokens';
 import { ENTITLEMENT_FLAGS } from '../src/entitlements';
 import { paddleCatalog, parseBillingEvent } from '../src/billing/paddle';

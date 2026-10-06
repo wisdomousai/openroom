@@ -145,37 +145,6 @@ export async function verifyToken(
   };
 }
 
-/* --------------------------------------------------------------- cookies */
-
-/**
- * Sign an opaque cookie value with the same HMAC key as capability tokens.
- *
- * Format: `base64url(utf8 value).base64url(signature)`. Used for the session
- * cookie (payload = session id) and the short-lived OAuth state cookie
- * (payload = JSON with the CSRF state + PKCE verifier). Keeping the value
- * signed means a tampered cookie is rejected before it ever reaches D1.
- */
-export async function signCookieValue(secret: string, value: string): Promise<string> {
-  const body = encoder.encode(value);
-  const key = await hmacKey(secret);
-  const signature = new Uint8Array(await crypto.subtle.sign('HMAC', key, body));
-  return `${base64urlEncode(body)}.${base64urlEncode(signature)}`;
-}
-
-/** Verify a value produced by `signCookieValue`; returns null when invalid. */
-export async function verifyCookieValue(secret: string, signed: string): Promise<string | null> {
-  const dot = signed.indexOf('.');
-  if (dot <= 0 || dot === signed.length - 1 || signed.indexOf('.', dot + 1) !== -1) return null;
-  const body = base64urlDecode(signed.slice(0, dot));
-  const signature = base64urlDecode(signed.slice(dot + 1));
-  if (body === null || signature === null) return null;
-  const key = await hmacKey(secret);
-  // constant-time inside the runtime
-  const valid = await crypto.subtle.verify('HMAC', key, signature, body);
-  if (!valid) return null;
-  return decoder.decode(body);
-}
-
 /** Pull a bearer token out of the Authorization header, or `?token=` for WS upgrades. */
 export function extractToken(request: Request, url: URL): string | null {
   const header = request.headers.get('authorization');

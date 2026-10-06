@@ -1,30 +1,31 @@
 {
-  "name": "openroom-worker",
+  "name": "openroom-relay",
   "version": "0.1.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
+  "exports": {
+    "./live": "./src/live.ts",
+    "./tokens": "./src/tokens.ts",
+    "./join-url": "./src/join-url.ts",
+    "./export": "./src/export.ts",
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --port 8790",
     "deploy": "node scripts/collect-assets.mjs && wrangler deploy",
     "build": "node scripts/collect-assets.mjs",
+    "bundle": "wrangler deploy --dry-run --outdir dist",
     "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
-    "test": "vitest run",
-    "dns-aid": "node scripts/publish-dns-aid.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "@openroom/domain": "workspace:*",
-    "@openroom/mcp": "workspace:*",
-    "@openroom/schema": "workspace:*",
-    "drizzle-orm": "^0.45.2",
-    "openroom-relay": "workspace:*"
+    "@openroom/schema": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.20.2",
     "@cloudflare/workers-types": "^5.20260801.1",
-    "drizzle-kit": "^0.31.10",
-    "miniflare": "5.20260801.1-alpha",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0",
     "wrangler": "^4.119.0",
