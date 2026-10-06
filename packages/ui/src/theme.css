@@ -1,0 +1,333 @@
+/*
+ * The host theme: Tailwind v4 utilities bridged to the @openroom/ui token
+ * variables, the type scale, first-paint fallbacks and base styles.
+ *
+ * A host's entry stylesheet imports Tailwind, names its own sources, then
+ * imports this file, in that order:
+ *
+ *   @import 'tailwindcss';
+ *   @source "…";
+ *   @import '@openroom/ui/theme.css';
+ *
+ * The workspace (apps/workspace/src/index.css) and Desktop's core renderer
+ * (apps/desktop/renderer-src/index.css) both do. It is also the stylesheet
+ * the shadcn CLI writes CSS variables into (packages/ui/components.json).
+ */
+
+/*
+ * Dark mode is driven by the attribute `applyTheme()` from @openroom/ui writes
+ * on <html>, so `dark:` utilities follow the live room theme, not the OS alone.
+ */
+@custom-variant dark ([data-theme-mode='dark'] &);
+
+/*
+ * Bridge Tailwind v4 utilities to the @openroom/ui token variables.
+ * Every value here is a `var(--token)` reference — the actual colours are set
+ * as inline custom properties on <html> by applyTheme(), which is what lets a
+ * live `session.theme` switch restyle the console without a reload.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  /*
+   * `--color-secondary` is deliberately NOT registered. The name is taken by
+   * the type scale below (`text-secondary`, 14/400), and a colour of the same
+   * name makes Tailwind emit `.text-secondary { color: var(--secondary) }` —
+   * near-white text on a white card, everywhere the scale is used. The two
+   * places that want the surface reach for the token directly
+   * (`bg-[var(--secondary)]`), which is one call site each.
+   */
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-accent: var(--brand-accent);
+
+  /*
+   * Flat world: a hover state is a different SOLID colour, never a translucent
+   * wash of the resting one. `color-mix` here resolves to an opaque colour
+   * derived from the live theme tokens, so it follows a room theme switch.
+   */
+  --color-primary-hover: var(--primary-hover);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-scrim: var(--scrim);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-desk: var(--desk);
+  --color-chrome: var(--chrome);
+  --color-hairline: var(--hairline);
+  --color-live: var(--live);
+  --color-live-hover: var(--live-hover);
+  --color-live-foreground: var(--live-foreground);
+  --color-live-tint: var(--live-tint);
+  --color-live-tint-foreground: var(--live-tint-foreground);
+
+  /*
+   * Radius ramp — meaning, not decoration. applyTheme() writes --radius-sm
+   * through --radius-xl on <html>; do not alias them back to --radius.
+   * projector zeroes the whole ramp; sherbet scales it up.
+   */
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+
+  /*
+   * The six-step type scale. Weights are 400 and 600 only. A component picks
+   * a named step instead of inventing `text-[13px]`. Each one emits its
+   * weight (and, where it matters, its tracking) with the size.
+   *
+   *   text-page-title    28/600  the one <h1> a page gets
+   *   text-screen-title  20/600  a screen or major region inside a page
+   *   text-section       16/600  a heading inside a panel or card
+   *   text-row-title     14/600  the name on a list row
+   *   text-secondary     14/400  body copy and help text
+   *   text-caption       12/400  ribbon group captions, pane section labels,
+   *                              row meta. Sentence case — never uppercase.
+   *
+   * Three role steps sit between and beside those six, for the three places the
+   * console is not reading at desk distance:
+   *
+   *   text-option        17/400  a phone-sized option or action row — the
+   *                              presenter remote and the live ribbon
+   *   text-title-bar     15/600  the app / room name in a title bar
+   *   text-rail          13/600  a dense rail or side-list row
+   *
+   * Like the six above, each carries its documented weight. A call site that
+   * wants the other weight at the same size says so — `text-rail font-normal`
+   * for dense meta beside a rail row, `text-option font-semibold` for a
+   * full-width touch action — exactly as `text-caption font-semibold` already
+   * does. Nothing outside this list; no more `text-[13px]`.
+   *
+   * `text-caption` is a caption on a group of controls or facts. It is NOT an
+   * eyebrow/kicker above a heading: the No-Kicker Rule (DESIGN.md) still
+   * stands, and no `text-caption` may ever appear immediately above a
+   * `text-page-title` / `text-screen-title` / `text-section`.
+   */
+  --text-page-title: 28px;
+  --text-page-title--line-height: 1.2;
+  --text-page-title--font-weight: 600;
+  --text-page-title--letter-spacing: -0.01em;
+
+  --text-screen-title: 20px;
+  --text-screen-title--line-height: 1.3;
+  --text-screen-title--font-weight: 600;
+
+  --text-section: 16px;
+  --text-section--line-height: 1.4;
+  --text-section--font-weight: 600;
+
+  --text-row-title: 14px;
+  --text-row-title--line-height: 1.45;
+  --text-row-title--font-weight: 600;
+
+  --text-secondary: 14px;
+  --text-secondary--line-height: 1.5;
+  --text-secondary--font-weight: 400;
+
+  --text-caption: 12px;
+  --text-caption--line-height: 1.45;
+  --text-caption--font-weight: 400;
+
+  --text-option: 17px;
+  --text-option--line-height: 1.4;
+  --text-option--font-weight: 400;
+
+  --text-title-bar: 15px;
+  --text-title-bar--line-height: 1.35;
+  --text-title-bar--font-weight: 600;
+
+  --text-rail: 13px;
+  --text-rail--line-height: 1.4;
+  --text-rail--font-weight: 600;
+}
+
+/*
+ * `text-secondary` is a step of the scale above, not a colour.
+ *
+ * The theme also carries `--secondary` (a near-white surface, for `bg-secondary`
+ * on a secondary button), and Tailwind's `--color-*` namespace wins the name:
+ * without this, every `text-secondary` in the product compiled to
+ * `color: var(--secondary)` — a near-white surface on a white card — and the
+ * 14px it was asking for was never emitted at all. Declaring the utility
+ * explicitly takes the name back for the type scale; `bg-secondary` and
+ * `text-secondary-foreground` are untouched.
+ */
+@utility text-secondary {
+  font-size: var(--text-secondary);
+  line-height: var(--text-secondary--line-height);
+  font-weight: var(--text-secondary--font-weight);
+}
+
+/*
+ * Fallback token values for the very first paint (and for any environment
+ * where the bootstrap in main.tsx could not run). These mirror the `default`
+ * theme in @openroom/ui; applyTheme() immediately overrides them inline.
+ */
+:root {
+  --background: #faf9f8;
+  --foreground: #242424;
+  --card: #ffffff;
+  --card-foreground: #242424;
+  --popover: #ffffff;
+  --popover-foreground: #242424;
+  --primary: #0f6cbd;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f2f1;
+  --secondary-foreground: #242424;
+  --muted: #f3f2f1;
+  --muted-foreground: #616161;
+  --accent: #ebf3fc;
+  --accent-foreground: #115ea3;
+  --destructive: #a4262c;
+  --destructive-foreground: #ffffff;
+  --border: #e1dfdd;
+  --input: #d2d0ce;
+  --ring: #0f6cbd;
+  --radius: 0.25rem;
+  /*
+   * This radius ramp MUST stay below `@import 'tailwindcss'`. Tailwind v4 ships
+   * its own `--radius-*` theme values, and these declarations shadow them so
+   * `rounded-sm/md/lg/xl` resolve to the OpenRoom ramp. applyTheme() then writes
+   * the same four names inline on <html> per theme; an inline style beats any
+   * stylesheet rule, so the cascade order below the import is what keeps the
+   * fallback paint and the themed paint on the same ramp. Moving this block
+   * above the import lets Tailwind's defaults win instead.
+   */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --chart-1: #0f6cbd;
+  --chart-2: #107c41;
+  --chart-3: #b88217;
+  --chart-4: #b4009e;
+  --chart-5: #5c2e91;
+  --desk: #e8e6e4;
+  --chrome: #f3f2f1;
+  --hairline: #edebe9;
+  --live: #ca5010;
+  --live-hover: #9c3d0b;
+  --live-foreground: #ffffff;
+  --live-tint: #fdf1e8;
+  --live-tint-foreground: #9c3d0b;
+  --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 20px rgba(0, 0, 0, 0.1);
+  --shadow-overlay: 0 8px 32px rgba(0, 0, 0, 0.26);
+  --brand-accent: #ebf3fc;
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  /*
+   * The two families a styled run can ask for by name. Fixed stacks, not theme
+   * tokens: a run stores `serif`, and serif has to mean serif on every surface
+   * the deck is opened on.
+   */
+  --font-serif: Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace;
+}
+
+/*
+ * Derived solid colours. Each one is opaque — a flat surface is never a
+ * transparency over what is behind it — and each is expressed against the live
+ * theme variables so it re-derives when the room theme changes.
+ */
+:root {
+  --primary-hover: color-mix(in oklab, var(--primary) 86%, var(--foreground));
+  --destructive-hover: color-mix(in oklab, var(--destructive) 86%, var(--foreground));
+  --secondary-hover: color-mix(in oklab, var(--secondary) 88%, var(--secondary-foreground));
+  /* Soft dim — the page behind a dialog stays legible. */
+  --scrim: rgba(32, 31, 30, 0.38);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    color-scheme: light dark;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /*
+   * The surfaces the browser draws for us still belong to the theme: selection,
+   * caret, scrollbars, link underlines and the numerals in live counts.
+   */
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+  :where(input, textarea, [contenteditable]) {
+    caret-color: var(--primary);
+  }
+  * {
+    /* Thumb must contrast with chrome: `--input` on `--background` disappears. */
+    scrollbar-color: color-mix(in oklab, var(--foreground) 45%, var(--chrome)) var(--chrome);
+    scrollbar-width: auto;
+  }
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--chrome);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--foreground) 45%, var(--chrome));
+    border: 2px solid var(--chrome);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--foreground) 62%, var(--chrome));
+  }
+  a {
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+  /* Counts, codes and tallies change under the eye; they must not reflow. */
+  [data-tabular],
+  time,
+  output {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Colour transitions make a live room-theme switch read as intentional. */
+@layer base {
+  body,
+  [data-theme-surface] {
+    transition:
+      background-color 220ms ease,
+      color 220ms ease,
+      border-color 220ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body,
+    [data-theme-surface] {
+      transition: none;
+    }
+  }
+}

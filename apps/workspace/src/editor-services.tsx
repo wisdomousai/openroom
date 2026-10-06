@@ -1,14 +1,10 @@
 /**
- * The host's two `EditorServices` adapters for @openroom/editor.
+ * The workspace's `EditorServices` adapter for @openroom/editor.
  *
- *  - `CloudEditorServices` wraps every route: hosted decks, the live console,
- *    the presenter remote, the Q&A desk and the desktop presentation window.
- *  - `DesktopFileEditorServices` wraps the desktop document window
- *    (`#/desktop/file`). A local file has no space or person, so it carries no
- *    draft writes, learner work or brand kits.
- *  - `RelayLiveServices` narrows either one for a session that runs on the
- *    desktop's relay (signed out, live server set): links point at the relay,
- *    and nothing reads workspace records the relay does not have.
+ * `CloudEditorServices` wraps every route: hosted decks, the live console, the
+ * presenter remote and the Q&A desk. Desktop's file and presentation windows
+ * are not workspace routes; they mount the editor with Desktop's own adapter
+ * (apps/desktop/renderer-src/editor-services.tsx).
  *
  * This is the one place the editor meets the API client, the router, the query
  * cache and this device's storage.
@@ -20,8 +16,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { StageView } from '@openroom/stage-src/StageView';
 import {
+  desktopBridge,
   EditorServicesProvider,
-  useEditorServices,
+  handOffLiveNotes,
+  readLiveNotes,
+  writeLiveNotes,
   type EditorDestination,
   type EditorLinkProps,
   type EditorServices,
@@ -53,16 +52,14 @@ import { sessionStartMessage } from './components/ContinuityLock';
 import { LanguagePairFields, useLanguagePair } from './components/LanguagePairFields';
 import { SavedResultsLinks } from './components/SavedResultsLinks';
 import { VersionHistory } from './components/VersionHistory';
-import { desktopBridge } from './desktop-bridge';
 import { qnaShareUrl, remoteShareUrl, to, type LinkTarget } from './destinations';
-import { handOffLiveNotes, readLiveNotes, writeLiveNotes } from './lib/scratchpad';
 import { invalidateManagementData } from './query-client';
 import { clearLiveSession, saveLiveSession } from './storage';
 
 type RouteDestination = Exclude<EditorDestination, { kind: 'deckDocument' }>;
 
-/** The desktop shell owns this URL; the document window's deck view lives there. */
-const DECK_DOCUMENT_HASH = '#/desktop/file';
+/** Desktop's file window, served by its core renderer beside this bundle. */
+const DECK_DOCUMENT_HREF = '/core/index.html#/file';
 
 export function routeFor(destination: RouteDestination): LinkTarget {
   switch (destination.kind) {
@@ -86,7 +83,7 @@ export function routeFor(destination: RouteDestination): LinkTarget {
 }
 
 function RouterLink({ to: destination, ...rest }: EditorLinkProps) {
-  if (destination.kind === 'deckDocument') return <a href={DECK_DOCUMENT_HASH} {...rest} />;
+  if (destination.kind === 'deckDocument') return <a href={DECK_DOCUMENT_HREF} {...rest} />;
   return <Link {...routeFor(destination)} {...rest} />;
 }
 
@@ -114,8 +111,7 @@ function useBrandKits(spaceId: string) {
   return useQuery({ queryKey: ['brand-kits', spaceId, false], queryFn: () => listBrandKits(spaceId) });
 }
 
-/** Slots both windows offer: they follow the session or the deck, not the file. */
-const SHARED_SLOTS: EditorSlots = {
+const CLOUD_SLOTS: EditorSlots = {
   VersionHistory,
   languagePair: {
     unconfiguredSpace,
@@ -125,10 +121,6 @@ const SHARED_SLOTS: EditorSlots = {
   },
   scratchpad: { read: readLiveNotes, write: writeLiveNotes, handOff: handOffLiveNotes },
   SavedResults: CompactSavedResults,
-};
-
-const CLOUD_SLOTS: EditorSlots = {
-  ...SHARED_SLOTS,
   drafts: {
     save: async (deckId, source, baseVersion) => {
       const result = await putDeckDraft(deckId, source, baseVersion);
@@ -143,9 +135,7 @@ const CLOUD_SLOTS: EditorSlots = {
   },
 };
 
-const FILE_SLOTS: EditorSlots = SHARED_SLOTS;
-
-function useHostEditorServices(slots: EditorSlots): EditorServices {
+function useCloudEditorServices(): EditorServices {
   const routerNavigate = useNavigate();
   return useMemo<EditorServices>(() => ({
     assets: { upload: uploadAsset, list: listAssets, url: assetUrl },
@@ -171,12 +161,12 @@ function useHostEditorServices(slots: EditorSlots): EditorServices {
     navigation: {
       navigate: (destination, options) => {
         /*
-         * The single sanctioned hash write in the app: the desktop shell owns
-         * the `/desktop/file` URL, and the document window must route back to
-         * the deck rather than into the web workspace shell.
+         * The single sanctioned URL write in the app: inside Desktop, a page
+         * opened from the file window routes back to it, in Desktop's core
+         * renderer rather than this bundle.
          */
         if (destination.kind === 'deckDocument') {
-          location.hash = DECK_DOCUMENT_HASH;
+          location.assign(DECK_DOCUMENT_HREF);
           return;
         }
         const target = routeFor(destination);
@@ -187,57 +177,10 @@ function useHostEditorServices(slots: EditorSlots): EditorServices {
         surface === 'remote' ? remoteShareUrl(sessionCode, hostToken) : qnaShareUrl(sessionCode, hostToken),
     },
     desktop: desktopBridge(),
-    slots,
-  }), [routerNavigate, slots]);
+    slots: CLOUD_SLOTS,
+  }), [routerNavigate]);
 }
 
 export function CloudEditorServices({ children }: { children: ReactNode }) {
-  return <EditorServicesProvider services={useHostEditorServices(CLOUD_SLOTS)}>{children}</EditorServicesProvider>;
-}
-
-export function DesktopFileEditorServices({ children }: { children: ReactNode }) {
-  return <EditorServicesProvider services={useHostEditorServices(FILE_SLOTS)}>{children}</EditorServicesProvider>;
-}
-
-/**
- * The live services for a session on a relay at `origin`.
- *
- * The session's own API calls (state, commands, assets, export, stage token)
- * need no change: the desktop shell routes `/api/sessions/<code>/…` of a relay
- * session to the relay. What changes is everything the relay does not hold:
- * there is no saved session record or Library place, no saved results, and no
- * remote or Q&A desk page on another device. Join and stage links are the
- * relay's own pages.
- */
-export function relayEditorServices(base: EditorServices, origin: string): EditorServices {
-  const relay = `${origin.replace(/\/$/, '')}/`;
-  const { SavedResults: _savedResults, ...slots } = base.slots;
-  return {
-    ...base,
-    live: {
-      ...base.live,
-      fetchSessionContext: () => Promise.resolve({ context: null, session: null }),
-      getSessionItem: () => Promise.reject(new Error('This session has no saved record.')),
-      stageUrl: (sessionCode, stageToken) =>
-        new URL(`stage/?session=${encodeURIComponent(sessionCode)}&token=${encodeURIComponent(stageToken)}`, relay).toString(),
-      joinUrl: (code, serverJoinUrl) => {
-        const fallback = `join/?code=${encodeURIComponent(code)}`;
-        try {
-          const url = new URL(serverJoinUrl ?? fallback, relay);
-          return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : new URL(fallback, relay).toString();
-        } catch {
-          return new URL(fallback, relay).toString();
-        }
-      },
-    },
-    navigation: { ...base.navigation, shareUrl: () => null },
-    slots,
-  };
-}
-
-/** Pass-through without a relay origin; the relay adapter with one. */
-export function RelayLiveServices({ origin, children }: { origin: string | null; children: ReactNode }) {
-  const base = useEditorServices();
-  const services = useMemo(() => (origin === null ? base : relayEditorServices(base, origin)), [base, origin]);
-  return <EditorServicesProvider services={services}>{children}</EditorServicesProvider>;
+  return <EditorServicesProvider services={useCloudEditorServices()}>{children}</EditorServicesProvider>;
 }

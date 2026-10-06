@@ -26,11 +26,13 @@ relative to the repository root.
 flowchart TB
   subgraph Desktop["Desktop app (apps/desktop)"]
     direction TB
-    R["Renderer: editor, presenter, agent sidebar<br/>(packages/editor)"]
+    R["Core renderer (apps/desktop/renderer-src):<br/>editor, presenter, agent sidebar (packages/editor)"]
+    WB["Workspace bundle (apps/workspace build):<br/>library and session pages, signed in"]
     M["Main process: files, windows, agent runtimes"]
     S["MCP host on a local socket<br/>(apps/desktop/src/mcp-host.ts)"]
     F[(".openroom file<br/>deck.yaml + resources/")]
     R <-->|narrow preload bridge| M
+    R -.->|links when the build has it| WB
     M --> S
     S --> F
   end
@@ -62,8 +64,11 @@ The repository splits along the same line. The **core** (`packages/*`, `apps/rel
 `apps/stage`, `apps/participant`, `apps/office`, `apps/desktop`) makes and presents
 decks and runs live sessions. The **workspace** (`apps/workspace`,
 `apps/workspace-worker`, `apps/site`) is the signed-in library and the web host.
-`bun run build:core` builds the core in a checkout without the workspace apps; Desktop
-then has no renderer bundle, because its windows load the `apps/workspace` build.
+`bun run build:core` builds the core in a checkout without the workspace apps. Desktop's
+file and presentation windows are its own core renderer (`apps/desktop/renderer-src`),
+so a core-only Desktop opens, edits, presents and runs relay sessions; only the
+signed-in library and session pages, which come from the `apps/workspace` build, are
+missing, and the file window does not offer links to them.
 
 ## "Make me a slide with a picture of a cat"
 
@@ -277,7 +282,7 @@ sessions run in full, with ballots export and no participant limit unless the re
 sets `participantLimit`. Without `RELAY_KEY`, creation is off. The API is in
 `docs/CONTRACTS.md`; deployment is in `docs/DEPLOYMENT.md`.
 
-**Desktop picks the server when a session starts** (`apps/workspace/src/lib/desktop-live.ts`):
+**Desktop picks the server when a session starts** (`apps/desktop/renderer-src/desktop-live.ts`):
 
 | State | Start live | Present |
 | --- | --- | --- |
@@ -291,7 +296,7 @@ the main process sends it, as the bearer of `POST /api/sessions` on that relay
 (`apps/desktop/src/relay.ts`). The main process records each relay session's code, so
 the `openroom://app/api/sessions/<code>/…` proxy sends that session's state, commands,
 assets and exports to the relay. The editor does not branch on the server:
-`RelayLiveServices` (`apps/workspace/src/editor-services.tsx`) narrows `EditorServices` for
+`RelayLiveServices` (`apps/desktop/renderer-src/relay-live.tsx`) narrows `EditorServices` for
 the session, pointing join and stage links at the relay and dropping what the relay
 does not hold (saved session record, saved results, remote and Q&A links for other
 devices).

@@ -1,0 +1,9 @@
+/*
+ * Projector stylesheet as bundled into Desktop's core renderer: the live
+ * console's StageView and the presenter's PresentationStage render the exact
+ * stage surface. Its Tailwind root scans the editor and ui packages it renders.
+ */
+@import '../../stage/src/styles.css';
+
+@source "../../../packages/editor/src";
+@source "../../../packages/ui/src/**/*.tsx";

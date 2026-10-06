@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import type { DesktopRelayStatus, EditorServices, OpenRoomDesktopBridge } from '@openroom/editor';
 
-import { relayEditorServices } from './editor-services';
-import { desktopLiveRoute } from './lib/desktop-live';
+import { relayEditorServices } from './relay-live';
+import { desktopLiveRoute } from './desktop-live';
 
 const fail = () => Promise.reject(new Error('base service called'));
 

@@ -3,8 +3,7 @@ import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { AccountPanel } from '../AccountPanel';
 import { ConnectedApps } from '../components/ConnectedApps';
-import { LiveServerCard, liveServerBridge } from '../components/LiveServer';
-import { desktopBridge } from '../desktop-bridge';
+import { desktopBridge, LiveServerCard, liveServerBridge } from '@openroom/editor';
 import {
   listApiTokens,
   mintApiToken,

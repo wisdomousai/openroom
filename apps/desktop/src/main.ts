@@ -1,4 +1,5 @@
 import { localResourceResponse } from './resource-response.js';
+import { safeRendererPath } from './renderer-path.js';
 import {
   app,
   autoUpdater,
@@ -128,12 +129,6 @@ function mime(path: string): string {
   }
 }
 
-function safeRendererPath(url: URL): string | null {
-  const relative = decodeURIComponent(url.pathname).replace(/^\/+/, '');
-  const resolved = resolve(rendererRoot, relative);
-  return resolved === rendererRoot || resolved.startsWith(`${rendererRoot}${sep}`) ? resolved : null;
-}
-
 function parsedFile(source: string | null): Record<string, unknown> | null {
   if (source === null) return null;
   try {
@@ -177,7 +172,7 @@ async function protocolResponse(request: Request): Promise<Response> {
       const origin = relay.originFor(url.pathname) ?? onlineOrigin;
       return session.defaultSession.fetch(`${origin}${url.pathname}${url.search}`, init);
     }
-    const local = safeRendererPath(url);
+    const local = safeRendererPath(rendererRoot, url.pathname);
     if (local === null) return new Response('Forbidden', { status: 403 });
     try { return localResourceResponse(request, await readFile(local), mime(local)); }
     catch { return new Response('Not found', { status: 404 }); }
@@ -367,7 +362,7 @@ async function openDocumentWindow(
     if (documentState.recoverySource === null) void disposeOpenRoomWorkingDirectory(documentState.workingDirectory);
   });
   if (canonical !== null) await takeDesktopLock(canonical, documentState.source ?? documentState.recoverySource);
-  await window.loadURL('openroom://app/host/index.html#/desktop/file');
+  await window.loadURL('openroom://app/core/index.html#/file');
   if (canonical !== null) app.addRecentDocument(canonical);
   return window;
 }
@@ -577,7 +572,7 @@ function installIpc(): void {
       presentationWindow = null;
       presentationOwner?.webContents.send('desktop:presentation-state', null);
     });
-    await presentationWindow.loadURL('openroom://app/host/index.html#/desktop/present');
+    await presentationWindow.loadURL('openroom://app/core/index.html#/present');
   });
   ipcMain.handle('desktop:update-presentation', (_event, state: PresentationState) => {
     presentationState = state;

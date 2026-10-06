@@ -3,6 +3,7 @@ import {
   blankDeck,
   DeckEditor,
   DeckEditorTopBar,
+  desktopBridge,
   Presenter,
   questionReadinessMessage,
   renameDeck,
@@ -18,7 +19,6 @@ import { stringify } from 'yaml';
 import { invalidateManagementData } from '../query-client';
 
 import { addDeckVersion, getDeck, getDeckDraft, getDeckFileLink, putDeckDraft } from '../api';
-import { desktopBridge } from '../desktop-bridge';
 import { startSessionFromDeck } from '../lib/library-actions';
 import { downloadCloudDocument } from '../lib/cloud-document';
 import { sessionStartMessage } from '../components/ContinuityLock';

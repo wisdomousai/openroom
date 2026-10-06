@@ -14,7 +14,7 @@ import {
   type ContextSummary,
   type FolderSummary,
   type MySpace,
-} from '../api';
+} from './api';
 import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,

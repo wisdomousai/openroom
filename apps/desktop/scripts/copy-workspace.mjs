@@ -1,10 +1,11 @@
 /**
  * Copy the built workspace bundle (apps/workspace/dist) into renderer/host,
- * where the main process serves it as openroom://app/host/.
+ * where the main process serves it as openroom://app/host/ for the signed-in
+ * workspace pages.
  *
  * `--build` builds the bundle first. A checkout without apps/workspace (the
- * core build) has no renderer bundle: the step is skipped and renderer/ is left
- * empty.
+ * core build) has no workspace bundle: the step is skipped and renderer/ holds
+ * only the core renderer (renderer/core, from `build:core`).
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -15,8 +16,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const workspace = resolve(here, '../../workspace');
 const target = resolve(here, '../renderer/host');
-await rm(resolve(here, '../renderer'), { recursive: true, force: true });
-await mkdir(resolve(here, '../renderer'), { recursive: true });
+await rm(target, { recursive: true, force: true });
 if (!existsSync(resolve(workspace, 'package.json'))) {
   console.log('[desktop:copy-workspace] skip (no apps/workspace)');
   process.exit(0);

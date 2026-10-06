@@ -136,7 +136,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
   // Inside the desktop document window the live console must route back to the
   // deck, never into the web workspace shell (whose sign-in gate the local
   // origin cannot pass). A session started from the desktop workspace window
-  // has no such document, and `#/desktop/file` there fails to open one, so that
+  // has no such document, and the file view there fails to open one, so that
   // window takes the same route back to the library as the browser does.
   // `null` until the shell answers, so the exit control never renders the wrong
   // destination for a frame.
@@ -390,7 +390,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
   /*
    * Private scratchpad. Held in this browser, keyed by join code, never sent
    * anywhere; handed to the notes form as a prefill when the session ends. See
-   * lib/scratchpad.ts for why the live console composes no record.
+   * ./scratchpad.ts for why the live console composes no record.
    *
    * Named `scratchpad` deliberately — further down, `notes` is the interaction's
    * host-only pedagogy note from the session document, a different thing.

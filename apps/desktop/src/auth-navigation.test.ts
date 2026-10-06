@@ -26,7 +26,7 @@ describe('desktop Google sign-in navigation', () => {
 
   it('still allows the hosted workspace and the local renderer', () => {
     expect(decideDesktopNavigation(`${origin}/host/index.html#/`, origin)).toBe('allow');
-    expect(decideDesktopNavigation('openroom://app/host/index.html#/desktop/file', origin)).toBe('allow');
+    expect(decideDesktopNavigation('openroom://app/core/index.html#/file', origin)).toBe('allow');
   });
 
   it('opens ordinary external links in the system browser', () => {

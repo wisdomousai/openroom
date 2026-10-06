@@ -2,9 +2,11 @@
  * The desktop's live server: the OpenRoom relay a signed-out desktop starts
  * live sessions on. Address and key go to the desktop shell, which keeps the
  * key in the OS keychain; the page only learns whether a key is set.
+ * Desktop's document window offers it as a dialog, the workspace's Settings
+ * page as a card.
  */
 import { useEffect, useState, type ReactNode } from 'react';
-import type { DesktopRelayStatus, OpenRoomDesktopBridge } from '@openroom/editor';
+import type { DesktopRelayStatus, OpenRoomDesktopBridge } from '../desktop-bridge';
 import { Button } from '@openroom/ui/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
 import {

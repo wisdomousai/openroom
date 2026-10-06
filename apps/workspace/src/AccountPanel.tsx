@@ -1,7 +1,7 @@
 import { useForm } from '@tanstack/react-form';
 import { useCallback, useState } from 'react';
 import { demoLogin, logout, signInUrl } from './api';
-import { desktopBridge } from './desktop-bridge';
+import { desktopBridge } from '@openroom/editor';
 import { useDevLoginOnly } from './lib/local-auth';
 import type { AuthSession } from './useAuth';
 import { Button } from '@openroom/ui/components/button';

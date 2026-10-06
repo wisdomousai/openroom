@@ -20,7 +20,7 @@ import {
   saveSessionRecord,
 } from '../../api';
 import { HomeworkAssignments } from './HomeworkAssignments';
-import { clearSessionNotes, readSessionNotes, writeSessionNotes } from '../../lib/scratchpad';
+import { clearSessionNotes, readSessionNotes, writeSessionNotes } from '@openroom/editor';
 import { useAuth } from '../../useAuth';
 import { Button } from '@openroom/ui/components/button';
 import { Card, CardContent } from '@openroom/ui/components/card';
@@ -125,7 +125,7 @@ function SessionNotesForm({
   const hasMissingRecipients = Object.values(audience).some((recipients) => recipients.length === 0);
   /*
    * After a session ends, the live console hands private notes from the
-   * live-keyed scratchpad into a session-keyed slot (see lib/scratchpad.ts). Prefer
+   * live-keyed scratchpad into a session-keyed slot (see packages/editor/src/live/scratchpad.ts). Prefer
    * a saved record when one exists; otherwise offer the scratchpad as a prefill
    * the tutor still has to save deliberately. Never put note text in a URL.
    */
