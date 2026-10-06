@@ -5,7 +5,7 @@
  * console, the presenter remote and the Q&A desk all take the same exit, and
  * the one rule that must never bend is the scratchpad rule — a session whose
  * context probe has not resolved hands off nothing, because handing off to a
- * null session id deletes the tutor's private notes (lib/scratchpad.ts).
+ * null session id deletes the tutor's private notes (./scratchpad.ts).
  */
 
 /** Where the probe for the durable session stands. */

@@ -3,7 +3,9 @@
  * (`#/file`) and the presentation window (`#/present`).
  *
  * A local file has no space or person, so the adapter carries no draft writes,
- * learner work, brand kits or other workspace slots. Signed in, decks link to
+ * learner work, brand kits, version history, language pair or saved results.
+ * It does carry the live console's private scratchpad, which stays on this
+ * device (@openroom/editor `live/scratchpad.ts`). Signed in, decks link to
  * the control plane through the API; Library and session pages open in the
  * workspace bundle when this build ships it, and are not offered when it does
  * not (destinations.ts).
@@ -19,6 +21,8 @@ import { StageView } from '@openroom/stage-src/StageView';
 import {
   desktopBridge,
   EditorServicesProvider,
+  readLiveNotes,
+  writeLiveNotes,
   type EditorDestination,
   type EditorLinkProps,
   type EditorServices,
@@ -43,6 +47,7 @@ import {
   uploadAsset,
 } from './api';
 import { DECK_DOCUMENT_HREF, destinationHref, workspaceAvailable, workspaceShareUrl } from './destinations';
+import { handOffScratchpad } from './scratchpad';
 import { clearLiveSession, saveLiveSession } from './session-storage';
 
 /** The line shown when a destination needs the workspace this build does not ship. */
@@ -105,7 +110,9 @@ export function DesktopFileEditorServices({ children }: { children: ReactNode })
         workspaceAvailable() ? workspaceShareUrl(surface, sessionCode, hostToken, location.origin) : null,
     },
     desktop: desktopBridge(),
-    slots: {},
+    slots: {
+      scratchpad: { read: readLiveNotes, write: writeLiveNotes, handOff: handOffScratchpad },
+    },
   }), [navigate]);
   return (
     <EditorServicesProvider services={services}>

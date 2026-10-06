@@ -18,6 +18,9 @@ import { StageView } from '@openroom/stage-src/StageView';
 import {
   desktopBridge,
   EditorServicesProvider,
+  handOffLiveNotes,
+  readLiveNotes,
+  writeLiveNotes,
   type EditorDestination,
   type EditorLinkProps,
   type EditorServices,
@@ -50,7 +53,6 @@ import { LanguagePairFields, useLanguagePair } from './components/LanguagePairFi
 import { SavedResultsLinks } from './components/SavedResultsLinks';
 import { VersionHistory } from './components/VersionHistory';
 import { qnaShareUrl, remoteShareUrl, to, type LinkTarget } from './destinations';
-import { handOffLiveNotes, readLiveNotes, writeLiveNotes } from './lib/scratchpad';
 import { invalidateManagementData } from './query-client';
 import { clearLiveSession, saveLiveSession } from './storage';
 

@@ -26,6 +26,14 @@ export { QnaDesk } from './live/QnaDesk';
 export { useStageMirror } from './live/useStageMirror';
 export { LiveServerCard, LiveServerDialog, liveServerBridge } from './live/LiveServer';
 export { shouldHandOffNotes, type ProbeState } from './live/session-exit';
+export {
+  clearSessionNotes,
+  handOffLiveNotes,
+  readLiveNotes,
+  readSessionNotes,
+  writeLiveNotes,
+  writeSessionNotes,
+} from './live/scratchpad';
 
 export { AgentPane } from './agent/AgentPane';
 export { seedAgentWithReading } from './agent/agent-chat';
