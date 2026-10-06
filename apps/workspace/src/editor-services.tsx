@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { StageView } from '@openroom/stage-src/StageView';
 import {
+  desktopBridge,
   EditorServicesProvider,
   useEditorServices,
   type EditorDestination,
@@ -53,7 +54,6 @@ import { sessionStartMessage } from './components/ContinuityLock';
 import { LanguagePairFields, useLanguagePair } from './components/LanguagePairFields';
 import { SavedResultsLinks } from './components/SavedResultsLinks';
 import { VersionHistory } from './components/VersionHistory';
-import { desktopBridge } from './desktop-bridge';
 import { qnaShareUrl, remoteShareUrl, to, type LinkTarget } from './destinations';
 import { handOffLiveNotes, readLiveNotes, writeLiveNotes } from './lib/scratchpad';
 import { invalidateManagementData } from './query-client';

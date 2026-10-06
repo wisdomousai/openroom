@@ -1,7 +1,8 @@
 /**
  * The desktop shell's bridge, as the editor uses it: file media, presentation
- * windows and the agent pane. The host reads it from `window.openroomDesktop`
- * and hands it in through `EditorServices.desktop`; null in a browser.
+ * windows and the agent pane. A host reads it with `desktopBridge()` and hands
+ * it in through `EditorServices.desktop`; null in a browser. Editor components
+ * reach it only through `EditorServices.desktop`.
  */
 import type { OpenRoomFileResourceV1 } from '@openroom/schema';
 
@@ -264,4 +265,15 @@ export interface OpenRoomDesktopBridge {
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   onAgentEvent(listener: (event: DesktopAgentEvent) => void): () => void;
   onAgentLoginOutput(listener: (event: { host: DesktopAgentHostId; line: string }) => void): () => void;
+}
+
+declare global {
+  interface Window {
+    openroomDesktop?: OpenRoomDesktopBridge;
+  }
+}
+
+/** The bridge the desktop preload exposes; null in a browser. For hosts, not editor components. */
+export function desktopBridge(): OpenRoomDesktopBridge | null {
+  return window.openroomDesktop ?? null;
 }

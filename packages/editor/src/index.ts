@@ -6,6 +6,7 @@
  */
 export * from './services';
 export type * from './desktop-bridge';
+export { desktopBridge } from './desktop-bridge';
 export type * from './types';
 
 export { blankDeck, downloadDeckFile, questionReadinessMessage, renameDeck } from './deck-document';
@@ -23,6 +24,7 @@ export { LiveHost } from './live/LiveHost';
 export { PresenterRemote } from './live/PresenterRemote';
 export { QnaDesk } from './live/QnaDesk';
 export { useStageMirror } from './live/useStageMirror';
+export { LiveServerCard, LiveServerDialog, liveServerBridge } from './live/LiveServer';
 export { shouldHandOffNotes, type ProbeState } from './live/session-exit';
 
 export { AgentPane } from './agent/AgentPane';

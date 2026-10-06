@@ -1,4 +1,4 @@
-import { PresentStage, presentableSteps, useStageMirror, type DesktopPresentationState } from '@openroom/editor';
+import { desktopBridge, PresentStage, presentableSteps, useStageMirror, type DesktopPresentationState } from '@openroom/editor';
 import { StageView } from '@openroom/stage-src/StageView';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -7,8 +7,6 @@ import {
   resolveRevealOrder,
   type Outline,
 } from '@openroom/schema';
-
-import { desktopBridge } from '../desktop-bridge';
 
 function parseState(state: DesktopPresentationState | null): { outline: Outline; state: DesktopPresentationState } | null {
   if (state === null) return null;
