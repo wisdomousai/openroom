@@ -52,6 +52,10 @@ flowchart LR
   DO <-->|WebSocket / polling| B
 ```
 
+The full walkthrough, with diagrams of the agent sidebar, the MCP backends and a
+traced "add a picture of a cat" request, is in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 Start with `docs/AGENT.md` (the agent contract), `docs/CONTRACTS.md` (shared types
 and protocols), `docs/DESKTOP.md` (the native client and `.openroom` files) and
 `docs/TUTORING.md` (the tutoring workflow). The end-user manual is served at
