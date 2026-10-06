@@ -68,7 +68,9 @@ and protocols), `docs/DESKTOP.md` (the native client and `.openroom` files) and
 | `apps/worker` | Worker router + `SessionDO` Durable Object + static asset serving |
 | `apps/participant` | Participant join app (`join.openroom.app`, also `/join/` locally) |
 | `apps/stage` | Projector stage view (`/stage/`) — code + QR, animated live results |
-| `apps/host` | Host console (`/host/`) — deck editor, tutor workspace and live controls |
+| `packages/editor` | Deck editor, presenter and live console; reaches its host only through the `EditorServices` port |
+| `packages/ui` | Shared shadcn primitives, toasts, theme provider and design tokens |
+| `apps/host` | Host client (`/host/`) — workspace shell, Library, settings and the `EditorServices` adapters around `packages/editor` |
 | `apps/desktop` | Electron client — offline `.openroom` files, recovery, OS integration and external-display presentation |
 | `apps/site` | Marketing/docs site (Astro) — landing (`/`), docs (`/docs/`), `llms.txt`, sitemap |
 | `examples/` | Example decks (validated in CI) |

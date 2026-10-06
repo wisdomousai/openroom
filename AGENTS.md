@@ -35,6 +35,10 @@ When adding a surface, ask: does this help open a deck, share a space, or teach 
     locally (workdir copies are deleted with the conversation) and does not upload them.
 - Browser, CLI, MCP, and direct API are peer clients of the same application services. The only browser-only actions are interactive authentication and final confirmation of permanent deletion.
 - Normal deletion is recoverable trash. Permanent deletion requires a short-lived browser confirmation and cannot be completed solely through CLI, MCP, or an API token.
+- The deck editor, presenter and live console live in `packages/editor` (`@openroom/editor`); `apps/host` is the workspace shell around them (router, query cache, API client, Library, settings). The editor reaches the host only through its port, `EditorServices` in `packages/editor/src/services.tsx`:
+  - The editor never imports from `apps/`, and never uses `@tanstack/react-query` or `@tanstack/react-router`. Data reads arrive as host-supplied hooks; links and navigation arrive as `EditorDestination`s the host resolves to routes. `packages/editor/src/boundary.test.ts` enforces this.
+  - Workspace features (draft saves, learner work, brand kits, version history, language pair, live scratchpad, saved results) are optional `slots`. An absent slot means its affordance is not rendered — never a disabled control or an error.
+  - The host adapters are `CloudEditorServices` and `DesktopFileEditorServices` in `apps/host/src/editor-services.tsx`, the one place the editor meets the API client, router, query cache and device storage. Shadcn primitives, `cn`, toasts and the theme provider live in `packages/ui`.
 
 ## Credential boundary invariant
 
@@ -240,10 +244,10 @@ Canonical vocabulary (UI vs API, library vs instance vs live session, nav intent
 
 Short rules that still apply in review:
 
-- The structured authoring surface is the **deck editor**, and the teacher-facing verb is **“Open”** (into the editor) or **“Edit deck”** where a verb is still needed. Code says the same thing: the component is `DeckEditor`, the routed page is `DeckEditorPage`, and the implementation folder is `apps/host/src/pages/deck-edit/**`. `Prep` and *Outline Designer* (`OutlineDesigner`) are **retired** — do not reintroduce them in code, comments, or copy, and do not introduce user-facing Session Builder, Builder, or “Edit outline file”. (The verb *prepare* is unaffected.) The route is `#/decks/:id/edit`, and the domain / API / DB / MCP / CLI noun is `deck`.
+- The structured authoring surface is the **deck editor**, and the teacher-facing verb is **“Open”** (into the editor) or **“Edit deck”** where a verb is still needed. Code says the same thing: the component is `DeckEditor`, the routed page is `DeckEditorPage`, and the implementation folder is `packages/editor/src/deck-edit/**`. `Prep` and *Outline Designer* (`OutlineDesigner`) are **retired** — do not reintroduce them in code, comments, or copy, and do not introduce user-facing Session Builder, Builder, or “Edit outline file”. (The verb *prepare* is unaffected.) The route is `#/decks/:id/edit`, and the domain / API / DB / MCP / CLI noun is `deck`.
 - **The deck editor owns the viewport.** `#/decks/:id/edit` hangs off the router root, not the workspace shell: no sidebar, no max-width, no page padding — the same arrangement the live console uses. This is a deliberate exception, not drift. Editing is **not** a nav item: it is reached from a deck.
 - Workspace chrome follows the space's explicit `experience`: **Tutoring** uses Library · Students · Shared · Trash · Settings; **Classroom** uses Classes in place of Students; **Training** has no student/class section. The space switcher reaches every owned or invited space, grouped by experience. This choice affects navigation and starters only, never document tools, credentials, membership, or entitlements. Students and classes are explicit context shortcuts; Shared lists invited spaces. The Library retains URL-owned folder location and selection, immediate folder children, and search results with their location. Use direct product labels, never first-person narrator copy.
-- **“Card” is retired: the word is `context` in UI and in the domain alike.** A context is four light questions and a paragraph, pinned to that person's folder — not a CRM form and not a nav shelf. A space holds one context; a context may be reused across spaces. `Card`/`CardContent` from `components/ui/card` stay the shadcn layout primitive and never mean a context.
+- **“Card” is retired: the word is `context` in UI and in the domain alike.** A context is four light questions and a paragraph, pinned to that person's folder — not a CRM form and not a nav shelf. A space holds one context; a context may be reused across spaces. `Card`/`CardContent` from `@openroom/ui` stay the shadcn layout primitive and never mean a context.
 - **Decks and sessions have no collection route**: decks live in folders; a live session is only ever **Live now** in the Library. `routing.ts` must not be able to *emit* a link to a deleted collection, and an unknown hash lands on the Library rather than 404ing.
 - The noun is `deck` in UI, domain, API, DB, MCP and CLI alike; browser hashes are `#/decks/new`, `#/decks/:id`, and `#/decks/:id/edit`.
 - A **session** is an **occurrence**, not a nav peer and not a folder row. There is still **no collection route** for decks, sessions, or Notes (`#/sessions` is not a screen), and **a session exists only because a deck was started** — there is no “New session” and no “Schedule session” form, route, or hash. Notes remain reachable from the Library's timeless write-notes prompt, from a quiet Notes group on the person's folder, and from learner links. Instance routes stay for CRUD, deep links, and agents; `PATCH /api/sessions/{id}` (title, context, folder) remains for agents. Type-filter chips (Decks / Sessions / Notes / …) are deleted.
@@ -265,7 +269,7 @@ plugin installed gets them and nothing else.
 - A tool changed in `packages/mcp/src/tools.ts` propagates to
   `server-card.ts` on its own. These name tools by hand and must be updated
   with it: `docs/AGENT.md`, `docs/CONTRACTS.md`, `docs/PRD.md` (API-08),
-  `plugin/README.md`, and `apps/host/src/pages/deck-edit/agent-commands.ts`
+  `plugin/README.md`, and `packages/editor/src/deck-edit/agent-commands.ts`
   (`MCP_TOOLS`, the save-path subset rendered in the deck editor).
 
 This rule exists because the same list rotted twice: the `deck_*` tools

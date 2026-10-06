@@ -482,7 +482,7 @@ assets.upload(spaceId, bytes, { name, contentType, alt? })
 assets.list(spaceId, query?)
 ```
 
-`DesignConflictError.latestVersion` carries what the server actually holds, which is what a re-base needs; `FetchLike` accepts `Uint8Array | ArrayBuffer` bodies so `assets.upload` can post the file bytes themselves. The same operations reach the CLI as `openroom deck …` and MCP as `deck_get` / `deck_save_version` / `deck_draft_put` / `deck_start` — see `docs/AGENT.md` for the happy path. The deck editor's footer echoes those exact CLI lines and tool names from one shared definition, `apps/host/src/pages/deck-edit/agent-commands.ts`, so the UI cannot drift from the real commands.
+`DesignConflictError.latestVersion` carries what the server actually holds, which is what a re-base needs; `FetchLike` accepts `Uint8Array | ArrayBuffer` bodies so `assets.upload` can post the file bytes themselves. The same operations reach the CLI as `openroom deck …` and MCP as `deck_get` / `deck_save_version` / `deck_draft_put` / `deck_start` — see `docs/AGENT.md` for the happy path. The deck editor's footer echoes those exact CLI lines and tool names from one shared definition, `packages/editor/src/deck-edit/agent-commands.ts`, so the UI cannot drift from the real commands.
 
 ## UI theming (`@openroom/ui`)
 

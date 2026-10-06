@@ -1,6 +1,6 @@
 # End-user coverage map
 
-Reviewed against the repository build on 2026-09-20. Paths below are implementation evidence for maintainers; the public chapters carry task instructions. Browser capture covers the sample teaching cycle. Other listed features were checked against current source contracts and existing journeys; this map does not claim a fresh live execution of every integration.
+Reviewed against the repository build on 2026-09-20. Paths below are implementation evidence for maintainers: `deck-edit/`, `properties/`, `outline-edit/`, `presenter/` and `live/` paths are under `packages/editor/src/`, other bare paths under `apps/host/src/`; the public chapters carry task instructions. Browser capture covers the sample teaching cycle. Other listed features were checked against current source contracts and existing journeys; this map does not claim a fresh live execution of every integration.
 
 | User surface or capability | Manual chapter(s) | Owning implementation / evidence |
 | --- | --- | --- |
@@ -12,24 +12,24 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Students/groups/classes and context fields | contexts | `pages/tutor/Contexts.tsx`, `components/ContextFieldsEditor.tsx` |
 | Language pair and lookup | contexts, present | space settings, `live/useMeaningLookup.ts`, `dictionary-route.ts` |
 | Complete sample lessons | start, contexts, slides | `pages/LessonExamplesPage.tsx`, `examples/tutoring/` |
-| Full editor, draft saving, conflicts, history | deck-editor | `pages/deck-edit/DeckEditor.tsx`, `useDraftSave.ts`, `pages/DeckEditorPage.tsx` |
+| Full editor, draft saving, conflicts, history | deck-editor | `packages/editor/src/deck-edit/DeckEditor.tsx`, `useDraftSave.ts`, `pages/DeckEditorPage.tsx` |
 | Structured/freeform text, object manipulation | deck-editor, media | `SlideCanvas.tsx`, `FormatToolbar.tsx`, `ObjectFrame.tsx`, `properties/elements.tsx` |
 | Slide types, galleries, workshop sequences | slides | `TemplateGallery.tsx`, `outline-edit/catalog.ts`, `packages/schema/src/slide-templates.ts` |
 | Breakouts and reveal order/playback | slides, present | `BreakoutPickerDialog.tsx`, `properties/reveal.tsx`, `presenter/Presenter.tsx` |
 | All eight question types and scoring policies | questions, participant | `AskDialog.tsx`, `properties/part-extras.tsx`, `packages/schema/src/types.ts`, `schema.ts` |
-| Question type-specific displays and revote | questions, live-session | `LiveHost.tsx`, `LiveRibbon.tsx`, `packages/schema/src/schema.ts` |
+| Question type-specific displays and revote | questions, live-session | `live/LiveHost.tsx`, `live/LiveRibbon.tsx`, `packages/schema/src/schema.ts` |
 | Themes, aspect ratios, masters, margins | design | `properties/deck-design.tsx`, `packages/schema/src/deck-design.ts` |
 | Shared brand kits and lifecycle | design | `pages/BrandKitPages.tsx`, `properties/brand-kit.tsx` |
 | Stock/link/upload/local pictures and media | media | `PictureDialog.tsx`, `properties/picture.tsx`, `apps/worker/src/assets.ts` |
 | Audio, modes, transcripts, playback | media, present, participant | `properties/audio.tsx`, shared listening UI and SDK commands |
 | HTML/SVG, Markdown, web embedding, PDF extraction | media | `HtmlElementDialog.tsx`, `MarkdownElementDialog.tsx`, `IframeElementDialog.tsx`, `PdfElementDialog.tsx` |
 | Presenter before participation and starting in place | present, start | `presenter/Presenter.tsx`, `presenter/usePresentationKeys.ts` |
-| Audience Stage, external displays, blanking | present | `live/HostHeader.tsx`, `LiveRibbon.tsx`, Desktop audience bridge |
-| Text annotations, pen, dictionary meanings | present, participant | `LiveHost.tsx`, `live/useMeaningLookup.ts`, participant live views |
-| Live slide editing and insertion | present | `LiveHost.tsx`, `LiveRibbon.tsx`, `live/` insertion controls |
-| Open/close/reveal/reopen, countdown, freeze, end | live-session | `useHostSession.ts`, `LiveHost.tsx`, domain command handlers |
+| Audience Stage, external displays, blanking | present | `live/HostHeader.tsx`, `live/LiveRibbon.tsx`, Desktop audience bridge |
+| Text annotations, pen, dictionary meanings | present, participant | `live/LiveHost.tsx`, `live/useMeaningLookup.ts`, participant live views |
+| Live slide editing and insertion | present | `live/LiveHost.tsx`, `live/LiveRibbon.tsx`, `live/` insertion controls |
+| Open/close/reveal/reopen, countdown, freeze, end | live-session | `live/useHostSession.ts`, `live/LiveHost.tsx`, domain command handlers |
 | Connection fallback, remote, rejoin | live-session, participant, troubleshooting | `Remote.tsx`, participant `session.ts`, SDK connection state |
-| Session-wide Q&A, moderation, spotlight | facilitation | `QnaDesk.tsx`, `live/SessionAside.tsx` |
+| Session-wide Q&A, moderation, spotlight | facilitation | `live/QnaDesk.tsx`, `live/SessionAside.tsx` |
 | Group membership, spokesperson, shared responses | facilitation, questions, participant | `live/GroupsPanel.tsx`, domain groups |
 | Co-facilitation, handoff, recovery, revocation | facilitation, sharing | host facilitator strip, `apps/worker/src/index.ts`, entitlement checks |
 | Anonymous, pseudonymous, identified, roster identity | live-session, participant, cli | schema defaults, participant `session.ts`, Worker `index.ts`, `roster.ts` |

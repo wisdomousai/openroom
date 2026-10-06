@@ -44,7 +44,7 @@ One word spans UI, API, MCP, CLI and DB: **context**.
   **Students**.
 - **Domain/API/MCP/CLI/DB:** `context` / `contexts` / `contextId`.
 - **Browser hashes:** `#/tutor/contexts*`.
-- `Card` / `CardContent` from `components/ui/card` are the shadcn layout
+- `Card` / `CardContent` from `@openroom/ui` are the shadcn layout
   primitive and keep their names. Do not use them to mean a context.
 
 A space holds **one** context. A context may be reused across spaces — the same
@@ -170,7 +170,7 @@ version stamps outside the History tab, admin tables, and live counts.
 | --- | --- |
 | **Teacher-facing surface** | **Deck editor** |
 | **Teacher-facing verb** | **“Edit deck”** |
-| **Code names** (code and comments) | `DeckEditor` (component), `DeckEditorPage` (routed page), `apps/host/src/pages/deck-edit/**` |
+| **Code names** (code and comments) | `DeckEditor` (component), `DeckEditorPage` (routed page), `packages/editor/src/deck-edit/**` |
 | **Route** | `#/decks/:id/edit` |
 | **Domain / API / DB / MCP / CLI noun** | `deck` |
 
