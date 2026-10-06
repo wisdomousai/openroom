@@ -36,7 +36,8 @@ jobs:
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
       # The core (packages, relay, stage, participant, office, Desktop) builds
-      # from a checkout that has no apps/workspace or apps/workspace-worker.
+      # from a checkout that has no apps/workspace or apps/workspace-worker,
+      # and Desktop's core renderer (file and presentation windows) is in it.
       - name: Build the core without the workspace apps
         run: |
           core="$RUNNER_TEMP/openroom-core"
@@ -46,6 +47,8 @@ jobs:
           cd "$core"
           bun install
           bun run build:core
+          test -f apps/desktop/renderer/core/index.html || { echo 'build:core produced no Desktop core renderer (apps/desktop/renderer/core/index.html).' >&2; exit 1; }
+          test ! -e apps/desktop/renderer/host || { echo 'A core-only build must not contain the workspace bundle (apps/desktop/renderer/host).' >&2; exit 1; }
       - name: Check and build every workspace
         run: bun run verify
       - name: Restore synthetic D1 and R2 data into an isolated installation
