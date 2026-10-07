@@ -260,7 +260,7 @@ For `billing-provider-auth`, verify the environment and API permissions, includi
 customer/checkout reference in Paddle. Do not clear an attempted-write marker,
 create a replacement transaction or grant features on the strength of an email,
 redirect or screenshot. If provider absence remains inconclusive, retain the
-pending attempt and resolve it with Paddle support. The [support runbook](BILLING-SUPPORT.md)
+pending attempt and resolve it with Paddle support. The [support runbook](../apps/workspace-worker/docs/BILLING-SUPPORT.md)
 provides the exact read-only investigation query and a conditional repair tool for
 a provider-confirmed uncommitted create. It cannot turn an empty provider search
 into permission to retry. Its generated SQL and subsequent normal checkout are

@@ -9,7 +9,6 @@
     "verify:browser": "node scripts/verify-browser.mjs",
     "verify:capacity": "node scripts/verify-browser.mjs --capacity",
     "verify:recovery": "node apps/workspace-worker/scripts/verify-recovery.mjs",
-    "billing:retry": "bun scripts/billing-retry.ts",
     "dev": "portless run",
     "dev:worker": "node scripts/dev-workers.mjs",
     "dev:relay": "bun run --filter openroom-relay dev",
