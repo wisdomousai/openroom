@@ -147,7 +147,7 @@ const CONTINUITY_REQUIRED = 'continuity-required';
 
 /** Start/launch failures: a readable line for the identified-session 403. */
 export function sessionStartMessage(cause: unknown, fallback: string): string {
-  if (cause instanceof ApiError && cause.message === CONTINUITY_REQUIRED) return 'Identified sessions are part of a paid plan.';
+  if (cause instanceof ApiError && cause.message === CONTINUITY_REQUIRED) return 'Identified sessions aren’t available in this space.';
   return cause instanceof Error ? cause.message : fallback;
 }
 
