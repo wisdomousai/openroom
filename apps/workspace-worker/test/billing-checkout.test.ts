@@ -1,7 +1,6 @@
 import { env } from 'cloudflare:test';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker from '../src/index';
-import { sha256Hex } from '../src/api-tokens';
 import { signCookieValue } from '../src/cookies.js';
 import { billingRetrySql, prepareBillingRetry } from '../src/billing/support-retry';
 
@@ -204,16 +203,6 @@ describe('account-owned Paddle checkout', () => {
     const a = await fixture(), p = provider(a.email); p.oneTime();
     expect((await a.call('/checkout', 'POST', { priceId: PRICE })).status).toBe(422);
     expect(p.calls.some((call) => call.url.pathname === '/transactions')).toBe(false);
-  });
-  it('uses the same account-owned billing service through MCP with a personal token', async () => {
-    const a = await fixture(), p = provider(a.email), token = `orpat_${crypto.randomUUID()}_${crypto.randomUUID()}`;
-    await env.DB.prepare('INSERT INTO api_tokens (id,user_id,name,token_hash,token_prefix,created_at) VALUES (?1,?2,?3,?4,?5,?6)').bind(crypto.randomUUID(), a.id, 'Billing test', await sha256Hex(token), token.slice(0, 12), Date.now()).run();
-    const response = await worker.fetch(new Request('https://openroom.test/api/mcp', { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'openroom_api', arguments: { method: 'POST', path: '/api/my/billing/checkout', body: { priceId: PRICE } } } }) }), config);
-    expect(response.status).toBe(200);
-    const result = await response.json() as { result: { isError?: boolean; content: { text: string }[] } };
-    expect(result.result.isError, result.result.content[0]!.text).not.toBe(true);
-    expect(result.result.content[0]!.text).toContain(`/billing/pay?_ptxn=${p.transactionId}`);
-    expect((await env.DB.prepare('SELECT customer_id FROM billing_customers WHERE user_id=?1').bind(a.id).first<{ customer_id: string }>())!.customer_id).toBe(p.customerId);
   });
   it('prevents a second subscription and returns provider-sourced prices', async () => {
     const a = await fixture(), p = provider(a.email); p.subscribe();

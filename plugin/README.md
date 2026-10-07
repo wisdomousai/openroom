@@ -13,7 +13,7 @@ An Agent Plugins package and Codex / ChatGPT plugin for OpenRoom. Compatible cli
   MCP-standard OAuth (discovery + dynamic client registration are served by
   the worker) or a personal API token as the bearer. Agents can also discover
   the endpoint via `https://openroom.app/.well-known/mcp/server-card.json`.
-  Account billing and retained archives use the same owner-paid access and current
+  Retained archives use the same owner access and current
   membership checks as the browser; the server's tool descriptions carry their contract.
 - **`skills/prepare-a-tutoring-outline/`** — keeps original school documents in
   this agent, produces a typed outline, saves it through the shared

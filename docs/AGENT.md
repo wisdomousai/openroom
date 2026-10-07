@@ -197,7 +197,7 @@ Twelve focused tools:
 | `deck_save_version` | `{ deckId, content, baseVersion }` | `{ version }`, or schema errors, or a `version-conflict` with the server's `latestVersion` |
 | `deck_draft_put` | `{ deckId, source, baseVersion }` | `{ savedAt }` — unvalidated working text, never delivered |
 | `deck_start` | `{ deckId, version?, title?, start? }` | `{ sessionId, sessionCode, code, joinUrl, hostToken, stageToken, deckId }` |
-| `openroom_api` | `{ method, path, body? }` | user-scoped authoring, billing and retained-archive operations through the browser's application services; the tool description is the path contract |
+| `openroom_api` | `{ method, path, body? }` | user-scoped authoring and retained-archive operations through the browser's application services; the tool description is the path contract |
 | `session_recap` | `{ code, selection? }` | selects a workshop recap for facilitator review and download |
 | `session_facilitate` | `{ code }` | joins a shared live session without taking presentation control |
 | `session_command` | `{ code, command }` | applies a host command within the caller’s presenter or moderation authority, including outline navigation and approved insertion |

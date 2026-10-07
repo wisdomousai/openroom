@@ -20,7 +20,7 @@
 
 /** Path only (no origin). Query strings are allowed. */
 export const TUTORING_API_PATH_PATTERN =
-  /^\/api\/(?:my\/(?:billing(?:\/(?:plans|checkout|portal|sync))?|archives(?:\/[^/?]+(?:\/document)?)?|spaces(?:\/[^/?]+\/(?:members(?:\/[^/?]+)?|invites))?|invites(?:\/[^/?]+(?:\/accept)?)?)|tutoring\/(?:contexts(?:\/[^/?]+(?:\/(?:restore|permanent-deletion|learners|returned|work(?:\/[^/?]+(?:\/(?:feedback|audio))?)?|links(?:\/[^/?]+)?))?)?|spaces\/[^/?]+\/(?:assets|brand-kits)|brand-kits\/[^/?]+(?:\/restore)?|assets\/[^/?]+)|presentations\/start|decks(?:\/[^/?]+(?:\/(?:versions|draft|start|restore|permanent-deletion))?)?|sessions(?:\/[^/?]+(?:\/(?:record|launch|resume|restore|permanent-deletion))?)?)(?:\?[^#]*)?$/;
+  /^\/api\/(?:my\/(?:archives(?:\/[^/?]+(?:\/document)?)?|spaces(?:\/[^/?]+\/(?:members(?:\/[^/?]+)?|invites))?|invites(?:\/[^/?]+(?:\/accept)?)?)|tutoring\/(?:contexts(?:\/[^/?]+(?:\/(?:restore|permanent-deletion|learners|returned|work(?:\/[^/?]+(?:\/(?:feedback|audio))?)?|links(?:\/[^/?]+)?))?)?|spaces\/[^/?]+\/(?:assets|brand-kits)|brand-kits\/[^/?]+(?:\/restore)?|assets\/[^/?]+)|presentations\/start|decks(?:\/[^/?]+(?:\/(?:versions|draft|start|restore|permanent-deletion))?)?|sessions(?:\/[^/?]+(?:\/(?:record|launch|resume|restore|permanent-deletion))?)?)(?:\?[^#]*)?$/;
 
 export function isTutoringApiPath(path: string): boolean {
   return TUTORING_API_PATH_PATTERN.test(path);
