@@ -104,12 +104,19 @@ Worker variables or secrets. Local development (`.dev.vars` with an empty
 
 ## Website pageviews
 
-`UMAMI_WEBSITE_ID` is optional. The hosted site sets it in
-`apps/workspace-worker/wrangler.jsonc` to the Umami Cloud website id. Public-site
-HTML (the landing page, the manual, privacy, and terms) then loads
+`UMAMI_WEBSITE_ID` is optional and is not in the repository. A deployment that
+counts pageviews sets it on the control plane as a Worker secret, which survives
+later deploys:
+
+```sh
+cd apps/workspace-worker
+bun x --no-install wrangler secret put UMAMI_WEBSITE_ID
+```
+
+Public-site HTML (the landing page, the manual, privacy, and terms) then loads
 `https://cloud.umami.is/script.js` with that id. The workspace at `/host`, the
-join app, and the stage never load the script. Clear the variable for a
-deployment that should not track, including local `.dev.vars`.
+join app, and the stage never load the script. Without the secret, including in
+local `.dev.vars`, no page loads it.
 
 ## Manual deployment and verification
 
@@ -132,6 +139,13 @@ own `SessionDO` namespace on the first deploy after the move; the relay's `v1`
 creates the new one. Sessions running at that moment end: their state is not moved.
 Ended-session archives in R2 and durable session rows in D1 are unaffected. Deploy
 outside teaching hours.
+
+Cloudflare refuses `v3` while the same upload has a binding with
+`class_name: "SessionDO"`, even one that names `script_name: "openroom-relay"`
+(error 10061). The move therefore takes two control-plane deploys: one from a copy
+of `wrangler.jsonc` without the `durable_objects` block, which applies `v3`, then
+the normal config, which adds `SESSIONS` back against the relay. Launches fail in
+between. Later deploys skip `v3` and need no special step.
 
 ## Failures and recovery
 
