@@ -218,11 +218,14 @@ a {
   flex-direction: column;
   gap: 1rem;
   background: var(--card);
-  /* Definite height so the slide plate can letterbox with container queries. */
+  /* Definite height so the slide plate can letterbox with container queries.
+     A question with results is taller than a phone, so the page scrolls
+     inside that height instead of clipping. */
   height: 100dvh;
   min-height: 100dvh;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 .topbar {
@@ -1353,7 +1356,8 @@ a {
   flex-direction: column;
   gap: 0.75rem;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   /* Full width: the slide owns the measure, not a phone column. */
   max-width: none;
 }
