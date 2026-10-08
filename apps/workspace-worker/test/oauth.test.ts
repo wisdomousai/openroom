@@ -112,8 +112,8 @@ describe('google oidc', () => {
       configured(),
       exchanger(fakeIdToken(claimsFor())),
     );
-    expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('/host/');
+    expect(res.status).toBe(200);
+    expect(await res.clone().text()).toContain('content="0;url=/host/"');
 
     const cookies = res.headers.getSetCookie();
     const session = cookies.find((c) => c.startsWith(`${SESSION_COOKIE}=`)) as string;
@@ -139,7 +139,7 @@ describe('google oidc', () => {
       configured(),
       exchanger(fakeIdToken(claimsFor({ name: 'Renamed' }))),
     );
-    expect(res2.status).toBe(302);
+    expect(res2.status).toBe(200);
     const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM users WHERE google_sub = ?1')
       .bind('google-sub-1')
       .first<{ n: number }>();
@@ -154,8 +154,8 @@ describe('google oidc', () => {
       configured(),
       exchanger(fakeIdToken(claimsFor({ sub: `return-${crypto.randomUUID()}` }))),
     );
-    expect(response.status).toBe(302);
-    expect(response.headers.get('location')).toBe(returnTo);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain(`content="0;url=${returnTo}"`);
 
     const external = await begin('https://evil.example/steal');
     const externalResponse = await googleCallbackRoute(
@@ -163,7 +163,7 @@ describe('google oidc', () => {
       configured(),
       exchanger(fakeIdToken(claimsFor({ sub: `safe-${crypto.randomUUID()}` }))),
     );
-    expect(externalResponse.headers.get('location')).toBe('/host/');
+    expect(await externalResponse.text()).toContain('content="0;url=/host/"');
   });
 
   it('returns to the MCP consent URL after Google login', async () => {
@@ -175,8 +175,8 @@ describe('google oidc', () => {
       configured(),
       exchanger(fakeIdToken(claimsFor({ sub: `mcp-${crypto.randomUUID()}` }))),
     );
-    expect(response.status).toBe(302);
-    expect(response.headers.get('location')).toBe(returnTo);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('content="0;url=/api/mcp/authorize?response_type=code&amp;client_id=x&amp;redirect_uri=http%3A%2F%2F127.0.0.1%3A9%2Fcallback"');
 
     const hostTrap = await begin('/host/');
     const hostResponse = await googleCallbackRoute(
@@ -184,7 +184,8 @@ describe('google oidc', () => {
       configured(),
       exchanger(fakeIdToken(claimsFor({ sub: `host-${crypto.randomUUID()}` }))),
     );
-    expect(hostResponse.headers.get('location')).toBe('/host/');
+    expect(hostResponse.status).toBe(200);
+    expect(await hostResponse.text()).toContain('content="0;url=/host/"');
   });
 
   it('rejects a mismatched, missing or expired state', async () => {

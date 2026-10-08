@@ -364,6 +364,43 @@ export function desktopHandoffUrl(ticket: string): string {
   return `openroom://auth/desktop?ticket=${encodeURIComponent(ticket)}`;
 }
 
+function escapeAttr(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
+}
+
+/**
+ * Finish browser sign-in with a document, not a 302.
+ *
+ * The callback is a top-level navigation from accounts.google.com. Safari
+ * drops a Set-Cookie attached to that cross-site redirect, so the session
+ * row exists and the next page is still signed out. A 200 document commits
+ * the cookie, then refreshes to the same-origin destination.
+ */
+function browserHandoffPage(location: string, sessionCookie: string, request: Request): Response {
+  const href = escapeAttr(location);
+  const html = `<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Signing in…</title>
+<meta http-equiv="refresh" content="0;url=${href}">
+<body>
+<p>Signing in…</p>
+<p><a href="${href}">Continue</a></p>
+</body>
+</html>
+`;
+  const headers = new Headers({
+    'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'no-store',
+  });
+  headers.append(
+    'set-cookie',
+    cookie(SESSION_COOKIE, sessionCookie, Math.floor(SESSION_TTL_MS / 1000), { request }),
+  );
+  headers.append('set-cookie', clearCookie(OAUTH_COOKIE, { path: '/api/auth', request }));
+  return new Response(html, { status: 200, headers });
+}
+
 function desktopHandoffPage(ticket: string, sessionCookie: string, request: Request): Response {
   const href = desktopHandoffUrl(ticket);
   const html = `<!doctype html>
@@ -604,16 +641,7 @@ export async function googleCallbackRoute(
     return desktopHandoffPage(ticket, sessionCookie, request);
   }
 
-  const headers = new Headers({
-    location: safeAuthReturnTo(parsed.returnTo ?? null) ?? '/host/',
-    'cache-control': 'no-store',
-  });
-  headers.append(
-    'set-cookie',
-    cookie(SESSION_COOKIE, sessionCookie, Math.floor(SESSION_TTL_MS / 1000), { request }),
-  );
-  headers.append('set-cookie', clearCookie(OAUTH_COOKIE, { path: '/api/auth', request }));
-  return new Response(null, { status: 302, headers });
+  return browserHandoffPage(safeAuthReturnTo(parsed.returnTo ?? null) ?? '/host/', sessionCookie, request);
 }
 
 /**
