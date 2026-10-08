@@ -56,8 +56,8 @@ describe('agent chat transitions', () => {
   });
 
   it('finishTurn failure sets the error and drops an empty pending message', () => {
-    const state = finishTurn(started(), { ok: false, error: 'Sign in to Claude first.', conversationId: null });
-    expect(state.error).toBe('Sign in to Claude first.');
+    const state = finishTurn(started(), { ok: false, error: 'Add an Anthropic API key first.', conversationId: null });
+    expect(state.error).toBe('Add an Anthropic API key first.');
     expect(state.messages).toHaveLength(1);
     expect(state.messages[0]?.role).toBe('tutor');
   });

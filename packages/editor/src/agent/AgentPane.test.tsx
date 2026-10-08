@@ -166,9 +166,9 @@ describe('AgentPane transcript', () => {
   });
 
   it('surfaces the turn error once, under the composer', () => {
-    agentChatStore.setState(() => ({ ...EMPTY_AGENT_CHAT, error: 'Sign in to Claude first.' }));
+    agentChatStore.setState(() => ({ ...EMPTY_AGENT_CHAT, error: 'Add an Anthropic API key first.' }));
     const html = render();
-    expect(html.split('Sign in to Claude first.')).toHaveLength(2);
+    expect(html.split('Add an Anthropic API key first.')).toHaveLength(2);
   });
 
   it('renders a pending question as a form and hides the tool name', () => {

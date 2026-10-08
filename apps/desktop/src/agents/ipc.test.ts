@@ -37,12 +37,12 @@ function hostStatus(overrides: Partial<AgentHostStatus> = {}): AgentHostStatus {
   return {
     id: 'claude',
     name: 'Claude',
-    installUrl: 'https://claude.ai/download',
+    installUrl: '',
     experimental: false,
-    binary: 'claude',
+    binary: '/bundled/claude',
     installed: true,
     signedIn: true,
-    loginAvailable: true,
+    loginAvailable: false,
     runtimeVersion: null,
     detail: null,
     ...overrides,
@@ -202,7 +202,7 @@ describe('agent IPC', () => {
   it('rejects a run when the host is not signed in', async () => {
     const { handlers } = register({ hosts: [hostStatus({ signedIn: false })] });
     const { event } = fakeSenderEvent();
-    await expect(handlers.get(AGENT_CHANNELS.run)?.(event, runRequest())).rejects.toThrow('Sign in to Claude first.');
+    await expect(handlers.get(AGENT_CHANNELS.run)?.(event, runRequest())).rejects.toThrow('Add an Anthropic API key first.');
   });
 
   it('loads and selects chat history using the deck identity from main', async () => {

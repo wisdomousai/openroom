@@ -17,9 +17,9 @@ class FakeChild extends EventEmitter {
 
 describe('login URL handling', () => {
   it('opens OAuth URLs from CLI output', () => {
-    const line = 'Visit https://claude.ai/login?code=abc to continue.';
+    const line = 'Visit https://auth.openai.com/oauth/authorize?code=abc to continue.';
     const url = firstHttpUrl(line);
-    expect(url).toBe('https://claude.ai/login?code=abc');
+    expect(url).toBe('https://auth.openai.com/oauth/authorize?code=abc');
     expect(shouldOpenLoginUrl(line, url ?? '')).toBe(true);
   });
 });
@@ -31,8 +31,8 @@ describe('startCliLogin', () => {
     const openUrl = vi.fn();
     const done = new Promise<void>((resolve, reject) => {
       startCliLogin({
-        bin: 'claude',
-        args: ['auth', 'login'],
+        bin: 'codex',
+        args: ['login'],
         signedIn: () => signedIn,
         openUrl,
         missingBinaryMessage: 'missing',
@@ -43,10 +43,10 @@ describe('startCliLogin', () => {
         onError: reject,
       });
     });
-    child.stdout.write('Open https://claude.ai/login\n');
+    child.stdout.write('Open https://auth.openai.com/oauth/authorize\n');
     signedIn = true;
     await done;
-    expect(openUrl).toHaveBeenCalledWith('https://claude.ai/login');
+    expect(openUrl).toHaveBeenCalledWith('https://auth.openai.com/oauth/authorize');
   });
 
   it('rejects when the process exits without credentials', async () => {
