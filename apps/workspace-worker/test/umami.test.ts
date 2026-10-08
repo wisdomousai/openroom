@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { countsPageviews, umamiWebsiteId, withUmami } from '../src/umami';
 
-const WEBSITE_ID = '59195e56-d74f-43af-b306-ff48475732fb';
+const WEBSITE_ID = '00000000-0000-4000-8000-000000000000';
 const CSP =
   "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: https://cloudflareinsights.com; base-uri 'none'";
 
