@@ -236,6 +236,14 @@ describe('openroom deck', () => {
     expect(await run(['deck', 'draft', 'get', 'd1', ...AUTH], { io: output.io, fetchImpl: got.fetchImpl })).toBe(0);
     expect(output.out.join('\n')).toContain('version: 1');
 
+    const zero = router(() => ({
+      status: 200,
+      body: { deckId: 'd1', source: 'version: 1\n', baseVersion: 3, updatedAt: null, updatedBy: null },
+    }));
+    const empty = capture();
+    expect(await run(['deck', 'draft', 'get', 'd1', ...AUTH, '--json'], { io: empty.io, fetchImpl: zero.fetchImpl })).toBe(0);
+    expect(JSON.parse(empty.out[0] as string)).toMatchObject({ ok: true, deckId: 'd1', baseVersion: 3, updatedAt: null });
+
     const dropped = router(() => ({ status: 204, body: undefined }));
     const second = capture();
     expect(

@@ -1,18 +1,15 @@
 import { parseOutline, stringifyOpenRoomFile, type Outline, type OpenRoomFileV1 } from '@openroom/schema';
 import { addDeckVersion, getDeck, getDeckDraft, getDeckFileLink, linkDeckFile } from '../api';
-import { blankDeck, downloadDeckFile, renameDeck } from '@openroom/editor';
+import { downloadDeckFile, renameDeck } from '@openroom/editor';
 import { portableDeck } from './portable-deck';
 
 /** Read acknowledged draft content; a failed read must never silently export an older deck. */
 export async function currentCloudDocument(deckId: string) {
   const [detail, draft] = await Promise.all([getDeck(deckId), getDeckDraft(deckId)]);
-  let outline: Outline = detail.content ?? blankDeck(detail.deck.title);
-  if (draft !== null) {
-    if (draft.baseVersion !== detail.deck.currentVersion) throw new Error('This deck has conflicting edits. Open it to resolve them first.');
-    const parsed = parseOutline(draft.source, 'yaml');
-    if (!parsed.ok) throw new Error('Open the deck and repair its content before continuing.');
-    outline = parsed.outline;
-  }
+  if (draft.baseVersion !== detail.deck.currentVersion) throw new Error('This deck has conflicting edits. Open it to resolve them first.');
+  const parsed = parseOutline(draft.source, 'yaml');
+  if (!parsed.ok) throw new Error('Open the deck and repair its content before continuing.');
+  const outline: Outline = parsed.outline;
   return { detail, outline };
 }
 

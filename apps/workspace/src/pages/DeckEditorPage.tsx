@@ -1,6 +1,5 @@
 import {
   AgentPane,
-  blankDeck,
   DeckEditor,
   DeckEditorTopBar,
   desktopBridge,
@@ -14,8 +13,7 @@ import {
 } from '@openroom/editor';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { parseOutline, slideEmbedCode } from '@openroom/schema';
-import { stringify } from 'yaml';
+import { blankDeck, deckSource, parseOutline, slideEmbedCode } from '@openroom/schema';
 import { invalidateManagementData } from '../query-client';
 
 import { addDeckVersion, getDeck, getDeckDraft, getDeckFileLink, putDeckDraft } from '../api';
@@ -80,14 +78,11 @@ export function DeckEditorPage({
     setDocumentLoaded(true);
     const { detail, draft } = data;
     setTitle(detail.deck.title);
-    setBaseVersion(draft?.baseVersion ?? detail.deck.currentVersion);
-    setDraftConflict(draft !== null && draft.baseVersion !== detail.deck.currentVersion);
+    setBaseVersion(draft.baseVersion);
     // Preserve the draft even when its base is stale; resolve that conflict explicitly.
-    setSource(
-      draft !== null
-        ? draft.source
-        : stringify(detail.content ?? blankDeck(detail.deck.title), { lineWidth: 100 }),
-    );
+    // With nothing unsaved the server sends the draft zero, built from the current version.
+    setDraftConflict(draft.baseVersion !== detail.deck.currentVersion);
+    setSource(draft.source);
   }, [designQuery.data, documentLoaded]);
 
   const draftSave = useDraftSave({
@@ -141,7 +136,7 @@ export function DeckEditorPage({
     const nextDetail = refreshed.data?.detail;
     if (!nextDetail || nextDetail.deck.currentVersion === baseVersion) return;
     if (draftSave.status.state !== 'idle') return;
-    const nextSource = stringify(nextDetail.content ?? blankDeck(nextDetail.deck.title), { lineWidth: 100 });
+    const nextSource = deckSource(nextDetail.content ?? blankDeck(nextDetail.deck.title));
     setTitle(nextDetail.deck.title);
     setBaseVersion(nextDetail.deck.currentVersion);
     setSource(nextSource);
@@ -196,7 +191,7 @@ export function DeckEditorPage({
   const resolveDraft = async (keep: boolean) => {
     const detail = designQuery.data?.detail;
     if (!detail) return;
-    const text = keep ? source : stringify(detail.content ?? blankDeck(detail.deck.title));
+    const text = keep ? source : deckSource(detail.content ?? blankDeck(detail.deck.title));
     try {
       await putDeckDraft(deckId, text, detail.deck.currentVersion);
       setSource(text);
@@ -226,7 +221,7 @@ export function DeckEditorPage({
       <DeckEditorTopBar
         fileStatus={copying ? <span role="status">Preparing copy…</span> : undefined}
         title={validation?.ok ? validation.outline.meta.title : title}
-        onRename={(name) => { if (validation?.ok) setSource(stringify(renameDeck(validation.outline, name), { lineWidth: 100 })); }}
+        onRename={(name) => { if (validation?.ok) setSource(deckSource(renameDeck(validation.outline, name))); }}
         folderName={detail?.folderName ?? null}
         // The back arrow lands on the deck's own row in the Library.
         libraryTo={{

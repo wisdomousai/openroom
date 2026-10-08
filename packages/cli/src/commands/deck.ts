@@ -224,11 +224,14 @@ async function deckDraft(
 
   if (action === 'get') {
     const { body } = await ctx.client.tutoringRequest('GET', path, ctx.token);
-    const draft = body as { source?: string; baseVersion?: number; updatedAt?: number } | null;
+    const draft = body as { source?: string; baseVersion?: number; updatedAt?: number | null } | null;
     if (typeof draft?.source !== 'string') {
       throw new CliError('draft read returned no source', { code: 'E_BAD_RESPONSE', body });
     }
-    reporter.errorLine(`# draft on version ${String(draft.baseVersion ?? 0)}`);
+    // updatedAt null is the draft zero: the current version, nothing unsaved.
+    reporter.errorLine(draft.updatedAt === null
+      ? `# no unsaved draft; version ${String(draft.baseVersion ?? 0)} as working text`
+      : `# draft on version ${String(draft.baseVersion ?? 0)}`);
     if (!reporter.json) reporter.raw(draft.source.replace(/\n$/, ''));
     reporter.emit({ ok: true, deckId, ...draft });
     return 0;

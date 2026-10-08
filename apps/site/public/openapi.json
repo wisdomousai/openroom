@@ -944,7 +944,7 @@
       "get": {
         "operationId": "getDeckDraft",
         "summary": "Read the rolling working draft (unsaved editor text)",
-        "description": "A draft is working text, not content: the source may not parse. 404 when there is no draft.",
+        "description": "A draft is working text, not content: the source may not parse. With nothing unsaved (the normal state after a save) this answers the draft zero: the current version as editor text, a blank deck before the first version, with updatedAt and updatedBy null.",
         "security": [
           {
             "UserBearer": []
@@ -965,10 +965,10 @@
         ],
         "responses": {
           "200": {
-            "description": "{ source, baseVersion, updatedAt, updatedBy }"
+            "description": "{ source, baseVersion, updatedAt, updatedBy }; updatedAt null for the draft zero"
           },
           "404": {
-            "description": "No draft for this deck"
+            "description": "No such deck, or no access to it"
           }
         }
       },

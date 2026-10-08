@@ -40,12 +40,18 @@ export interface DeckDraftRequest {
   baseVersion: number;
 }
 
+/**
+ * A deck always has a draft. With no saved working text the server answers
+ * the draft zero: the current version as editor text (a blank deck before the
+ * first version), with `updatedAt` and `updatedBy` null.
+ */
 export interface DeckDraftResponse {
   deckId: string;
   source: string;
   baseVersion: number;
-  updatedAt: number;
-  updatedBy: string;
+  /** null for the draft zero: nothing unsaved. */
+  updatedAt: number | null;
+  updatedBy: string | null;
 }
 
 /** Answer to a successful draft PUT — `savedAt` is the server's ack time. */

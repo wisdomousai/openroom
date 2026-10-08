@@ -3,8 +3,10 @@
  * Contexts stay in tutoring.ts. Live sessions are launched from a session.
  */
 import {
+  blankDeck,
   canonicalOutlineJson,
   clipNextNote,
+  deckSource,
   compileRecordHomework,
   validateOutline,
   parseOutline,
@@ -561,7 +563,18 @@ export async function deckDraftRoute(
       updated_at: number;
       updated_by: string;
     }>();
-    if (row === null) return json({ error: 'not-found' }, 404);
+    // Every save clears the draft, so "nothing unsaved" is the normal state.
+    // Answer it with the draft zero: the current version as editor text.
+    if (row === null) {
+      const latest = await latestContent(env, deckId);
+      return json({
+        deckId,
+        source: deckSource(latest?.outline ?? blankDeck(deck.title)),
+        baseVersion: deck.current_version,
+        updatedAt: null,
+        updatedBy: null,
+      });
+    }
     return json({
       deckId,
       source: row.content_yaml,
