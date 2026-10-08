@@ -169,7 +169,9 @@ the active transcript, and New chat archives it in that deck's local chat
 history. Files the agent creates in the workspace remain with the deck on this
 device. Attached school files are copied to a separate temporary directory and
 deleted when the window or app closes; referenced folders are read in place.
-The teacher’s subscription pays, or their own provider key does. Desktop does not
+The teacher’s own accounts pay: Claude runs on their Anthropic API key (Max and Team
+plans include monthly API credits), Codex on their ChatGPT sign-in, the API-key host
+on their provider key. Desktop does not
 wrap the model and does not upload school files. The API-key host reaches OpenAI,
 Google, Anthropic, Mistral, Groq, OpenRouter, or Cloudflare Workers AI with a key
 the teacher stores in the OS keychain; the key goes only to that provider. Codex

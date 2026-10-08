@@ -82,7 +82,7 @@ For a recap, prepare it before the live response purge. Downloaded copies must b
 
 For a token-based agent, confirm the MCP origin, Authorization header, and token validity. For an account connection, repeat consent for the intended account. Check current space membership after reconnecting.
 
-For a Desktop agent, check the installed harness, sign-in, provider key, and provider quota. Inspect edits already completed before retrying a turn.
+For a Desktop agent, check the ChatGPT sign-in, the provider key (Claude uses the Anthropic key), and the provider's quota or credit balance. Inspect edits already completed before retrying a turn.
 
 For the local PowerPoint preview, keep the HTTPS server running and renew its development certificate when expired. Reconnect the task pane after a reload. Use **Show selected slide** if automatic activation is unavailable, and rehearse before the event.
 

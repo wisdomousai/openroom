@@ -1,12 +1,15 @@
 /**
- * BYOK credentials for the API-key host.
+ * Provider API keys for the API-key host and the Claude host.
  *
  * The teacher's key is theirs: it is encrypted with the OS keychain through
  * Electron safeStorage, handed to a provider factory as an explicit `apiKey`
  * option, and sent only to the provider it belongs to. It is never written into
  * `process.env`, never placed in the MCP sidecar's environment, and never sent
- * to OpenRoom. That keeps it invisible to the subscription hosts, whose own
- * sanitizers (see `hosts/claude.ts`) strip API keys so the subscription pays.
+ * to OpenRoom.
+ *
+ * One carve-out: the `anthropic` key is also the Claude host's credential. It
+ * goes into the environment of that turn's Agent SDK subprocess as
+ * ANTHROPIC_API_KEY (`claudeApiKeyEnv` in `hosts/claude.ts`), and nowhere else.
  */
 import { mkdir, rename, writeFile, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';

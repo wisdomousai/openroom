@@ -6,7 +6,7 @@ import { dialog, shell } from 'electron';
 
 import { AGENT_CHANNELS } from './channels.js';
 import { createAskQuestionBroker, type AskQuestionBroker } from './ask-question.js';
-import { createHostDetector, isHostSignedIn, systemAsyncDetectDeps, systemDetectDeps, type HostDetector } from './detect.js';
+import { createHostDetector, isCodexSignedIn, systemAsyncDetectDeps, systemDetectDeps, type HostDetector } from './detect.js';
 import { byokModels } from './byok-models.js';
 import { createClaudeRunner } from './hosts/claude.js';
 import { createCodexRunner } from './hosts/codex.js';
@@ -56,17 +56,11 @@ function lastAgentText(messages: AgentChatMessage[]): string | null {
   return null;
 }
 
-const LOGIN_ARGS: Record<AgentHostId, string[]> = {
-  claude: ['auth', 'login', '--claudeai'],
-  codex: ['login'],
-  // The API-key host signs in by storing a key, not by running a CLI.
-  byok: [],
-};
-
-const LOGIN_MISSING: Record<AgentHostId, string> = {
-  claude: 'Claude Code is not installed.',
-  codex: 'Codex CLI is not installed.',
-  byok: 'Add an API key in Agent settings instead.',
+/** What each host needs before a turn can run. Only Codex has a sign-in flow. */
+const HOST_NOT_READY: Record<AgentHostId, string> = {
+  claude: 'Add an Anthropic API key first.',
+  codex: 'Sign in to ChatGPT first.',
+  byok: 'Add an API key first.',
 };
 
 export function mcpStdioCommand(deps: AgentIpcDeps, denyTools: readonly string[] = []): McpStdioCommand {
@@ -94,6 +88,8 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
       file: () => defaultKeyFile(deps.userData()),
       safeStorage: () => electron.safeStorage ?? null,
     });
+  /** One Anthropic key serves both the Claude host and the API-key host's Anthropic provider. */
+  const anthropicKey = async (): Promise<string | null> => (await keys.resolve('anthropic'))?.apiKey ?? null;
   const detector =
     deps.detector ??
     createHostDetector(systemAsyncDetectDeps({ byokConfigured: () => keys.configured() }));
@@ -110,7 +106,7 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     systemPrompt: memoizedByokSystemPrompt(deps.skillsRoot),
   };
   const runners: AgentRunnerMap = deps.runners ?? {
-    claude: createClaudeRunner(),
+    claude: createClaudeRunner({ apiKey: anthropicKey }),
     codex: createCodexRunner(),
     byok: createByokRunner(byokDeps),
   };
@@ -127,7 +123,10 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     createModelCatalog({
       cacheFile: join(deps.userData(), 'agent-models.json'),
       sources: {
-        claude: () => listClaudeModels(deps.userData()),
+        claude: async () => {
+          const apiKey = await anthropicKey();
+          return apiKey === null ? [] : listClaudeModels(deps.userData(), apiKey);
+        },
         codex: async () => {
           const hosts = await detector.list();
           return listCodexModels(hosts.find((host) => host.id === 'codex')?.binary ?? 'codex');
@@ -181,13 +180,13 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     const hosts = await detector.list();
     const status = hosts.find((item) => item.id === host);
     const bin = status?.binary ?? host;
-    if (host === 'byok') throw new Error(LOGIN_MISSING.byok);
+    if (host !== 'codex') throw new Error(HOST_NOT_READY[host]);
     await new Promise<void>((resolve, reject) => {
       const cancel = startCliLogin({
         bin,
-        args: LOGIN_ARGS[host],
-        signedIn: () => isHostSignedIn(host, syncDetect),
-        missingBinaryMessage: LOGIN_MISSING[host],
+        args: ['login'],
+        signedIn: () => isCodexSignedIn(syncDetect),
+        missingBinaryMessage: 'Codex CLI is not installed.',
         openUrl: (url) => {
           void shell.openExternal(url);
         },
@@ -265,12 +264,10 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     try {
       const hosts = await detector.list();
       const host = hosts.find((item) => item.id === request.host);
-      if (host === undefined || !host.installed) throw new Error(`${request.host} CLI is not installed.`);
-      if (!host.signedIn) {
-        throw new Error(
-          request.host === 'byok' ? 'Add an API key first.' : `Sign in to ${host.name} first.`,
-        );
+      if (host === undefined || !host.installed) {
+        throw new Error(host?.detail ?? `${request.host} CLI is not installed.`);
       }
+      if (!host.signedIn) throw new Error(HOST_NOT_READY[request.host]);
 
       const deckKey = deps.deckKey(event.sender, request.deckId ?? null);
       session = await store.acquire(event.sender.id, deckKey, request);

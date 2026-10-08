@@ -13,9 +13,9 @@ export interface AgentHostStatus extends AgentHostInfo {
   binary: string;
   installed: boolean;
   signedIn: boolean;
-  /** Whether the sign-in flow can run (a CLI binary is reachable for the login command). */
+  /** Whether the sign-in flow can run (the Codex binary is reachable for its login command). */
   loginAvailable: boolean;
-  /** Version of the CLI behind a subscription host; null for the API-key host. */
+  /** Version of the runtime behind a CLI host; null for the API-key host. */
   runtimeVersion: string | null;
   /** Why the host cannot run yet, when that needs spelling out (an outdated CLI). */
   detail: string | null;
@@ -138,7 +138,7 @@ export const AGENT_HOSTS: Record<AgentHostId, AgentHostInfo> = {
   claude: {
     id: 'claude',
     name: 'Claude',
-    installUrl: 'https://claude.ai/download',
+    installUrl: '',
     experimental: false,
   },
   codex: {

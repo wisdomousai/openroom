@@ -12,37 +12,19 @@ export interface DetectDeps {
   exists(path: string): boolean;
   readFile(path: string): string | null;
   binaryAvailable(bin: string): boolean;
-  claudeLoggedIn(bin: string): boolean;
   codexLoggedIn(bin: string): boolean;
 }
 
 const VERSION_TIMEOUT_MS = 3_000;
 const AUTH_TIMEOUT_MS = 4_000;
 
-export function claudeCredentialPaths(home: string): string[] {
-  return [join(home, '.claude', 'credentials.json'), join(home, '.claude', '.credentials.json')];
-}
-
 export function codexAuthPath(home: string): string {
   return join(home, '.codex', 'auth.json');
 }
 
-/** The API-key host has no binary: its "sign-in" is a stored key. */
-export function hostBinary(id: AgentHostId, env: NodeJS.ProcessEnv): string {
-  if (id === 'claude') return env['OPENROOM_CLAUDE_BIN'] ?? 'claude';
-  if (id === 'codex') return env['OPENROOM_CODEX_BIN'] ?? 'codex';
-  return '';
-}
-
-export function parseClaudeAuthStatus(stdout: string): boolean {
-  const trimmed = stdout.trim();
-  if (trimmed === '') return false;
-  try {
-    const parsed = JSON.parse(trimmed) as { loggedIn?: unknown };
-    return parsed.loggedIn === true;
-  } catch {
-    return /"loggedIn"\s*:\s*true/.test(trimmed);
-  }
+/** The Codex CLI on PATH, or an override. The Claude host runs the Agent SDK's bundled binary. */
+export function codexBinary(env: NodeJS.ProcessEnv): string {
+  return env['OPENROOM_CODEX_BIN'] ?? 'codex';
 }
 
 export function parseCodexLoginStatus(stdout: string): boolean {
@@ -73,25 +55,15 @@ export function systemDetectDeps(): DetectDeps {
       }
     },
     binaryAvailable: spawnAvailable,
-    claudeLoggedIn: (bin) => parseClaudeAuthStatus(spawnText(bin, ['auth', 'status'], AUTH_TIMEOUT_MS)),
     codexLoggedIn: (bin) => parseCodexLoginStatus(spawnText(bin, ['login', 'status'], AUTH_TIMEOUT_MS)),
   };
 }
 
-export function isHostSignedIn(id: AgentHostId, deps: DetectDeps): boolean {
-  const home = deps.homedir();
-  if (id === 'claude') {
-    if (claudeCredentialPaths(home).some((path) => deps.exists(path))) return true;
-    const bin = hostBinary(id, deps.env);
-    return deps.binaryAvailable(bin) ? deps.claudeLoggedIn(bin) : false;
-  }
-  if (id === 'codex') {
-    if (deps.exists(codexAuthPath(home))) return true;
-    const bin = hostBinary(id, deps.env);
-    return deps.binaryAvailable(bin) ? deps.codexLoggedIn(bin) : false;
-  }
-  // BYOK sign-in is a stored key, which only the async detector can read.
-  return false;
+/** Codex is the only host with a sign-in flow; the others are ready once a key is stored. */
+export function isCodexSignedIn(deps: DetectDeps): boolean {
+  if (deps.exists(codexAuthPath(deps.homedir()))) return true;
+  const bin = codexBinary(deps.env);
+  return deps.binaryAvailable(bin) ? deps.codexLoggedIn(bin) : false;
 }
 
 /**
@@ -148,8 +120,8 @@ export function bundledCodexBinary(deps: { resolve?: (specifier: string) => stri
 }
 
 /**
- * The Claude Agent SDK ships its CLI as @anthropic-ai/claude-agent-sdk-<platform>.
- * Used for the sign-in flow when the tutor never installed Claude Code.
+ * The Claude Agent SDK ships its runtime as @anthropic-ai/claude-agent-sdk-<platform>.
+ * The Claude host can run only when this binary resolves.
  */
 export function claudePlatformPackageName(
   platform: NodeJS.Platform = process.platform,
@@ -192,11 +164,13 @@ export interface AsyncDetectDeps {
   exists(path: string): boolean;
   readFile(path: string): string | null;
   binaryAvailable(bin: string): Promise<boolean>;
-  claudeLoggedIn(bin: string): Promise<boolean>;
   codexLoggedIn(bin: string): Promise<boolean>;
   bundledCodexBinary(): string | null;
   bundledClaudeBinary(): string | null;
-  /** Provider ids with a usable API key; the API-key host is signed in when any exist. */
+  /**
+   * Provider ids with a usable API key. The API-key host is ready when any exist,
+   * the Claude host when `anthropic` does.
+   */
   byokConfigured?(): Promise<string[]>;
 }
 
@@ -226,7 +200,6 @@ export function systemAsyncDetectDeps(
     exists: sync.exists,
     readFile: sync.readFile,
     binaryAvailable: execAvailable,
-    claudeLoggedIn: async (bin) => parseClaudeAuthStatus(await execText(bin, ['auth', 'status'], AUTH_TIMEOUT_MS)),
     codexLoggedIn: async (bin) => parseCodexLoginStatus(await execText(bin, ['login', 'status'], AUTH_TIMEOUT_MS)),
     bundledCodexBinary: () => bundledCodexBinary(),
     bundledClaudeBinary: () => bundledClaudeBinary(),
@@ -235,27 +208,24 @@ export function systemAsyncDetectDeps(
 }
 
 async function detectHostAsync(id: AgentHostId, deps: AsyncDetectDeps): Promise<AgentHostStatus> {
-  const home = deps.homedir();
-  const binary = hostBinary(id, deps.env);
   if (id === 'claude') {
-    // The Agent SDK bundles the Claude runtime, so running is always possible.
+    // The Agent SDK bundles the Claude runtime, which authenticates with the
+    // teacher's Anthropic API key: ready when both are present, no sign-in flow.
     const bundled = deps.bundledClaudeBinary();
-    const binaryDetected = await deps.binaryAvailable(binary);
-    const resolved = binaryDetected ? binary : (bundled ?? binary);
-    const signedIn = claudeCredentialPaths(home).some((path) => deps.exists(path))
-      ? true
-      : binaryDetected && (await deps.claudeLoggedIn(binary));
+    const configured = (await deps.byokConfigured?.()) ?? [];
     return {
       ...AGENT_HOSTS[id],
-      binary: resolved,
-      installed: true,
-      signedIn,
-      loginAvailable: binaryDetected || bundled !== null,
+      binary: bundled ?? '',
+      installed: bundled !== null,
+      signedIn: bundled !== null && configured.includes('anthropic'),
+      loginAvailable: false,
       runtimeVersion: null,
-      detail: null,
+      detail: bundled === null ? 'The Claude runtime is missing from this build.' : null,
     };
   }
   if (id === 'codex') {
+    const home = deps.homedir();
+    const binary = codexBinary(deps.env);
     const bundled = deps.bundledCodexBinary();
     const binaryDetected = await deps.binaryAvailable(binary);
     const signedIn = deps.exists(codexAuthPath(home))
@@ -276,7 +246,7 @@ async function detectHostAsync(id: AgentHostId, deps: AsyncDetectDeps): Promise<
   const configured = (await deps.byokConfigured?.()) ?? [];
   return {
     ...AGENT_HOSTS[id],
-    binary,
+    binary: '',
     installed: true,
     signedIn: configured.length > 0,
     loginAvailable: false,

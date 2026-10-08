@@ -37,8 +37,8 @@ flowchart TB
     S --> F
   end
   subgraph Agents["Agent runtimes (on this computer)"]
-    C1["Claude Agent SDK<br/>teacher's subscription"]
-    C2["Codex SDK<br/>teacher's subscription"]
+    C1["Claude Agent SDK<br/>teacher's Anthropic API key"]
+    C2["Codex SDK<br/>teacher's ChatGPT sign-in"]
     C3["API-key host (Vercel AI SDK)<br/>teacher's own key"]
   end
   M --> Agents
@@ -161,7 +161,7 @@ flowchart LR
 
 | Runtime | Library | Who pays | Conversation memory |
 | --- | --- | --- | --- |
-| Claude | `@anthropic-ai/claude-agent-sdk` | The teacher's Claude subscription. API keys are stripped from its environment so a stray key never bills instead. | Vendor session id, resumed per turn |
+| Claude | `@anthropic-ai/claude-agent-sdk` | The teacher's Anthropic API key (the API-key host's `anthropic` key), passed as `ANTHROPIC_API_KEY` in the SDK subprocess environment with every other Anthropic credential stripped, so a claude.ai login is never used. Max and Team plans include monthly API credits. | Vendor session id, resumed per turn |
 | Codex | `@openai/codex-sdk` | The teacher's ChatGPT subscription | Vendor thread id |
 | API-key host | Vercel AI SDK (`ai`, `@ai-sdk/mcp`, providers for Anthropic, OpenAI, Google, Groq, Mistral and OpenAI-compatible endpoints such as Cloudflare Workers AI) | The teacher's own provider key, encrypted with the OS keychain | Replayed by `byok-history.ts` |
 
@@ -304,7 +304,7 @@ devices).
 ## Paying for tokens: bring your own agent
 
 OpenRoom hosts no model, proxies no tokens and resells nothing. Every agent turn runs
-on the teacher's computer, on a subscription they already have or a key they hold.
+on the teacher's computer, on a ChatGPT sign-in they already have or a key they hold.
 
 That makes cost the teacher's problem, so the API-key host is engineered to spend
 little:
@@ -373,7 +373,7 @@ little:
 4. Put all agent runtimes behind one local MCP endpoint, so tools, approvals and human
    questions work the same under every vendor.
 5. Ask the human through a blocking tool call, not a vendor-specific callback.
-6. Run the agent on the user's machine and subscription. Keep their documents local
+6. Run the agent on the user's machine and their own model account. Keep their documents local
    and their keys in the OS keychain.
 7. If users pay per token, route small requests to small agents, and keep cached
    prefixes free of per-user bytes.

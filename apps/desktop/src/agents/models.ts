@@ -9,7 +9,7 @@ import { createInterface } from 'node:readline';
 
 import { query as sdkQuery, type Options } from '@anthropic-ai/claude-agent-sdk';
 
-import { sanitizedEnv } from './hosts/claude.js';
+import { claudeApiKeyEnv } from './hosts/claude.js';
 import type { AgentHostId } from './types.js';
 
 export interface AgentModelInfo {
@@ -81,9 +81,10 @@ type QueryFn = (input: { prompt: AsyncIterable<never>; options: Options }) => {
   interrupt(): Promise<void>;
 };
 
-/** The Claude Agent SDK exposes the signed-in account's model list on a live query handle. */
+/** The Claude Agent SDK exposes the model list for the teacher's API key on a live query handle. */
 export async function listClaudeModels(
   cwd: string,
+  apiKey: string,
   timeoutMs = FETCH_TIMEOUT_MS,
   queryFn: QueryFn = sdkQuery as unknown as QueryFn,
 ): Promise<AgentModelInfo[]> {
@@ -98,7 +99,7 @@ export async function listClaudeModels(
   try {
     const handle = queryFn({
       prompt: prompts(),
-      options: { cwd, env: sanitizedEnv() } as Options,
+      options: { cwd, env: claudeApiKeyEnv(apiKey) } as Options,
     });
     const models = await Promise.race([
       handle.supportedModels(),

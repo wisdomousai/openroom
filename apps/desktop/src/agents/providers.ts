@@ -47,8 +47,8 @@ export const BYOK_PROVIDERS: readonly ByokProviderInfo[] = [
   {
     id: 'anthropic',
     label: 'Anthropic',
-    keysUrl: 'https://console.anthropic.com/settings/keys',
-    note: 'Paid per token. No free tier.',
+    keysUrl: 'https://platform.claude.com/settings/keys',
+    note: 'Paid per token. Max and Team plans include monthly API credits.',
     fields: [],
   },
   {

@@ -76,4 +76,4 @@ Continue with the same presenter and participant controls described in [running 
 
 ## Prepare with an agent
 
-Open the Desktop **Agent** pane to work with your own model subscription or provider key. The agent works against the deck open in Desktop. See [Desktop agents](/docs/desktop-agents/) for sign-in, attachments, conversations, and provider settings.
+Open the Desktop **Agent** pane to work with your own Anthropic key (Claude), ChatGPT sign-in, or provider key. The agent works against the deck open in Desktop. See [Desktop agents](/docs/desktop-agents/) for keys, sign-in, attachments, conversations, and provider settings.

@@ -23,12 +23,12 @@ export function firstHttpUrl(line: string): string | null {
 
 export function shouldOpenLoginUrl(line: string, url: string): boolean {
   return (
-    /login|auth|oauth|accounts\.google\.com|claude\.ai|openai\.com|chatgpt\.com/i.test(line) ||
-    /accounts\.google\.com|claude\.ai|auth\.openai\.com|chatgpt\.com/i.test(url)
+    /login|auth|oauth|accounts\.google\.com|openai\.com|chatgpt\.com/i.test(line) ||
+    /accounts\.google\.com|auth\.openai\.com|chatgpt\.com/i.test(url)
   );
 }
 
-/** Spawn a vendor login CLI, stream output, open the OAuth URL, resolve when signedIn(). */
+/** Spawn the Codex login CLI, stream output, open the OAuth URL, resolve when signedIn(). */
 export function startCliLogin(input: StartCliLoginInput): () => void {
   const spawnFn = input.spawn ?? spawn;
   const child: ChildProcess = spawnFn(input.bin, input.args, {

@@ -22,16 +22,19 @@ When adding a surface, ask: does this help open a deck, share a space, or teach 
 - Two Workers. `apps/relay` (`openroom-relay`) is the live plane: it owns `SessionDO`, the live session routes (state, commands, WebSocket, export, stage token, per-session assets), anonymous/pseudonymous join, and the stage and participant apps. It has no D1 or R2 and runs alone as a complete live system, where `RELAY_KEY` gates `POST /api/sessions`. `apps/workspace-worker` (`openroom`) is the control plane: accounts, spaces, decks, billing, MCP, and every hosted session creation. It binds `SessionDO` cross-script (`script_name: "openroom-relay"`), answers the live API itself through the shared `openroom-relay/live` module with its own authority (D1 rechecks, archives, identified and roster joins), and forwards `/join/`, `/stage/` and the `join.` host to the relay over the `RELAY` service binding. Live logic lives once, in `apps/relay/src`; the control plane never copies it. Deploy the relay first.
 - Heavy outline preparation happens in the teacher's **own** agent, through one of two doors:
   an **external agent** (any MCP client, the CLI, or the public API), or the **OpenRoom
-  Desktop "Prepare this deck" pane**, which executes the agent locally: the Claude / Codex
-  harness signed in with the teacher's own subscription, or the API-key host, which calls
-  a provider the teacher holds a key for. Either way in a conversation-scoped workdir with
-  a stdio MCP sidecar to the open file (see `docs/AGENT.md`). OpenRoom stores and delivers
-  the resulting outline. Invariants a change must not break:
-  - OpenRoom **never proxies or bills model tokens**. It rides the subscriptions teachers
-    already pay for, or the teacher's own provider key; it is not in the token-selling
-    business. There is **no hosted or server-side agent execution** — every agent turn
-    executes on the teacher's computer. A teacher's API key is stored in the OS keychain on
-    that computer, is sent only to the provider it belongs to, and never reaches OpenRoom.
+  Desktop "Prepare this deck" pane**, which executes the agent locally: the Claude harness
+  (Agent SDK) on the teacher's own Anthropic API key, the Codex harness on the teacher's
+  Codex (ChatGPT) sign-in, or the API-key host, which calls a provider the teacher holds a
+  key for. Either way in a conversation-scoped workdir with a stdio MCP sidecar to the open
+  file (see `docs/AGENT.md`). OpenRoom stores and delivers the resulting outline.
+  Invariants a change must not break:
+  - OpenRoom **never proxies or bills model tokens**. Claude runs on the teacher's own
+    Anthropic API key (Max and Team plans include monthly API credits), ChatGPT on the
+    teacher's Codex sign-in, the API-key host on the teacher's own provider keys; OpenRoom
+    is not in the token-selling business. The Claude host never uses a claude.ai login.
+    There is **no hosted or server-side agent execution** — every agent turn executes on
+    the teacher's computer. A teacher's API key is stored in the OS keychain on that
+    computer, is sent only to the provider it belongs to, and never reaches OpenRoom.
   - The **browser app has no agent surface**. Desktop is the only in-app agent chat.
   - OpenRoom never ingests the original school documents. The desktop pane reads them
     locally (workdir copies are deleted with the conversation) and does not upload them.

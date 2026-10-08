@@ -74,7 +74,12 @@ function baseName(path: string): string {
 const BYOK_PROVIDERS: { id: DesktopByokProviderId; label: string; keysUrl: string; note: string; needsAccountId?: true }[] = [
   { id: 'openai', label: 'OpenAI', keysUrl: 'https://platform.openai.com/api-keys', note: 'Paid per token.' },
   { id: 'google', label: 'Google', keysUrl: 'https://aistudio.google.com/apikey', note: 'Free tier with daily limits.' },
-  { id: 'anthropic', label: 'Anthropic', keysUrl: 'https://console.anthropic.com/settings/keys', note: 'Paid per token.' },
+  {
+    id: 'anthropic',
+    label: 'Anthropic',
+    keysUrl: 'https://platform.claude.com/settings/keys',
+    note: 'Paid per token. Max and Team plans include monthly API credits.',
+  },
   { id: 'mistral', label: 'Mistral', keysUrl: 'https://console.mistral.ai/api-keys', note: 'Free experiment tier.' },
   { id: 'groq', label: 'Groq', keysUrl: 'https://console.groq.com/keys', note: 'Free tier, rate-limited.' },
   { id: 'openrouter', label: 'OpenRouter', keysUrl: 'https://openrouter.ai/keys', note: 'One key, many models.' },
@@ -86,6 +91,9 @@ const BYOK_PROVIDERS: { id: DesktopByokProviderId; label: string; keysUrl: strin
     needsAccountId: true,
   },
 ];
+
+/** The help section on claiming the API credits included with Claude Max and Team plans. */
+const CLAUDE_CREDITS_HELP = 'https://openroom.app/docs/desktop-agents/#use-claude-max-or-team-api-credits';
 
 /**
  * Mirrors the desktop task-profile titles and the escalation status, duplicated
@@ -352,7 +360,11 @@ export function AgentPane({
 
   const selected = hosts.find((host) => host.id === chat.hostId) ?? null;
   const selectedModels = selected === null ? [] : (models[selected.id] ?? []);
-  const selectedProvider = BYOK_PROVIDERS.find((provider) => provider.id === keyProvider) ?? null;
+  // The Claude host authenticates with the Anthropic key, so its settings show
+  // the same key form narrowed to that one provider.
+  const keyProviders =
+    selected?.id === 'claude' ? BYOK_PROVIDERS.filter((provider) => provider.id === 'anthropic') : BYOK_PROVIDERS;
+  const selectedProvider = keyProviders.find((provider) => provider.id === keyProvider) ?? keyProviders[0] ?? null;
   const canSend = selected !== null && selected.installed && selected.signedIn && prompt.trim() !== '' && !chat.running;
   const hasConversation = chat.messages.length > 0;
 
@@ -428,26 +440,29 @@ export function AgentPane({
     }
   };
 
-  /** The model list is per host, so adding or removing a key has to drop the cached rows. */
-  const forgetByokModels = () => {
+  /**
+   * The model list is per host, and the API-key and Claude hosts both list
+   * models through stored keys, so adding or removing a key drops their rows.
+   */
+  const forgetKeyModels = () => {
     setModels((current) => {
-      const { byok: _dropped, ...rest } = current;
+      const { byok: _byok, claude: _claude, ...rest } = current;
       return rest;
     });
   };
 
   const saveKey = async () => {
-    if (keyValue.trim() === '') return;
+    if (keyValue.trim() === '' || selectedProvider === null) return;
     setSavingKey(true);
     agentChatStore.setState((current) => ({ ...current, error: null }));
     try {
-      await bridge.setAgentKey(keyProvider, {
+      await bridge.setAgentKey(selectedProvider.id, {
         apiKey: keyValue.trim(),
         ...(accountId.trim() === '' ? {} : { accountId: accountId.trim() }),
       });
       setKeyValue('');
       setAccountId('');
-      forgetByokModels();
+      forgetKeyModels();
       refreshKeys();
       refresh();
     } catch (cause) {
@@ -462,7 +477,7 @@ export function AgentPane({
 
   const clearKey = async (provider: DesktopByokProviderId) => {
     await bridge.clearAgentKey(provider).catch(() => undefined);
-    forgetByokModels();
+    forgetKeyModels();
     refreshKeys();
     refresh();
   };
@@ -541,10 +556,10 @@ export function AgentPane({
                     ))}
                   </SelectContent>
                 </Select>
-                {selected?.id === 'byok' ? (
+                {selected?.id === 'byok' || selected?.id === 'claude' ? (
                   <div className="flex flex-col gap-1.5">
                     {(keys?.providers ?? [])
-                      .filter((provider) => provider.hasKey)
+                      .filter((provider) => provider.hasKey && keyProviders.some((item) => item.id === provider.providerId))
                       .map((provider) => {
                         const info = BYOK_PROVIDERS.find((item) => item.id === provider.providerId);
                         return (
@@ -565,26 +580,28 @@ export function AgentPane({
                           </div>
                         );
                       })}
-                    <Select
-                      value={keyProvider}
-                      onValueChange={(value) => setKeyProvider(value as DesktopByokProviderId)}
-                    >
-                      <SelectTrigger aria-label="Provider" className="h-8 text-caption">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BYOK_PROVIDERS.map((provider) => (
-                          <SelectItem key={provider.id} value={provider.id}>
-                            {provider.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {keyProviders.length > 1 ? (
+                      <Select
+                        value={selectedProvider?.id ?? keyProvider}
+                        onValueChange={(value) => setKeyProvider(value as DesktopByokProviderId)}
+                      >
+                        <SelectTrigger aria-label="Provider" className="h-8 text-caption">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {keyProviders.map((provider) => (
+                            <SelectItem key={provider.id} value={provider.id}>
+                              {provider.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : null}
                     <Input
                       type="password"
                       className="h-8 text-caption"
-                      aria-label="API key"
-                      placeholder="API key"
+                      aria-label={keyProviders.length > 1 ? 'API key' : `${selectedProvider?.label ?? ''} API key`}
+                      placeholder={keyProviders.length > 1 ? 'API key' : `${selectedProvider?.label ?? ''} API key`}
                       value={keyValue}
                       onChange={(event) => setKeyValue(event.target.value)}
                     />
@@ -616,6 +633,16 @@ export function AgentPane({
                         Get a key
                       </a>
                     </p>
+                    {selected.id === 'claude' ? (
+                      <a
+                        href={CLAUDE_CREDITS_HELP}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-caption text-primary underline-offset-4 hover:underline"
+                      >
+                        Max and Team API credits
+                      </a>
+                    ) : null}
                     <p className="text-caption text-muted-foreground">
                       The key stays on this computer in the OS keychain and goes only to that provider.
                     </p>
@@ -678,11 +705,25 @@ export function AgentPane({
       {/* Only blocking states show on the face; host and model live behind the gear. */}
       <div className={cn('flex-col gap-1.5 border-b border-border px-3 py-2', selected !== null && selected.signedIn ? 'hidden' : 'flex')}>
         {selected === null ? (
-          <p className="text-caption text-muted-foreground">
-            Sign in to Claude or ChatGPT, or add an API key in Agent settings.
-          </p>
+          <p className="text-caption text-muted-foreground">Choose an agent in Agent settings.</p>
         ) : selected.id === 'byok' ? (
           <p className="text-caption text-muted-foreground">Add an API key in Agent settings.</p>
+        ) : selected.id === 'claude' ? (
+          <div className="flex flex-col gap-1">
+            <p className="text-caption text-muted-foreground">
+              {selected.detail ?? 'Needs an Anthropic API key. Add it in Agent settings.'}
+            </p>
+            {selected.detail === null ? (
+              <a
+                href={CLAUDE_CREDITS_HELP}
+                target="_blank"
+                rel="noreferrer"
+                className="text-caption text-primary underline-offset-4 hover:underline"
+              >
+                Max and Team API credits
+              </a>
+            ) : null}
+          </div>
         ) : !selected.signedIn && !selected.loginAvailable ? (
           <div className="flex flex-col gap-1.5">
             {/* An outdated CLI reads as "not installed" unless the reason is spelled out. */}
