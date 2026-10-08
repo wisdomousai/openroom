@@ -380,7 +380,7 @@ GET|PUT|DELETE /api/decks/:id/file-locations/:deviceId
 GET|PUT|DELETE /api/decks/:id/draft
                                          one rolling auto-save draft per deck {source, baseVersion, updatedAt, updatedBy};
                                          source is editor text, NOT validated (half-typed YAML must still save) and is
-                                         never read by launch or by the deck detail content; GET 404s when absent;
+                                         never read by launch or by the deck detail content; with nothing unsaved GET answers the draft zero (current version, updatedAt null);
                                          PUT caps source at 256K chars (413); editor+ to write, member to read
 POST /api/decks/:id/restore   restore from trash
 POST /api/decks/:id/start     start the current saved deck with {requestId: UUID, stepId?};
@@ -513,7 +513,7 @@ const { decks, assets } = createDesignClient({ baseUrl, token });
 decks.get(id, { version? })                  // → { deck, spaceName, folderName, contentVersion, content }
 decks.listVersions(id)                       // → [{ version, createdAt, createdBy }] newest first
 decks.saveVersion(id, content, baseVersion)  // → { version, unchanged? } · throws DesignConflictError on 409
-decks.getDraft(id)                           // → draft, or null when there is none (404 is not a failure)
+decks.getDraft(id)                           // → draft, or the draft zero (updatedAt null) when nothing is unsaved
 decks.saveDraft(id, source, baseVersion)     // → { savedAt } · raw YAML, never validated
 decks.discardDraft(id)
 decks.start(id, { version?, title?, start? })// POST /sessions then POST /sessions/:id/launch → session + sessionId

@@ -620,12 +620,12 @@ export function openapiDocument(origin: string): unknown {
           operationId: 'getDeckDraft',
           summary: 'Read the rolling working draft (unsaved editor text)',
           description:
-            'A draft is working text, not content: the source may not parse. 404 when there is no draft.',
+            'A draft is working text, not content: the source may not parse. With nothing unsaved (the normal state after a save) this answers the draft zero: the current version as editor text, a blank deck before the first version, with updatedAt and updatedBy null.',
           security: [{ UserBearer: [] }, { SessionCookie: [] }],
           parameters: [{ name: 'deckId', in: 'path', required: true, schema: { type: 'string' } }],
           responses: {
-            '200': { description: '{ source, baseVersion, updatedAt, updatedBy }' },
-            '404': { description: 'No draft for this deck' },
+            '200': { description: '{ source, baseVersion, updatedAt, updatedBy }; updatedAt null for the draft zero' },
+            '404': { description: 'No such deck, or no access to it' },
           },
         },
         put: {

@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
+import { parseOutline } from '@openroom/schema';
 
 import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
 import worker from '../src/index.js';
@@ -644,11 +645,17 @@ describe('control plane hardening', () => {
  * in the indicator or leak working text into delivery — not the CRUD shape.
  */
 describe('deck drafts', () => {
-  it('upserts one draft per deck, accepts unparseable YAML, and 404s when absent', async () => {
+  it('upserts one draft per deck, accepts unparseable YAML, and answers the draft zero when absent', async () => {
     const { cookie } = await seedSession();
     const { deckId } = await createDeckWithSession(cookie, await createContext(cookie));
 
-    expect((await asBrowser(cookie, `/api/decks/${deckId}/draft`)).status).toBe(404);
+    // Nothing unsaved: the current version as editor text, marked by updatedAt null.
+    const zero = await asBrowser(cookie, `/api/decks/${deckId}/draft`);
+    expect(zero.status).toBe(200);
+    const zeroDraft = await zero.json() as { source: string; baseVersion: number; updatedAt: number | null; updatedBy: string | null };
+    expect(zeroDraft).toMatchObject({ deckId, baseVersion: 1, updatedAt: null, updatedBy: null });
+    const zeroOutline = parseOutline(zeroDraft.source, 'yaml');
+    expect(zeroOutline.ok && zeroOutline.outline.meta.title).toBe(SAMPLE_CONTENT.meta.title);
 
     // Mid-keystroke YAML: auto-save exists precisely for this state.
     const broken = 'meta:\n  title: "unclosed';
@@ -674,7 +681,7 @@ describe('deck drafts', () => {
 
     expect((await asBrowser(cookie, `/api/decks/${deckId}/draft`, { method: 'DELETE' })).status)
       .toBe(204);
-    expect((await asBrowser(cookie, `/api/decks/${deckId}/draft`)).status).toBe(404);
+    expect((await (await asBrowser(cookie, `/api/decks/${deckId}/draft`)).json() as { updatedAt: number | null }).updatedAt).toBeNull();
   });
 
   it('stamping a version clears the draft and never feeds delivery', async () => {
@@ -701,7 +708,9 @@ describe('deck drafts', () => {
       body: JSON.stringify({ baseVersion: 1, outline: nextOutline }),
     });
     expect(save.status).toBe(201);
-    expect((await asBrowser(cookie, `/api/decks/${deckId}/draft`)).status).toBe(404);
+    const cleared = await (await asBrowser(cookie, `/api/decks/${deckId}/draft`)).json() as { source: string; baseVersion: number; updatedAt: number | null };
+    expect(cleared).toMatchObject({ baseVersion: 2, updatedAt: null });
+    expect(cleared.source).toContain('Saved on purpose');
   });
 
   it('rejects oversized drafts and enforces the version route’s auth and role', async () => {
@@ -727,7 +736,7 @@ describe('deck drafts', () => {
     );
     expect(anonymous.status).toBe(401);
     expect((await asBrowser(stranger.cookie, path)).status).toBe(404);
-    expect((await asBrowser(presenter.cookie, path)).status).toBe(404); // reads, no draft yet
+    expect((await asBrowser(presenter.cookie, path)).status).toBe(200); // reads the draft zero
     expect((await asBrowser(presenter.cookie, path, { method: 'PUT', body })).status).toBe(403);
 
     const huge = JSON.stringify({ source: 'x'.repeat(256 * 1024 + 1), baseVersion: 1 });
