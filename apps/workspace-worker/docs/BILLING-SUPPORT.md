@@ -90,7 +90,7 @@ attempt timestamp, not the customer timestamp. Keep the original query result,
 case JSON and provider confirmation together.
 
 ```sh
-bun run billing:retry /private/path/case.json /private/path/repair.sql
+bun run --cwd apps/workspace-worker billing:retry /private/path/case.json /private/path/repair.sql
 ```
 
 The command writes a new private file and refuses to overwrite one. It makes no

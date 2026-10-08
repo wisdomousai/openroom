@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "test": "vitest run",
-    "dns-aid": "node scripts/publish-dns-aid.mjs"
+    "dns-aid": "node scripts/publish-dns-aid.mjs",
+    "billing:retry": "bun scripts/billing-retry.ts"
   },
   "dependencies": {
     "@openroom/domain": "workspace:*",

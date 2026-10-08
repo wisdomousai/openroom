@@ -125,7 +125,7 @@ Before enabling checkout, reconcile current subscriptions and customer
 transactions, including creates/payments **after** the snapshot. Those transactions
 may be absent from restored D1. Ordinary account refresh alone does not prove
 there are no pending post-snapshot purchases. Match provider objects to saved
-ownership/references and use the [Paddle support procedure](BILLING-SUPPORT.md)
+ownership/references and use the [Paddle support procedure](../apps/workspace-worker/docs/BILLING-SUPPORT.md)
 for inconclusive cases. Never clear a create marker merely because D1 was restored.
 
 Provider reconciliation after an actual restore remains a hosted acceptance task.

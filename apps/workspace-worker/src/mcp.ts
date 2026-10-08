@@ -1,6 +1,5 @@
 import { facilitateSessionRoute, facilitatorAccess, facilitatorCommandAllowed } from './facilitation.js';
 import { accountRecapRoute } from './recap-route.js';
-import { billingRoute } from './billing/routes';
 import { sharingRoute } from './sharing';
 import { listArchivesRoute, downloadArchiveRoute } from './archives.js';
 import { resumeSessionRoute } from './deck-start.js';
@@ -103,10 +102,6 @@ async function tutoringRequest(
     return { status: response.status, body: await responseBody(response) };
   }
 
-  if (url.pathname === '/api/my/billing' || url.pathname.startsWith('/api/my/billing/')) {
-    const response = await billingRoute(request, env, url);
-    return { status: response.status, body: await responseBody(response) };
-  }
   const facilitateMatch = /^\/api\/my\/sessions\/([^/]+)\/facilitate$/.exec(path);
   const resumeMatch = /^\/api\/sessions\/([^/]+)\/resume$/.exec(path);
   if (resumeMatch) {

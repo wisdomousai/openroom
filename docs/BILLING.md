@@ -117,8 +117,8 @@ invoices, payment details and cancellation.
 - The authenticated account determines customer ownership. Neither a body user ID
   nor an email match can link an existing customer. A server-created random
   reference is persisted before customer creation and must match on recovery.
-- One open checkout and a conditional D1 lease serialize requests from tabs,
-  devices, browser, CLI and MCP. The attempt and customer reference survive a lost
+- One open checkout and a conditional D1 lease serialize requests from tabs
+  and devices. The attempt and customer reference survive a lost
   provider reply. A retry searches Paddle for the same reference before it can
   proceed; no undocumented provider idempotency header is assumed.
 - An uncertain write with no matching provider object stays pending. It cannot be
@@ -144,9 +144,9 @@ invoices, payment details and cancellation.
   account's stored customer, validated against Paddle's exact environment-specific
   portal host and returned with `no-store`. They are not saved to D1, browser
   storage or logs. Account changes discard the UI's temporary links.
-- CLI and MCP use the same account service and return a private browser link for
-  the user to complete payment. The `openroom_api` tool describes the contract;
-  the generated OpenAPI document also describes the HTTP routes.
+- Billing is a browser surface: checkout and the customer portal need a browser.
+  The CLI and MCP allowlist (`packages/schema/src/tutoring-paths.ts`) excludes
+  `/api/my/billing*`. The generated OpenAPI document describes the HTTP routes.
 
 Provider references: [transaction checkout](https://developer.paddle.com/build/transactions/pass-transaction-checkout/),
 [default payment link](https://developer.paddle.com/build/transactions/default-payment-link/),
@@ -260,7 +260,7 @@ For `billing-provider-auth`, verify the environment and API permissions, includi
 customer/checkout reference in Paddle. Do not clear an attempted-write marker,
 create a replacement transaction or grant features on the strength of an email,
 redirect or screenshot. If provider absence remains inconclusive, retain the
-pending attempt and resolve it with Paddle support. The [support runbook](BILLING-SUPPORT.md)
+pending attempt and resolve it with Paddle support. The [support runbook](../apps/workspace-worker/docs/BILLING-SUPPORT.md)
 provides the exact read-only investigation query and a conditional repair tool for
 a provider-confirmed uncommitted create. It cannot turn an empty provider search
 into permission to retry. Its generated SQL and subsequent normal checkout are
@@ -278,7 +278,7 @@ collaboration across downgrade and membership removal.
 Checkout tests additionally cover same-account retries, lost customer and
 transaction replies, concurrent tabs, definite provider rejection, email conflicts,
 transaction ownership, portal host validation, approved recurring prices, paid
-transaction cancellation denial, duplicate subscription prevention and MCP parity.
+transaction cancellation denial and duplicate subscription prevention.
 UC-37 exercises the built browser UI with billing API and Paddle.js fixtures; it
 does not contact Paddle.
 

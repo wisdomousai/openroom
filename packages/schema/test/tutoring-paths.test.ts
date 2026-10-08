@@ -24,9 +24,8 @@ describe('isTutoringApiPath', () => {
     expect(isTutoringApiPath('/api/sessions?trash=1')).toBe(true);
   });
 
-  it('allows account billing leaves but excludes provider and arbitrary account paths', () => {
-    for (const path of ['/api/my/billing', '/api/my/billing/plans', '/api/my/billing/checkout?transactionId=txn_public', '/api/my/billing/portal', '/api/my/billing/sync']) expect(isTutoringApiPath(path)).toBe(true);
-    for (const path of ['/api/billing/paddle/webhook', '/api/my/billing/other', '/api/my/billing/portal/other', '/api/my/users']) expect(isTutoringApiPath(path)).toBe(false);
+  it('keeps account billing off the peer-client surface', () => {
+    for (const path of ['/api/my/billing', '/api/my/billing/plans', '/api/my/billing/checkout', '/api/my/billing/portal', '/api/my/billing/sync']) expect(isTutoringApiPath(path)).toBe(false);
   });
 
   it('accepts the media asset plane', () => {
