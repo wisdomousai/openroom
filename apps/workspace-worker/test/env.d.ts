@@ -20,6 +20,7 @@ declare namespace Cloudflare {
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     OPENAI_APPS_CHALLENGE?: string;
+    UMAMI_WEBSITE_ID?: string;
     PADDLE_ENVIRONMENT?: string;
     TEST_MIGRATIONS: import('cloudflare:test').D1Migration[];
   }

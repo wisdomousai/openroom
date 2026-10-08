@@ -101,6 +101,7 @@ import {
 } from 'openroom-relay/live';
 import type { Role } from 'openroom-relay/tokens';
 import { negotiateMarkdown } from './markdown-negotiation.js';
+import { umamiWebsiteId, withUmami } from './umami.js';
 import {
   confirmPermanentDeletionRoute,
   deletionConfirmationPage,
@@ -140,6 +141,12 @@ export interface Env extends ControlEnv {
   JOIN_ORIGIN?: string;
   /** Plain-text token for OpenAI plugin domain verification. */
   OPENAI_APPS_CHALLENGE?: string;
+  /**
+   * Umami Cloud website id. When set, public-site HTML loads
+   * `cloud.umami.is/script.js`. Unset ships those pages with no tracker.
+   * The workspace, join, and stage apps never load it.
+   */
+  UMAMI_WEBSITE_ID?: string;
 }
 
 /**
@@ -608,7 +615,12 @@ async function serveMarketingHost(request: Request, env: Env, url: URL): Promise
   // Agents requesting Accept: text/markdown get a formatting-stripped twin
   // of the same URL; browsers keep HTML (Cloudflare Markdown-for-Agents shape).
   const asset = await env.ASSETS.fetch(request);
-  return negotiateMarkdown(request, asset);
+  const page = await negotiateMarkdown(request, asset);
+  const websiteId = umamiWebsiteId(env.UMAMI_WEBSITE_ID);
+  // HEAD has no body to rewrite. Markdown twins are not text/html, so they
+  // pass through withUmami unchanged.
+  if (!websiteId || request.method !== 'GET') return page;
+  return withUmami(page, url, websiteId);
 }
 
 async function serveStatic(request: Request, env: Env, url: URL): Promise<Response> {

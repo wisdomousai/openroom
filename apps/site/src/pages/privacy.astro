@@ -9,7 +9,7 @@ import Base from '../layouts/Base.astro';
 >
 <main class="page">
   <h1>Privacy policy</h1>
-  <p class="muted">Last updated 20 August 2026. This policy describes the hosted service at openroom.app. Self-hosted deployments are operated by whoever runs them.</p>
+  <p class="muted">Last updated 8 October 2026. This policy describes the hosted service at openroom.app. Self-hosted deployments are operated by whoever runs them.</p>
 
   <h2>Who this covers</h2>
   <p>OpenRoom is used by tutors (hosts) who sign in, and by participants who join a live session without an account. A tutor may also issue a learner a link to that learner’s own records. That link is not an account.</p>
@@ -21,6 +21,8 @@ import Base from '../layouts/Base.astro';
   <p>Each live session holds the session outline, a server-generated participant id, a join timestamp, and — depending on identity mode — a session-local handle or the display name the tutor wrote on the context. It also holds the current ballot per participant per question and the recomputed aggregate. Participants are never asked for a name, email, or password.</p>
   <h3>Learner access links</h3>
   <p>A tutor can mint a link that reaches one context’s learner-visible records. We store a SHA-256 of the token, a visible prefix, and creation, expiry, and revocation timestamps. The raw token is shown once and cannot be read back.</p>
+  <h3>Public website</h3>
+  <p>The landing page, this policy, the terms, and the manual load Umami Cloud to count page views. Umami records the page, referrer, browser, operating system, device type, and country. It does not store personally identifiable information, and it does not receive host accounts, live sessions, answers, or learner records. The workspace, join, and stage apps do not load it.</p>
 
   <h2>What we do not collect</h2>
   <ul>

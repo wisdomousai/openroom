@@ -31,8 +31,9 @@ Both resolve only if the relay is deployed, so **the relay always deploys first*
    data, screenshots, and linked assets with the build using SHA-256 hashes. `/join/`
    and `/stage/` are compared with `apps/relay/public`, the rest with
    `apps/workspace-worker/public`. HTML
-   comparison excludes Cloudflare's injected challenge and analytics scripts and
-   normalizes whitespace between tags; other assets require an exact byte match.
+   comparison excludes Cloudflare's injected challenge and analytics scripts, the
+   Umami Cloud snippet the Worker adds when `UMAMI_WEBSITE_ID` is set,
+   and normalizes whitespace between tags; other assets require an exact byte match.
 
 Pull requests have no production credentials. All jobs use read-only repository
 permissions; the Cloudflare token is exposed only to the two deployment steps, which
@@ -100,6 +101,15 @@ need no Paddle account, catalog, webhook or cron configuration.
 Check the variable before the first production deploy and after any change to
 Worker variables or secrets. Local development (`.dev.vars` with an empty
 `PADDLE_ENVIRONMENT`) and the isolated browser journeys run self-hosted.
+
+## Website pageviews
+
+`UMAMI_WEBSITE_ID` is optional. The hosted site sets it in
+`apps/workspace-worker/wrangler.jsonc` to the Umami Cloud website id. Public-site
+HTML (the landing page, the manual, privacy, and terms) then loads
+`https://cloud.umami.is/script.js` with that id. The workspace at `/host`, the
+join app, and the stage never load the script. Clear the variable for a
+deployment that should not track, including local `.dev.vars`.
 
 ## Manual deployment and verification
 

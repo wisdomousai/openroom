@@ -8,6 +8,10 @@
  * One small progressive-enhancement script (`/webmcp.js`) registers WebMCP
  * tools for browser agents when `navigator.modelContext` / `document.modelContext`
  * is available; browsers without WebMCP no-op.
+ *
+ * Pageviews are not part of this document. The control plane adds the Umami
+ * Cloud snippet while serving these pages, and only when UMAMI_WEBSITE_ID is
+ * set. The workspace, join, stage, and participant apps do not load it.
  */
 interface Props {
   title: string;

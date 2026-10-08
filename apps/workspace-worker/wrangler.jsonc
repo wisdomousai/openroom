@@ -77,7 +77,10 @@
   // these vars, so apps/workspace-worker/.dev.vars must clear it (JOIN_ORIGIN=) or every
   // local "Join" link and QR points at join.openroom.app instead of /join/.
   "vars": {
-    "JOIN_ORIGIN": "https://join.openroom.app"
+    "JOIN_ORIGIN": "https://join.openroom.app",
+    // Public-site pageviews on Umami Cloud. Clear this for a deployment that
+    // should not track. Local .dev.vars overrides it so dev pages stay quiet.
+    "UMAMI_WEBSITE_ID": "59195e56-d74f-43af-b306-ff48475732fb"
   }
   // Secrets (set with `wrangler secret put`, or .dev.vars locally):
   //   TOKEN_SECRET — HMAC key for capability tokens; same value as the relay's
@@ -86,6 +89,8 @@
   //   GOOGLE_CLIENT_SECRET — Google OAuth client secret
   //   PIXABAY_API_KEY      — stock photo search (deck editor Stock tab; unset ⇒ 501)
   //   OPENAI_APPS_CHALLENGE — plain-text token at GET /.well-known/openai-apps-challenge
+  //   UMAMI_WEBSITE_ID is a public var above, not a secret. Leave it empty
+  //   to ship the public site with no tracker.
   // Optional vars (endpoint overrides, defaulted in src/auth.ts):
   //   GOOGLE_AUTH_URL, GOOGLE_TOKEN_URL
 }

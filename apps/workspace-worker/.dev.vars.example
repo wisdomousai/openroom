@@ -7,6 +7,9 @@ PIXABAY_API_KEY=
 # Clear production join host so Create room / snapshots use /join/ on this
 # origin. wrangler.jsonc sets JOIN_ORIGIN for deploy; empty here overrides it.
 JOIN_ORIGIN=
+# Clear the production Umami id so local pages are not counted. wrangler.jsonc
+# sets UMAMI_WEBSITE_ID for deploy; empty here overrides it.
+UMAMI_WEBSITE_ID=
 
 # Paddle Billing. Leave empty until you supply the approved catalog for this environment.
 # Catalog JSON format and webhook setup: docs/BILLING.md.

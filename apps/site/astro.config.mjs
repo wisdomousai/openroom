@@ -23,5 +23,6 @@ export default defineConfig({
   ],
   // Static output: no framework JS bundle, no web fonts, no external requests.
   // `/webmcp.js` is a small progressive-enhancement script for browser agents.
+  // Umami Cloud is added by the control plane at request time.
   build: { format: 'directory' },
 });

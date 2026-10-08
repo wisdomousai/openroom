@@ -16,11 +16,14 @@ assert.equal(origin.pathname, '/', 'Pass an origin without a path');
 assert.ok(!origin.username && !origin.password && !origin.search && !origin.hash, 'Pass a plain origin');
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
 // Cloudflare adds request-specific challenge and analytics scripts after upload.
-// Preserve application scripts and text while excluding those two known additions.
+// The Worker adds an Umami Cloud snippet on public-site HTML when
+// UMAMI_WEBSITE_ID is set. Preserve application scripts and text while
+// excluding those known additions.
 function htmlContent(bytes) {
   return bytes.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (script) => {
     if (/\bsrc=["']https:\/\/static\.cloudflareinsights\.com\//.test(script)) return '';
     if (script.includes('window.__CF$cv$params=') && script.includes('/cdn-cgi/challenge-platform/scripts/jsd/main.js')) return '';
+    if (/\bsrc=["']https:\/\/cloud\.umami\.is\/script\.js["']/.test(script) && /\bdata-website-id=/.test(script)) return '';
     return script;
   }).replace(/>\s+</g, '><').trim();
 }
