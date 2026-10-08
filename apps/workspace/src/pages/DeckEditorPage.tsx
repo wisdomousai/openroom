@@ -1,6 +1,5 @@
 import {
   AgentPane,
-  blankDeck,
   DeckEditor,
   DeckEditorTopBar,
   desktopBridge,
@@ -19,8 +18,7 @@ import {
 } from '@openroom/editor';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { parseOutline, slideEmbedCode } from '@openroom/schema';
-import { stringify } from 'yaml';
+import { blankDeck, deckSource, parseOutline, slideEmbedCode } from '@openroom/schema';
 import { Button } from '@openroom/ui/components/button';
 import { invalidateManagementData, queryClient } from '../query-client';
 
@@ -167,14 +165,12 @@ export function DeckEditorPage({
     setDocumentLoaded(true);
     const { detail, draft } = data;
     setTitle(detail.deck.title);
-    setBaseVersion(draft?.baseVersion ?? detail.deck.currentVersion);
-    setDraftConflict(draft !== null && draft.baseVersion !== detail.deck.currentVersion);
+    setBaseVersion(draft.baseVersion);
     // Preserve the draft even when its base is stale; resolve that conflict explicitly.
-    const text = draft !== null
-      ? draft.source
-      : stringify(detail.content ?? blankDeck(detail.deck.title), { lineWidth: 100 });
-    setSource(text);
-    setLoaded(draft === null ? { version: detail.deck.currentVersion, source: text } : null);
+    setDraftConflict(draft.baseVersion !== detail.deck.currentVersion);
+    // With nothing unsaved the server sends the draft zero, built from the current version.
+    setSource(draft.source);
+    setLoaded(draft.updatedAt === null ? { version: detail.deck.currentVersion, source: draft.source } : null);
   }, [designQuery.data, documentLoaded]);
 
   const draftSave = useDraftSave({
@@ -237,7 +233,7 @@ export function DeckEditorPage({
     const nextDetail = refreshed.data?.detail;
     if (!nextDetail || nextDetail.deck.currentVersion === baseVersion) return;
     if (draftSave.status.state !== 'idle') return;
-    const nextSource = stringify(nextDetail.content ?? blankDeck(nextDetail.deck.title), { lineWidth: 100 });
+    const nextSource = deckSource(nextDetail.content ?? blankDeck(nextDetail.deck.title));
     setTitle(nextDetail.deck.title);
     setBaseVersion(nextDetail.deck.currentVersion);
     setSource(nextSource);
@@ -257,7 +253,7 @@ export function DeckEditorPage({
     if (!fresh) return;
     const { detail: nextDetail, draft } = fresh;
     const moved = nextDetail.deck.currentVersion !== baseVersion;
-    const otherDraft = draft !== null && draft.baseVersion === nextDetail.deck.currentVersion && draft.source !== source;
+    const otherDraft = draft.updatedAt !== null && draft.baseVersion === nextDetail.deck.currentVersion && draft.source !== source;
     if (!moved && !otherDraft) return;
     const settled = draftSave.status.state === 'idle' || draftSave.status.state === 'saved';
     if (!settled) {
@@ -266,7 +262,7 @@ export function DeckEditorPage({
     }
     const nextSource = otherDraft
       ? draft.source
-      : stringify(nextDetail.content ?? blankDeck(nextDetail.deck.title), { lineWidth: 100 });
+      : deckSource(nextDetail.content ?? blankDeck(nextDetail.deck.title));
     setTitle(nextDetail.deck.title);
     setBaseVersion(nextDetail.deck.currentVersion);
     setSource(nextSource);
@@ -337,8 +333,8 @@ export function DeckEditorPage({
     const fresh = refreshed.data ?? designQuery.data;
     if (!fresh) return;
     const { detail, draft } = fresh;
-    const savedDraft = draft !== null && draft.baseVersion === detail.deck.currentVersion ? draft.source : null;
-    const stamped = stringify(detail.content ?? blankDeck(detail.deck.title), { lineWidth: 100 });
+    const savedDraft = draft.updatedAt !== null && draft.baseVersion === detail.deck.currentVersion ? draft.source : null;
+    const stamped = deckSource(detail.content ?? blankDeck(detail.deck.title));
     const text = keep ? source : savedDraft ?? stamped;
     try {
       await putDeckDraft(deckId, text, detail.deck.currentVersion);
@@ -430,7 +426,7 @@ export function DeckEditorPage({
         fileStatus={copying ? <span role="status">Preparing copy…</span> : undefined}
         studentName={recipient ?? null}
         title={validation?.ok ? validation.outline.meta.title : title}
-        onRename={(name) => { if (validation?.ok) setSource(stringify(renameDeck(validation.outline, name), { lineWidth: 100 })); }}
+        onRename={(name) => { if (validation?.ok) setSource(deckSource(renameDeck(validation.outline, name))); }}
         folderName={detail?.folderName ?? null}
         // The back arrow lands on the deck's own row in the Library.
         libraryTo={{

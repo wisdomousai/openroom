@@ -1,5 +1,5 @@
 import { zipSync, strToU8 } from 'fflate';
-import { defaultDeckDesign, validateSession, type Outline } from '@openroom/schema';
+import { validateSession, type Outline } from '@openroom/schema';
 
 /** Where an unfinished question lives, so the editor can open it. */
 export type ReadinessTarget =
@@ -55,11 +55,8 @@ export function questionReadinessMessage(outline: Outline): string | null {
   return questionReadinessIssue(outline)?.message ?? null;
 }
 
-/** The same initial document in cloud folders and local files. */
-export function blankDeck(title = 'Untitled'): Outline {
-  return { version: 1, meta: { title, objectives: [] }, design: defaultDeckDesign(),
-    steps: [{ id: 'slide-1', kind: 'blank', elements: [] }], interactions: [] };
-}
+// The server builds the draft zero from the same blank deck, so it lives in schema.
+export { blankDeck } from '@openroom/schema';
 
 export { renameDeck } from './deck-edit/outline-edit';
 

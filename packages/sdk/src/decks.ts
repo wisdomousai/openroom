@@ -115,12 +115,13 @@ export type ConditionalDeckDetail =
   | { changed: false; etag: string }
   | { changed: true; etag: string | null; detail: DeckDetail };
 
+/** Saved working text, or the draft zero (`updatedAt: null`) when nothing is unsaved. */
 export interface DeckDraft {
   deckId: string;
   source: string;
   baseVersion: number;
-  updatedAt: number;
-  updatedBy: string;
+  updatedAt: number | null;
+  updatedBy: string | null;
 }
 
 export interface DeckDraftSaved {
@@ -229,8 +230,8 @@ export interface DecksApi {
   linkFile(deckId: string, fileId: string): Promise<{ linked: true; fileId: string; unchanged?: boolean }>;
   reportFileLocation(deckId: string, deviceId: string, input: DeckFileLocationInput): Promise<DeckFileLocation>;
   forgetFileLocation(deckId: string, deviceId: string): Promise<void>;
-  /** The rolling working text, or null when there is none. */
-  getDraft(deckId: string): Promise<DeckDraft | null>;
+  /** The rolling working text, or the draft zero (`updatedAt: null`) when nothing is unsaved. */
+  getDraft(deckId: string): Promise<DeckDraft>;
   /** Store working text. Never validated — that is what `saveVersion` is for. */
   saveDraft(deckId: string, source: string, baseVersion: number): Promise<DeckDraftSaved>;
   /** Throw the working text away. Idempotent. */
@@ -357,14 +358,9 @@ export function createDeckClient(options: DeckClientOptions): DeckClient {
       await call(`${deckPath(deckId)}/file-locations/${encodeURIComponent(deviceId)}`, { method: 'DELETE' });
     },
     async getDraft(deckId) {
-      try {
-        return (await call(`${deckPath(deckId)}/draft`)) as DeckDraft;
-      } catch (error) {
-        // No draft is a normal state, not a failure — the deck simply has no
-        // unsaved working text. Any other status is still an error.
-        if (error instanceof DeckError && error.status === 404) return null;
-        throw error;
-      }
+      const body = (await call(`${deckPath(deckId)}/draft`)) as DeckDraft | null;
+      if (body === null) throw new DeckError('draft read returned no body', 500);
+      return body;
     },
     async saveDraft(deckId, source, baseVersion) {
       const body = (await call(`${deckPath(deckId)}/draft`, {

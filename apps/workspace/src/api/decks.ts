@@ -4,7 +4,7 @@ import type {
   DeckShape,
   Outline,
 } from '@openroom/schema';
-import { ApiError, request } from './client';
+import { request } from './client';
 import type { SessionSummary } from './sessions';
 
 export interface DeckSummary {
@@ -164,14 +164,9 @@ export function putDeckDraft(
   });
 }
 
-/** null when the deck has no draft (the server answers 404). */
-export async function getDeckDraft(id: string): Promise<DeckDraftResponse | null> {
-  try {
-    return await request<DeckDraftResponse>(`/api/decks/${encodeURIComponent(id)}/draft`);
-  } catch (cause) {
-    if (cause instanceof ApiError && cause.status === 404) return null;
-    throw cause;
-  }
+/** The saved working text, or the draft zero (`updatedAt: null`) when nothing is unsaved. */
+export function getDeckDraft(id: string): Promise<DeckDraftResponse> {
+  return request<DeckDraftResponse>(`/api/decks/${encodeURIComponent(id)}/draft`);
 }
 
 export function trashDeck(id: string): Promise<{ ok: true; recoverable: true }> {

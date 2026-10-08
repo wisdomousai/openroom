@@ -230,6 +230,7 @@ export {
   type WorkspaceExperience,
 } from './space-settings.js';
 export * from './deck-design.js';
+export { blankDeck, deckSource } from './deck-source.js';
 export * from './outline-resources.js';
 export * from './resource-content.js';
 export * from './slide-templates.js';

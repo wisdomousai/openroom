@@ -39,7 +39,7 @@ function worker(decks: Record<string, { content: Outline | null; version: number
     if (method === 'DELETE') { deleted.push(id); return { ok: true }; }
     if (options.failGet && !tail) throw options.failGet;
     if (!deck) throw new RequestError(404, 'not-found', 'gone');
-    if (tail === 'draft') { if (deck.draft) return { deckId: id }; throw new RequestError(404, 'not-found', 'none'); }
+    if (tail === 'draft') return { deckId: id, updatedAt: deck.draft ? 1 : null };
     if (tail === 'versions') {
       if (options.failVersions) throw options.failVersions;
       if (conflicts > 0) { conflicts -= 1; options.onConflict?.(); throw new RequestError(409, 'version-conflict', 'conflict'); }
