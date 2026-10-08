@@ -120,6 +120,11 @@ bun run deploy
 node scripts/ci/verify-deployment.mjs https://openroom.app
 ```
 
+CI passes the deployment's `workers.dev` URL as a second argument. Bot Fight Mode
+on the public zone challenges the GitHub Actions Node client, so when
+`openroom.app` answers that challenge the check continues against the same
+deployment on `workers.dev`.
+
 `bun run deploy` rebuilds the app, deploys the relay, then the control plane. The CI
 job intentionally invokes Wrangler directly in `apps/relay` and then `apps/workspace-worker`
 after restoring its verified build. Calling either package's deploy script alone

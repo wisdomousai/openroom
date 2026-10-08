@@ -156,10 +156,16 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Set the production CLOUDFLARE_API_TOKEN secret.' >&2; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Set the production CLOUDFLARE_ACCOUNT_ID variable.' >&2; exit 1; }
           bun x --no-install wrangler d1 migrations apply openroom --remote
-          bun x --no-install wrangler deploy
+          set -o pipefail
+          bun x --no-install wrangler deploy 2>&1 | tee "$RUNNER_TEMP/wrangler-deploy.txt"
+          # Bot Fight Mode on openroom.app challenges this job's Node client.
+          # workers.dev is the same deployment, outside that zone.
+          workers_dev=$(grep -Eo 'https://[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/wrangler-deploy.txt" | head -1)
+          test -n "$workers_dev" || { echo 'Deploy did not report a workers.dev URL.' >&2; exit 1; }
+          echo "WORKERS_DEV_URL=$workers_dev" >> "$GITHUB_ENV"
       - name: Verify production health and published assets
         if: steps.current.outputs.deploy == 'true'
-        run: node scripts/ci/verify-deployment.mjs https://openroom.app
+        run: node scripts/ci/verify-deployment.mjs https://openroom.app "$WORKERS_DEV_URL"
       - name: Record the release
         if: steps.current.outputs.deploy == 'true'
         run: |
