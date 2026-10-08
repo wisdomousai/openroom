@@ -70,7 +70,7 @@ export function openapiDocument(origin: string): unknown {
       version: '0.2.0',
       description:
         'Business control plane for tutor-delivered sessions plus the live classroom runtime. Original school documents stay in the external preparation agent; OpenRoom stores typed outlines and presentation contexts (person, group, class, event).',
-      contact: { url: origin },
+      contact: { url: origin, email: 'hello@openroom.app' },
     },
     servers: [{ url: origin }],
     paths: {
