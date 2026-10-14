@@ -1,6 +1,6 @@
 # OpenRoom
 
-Slides and live audience interaction in one app, for teachers and tutors.
+Slides for teachers and tutors, with live audience interaction.
 
 Build a lesson deck, press **Start**, and the class joins from their phones with a
 short code. Polls, quizzes, word clouds, rankings and Q&A sit on the slides they
