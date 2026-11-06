@@ -114,7 +114,7 @@ export function BreakoutPickerDialog({
             </span>
           </button>
         </div>
-        <DialogFooter>
+        <DialogFooter flush>
           <span className="min-w-0 text-caption text-muted-foreground">Editing stays in the deck.</span>
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel

@@ -45,11 +45,21 @@ export function DialogBody({ className, ...props }: React.HTMLAttributes<HTMLDiv
   return <div className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain', className)} {...props} />;
 }
 
-export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+/**
+ * Action row at the bottom of a dialog. By default it bleeds over the default
+ * `p-5` content padding. Pass `flush` when the DialogContent has `p-0`, so the
+ * footer stays inside the dialog box instead of being pulled past its edges.
+ */
+export function DialogFooter({
+  className,
+  flush = false,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & { flush?: boolean }) {
   return (
     <div
       className={cn(
-        '-mx-5 -mb-5 flex shrink-0 items-center justify-end gap-2 border-t border-hairline bg-background px-6 py-3.5',
+        !flush && '-mx-5 -mb-5',
+        'flex shrink-0 items-center justify-end gap-2 border-t border-hairline bg-background px-6 py-3.5',
         '[&>p]:mr-auto [&>p]:min-w-0 [&>span]:mr-auto [&>span]:min-w-0',
         '[&_button]:shrink-0 [&_button]:whitespace-nowrap',
         className,
