@@ -28,11 +28,31 @@ async function readBounded(response: Response, limit: number): Promise<Uint8Arra
   return bytes;
 }
 
+/**
+ * Where a media reference sits, as a tutor reads it: "slide 3" counts slides in
+ * rail order, so breakouts are named by the slide they belong to.
+ */
+export function mediaPlace(outline: Outline, path: string, kind: string): string {
+  const what = kind === 'audio' ? 'recording' : kind === 'pdf' ? 'PDF' : 'picture';
+  if (path.startsWith('/design/')) return `A picture in the deck design`;
+  const index = Number(/^\/steps\/(\d+)/.exec(path)?.[1] ?? Number.NaN);
+  const step = outline.steps[index];
+  if (step === undefined) return `A linked ${what}`;
+  const slideNumber = (stepId: string) =>
+    outline.steps.filter((item) => item.breakoutOf === undefined).findIndex((item) => item.id === stepId) + 1;
+  const where = path.includes('/design/background') ? `The background picture of` : `The ${what} on`;
+  if (step.breakoutOf !== undefined) {
+    const parent = slideNumber(step.breakoutOf.stepId);
+    return parent > 0 ? `${where} a breakout of slide ${parent}` : `${where} a breakout`;
+  }
+  return `${where} slide ${slideNumber(step.id)}`;
+}
+
 /** Fetch visible document media before publishing a version or starting a download. */
 export async function portableDeck(outline: Outline, origin: string, fetcher: typeof fetch = fetch): Promise<{
   outline: Outline; resources: Record<string, OpenRoomFileResourceV1>; entries: Record<string, Uint8Array>;
 }> {
-  const references = new Map<string, { url: string; kind: string; assetId?: string }>();
+  const references = new Map<string, { url: string; kind: string; assetId?: string; place: string }>();
   const keyFor = (source: OutlineResourceSource) => source.assetId ? `/api/assets/${encodeURIComponent(source.assetId)}` : source.url;
   mapOutlineResourceSources(outline, (source, path) => {
     const kind = path.includes('/design/') ? 'image' : (source as { type?: string }).type ?? 'image';
@@ -45,7 +65,9 @@ export async function portableDeck(outline: Outline, origin: string, fetcher: ty
     const url = new URL(key, origin);
     if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('A media address cannot be downloaded.');
     if (references.has(key) && references.get(key)!.kind !== kind) throw new Error('The same media is used with incompatible formats. Replace its incorrect reference.');
-    if (!references.has(key)) references.set(key, { url: url.href, kind, ...(source.assetId ? { assetId: source.assetId } : {}) });
+    if (!references.has(key)) {
+      references.set(key, { url: url.href, kind, place: mediaPlace(outline, path, kind), ...(source.assetId ? { assetId: source.assetId } : {}) });
+    }
     return source;
   });
   if (references.size > OPENROOM_RESOURCE_MAX_COUNT) throw new Error(`A portable deck can contain at most ${OPENROOM_RESOURCE_MAX_COUNT} media files.`);
@@ -56,8 +78,8 @@ export async function portableDeck(outline: Outline, origin: string, fetcher: ty
   for (const [key, reference] of references) {
     let response: Response;
     try { response = await fetcher(reference.url, { credentials: 'same-origin', signal: AbortSignal.timeout(30_000) }); }
-    catch { throw new Error('A linked image or recording could not be included. Upload it into this space and try again.'); }
-    if (!response.ok) throw new Error(`A media file could not be included (HTTP ${response.status}). Replace it or upload it again.`);
+    catch { throw new Error(`${reference.place} could not be included. Upload it into this space and try again.`); }
+    if (!response.ok) throw new Error(`${reference.place} could not be included (HTTP ${response.status}). Replace it or upload it again.`);
     const contentType = response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() as OpenRoomResourceContentType;
     if (!(OPENROOM_RESOURCE_CONTENT_TYPES as readonly string[]).includes(contentType)
       || (reference.kind === 'image' && !contentType.startsWith('image/'))
