@@ -48,7 +48,6 @@
 .or-radial-chart,
 .or-scale-chart,
 .or-hist-chart,
-.or-rank-chart,
 .or-emoji-chart,
 .or-gauge-chart {
   display: flex;
@@ -57,6 +56,43 @@
   gap: 0.5rem;
   height: 100%;
   min-height: 0;
+}
+
+/**
+ * Columns: the option names in one row under the plot, one cell per column.
+ * The inset repeats the band scale's outer padding (half a band's padding on
+ * each side of the plot margin), so each name is centred on its column and
+ * wraps inside its width instead of printing into its neighbours.
+ */
+.or-chart-legend.or-cols-chart__labels {
+  display: grid;
+  grid-template-columns: repeat(var(--or-cols, 1), minmax(0, 1fr));
+  align-items: start;
+  gap: 0;
+  padding-inline: calc(
+    var(--or-col-inset, 12px) +
+      (100% - 2 * var(--or-col-inset, 12px)) * var(--or-col-padding, 0.12) / 2 /
+      (var(--or-cols, 1) + var(--or-col-padding, 0.12))
+  );
+}
+
+/* The plot keeps at least half the body; the names take the rest. */
+.or-cols-chart .or-chart-frame {
+  flex: 1 1 auto;
+  min-height: 50%;
+}
+
+.or-cols-chart__labels .barrow {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.25em;
+  min-height: 0;
+  padding-inline: 0.25em;
+  text-align: center;
+}
+
+.or-cols-chart__labels .tag-correct {
+  margin-left: 0;
 }
 
 /**
@@ -182,6 +218,12 @@
   overflow-wrap: anywhere;
 }
 
+/* A ranking row's place, in front of the item it names. */
+.barrow__rank {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+
 /**
  * Abstention row ("Don't know"). It belongs to the total, so it is drawn —
  * but it is not an answer, so it takes the muted role and never a series hue.
@@ -269,14 +311,26 @@
   overflow-wrap: anywhere;
 }
 
-/* Scale min/max anchors under the axis (e.g. "Guessing" / "Certain"). */
+/*
+ * Scale min/max anchors (e.g. "Guessing" / "Certain") on their own row under
+ * the tick numbers, each kept to a little under half the width and wrapped, so
+ * a long end label never prints across the ticks or into the other one.
+ */
 .or-scale-ends {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 45%) minmax(0, 45%);
   justify-content: space-between;
+  align-items: start;
   gap: 1rem;
   font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.25;
   color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+.or-scale-ends__max {
+  text-align: right;
 }
 
 /* Word cloud: the layout runs on a fixed canvas; the svg scales to fill. */
@@ -389,6 +443,19 @@
 
 .or-chart--compact .card {
   font-size: 0.875rem;
+}
+
+/* Histogram reading under the axis; the correct value takes the rule's green. */
+.or-hist-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.or-hist-note__correct {
+  font-weight: 600;
+  color: color-mix(in oklab, var(--ok) 72%, var(--foreground));
 }
 
 /* ------------------------------------------------------------- mean chip */

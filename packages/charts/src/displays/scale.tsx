@@ -134,7 +134,9 @@ export function ScaleBarsChart({
         },
       },
       y: { scale: scaleLinear, axis: false },
-      margin: { top: 28, right: 12, bottom: 8, left: 12 },
+      // The tick numbers draw in the bottom margin, so it holds their line;
+      // the end labels then start on a row of their own below it.
+      margin: { top: 28, right: 12, bottom: compact ? 24 : 36, left: 12 },
       theme: chartTheme,
       svgAnimation: chartAnimation(reduced),
     });
@@ -150,7 +152,7 @@ export function ScaleBarsChart({
           config={config}
           className={cn(
             'or-chart-frame aspect-auto w-full',
-            compact ? 'min-h-40' : 'h-full min-h-56',
+            compact ? 'min-h-40' : 'min-h-56 flex-1',
           )}
         >
           <TanStackChart
@@ -161,8 +163,8 @@ export function ScaleBarsChart({
         </ChartContainer>
         {(interaction.minLabel || interaction.maxLabel) && (
           <div className="or-scale-ends" aria-hidden="true">
-            <span>{interaction.minLabel ?? ''}</span>
-            <span>{interaction.maxLabel ?? ''}</span>
+            <span className="or-scale-ends__min">{interaction.minLabel ?? ''}</span>
+            <span className="or-scale-ends__max">{interaction.maxLabel ?? ''}</span>
           </div>
         )}
         {mean !== null && interaction.displayOptions?.showMean !== false ? (

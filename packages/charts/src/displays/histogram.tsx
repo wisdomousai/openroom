@@ -73,6 +73,7 @@ export function NumericHistogramChart({
           key: `b${index}`,
           label: fmt(lo),
           count,
+          correct: isCorrect,
           color: isCorrect ? 'var(--ok)' : 'var(--chart-1)',
           lo,
           hi,
@@ -95,6 +96,9 @@ export function NumericHistogramChart({
       median === null
         ? null
         : fmt(bins.start + Math.floor((median - bins.start) / bins.step) * bins.step);
+    // The bin that holds the correct value. It has no height when nobody gave
+    // it, so a rule marks it on the axis whatever its count.
+    const correctLabel = rows.find((row) => row.correct)?.label ?? null;
 
     return defineChart({
       marks: [
@@ -106,12 +110,23 @@ export function NumericHistogramChart({
           fill: (row) => row.color,
           maxThickness: 48,
         }),
+        ...(correctLabel !== null
+          ? [
+              ruleX([{ label: correctLabel }], {
+                id: 'numeric-correct',
+                x: 'label',
+                stroke: 'var(--ok)',
+                strokeWidth: 4,
+              }),
+            ]
+          : []),
         ...(showMean && meanLabel !== null
           ? [
               ruleX([{ label: meanLabel }], {
                 id: 'numeric-mean',
                 x: 'label',
-                stroke: 'var(--chart-2)',
+                // Green is the correct answer's colour, so the mean takes the ink.
+                stroke: 'var(--foreground)',
                 strokeWidth: 2,
               }),
             ]
@@ -136,7 +151,9 @@ export function NumericHistogramChart({
         },
       },
       y: { scale: scaleLinear, grid: true, axis: false },
-      margin: { top: 16, right: 12, bottom: 8, left: 12 },
+      // The tick values draw in the bottom margin; it holds their line so the
+      // note below never prints over them.
+      margin: { top: 16, right: 12, bottom: compact ? 22 : 28, left: 12 },
       theme: chartTheme,
       svgAnimation: chartAnimation(reduced),
     });
@@ -154,7 +171,7 @@ export function NumericHistogramChart({
           config={config}
           className={cn(
             'or-chart-frame aspect-auto w-full',
-            compact ? 'min-h-40' : 'h-full min-h-56',
+            compact ? 'min-h-40' : 'min-h-56 flex-1',
           )}
         >
           <TanStackChart
@@ -163,11 +180,18 @@ export function NumericHistogramChart({
             initialHeight={compact ? 160 : 280}
           />
         </ChartContainer>
-        <p className="text-sm text-muted-foreground">
-          {total} answers
+        <p className="or-hist-note" aria-hidden="true">
+          {total} {total === 1 ? 'answer' : 'answers'}
           {showMean && mean !== null ? ` · mean ${fmt(mean)}` : ''}
           {showMedian && median !== null ? ` · median ${fmt(median)}` : ''}
           {interaction.unit ? ` ${interaction.unit}` : ''}
+          {correct !== null ? (
+            <span className="or-hist-note__correct">
+              {' · correct '}
+              {fmt(correct)}
+              {interaction.unit ? ` ${interaction.unit}` : ''}
+            </span>
+          ) : null}
         </p>
       </div>
     </Frame>
