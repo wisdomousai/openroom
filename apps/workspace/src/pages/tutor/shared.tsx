@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/component
 import { Link } from '@tanstack/react-router';
 
 import { to } from '../../destinations';
-import { CONTINUITY_REQUIRED, ContinuityLock } from '../../components/ContinuityLock';
+import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../../components/ContinuityLock';
+import { ApiError } from '../../api/client';
 
 export type Notify = (message: string, tone?: 'info' | 'error') => void;
 
@@ -34,13 +35,36 @@ export function useLoad<T>(
   queryKey: readonly unknown[],
   fn: () => Promise<T>,
   fallback: string,
-): { data: T | null; error: string | null; reload: () => void } {
+): { data: T | null; error: string | null; cause: unknown; reload: () => void } {
   const query = useQuery({ queryKey, queryFn: fn });
   return {
     data: query.data ?? null,
     error: query.error ? messageOf(query.error, fallback) : null,
+    /** The raw failure, for `LoadState` to tell a missing item from a failed load. */
+    cause: query.error ?? null,
     reload: () => { void query.refetch(); },
   };
+}
+
+/** True when the worker says the item is not there (or not shared with this account). */
+export function isMissing(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
+/**
+ * The page for an address whose item is gone or not shared. No Retry: asking
+ * again gets the same answer. The way out is the Library.
+ */
+export function NotAvailable({ what = 'page' }: { what?: string }) {
+  return (
+    <div className="flex flex-col items-start gap-3 p-8" role="alert">
+      <h1 className="text-screen-title">This {what} is not available</h1>
+      <p className="text-secondary text-muted-foreground">
+        It no longer exists, or it is not shared with this account.
+      </p>
+      <Button asChild variant="outline"><Link {...to.library()}>Library</Link></Button>
+    </div>
+  );
 }
 
 export function PageHeading({
@@ -56,9 +80,9 @@ export function PageHeading({
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="font-display text-page-title">{title}</h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 max-w-2xl text-secondary text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {action}
@@ -74,13 +98,20 @@ export function EmptyCollection({ children }: { children: ReactNode }) {
   );
 }
 
-export function LoadState({ error }: { error: string | null }) {
+/**
+ * Loading, locked, missing or failed. `error` is the message or the raw
+ * failure; a raw 404 shows `NotAvailable` instead of a Retry that cannot help.
+ */
+export function LoadState({ error }: { error: unknown }) {
   const queryClient = useQueryClient();
-  if (error === CONTINUITY_REQUIRED) return <ContinuityLock />;
-  if (!error) return <p className="text-sm text-muted-foreground" role="status">Loading…</p>;
+  if (error === CONTINUITY_REQUIRED || isContinuityRequired(error)) return <ContinuityLock />;
+  if (error === null || error === undefined || error === '') {
+    return <p className="text-secondary text-muted-foreground" role="status">Loading…</p>;
+  }
+  if (isMissing(error)) return <NotAvailable />;
   return (
-    <div className="flex flex-col items-start gap-2 text-sm text-destructive" role="alert">
-      <p>{error}</p>
+    <div className="flex flex-col items-start gap-2 text-secondary text-destructive" role="alert">
+      <p>{typeof error === 'string' ? error : messageOf(error, 'Could not load this page.')}</p>
       <Button type="button" variant="outline" size="sm" onClick={() => void queryClient.refetchQueries({ type: 'active' })}>
         Retry
       </Button>

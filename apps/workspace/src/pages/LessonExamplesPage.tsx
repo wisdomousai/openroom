@@ -19,7 +19,7 @@ export default function LessonExamplesPage({ spaceId, folderId, contextId }: { s
     mutationFn: (id: string) => createDeck({ spaceId, folderId, ...(contextId ? { contextId } : {}), content: lessonExample(id) }),
     onSuccess: async ({ deck }) => { await invalidateManagementData(); await navigate(to.deckEditor(deck.id)); },
   });
-  if (!tree.data) return <LoadState error={tree.error ? messageOf(tree.error, 'Could not load this folder') : null} />;
+  if (!tree.data) return <LoadState error={tree.error ?? null} />;
   const { space, folders } = tree.data;
   const canEdit = space.role === 'owner' || space.role === 'editor';
   const validFolder = !folderId || folders.some((folder) => folder.id === folderId);

@@ -20,6 +20,7 @@ import {
   type SpaceTree,
 } from '../api';
 import { ContextLinksCard } from './tutor/ContextLinks';
+import { isMissing, NotAvailable } from './tutor/shared';
 import { sessionStartMessage } from '../components/ContinuityLock';
 import { WorkspaceUpdates } from '../components/WorkspaceUpdates';
 import { SpaceWelcome } from '../components/SpaceWelcome';
@@ -470,6 +471,8 @@ export function SpacePage({
   }
 
   const loadError = defaultSpaceQuery.error ?? treeQuery.error;
+  if (isMissing(loadError)) return <NotAvailable what="space" />;
+  if (currentContextId !== null && isMissing(personQuery.error)) return <NotAvailable what="student" />;
   if (loadError) {
     return (
       <div className="flex flex-col items-start gap-2 p-8 text-secondary text-destructive" role="alert">

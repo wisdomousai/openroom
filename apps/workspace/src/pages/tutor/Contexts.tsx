@@ -32,7 +32,7 @@ import {
  */
 export function ContextsPage() {
   const navigate = useNavigate();
-  const { data, error } = useLoad(
+  const { data, cause } = useLoad(
     ['contexts', 'collection'],
     () => listContexts(),
     'Could not load students',
@@ -44,7 +44,7 @@ export function ContextsPage() {
     void navigate({ ...to.library({ spaceId: first.spaceId, contextId: first.id }), replace: true });
   }, [data, navigate]);
 
-  if (data === null) return <LoadState error={error} />;
+  if (data === null) return <LoadState error={cause} />;
   if (data.length === 0) {
     return (
       <div className="mx-auto flex max-w-lg flex-col gap-4 py-16">
@@ -167,12 +167,12 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring' }: { sou
 
 export function ContextEditPage({ contextId }: { contextId: string }) {
   const navigate = useNavigate();
-  const { data: detail, error } = useLoad(
+  const { data: detail, cause } = useLoad(
     ['contexts', contextId, 'edit'],
     () => getContext(contextId),
     'Could not load the context',
   );
-  if (detail === null) return <LoadState error={error} />;
+  if (detail === null) return <LoadState error={cause} />;
   return (
     <ContextForm
       heading={`${detail.displayName}’s context`}
@@ -196,7 +196,7 @@ export function ContextEditPage({ contextId }: { contextId: string }) {
 /** Deep links to a context land on that person’s folder. */
 export function ContextDetailPage({ contextId }: { contextId: string }) {
   const navigate = useNavigate();
-  const { data, error } = useLoad(
+  const { data, cause } = useLoad(
     ['contexts', contextId, 'redirect'],
     () => getContext(contextId),
     'Could not load the context',
@@ -212,6 +212,6 @@ export function ContextDetailPage({ contextId }: { contextId: string }) {
     });
   }, [contextId, data, navigate]);
 
-  if (data === null) return <LoadState error={error} />;
+  if (data === null) return <LoadState error={cause} />;
   return <p className="text-secondary text-muted-foreground">Opening…</p>;
 }

@@ -1,14 +1,11 @@
 import { mediaAssetPath, type MediaAssetSummary } from '@openroom/schema';
 import {
-  ApiError,
+  apiFetch,
   baseUrl,
   CSRF_HEADERS,
-  extractCode,
-  extractErrors,
-  extractMessage,
   request,
+  responseError,
 } from './client';
-import type { ApiErrorBody } from '@openroom/editor';
 import { listAllSpaces } from './spaces';
 
 export type { MediaAssetSummary };
@@ -36,7 +33,7 @@ export async function uploadAsset(
 ): Promise<MediaAssetSummary> {
   const query = new URLSearchParams({ name: file.name });
   if (options.alt !== undefined && options.alt.trim() !== '') query.set('alt', options.alt.trim());
-  const res = await fetch(
+  const res = await apiFetch(
     `${baseUrl}/api/tutoring/spaces/${encodeURIComponent(spaceId)}/assets?${query.toString()}`,
     {
       method: 'POST',
@@ -54,16 +51,7 @@ export async function uploadAsset(
   } catch {
     body = null;
   }
-  if (!res.ok) {
-    const eb = body as ApiErrorBody | null;
-    throw new ApiError(
-      res.status,
-      extractMessage(eb, `Upload failed (HTTP ${res.status})`),
-      extractCode(eb),
-      extractErrors(eb),
-      body,
-    );
-  }
+  if (!res.ok) throw responseError(res.status, body);
   return (body as { asset: MediaAssetSummary }).asset;
 }
 

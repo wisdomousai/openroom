@@ -81,7 +81,7 @@ export function SpaceMembersPage({ spaceId }: { spaceId: string }) {
         ? messageOf(revokeMutation.error, 'Could not revoke invite')
         : null;
 
-  if (data === null) return <LoadState error={error} />;
+  if (data === null) return <LoadState error={membersQuery.error ?? error} />;
   const canManage = data.role === 'owner';
 
   return (
@@ -214,7 +214,7 @@ export function SpaceInvitePage({ spaceId }: { spaceId: string }) {
         await navigate(to.spaceMembers(spaceId));
       } catch (cause) {
         setError(
-          cause instanceof ApiError && cause.message === 'team-required'
+          cause instanceof ApiError && cause.code === 'team-required'
             ? TEAM_REQUIRED
             : cause instanceof ApiError && cause.status === 409
               ? 'Already a member or already invited.'
@@ -225,7 +225,7 @@ export function SpaceInvitePage({ spaceId }: { spaceId: string }) {
   });
 
   if (!accessQuery.data) {
-    return <LoadState error={accessQuery.error ? messageOf(accessQuery.error, 'Could not check space access') : null} />;
+    return <LoadState error={accessQuery.error ?? null} />;
   }
   if (accessQuery.data.role !== 'owner') {
     return <p className="text-sm text-destructive">Only the space owner can invite teachers.</p>;
@@ -260,7 +260,7 @@ export function SpaceMemberEditPage({ spaceId, userId }: { spaceId: string; user
     queryKey: ['spaces', spaceId, 'members'] as const,
     queryFn: () => getSpaceMembers(spaceId),
   });
-  if (!query.data) return <LoadState error={query.error ? messageOf(query.error, 'Could not load member') : null} />;
+  if (!query.data) return <LoadState error={query.error ?? null} />;
   if (query.data.role !== 'owner') return <p className="text-sm text-destructive">Only the space owner can edit members.</p>;
   const member = query.data.members.find((candidate) => candidate.userId === userId);
   if (!member || member.role === 'owner') return <p className="text-sm text-destructive">Member not found.</p>;

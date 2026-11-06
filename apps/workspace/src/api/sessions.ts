@@ -224,7 +224,7 @@ export async function downloadExport(
       /* ignore */
     }
     const eb = body as ApiErrorBody | null;
-    throw new ApiError(res.status, extractMessage(eb, `Export failed (HTTP ${res.status})`), extractCode(eb));
+    throw new ApiError(res.status, extractMessage(eb, '', res.status), extractCode(eb));
   }
   const blob = await res.blob();
   const href = URL.createObjectURL(blob);

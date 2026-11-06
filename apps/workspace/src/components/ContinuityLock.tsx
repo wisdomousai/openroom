@@ -17,7 +17,7 @@ import { Button } from '@openroom/ui/components/button';
 export const CONTINUITY_REQUIRED = 'continuity-required';
 
 export function isContinuityRequired(error: unknown): boolean {
-  return error instanceof ApiError && error.message === CONTINUITY_REQUIRED;
+  return error instanceof ApiError && (error.code === CONTINUITY_REQUIRED || error.message === CONTINUITY_REQUIRED);
 }
 
 /** Start/launch failures: a readable line for the identified-session 403. */
