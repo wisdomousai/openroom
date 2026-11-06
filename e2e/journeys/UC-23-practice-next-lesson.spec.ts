@@ -34,7 +34,7 @@ test('tutor chooses original exercises for the next lesson without copying priva
   const next = await createDeck('Next lesson');
   await page.route(`**/api/tutoring/contexts/${context.id}/returned`, (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }), { times: 2 });
   await page.goto(`/host/#/decks/${next.deck.id}/edit`);
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await page.getByRole('tab', { name: 'Notes', exact: true }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Learner work could not be loaded.' })).toBeVisible();
   await page.getByRole('button', { name: 'Retry learner work', exact: true }).click();
   const picker = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Practice to revisit', exact: true }) });

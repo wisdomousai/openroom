@@ -80,7 +80,7 @@ test('capture the manual from a real local teaching journey', async ({ page, lea
   await presenter.locator('header').getByRole('button', { name: 'End session', exact: true }).click();
   await page.getByRole('dialog', { name: 'End this session?', exact: true }).getByRole('button', { name: 'End session', exact: true }).click();
   await page.getByLabel('Outcomes (one per line)', { exact: true }).fill('You explained the delay and found another route.');
-  await page.getByLabel('Next step', { exact: true }).fill('Compare two accounts of the same journey.');
+  await page.getByLabel('Next session', { exact: true }).fill('Compare two accounts of the same journey.');
   await page.getByRole('heading', { name: 'Session notes — Le train est parti', exact: true }).click();
   await capture(page, 'session-notes');
   await page.getByRole('button', { name: 'Save notes', exact: true }).click();

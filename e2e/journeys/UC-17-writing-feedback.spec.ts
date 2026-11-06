@@ -107,7 +107,7 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   await expect(learner.getByText('Your tutor’s feedback will appear here.')).toBeVisible();
   await expect(learner.getByText('Votre récit est clair.', { exact: false })).toHaveCount(0);
   await page.goto(`/host/#/decks/${deck.id}/edit`);
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await page.getByRole('tab', { name: 'Notes', exact: true }).click();
   await page.getByText('Léa · allé', { exact: true }).click();
   await page.getByRole('button', { name: 'Add correction to deck', exact: true }).click();
   await expect(page.getByRole('list', { name: 'Slides' }).getByRole('button')).toHaveCount(2);

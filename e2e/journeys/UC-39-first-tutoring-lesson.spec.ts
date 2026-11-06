@@ -130,8 +130,8 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
       await participant.goto(joinUrl!);
       await expect(participant.getByTitle('Your session name', { exact: true })).toHaveText(participantName);
       await expect(presenter.locator('header')).toContainText('2 joined');
-      await participant.getByRole('textbox', { name: 'Gap weather', exact: true }).fill('pleuvait');
-      await participant.getByRole('textbox', { name: 'Gap aux', exact: true }).fill('a');
+      await participant.getByRole('textbox', { name: 'Gap 1', exact: true }).fill('pleuvait');
+      await participant.getByRole('textbox', { name: 'Gap 2', exact: true }).fill('a');
       await participant.getByRole('button', { name: 'Send answer', exact: true }).click();
       await expect(participant.getByText('Answer received', { exact: true })).toBeVisible();
       await presenter.getByRole('button', { name: 'Reveal the results', exact: true }).click();
@@ -144,7 +144,7 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await page.getByRole('dialog', { name: 'End this session?', exact: true }).getByRole('button', { name: 'End session', exact: true }).click();
   await expect(page.getByLabel('Tutor notes', { exact: true })).toHaveValue('PRIVATE TUTOR NOTE: revisit the past tense.');
   await page.getByLabel('Outcomes (one per line)', { exact: true }).fill('You explained the delay and found another route.');
-  await page.getByLabel('Next step', { exact: true }).fill('PRIVATE NEXT STEP');
+  await page.getByLabel('Next session', { exact: true }).fill('PRIVATE NEXT STEP');
   await audit(page, testInfo, '09-session-notes');
   await page.getByRole('button', { name: 'Save notes', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Review learner work', exact: true })).toBeVisible();
@@ -192,7 +192,7 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await page.getByRole('link', { name: 'Back to learner work', exact: true }).click();
   await page.getByRole('link', { name: 'Back to Library', exact: true }).click();
   await page.getByRole('link', { name: 'New deck', exact: true }).last().click();
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await page.getByRole('tab', { name: 'Notes', exact: true }).click();
   await page.getByText('Camille First Lesson · allé', { exact: true }).click();
   await page.getByRole('button', { name: 'Add correction to deck', exact: true }).click();
   await expect(page.getByRole('list', { name: 'Slides' }).getByRole('button')).toHaveCount(2);
@@ -254,7 +254,9 @@ test('all eight language samples fit the editor and revealed live results', asyn
           const option = question.options.find((option) => option.correct) ?? question.options[0]!;
           await participant.getByRole('radio', { name: option.label, exact: true }).click();
         } else if (question.type === 'fill-the-gaps') {
-          for (const gap of question.gaps) await participant.getByRole('textbox', { name: `Gap ${gap.id}`, exact: true }).fill(gap.answers[0]!);
+          // The phone numbers gaps in reading order of the prompt.
+          const order = [...question.prompt.matchAll(/\{\{([a-z0-9-]+)\}\}/g)].map((match) => match[1]);
+          for (const gap of question.gaps) await participant.getByRole('textbox', { name: `Gap ${order.indexOf(gap.id) + 1}`, exact: true }).fill(gap.answers[0]!);
           await participant.getByRole('button', { name: 'Send answer', exact: true }).click();
         } else if (question.type === 'ranking') {
           await expect(participant.getByRole('heading', { name: question.prompt, exact: true })).toBeVisible();

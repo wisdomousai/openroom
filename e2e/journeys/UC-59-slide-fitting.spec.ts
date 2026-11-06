@@ -50,7 +50,7 @@ async function loaded(surface: Locator) {
 test('long text, pictures, short grids, long lists and HTML fit their slide in the editor and on the stage', async ({ page, browser }, testInfo) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
+  await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'cara', password: 'demo' } });
   const spaceResponse = await page.request.post('/api/my/spaces', { headers: CSRF, data: { name: 'Slide fitting', experience: 'classroom' } });
   expect(spaceResponse.status()).toBe(201);
   const space = await spaceResponse.json();

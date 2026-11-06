@@ -29,7 +29,7 @@ test.beforeAll(async () => { await waitForWorker(); });
 test.use({ trace: 'retain-on-failure' });
 
 async function signIn(page: Page) {
-  const res = await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
+  const res = await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'bob', password: 'demo' } });
   expect(res.ok(), await res.text()).toBe(true);
 }
 

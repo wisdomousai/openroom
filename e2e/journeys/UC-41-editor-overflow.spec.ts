@@ -61,8 +61,7 @@ test('homework grows as a document, keeps mixed content and reaches the final ta
   // The duplicate prose controls must never clear a task-only homework page.
   await document.getByLabel('homework body').fill('');
   await document.getByLabel('homework list').fill('');
-  const pane = page.locator('.deck-editor-properties');
-  await pane.getByPlaceholder('Optional title').fill('');
+  await document.getByLabel('homework title').fill('');
   await saved(page);
   await page.reload();
   await page.getByRole('button', { name: /^Homework / }).click();

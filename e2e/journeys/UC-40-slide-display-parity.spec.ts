@@ -22,7 +22,10 @@ async function geometry(surface: Locator) {
       ratio: frame.width / frame.height,
       parts: [...root.querySelectorAll<HTMLElement>('[data-part]')].map((part) => {
         const box = part.getBoundingClientRect();
-        return { key: part.dataset.part!, text: part.textContent?.trim() ?? '',
+        // Editor-only controls inside a part (data-slide-decoration) are not slide content.
+        const content = part.cloneNode(true) as HTMLElement;
+        content.querySelectorAll('[data-slide-decoration]').forEach((node) => node.remove());
+        return { key: part.dataset.part!, text: content.textContent?.trim() ?? '',
           x: (box.left - frame.left) / frame.width, y: (box.top - frame.top) / frame.width,
           w: box.width / frame.width, h: box.height / frame.width,
           font: parseFloat(getComputedStyle(part).fontSize) / frame.width,
@@ -35,7 +38,7 @@ async function geometry(surface: Locator) {
 for (const ratio of DECK_ASPECT_RATIOS) {
   test(`${ratio}: editor, control, fullscreen and mobile retain the same composition and margins`, async ({ page, browser, learnerBrowser }, testInfo) => {
     test.setTimeout(120_000);
-    await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
+    await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'cara', password: 'demo' } });
     const spaceResponse = await page.request.post('/api/my/spaces', { headers: CSRF, data: { name: `Display parity ${ratio}`, experience: 'classroom' } });
     expect(spaceResponse.status()).toBe(201);
     const space = await spaceResponse.json();
@@ -89,6 +92,8 @@ for (const ratio of DECK_ASPECT_RATIOS) {
     await expect.poll(() => stage.evaluate(() => document.fullscreenElement !== null)).toBe(true);
     const learner = await learnerBrowser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
     await joinInBrowser(learner, session.code);
+    // Narrow phones open dense slides in Reading; parity is about the Slide view.
+    await learner.getByRole('button', { name: 'Slide', exact: true }).click();
     await expect(learner.getByRole('button', { name: 'Slide', exact: true })).toHaveAttribute('aria-pressed', 'true');
     const mobile = learner.locator('.learner-slide__plate .slide-surface');
     for (const [index, step] of content.steps.entries()) {
