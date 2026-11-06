@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { InteractionView } from '@openroom/sdk';
-import { describeAnswer, orderedBy } from './answer';
+import { describeAnswer, insertAt, orderedBy, startingOrder } from './answer';
 
 const ranking: InteractionView = {
   id: 'r',
@@ -61,5 +61,35 @@ describe('describeAnswer', () => {
       ],
     };
     expect(describeAnswer(choice, { kind: 'choice', optionIds: ['wrong'] })).toBe('Wrong');
+  });
+});
+
+describe('startingOrder', () => {
+  it('never starts a ranking in the authored order, which is often the key', () => {
+    for (const ids of [['a', 'b'], ['a', 'b', 'c'], ['a', 'b', 'c', 'd', 'e', 'f']]) {
+      for (const seed of ['p1:r', 'p2:r', 'p3:r', ':r', 'x', '']) {
+        const order = startingOrder(ids, seed);
+        expect(order).not.toEqual(ids);
+        expect([...order].sort()).toEqual(ids);
+      }
+    }
+  });
+
+  it('gives one learner the same start on every render', () => {
+    expect(startingOrder(['a', 'b', 'c', 'd'], 'p1:r')).toEqual(startingOrder(['a', 'b', 'c', 'd'], 'p1:r'));
+  });
+});
+
+describe('insertAt', () => {
+  it('puts an accent at the caret, not at the end', () => {
+    expect(insertAt('Je suis all', 2, 2, 'é', 200)).toEqual({ value: 'Jeé suis all', caret: 3 });
+  });
+
+  it('replaces a selection', () => {
+    expect(insertAt('cafe', 3, 4, 'é', 200)).toEqual({ value: 'café', caret: 4 });
+  });
+
+  it('refuses a key that would pass the limit instead of cutting the end', () => {
+    expect(insertAt('abc', 1, 1, 'é', 3)).toEqual({ value: 'abc', caret: 1 });
   });
 });

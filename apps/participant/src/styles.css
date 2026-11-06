@@ -230,7 +230,9 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 0 8px;
+  /* Same height as before Leave grew to the 44px target. */
+  min-height: 46px;
+  padding: 0 0 2px;
   font-size: 13px;
   color: var(--muted-foreground);
 }
@@ -395,11 +397,11 @@ a {
 
 .btn--leave {
   flex: none;
-  min-height: 32px;
-  height: 32px;
-  padding: 0 10px;
+  min-height: var(--tap);
+  height: var(--tap);
+  padding: 0 14px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 22px;
   background: var(--chrome, var(--muted));
   color: var(--secondary-foreground);
   font-size: 13px;
@@ -1736,6 +1738,36 @@ a {
   border-bottom-style: solid;
   border-bottom-color: var(--live);
   font-weight: 600;
+}
+
+/* A typed gap sits in the sentence, like the bank slot beside it. */
+.prompt .gap-input {
+  display: inline-block;
+  width: 8rem;
+  max-width: 100%;
+  min-height: var(--tap);
+  margin: 0.1em 0.15em;
+  padding: 6px 10px;
+  vertical-align: baseline;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+/* Wraps an answer form so a pause disables it without unmounting the draft. */
+.answer-fieldset {
+  display: contents;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.leave-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .gap-picker {
