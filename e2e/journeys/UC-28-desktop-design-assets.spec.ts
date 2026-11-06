@@ -29,7 +29,7 @@ test('import design images, save, reopen independently offline and present them'
     await app.context().tracing.start({ screenshots: true, snapshots: true });
     let page = await app.firstWindow();
     await expect(page.locator('[data-deck-title]')).toHaveText('Portable classroom design');
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('tab', { name: 'Theme', exact: true }).click();
     await page.getByRole('button', { name: '4:3', exact: true }).click();
     await app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] }); }, logoPath);
     await page.getByLabel('Logo description', { exact: true }).fill('OpenRoom School');
@@ -40,7 +40,7 @@ test('import design images, save, reopen independently offline and present them'
     await loaded(page.locator('.slide-canvas__frame .slide-surface__background img'));
     await page.getByLabel('x focal point', { exact: true }).press('End');
     await page.getByRole('list', { name: 'Slides' }).getByRole('button').nth(1).click();
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('tab', { name: 'Theme', exact: true }).click();
     await page.getByRole('button', { name: 'Customize this background', exact: true }).click();
     const override = page.locator('section').filter({ has: page.getByRole('heading', { name: 'This slide', exact: true }) });
     await app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] }); }, logoPath);
@@ -58,8 +58,10 @@ test('import design images, save, reopen independently offline and present them'
     await close(app);
     app = await launch('offline-profile');
     await app.context().tracing.start({ screenshots: true, snapshots: true });
-    await app.context().route(/^https?:\/\//, (route) => route.abort());
     page = await app.firstWindow();
+    // Reload the opened file with the network cut, once its first load has finished.
+    await expect(page.locator('[data-deck-title]')).toHaveText('Portable classroom design');
+    await app.context().route(/^https?:\/\//, (route) => route.abort());
     await page.reload();
     await loaded(page.locator('.slide-canvas__frame .slide-surface__logo'));
     await loaded(page.locator('.slide-canvas__frame .slide-surface__background img'));

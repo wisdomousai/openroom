@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { desktopBridge } from '@openroom/editor';
 import {
   materializeOpenRoomFile,
   type OpenRoomFileV1,
@@ -6,7 +7,9 @@ import {
 } from '@openroom/schema';
 
 import {
+  ApiError,
   createDeck,
+  fetchMe,
   getDeck,
   getSpaceTree,
   listAllSpaces,
@@ -60,15 +63,36 @@ export function DesktopLinkDialog({
   const [folderId, setFolderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Null while the sign-in is being read. Signed out, the dialog offers a sign-in instead of places. */
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const bridge = desktopBridge();
 
   useEffect(() => {
+    if (signedIn !== null) return;
+    void fetchMe().then((me) => setSignedIn(me !== null)).catch((cause: unknown) => {
+      setSignedIn(false);
+      setError(cause instanceof Error ? cause.message : 'Could not reach your online workspace');
+    });
+  }, [signedIn]);
+
+  // The sign-in finishes in the browser; this dialog reads it again when it does.
+  useEffect(() => {
+    if (bridge === null || signedIn !== false) return;
+    return bridge.onSignedIn(() => { setError(null); setSignedIn(null); });
+  }, [bridge, signedIn]);
+
+  useEffect(() => {
+    if (signedIn !== true) return;
     void Promise.all([listContexts(), listAllSpaces()]).then(([nextContexts, nextSpaces]) => {
       setContexts(nextContexts);
       setSpaces(nextSpaces.filter((space) => space.role !== 'presenter'));
 
       setSpaceId(nextSpaces.filter((space) => !space.shared).sort((a, b) => a.createdAt - b.createdAt)[0]?.id ?? null);
-    }).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'Could not load your online workspace'));
-  }, []);
+    }).catch((cause: unknown) => {
+      if (cause instanceof ApiError && cause.status === 401) { setSignedIn(false); return; }
+      setError(cause instanceof Error ? cause.message : 'Could not load your online workspace');
+    });
+  }, [signedIn]);
 
   useEffect(() => {
     setFolderId(null);
@@ -130,6 +154,9 @@ export function DesktopLinkDialog({
             The file stays where you put it on this computer. Choose a workspace and folder for its shared copy.
           </DialogDescription>
         </DialogHeader>
+        {signedIn === false ? (
+          <p className="text-secondary">Sign in to save this file to a workspace.</p>
+        ) : signedIn === null ? null : <>
         <section>
           <p className="mb-2 text-caption text-muted-foreground">Student (optional)</p>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -157,10 +184,15 @@ export function DesktopLinkDialog({
             </div>
           )}
         </section>
+        </>}
         {error === null ? null : <p className="text-sm text-destructive" role="alert">{error}</p>}
         <DialogFooter>
           <Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button>
-          <Button disabled={busy || spaceId === null} onClick={() => void link()}>{busy ? 'Saving…' : 'Save to workspace'}</Button>
+          {signedIn === false ? (
+            bridge === null ? null : <Button onClick={() => void bridge.openSignIn()}>Sign in</Button>
+          ) : (
+            <Button disabled={busy || spaceId === null || signedIn !== true} onClick={() => void link()}>{busy ? 'Saving…' : 'Save to workspace'}</Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

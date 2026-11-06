@@ -37,6 +37,7 @@ import { createRelayStore, defaultRelayFile } from './relay.js';
 import { desktopMcpSocketPath, startDesktopMcpServer } from './mcp-host.js';
 import { adoptLoginShellPath } from './shell-path.js';
 import { startDesktopUpdateChecks } from './updates.js';
+import { openFailureReason } from './open-failure.js';
 import {
   createOpenRoomWorkingDirectory,
   disposeOpenRoomWorkingDirectory,
@@ -68,6 +69,10 @@ interface DocumentState {
   workingDirectory: string;
   /** Imports are available before the renderer's debounced recovery manifest arrives. */
   importedResources?: Record<string, OpenRoomFileResourceV1>;
+  /** Opened from a recovery copy left by an earlier run; the renderer says so once. */
+  recovered?: boolean;
+  /** The renderer holds changes not written to the file; closing asks first. */
+  edited?: boolean;
 }
 
 interface PresentCursor { step: number; shown: number }
@@ -77,6 +82,8 @@ const documents = new Map<number, DocumentState>();
 const pendingPdfs = new Map<string, { path: string; ownerId: number }>();
 const windowsByPath = new Map<string, BrowserWindow>();
 let homeWindow: BrowserWindow | null = null;
+/** The file window that asked for a sign-in; the tutor comes back to it. */
+let signInOwner: BrowserWindow | null = null;
 let presentationWindow: BrowserWindow | null = null;
 let presentationOwner: BrowserWindow | null = null;
 let presentationState: PresentationState | null = null;
@@ -257,7 +264,18 @@ async function completeDesktopSignIn(url: string): Promise<void> {
     return;
   }
   deckSignInOpen = false;
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.webContents.send('desktop:signed-in');
+  }
   await resumePendingDeckHandoffs();
+  // Sign-in started from a file window returns to that file.
+  const owner = signInOwner;
+  signInOwner = null;
+  if (owner && !owner.isDestroyed() && documents.has(owner.webContents.id)) {
+    if (homeWindow && !homeWindow.isDestroyed()) void homeWindow.loadURL(`${onlineOrigin}/host/index.html#/`).catch(() => undefined);
+    owner.focus();
+    return;
+  }
   if (homeWindow && !homeWindow.isDestroyed()) {
     await homeWindow.loadURL(`${onlineOrigin}/host/index.html#/`);
     homeWindow.focus();
@@ -323,6 +341,8 @@ async function openDocumentWindow(
     if (existing && !existing.isDestroyed()) { existing.focus(); return existing; }
   }
   await mkdir(join(app.getPath('userData'), 'working'), { recursive: true });
+  // A recovery copy of this file from an earlier run is offered before the saved copy.
+  if (canonical !== null && recovered === undefined && prepared === undefined) recovered = await offerRecovery(canonical);
   const state = recovered
     ?? (prepared === undefined
       ? (canonical ? await readDocument(canonical) : {
@@ -348,9 +368,10 @@ async function openDocumentWindow(
       source = (await readOpenRoomPackage(state.path, freshDirectory).catch(() => null))?.source ?? null;
       if (source !== null && freshDirectory !== workingDirectory) await disposeOpenRoomWorkingDirectory(freshDirectory);
     }
-    documentState = { path: state.path, displayName: state.displayName, source, recoverySource: state.source, workingDirectory };
+    documentState = { path: state.path, displayName: state.displayName, source, recoverySource: state.source, workingDirectory, recovered: true };
   } else documentState = state;
   const window = secureWindow({ title: documentState.displayName });
+  guardUnsavedClose(window, documentState);
   documents.set(window.webContents.id, documentState);
   if (canonical !== null) windowsByPath.set(canonical, window);
   const contentsId = window.webContents.id;
@@ -367,9 +388,128 @@ async function openDocumentWindow(
   return window;
 }
 
-async function chooseOpenFile(): Promise<void> {
-  const result = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: 'OpenRoom deck', extensions: ['openroom'] }] });
-  if (!result.canceled && result.filePaths[0]) await openDocumentWindow(result.filePaths[0]);
+/**
+ * Opens a file the tutor chose (argv, Finder, File > Open…). A file that cannot
+ * be opened gets a message naming it and why, and the app keeps a window.
+ */
+async function openPath(path: string, parent?: BrowserWindow | null): Promise<BrowserWindow | null> {
+  try {
+    return await openDocumentWindow(path);
+  } catch (cause) {
+    const options: Electron.MessageBoxOptions = {
+      type: 'warning',
+      title: 'File not opened',
+      message: `${basename(path)} could not be opened.`,
+      detail: openFailureReason(cause),
+    };
+    if (parent && !parent.isDestroyed()) await dialog.showMessageBox(parent, options);
+    else await dialog.showMessageBox(options);
+    if (BrowserWindow.getAllWindows().length === 0) createHomeWindow();
+    return null;
+  }
+}
+
+async function chooseOpenFile(parent?: BrowserWindow | null): Promise<void> {
+  const options: Electron.OpenDialogOptions = { properties: ['openFile'], filters: [{ name: 'OpenRoom deck', extensions: ['openroom'] }] };
+  const result = parent && !parent.isDestroyed() ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
+  if (!result.canceled && result.filePaths[0]) await openPath(result.filePaths[0], parent);
+}
+
+function recoveryFile(fileId: string): string { return join(recoveryDir(), `${fileId}.json`); }
+
+async function readRecoveries(): Promise<Array<{ file: string; envelope: RecoveryEnvelope }>> {
+  await mkdir(recoveryDir(), { recursive: true });
+  const found: Array<{ file: string; envelope: RecoveryEnvelope }> = [];
+  for (const name of (await readdir(recoveryDir())).filter((file) => file.endsWith('.json'))) {
+    const file = join(recoveryDir(), name);
+    try { found.push({ file, envelope: JSON.parse(await readFile(file, 'utf8')) as RecoveryEnvelope }); }
+    catch { /* leave unreadable recovery in place */ }
+  }
+  return found;
+}
+
+/** The recovery copy of this file, when the tutor wants it; a declined copy is deleted. */
+async function offerRecovery(canonical: string): Promise<RecoveryEnvelope | undefined> {
+  const match = (await readRecoveries()).find((item) => item.envelope.path !== null && canonicalPath(item.envelope.path) === canonical);
+  if (match === undefined) return undefined;
+  const answer = await dialog.showMessageBox({
+    type: 'question', buttons: ['Recover changes', 'Open saved file'], defaultId: 0, cancelId: 1,
+    title: 'Unsaved changes found',
+    message: `${basename(canonical)} has changes that were not saved to the file.`,
+    detail: 'Recover them, or open the file as it was last saved and delete the changes.',
+  });
+  if (answer.response === 0) return match.envelope;
+  await unlink(match.file).catch(() => undefined);
+  return undefined;
+}
+
+/** Set while Quit runs, so a window kept open by the save prompt resumes the quit once it closes. */
+let quitting = false;
+const closingWindows = new WeakSet<BrowserWindow>();
+/** Windows asked to save during Quit: the quit goes on once the save closes them. */
+const quitAfterSave = new WeakSet<BrowserWindow>();
+
+/** Close the window without asking again (after Save or Don't Save). */
+function closeWithoutPrompt(window: BrowserWindow): void {
+  if (window.isDestroyed()) return;
+  const resume = quitting || quitAfterSave.has(window);
+  closingWindows.add(window);
+  window.close();
+  if (resume) setImmediate(() => app.quit());
+}
+
+/**
+ * Closing a window with unsaved changes asks Save / Don't Save / Cancel. Save
+ * goes through the renderer, which owns the outline; it closes the window once
+ * the file is written. Don't Save also deletes the recovery copy.
+ */
+function guardUnsavedClose(window: BrowserWindow, state: DocumentState): void {
+  let asking = false;
+  window.on('close', (event) => {
+    if (closingWindows.has(window) || state.edited !== true) return;
+    event.preventDefault();
+    if (asking) return;
+    asking = true;
+    void dialog.showMessageBox(window, {
+      type: 'warning', buttons: ['Save', 'Don’t Save', 'Cancel'], defaultId: 0, cancelId: 2,
+      message: `Do you want to save the changes to ${state.displayName}?`,
+      detail: 'Your changes are lost if you don’t save them.',
+    }).then(async ({ response }) => {
+      asking = false;
+      if (window.isDestroyed()) return;
+      if (response === 0) {
+        // The quit waits for this save; a failed or cancelled save keeps the window and ends the quit.
+        if (quitting) quitAfterSave.add(window);
+        quitting = false;
+        window.webContents.send('desktop:menu-command', 'save-and-close');
+        return;
+      }
+      if (response === 2) { quitting = false; return; }
+      const fileId = fileIdFromSource(state.recoverySource ?? state.source);
+      if (fileId !== 'unknown') await unlink(recoveryFile(fileId)).catch(() => undefined);
+      state.recoverySource = null;
+      state.edited = false;
+      closeWithoutPrompt(window);
+    });
+  });
+  // A full navigation (the workspace in this window) leaves the editor; the recovery copy stays on disk.
+  window.webContents.on('did-navigate', (_event, url) => {
+    if (url.startsWith('openroom://app/core/')) return;
+    state.edited = false;
+    if (process.platform === 'darwin') window.setDocumentEdited(false);
+  });
+}
+
+type MenuCommand = 'save' | 'save-as' | 'present';
+
+function menuWindow(window: Electron.BaseWindow | undefined): BrowserWindow | null {
+  return window instanceof BrowserWindow && !window.isDestroyed() ? window : null;
+}
+
+function sendMenuCommand(window: Electron.BaseWindow | undefined, command: MenuCommand): void {
+  const target = menuWindow(window);
+  if (target === null || !documents.has(target.webContents.id)) return;
+  target.webContents.send('desktop:menu-command', command);
 }
 
 async function atomicWrite(target: string, source: string): Promise<void> {
@@ -407,6 +547,7 @@ async function saveAs(contents: WebContents, source: string): Promise<DocumentSt
   state.displayName = basename(target);
   state.source = source;
   state.recoverySource = null;
+  state.recovered = false;
   const window = BrowserWindow.fromWebContents(contents);
   if (window) { window.setTitle(state.displayName); windowsByPath.set(state.path, window); }
   app.addRecentDocument(state.path);
@@ -441,7 +582,7 @@ function installIpc(): void {
     const state = stateFor(event.sender);
     if (state.path === null) return saveAs(event.sender, source);
     await writeOpenRoomPackage(state.path, source, state.workingDirectory);
-    state.source = source; state.recoverySource = null;
+    state.source = source; state.recoverySource = null; state.recovered = false;
     app.addRecentDocument(state.path);
     return { ...state, ...(await deviceIdentity()) };
   });
@@ -457,10 +598,21 @@ function installIpc(): void {
       workingDirectory: state.workingDirectory,
       updatedAt: Date.now(),
     };
-    await atomicWrite(join(recoveryDir(), `${fileId}.json`), JSON.stringify(envelope));
+    await atomicWrite(recoveryFile(fileId), JSON.stringify(envelope));
   });
-  ipcMain.handle('desktop:clear-recovery', async (_event, fileId: string) => { await unlink(join(recoveryDir(), `${fileId}.json`)).catch(() => undefined); });
-  ipcMain.handle('desktop:open-file', () => chooseOpenFile());
+  ipcMain.handle('desktop:clear-recovery', async (_event, fileId: string) => { await unlink(recoveryFile(fileId)).catch(() => undefined); });
+  ipcMain.on('desktop:set-edited', (event, edited: unknown) => {
+    const state = documents.get(event.sender.id);
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (state === undefined || window === null) return;
+    state.edited = edited === true;
+    if (process.platform === 'darwin') window.setDocumentEdited(state.edited);
+  });
+  ipcMain.handle('desktop:close-window', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window !== null) closeWithoutPrompt(window);
+  });
+  ipcMain.handle('desktop:open-file', (event) => chooseOpenFile(BrowserWindow.fromWebContents(event.sender)));
   ipcMain.handle('desktop:new-file', () => openDocumentWindow());
   ipcMain.handle('desktop:pick-image', async (event) => {
     const result = await dialog.showOpenDialog(ownerFor(event), {
@@ -532,7 +684,8 @@ function installIpc(): void {
     if (path === null) throw new Error('Embedded resource not found.');
     return readFile(path);
   });
-  ipcMain.handle('desktop:open-sign-in', () => {
+  ipcMain.handle('desktop:open-sign-in', (event) => {
+    signInOwner = BrowserWindow.fromWebContents(event.sender);
     void shell.openExternal(desktopGoogleStartUrl(onlineOrigin));
     return { ok: true };
   });
@@ -597,9 +750,14 @@ function installIpc(): void {
 }
 
 function createHomeWindow(): void {
-  homeWindow = secureWindow({ width: 1360, height: 900, title: 'OpenRoom' });
-  void homeWindow.loadURL(`${onlineOrigin}/host/index.html#/`).catch(() => openDocumentWindow());
-  homeWindow.on('closed', () => { homeWindow = null; });
+  const window = secureWindow({ width: 1360, height: 900, title: 'OpenRoom' });
+  homeWindow = window;
+  window.on('closed', () => { if (homeWindow === window) homeWindow = null; });
+  // Offline, the workspace cannot load: the blank window goes and an untitled file opens instead.
+  void window.loadURL(`${onlineOrigin}/host/index.html#/`).catch(() => {
+    if (!window.isDestroyed()) window.destroy();
+    void openDocumentWindow();
+  });
 }
 
 function startUpdateChecks(): void {
@@ -614,7 +772,12 @@ function installMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'File', submenu: [
       { label: 'New', accelerator: 'CmdOrCtrl+N', click: () => { void openDocumentWindow(); } },
-      { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => { void chooseOpenFile(); } },
+      { label: 'Open…', accelerator: 'CmdOrCtrl+O', click: (_item, window) => { void chooseOpenFile(menuWindow(window)); } },
+      { type: 'separator' },
+      { label: 'Save', accelerator: 'CmdOrCtrl+S', click: (_item, window) => { sendMenuCommand(window, 'save'); } },
+      { label: 'Save As…', accelerator: 'Shift+CmdOrCtrl+S', click: (_item, window) => { sendMenuCommand(window, 'save-as'); } },
+      { type: 'separator' },
+      { label: 'Present', accelerator: 'Alt+CmdOrCtrl+P', click: (_item, window) => { sendMenuCommand(window, 'present'); } },
       { type: 'separator' }, { role: 'close' },
     ] },
     { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
@@ -622,23 +785,22 @@ function installMenu(): void {
 }
 
 async function recoverDocuments(): Promise<boolean> {
-  await mkdir(recoveryDir(), { recursive: true });
-  const files = (await readdir(recoveryDir())).filter((file) => file.endsWith('.json'));
-  if (files.length === 0) return false;
+  const found = await readRecoveries();
+  if (found.length === 0) return false;
+  const names = found.map((item) => item.envelope.displayName);
   const answer = await dialog.showMessageBox({
     type: 'question', buttons: ['Recover', 'Discard'], defaultId: 0, cancelId: 1,
-    title: 'Unsaved decks found', message: `${files.length} ${files.length === 1 ? 'file has' : 'files have'} unsaved work.`,
-    detail: 'Recovery copies are deleted after you save.',
+    title: 'Unsaved changes found',
+    message: found.length === 1 ? `${names[0]} has changes that were not saved.` : `${String(found.length)} files have changes that were not saved.`,
+    detail: `${found.length === 1 ? '' : `${names.join('\n')}\n\n`}Recovery copies are deleted after you save.`,
   });
   if (answer.response === 1) {
-    await Promise.all(files.map((file) => unlink(join(recoveryDir(), file))));
+    await Promise.all(found.map((item) => unlink(item.file).catch(() => undefined)));
     return false;
   }
-  for (const file of files) {
-    try {
-      const envelope = JSON.parse(await readFile(join(recoveryDir(), file), 'utf8')) as RecoveryEnvelope;
-      await openDocumentWindow(envelope.path ?? undefined, envelope);
-    } catch { /* leave unreadable recovery in place */ }
+  for (const { envelope } of found) {
+    try { await openDocumentWindow(envelope.path ?? undefined, envelope); }
+    catch { /* leave unreadable recovery in place */ }
   }
   return true;
 }
@@ -776,11 +938,12 @@ app.on('open-url', (event, url) => {
   event.preventDefault();
   enqueueDesktopUrl(url);
 });
-app.on('open-file', (event, path) => { event.preventDefault(); void app.whenReady().then(() => openDocumentWindow(path)); });
+app.on('open-file', (event, path) => { event.preventDefault(); void app.whenReady().then(() => openPath(path)); });
 app.on('second-instance', (_event, argv) => {
   for (const arg of argv) enqueueDesktopUrl(arg);
-  for (const path of openArgvFiles(argv)) void openDocumentWindow(path);
+  for (const path of openArgvFiles(argv)) void openPath(path);
 });
+app.on('before-quit', () => { quitting = true; });
 
 const lock = app.requestSingleInstanceLock();
 if (!lock) app.quit();
@@ -822,7 +985,7 @@ else void app.whenReady().then(async () => {
   pendingDesktopAuthUrls.length = 0;
   pendingDesktopDeckUrls.length = 0;
   const argvFiles = openArgvFiles(process.argv.slice(1));
-  if (argvFiles.length > 0) for (const path of argvFiles) await openDocumentWindow(path);
+  if (argvFiles.length > 0) for (const path of argvFiles) await openPath(path);
   else if (!(await recoverDocuments())) createHomeWindow();
   for (const url of queuedAuth) await completeDesktopSignIn(url);
   for (const url of queuedDeck) await handleDesktopDeckHandoff(url);

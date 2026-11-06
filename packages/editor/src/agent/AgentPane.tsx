@@ -43,7 +43,7 @@ import {
   SelectValue,
 } from '@openroom/ui/components/select';
 import { cn } from '@openroom/ui/utils';
-import { Check, FolderOpen, Paperclip, Settings2 } from 'lucide-react';
+import { Check, FolderOpen, Paperclip, Settings2, X } from 'lucide-react';
 import {
   agentChatStore,
   applyAgentEvent,
@@ -210,8 +210,11 @@ export function AgentPane({
   onBeforeRun,
   deckId = null,
   onAfterRun,
+  onClose,
 }: {
   onBeforeRun: () => Promise<boolean>;
+  /** Hides the pane; the host keeps the way to open it again. Absent: the pane has no close button. */
+  onClose?: () => void;
   /** Hosted deck the chat prepares (deck editor); null targets the open local file. */
   deckId?: string | null;
   /** Called after a successful run so the mounting editor can adopt the agent's saves. */
@@ -672,6 +675,11 @@ export function AgentPane({
               ) : null}
             </PopoverContent>
           </Popover>
+          {onClose ? (
+            <Button size="sm" variant="ghost" aria-label="Close Agent pane" className="px-2" onClick={onClose}>
+              <X aria-hidden="true" />
+            </Button>
+          ) : null}
         </div>
       </div>
 
