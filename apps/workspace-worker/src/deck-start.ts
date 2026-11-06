@@ -2,7 +2,8 @@ import { resolveRevealOrder } from '@openroom/schema';
 import { json, type ControlEnv } from './auth';
 import { requireControlUser } from './control-auth';
 import { readJson } from './control-utils';
-import { deckAccess, latestContent, sessionAccess, type SessionLauncher } from './delivery/shared';
+import { deckAccess, identifiedNeedsContext, latestContent, sessionAccess, type SessionLauncher } from './delivery/shared';
+import { requireIdentifiedSessionAccess } from './continuity-access';
 import { facilitateSessionRoute } from './facilitation';
 import { spaceRole } from './members';
 import { readEntitlements } from './entitlements';
@@ -28,6 +29,11 @@ export async function startDeckRoute(request: Request, env: ControlEnv, deckId: 
   const available = await latestContent(env, deckId, existing?.deck_version ?? deck.current_version);
   if (!available) return json({ error: 'deck-content-not-found' }, 409);
   if (body.stepId !== undefined && !available.outline.steps.some((item) => item.id === body.stepId && !item.breakoutOf)) return json({ error: 'activity-not-found' }, 422);
+  // Refuse before the durable row exists: a row filed without a context would
+  // keep refusing this requestId after the deck is filed under the student.
+  if (!existing && deck.context_id === null && available.outline.defaults?.identityMode === 'identified') {
+    return (await requireIdentifiedSessionAccess(env, access.space.owner_user_id)) ?? identifiedNeedsContext();
+  }
   const now = Date.now();
   await env.DB.prepare(`INSERT OR IGNORE INTO sessions
     (id,space_id,folder_id,deck_id,deck_version,context_id,created_by,title,shape,status,metadata_json,created_at,updated_at)

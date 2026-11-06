@@ -112,6 +112,7 @@ import { handleAssetApi } from './assets.js';
 import { homeRoute } from './home.js';
 import { prefsRoute } from './prefs.js';
 import { endSessionForCode, type SessionLaunchInput } from './delivery/index.js';
+import { identifiedNeedsContext } from './delivery/shared.js';
 import {
   archivedBallotsCsv,
   downloadArchiveRoute,
@@ -218,21 +219,6 @@ function sessionShareUrls(
     ? undefined
     : `${origin}/stage/?session=${encodeURIComponent(session.sessionCode)}&token=${encodeURIComponent(session.stageToken)}`;
   return { joinUrl: identified ? undefined : joinUrl, ...(stageUrl === undefined ? {} : { stageUrl }) };
-}
-
-/**
- * An identified session admits only holders of an access link minted for the
- * session's own student context (`resolveJoinIdentity`). Without a context the
- * session can be started but nobody can ever join it, so refuse at the start and
- * name the fix. Join refusals stay one indistinguishable answer; this message is
- * for the tutor who starts the session, never for a joining holder.
- */
-function identifiedNeedsContext(): Response {
-  return json({
-    ok: false,
-    error: 'identified-session-needs-context',
-    message: 'An identified session needs a student: file the deck under the student (contextId), then start it with deck_start or POST /api/decks/{id}/start.',
-  }, 422);
 }
 
 /**
@@ -831,7 +817,7 @@ export default {
     if (path === '/api/mcp/revoke') return revokeOAuthRoute(request, env);
     if (path === '/api/my/connections') return connectionsRoute(request, env);
     if (path === '/api/my/billing' || path.startsWith('/api/my/billing/')) return billingRoute(request, env, url);
-    if (path === '/api/presentations/start') return startPresentationRoute(request, env, (input, user) => launchSessionForUser(env, input, user));
+    if (path === '/api/presentations/start') return startPresentationRoute(request, env, (input, user) => launchSessionForUser(env, { origin: url.origin, ...input }, user));
     const resumeMatch = /^\/api\/sessions\/([^/]+)\/resume$/.exec(path);
     if (resumeMatch) return resumeSessionRoute(request, env, decodeURIComponent(resumeMatch[1]!));
     const connectionMatch = /^\/api\/my\/connections\/([^/]+)$/.exec(path);
@@ -904,7 +890,7 @@ export default {
         request,
         env,
         url,
-        (input, user) => launchSessionForUser(env, input, user),
+        (input, user) => launchSessionForUser(env, { origin: url.origin, ...input }, user),
       );
       if (tutoring !== null) return tutoring;
     }

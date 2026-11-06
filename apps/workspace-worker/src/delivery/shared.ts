@@ -290,3 +290,18 @@ export async function latestContent(
 export const SESSION_STATUSES_SERVER_OWNED: ReadonlySet<string> = new Set(
   SESSION_STATUSES.filter((s) => !(SESSION_STATUSES_CLIENT_WRITABLE as readonly string[]).includes(s)),
 );
+
+/**
+ * An identified session admits only holders of an access link minted for the
+ * session's own student context (`resolveJoinIdentity`). Without a context the
+ * session can be started but nobody can ever join it, so refuse at the start and
+ * name the fix. Join refusals stay one indistinguishable answer; this message is
+ * for the tutor who starts the session, never for a joining holder.
+ */
+export function identifiedNeedsContext(): Response {
+  return json({
+    ok: false,
+    error: 'identified-session-needs-context',
+    message: 'An identified session needs a student: file the deck under the student (contextId), then start it with deck_start or POST /api/decks/{id}/start.',
+  }, 422);
+}

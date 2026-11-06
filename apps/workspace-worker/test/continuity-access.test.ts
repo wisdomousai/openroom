@@ -109,6 +109,12 @@ describe('continuity capability', () => {
     }
     const filed = await free.request('/api/decks', 'POST', { spaceId: person.context.spaceId, contextId: person.context.id, content: IDENTIFIED });
     expect((await free.request(`/api/decks/${filed.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() })).status).toBe(201);
+    // The refused requestId stays usable: filing the deck and retrying starts it.
+    const loose = await free.request('/api/decks', 'POST', { spaceId: person.context.spaceId, content: IDENTIFIED });
+    const retry = crypto.randomUUID();
+    expect(await free.request(`/api/decks/${loose.body.deck.id}/start`, 'POST', { requestId: retry })).toMatchObject(needsContext);
+    expect((await free.request(`/api/decks/${loose.body.deck.id}`, 'PATCH', { contextId: person.context.id })).status).toBe(200);
+    expect(await free.request(`/api/decks/${loose.body.deck.id}/start`, 'POST', { requestId: retry })).toMatchObject({ status: 201, body: { sessionId: retry, contextId: person.context.id } });
   });
 
   it('retains data after a lapse, keeps contexts, deletion and restore open, and answers a lapsed learner link like a revoked one', async () => {
