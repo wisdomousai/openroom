@@ -26,6 +26,8 @@ export function DeckEditorTopBar({
   starting,
   canStart,
   startIssue,
+  onShowIssue,
+  live,
   error,
 }: {
   title: string;
@@ -43,6 +45,13 @@ export function DeckEditorTopBar({
   starting: boolean;
   canStart: boolean;
   startIssue?: string | null;
+  /** Opens the unfinished question the readiness line names. */
+  onShowIssue?: () => void;
+  /**
+   * A session of this deck is live now. The bar says so beside Start session
+   * and offers the way back in, so a reload never hides a running lesson.
+   */
+  live?: { label: string; onRejoin: () => void; rejoining: boolean } | null;
   error: string | null;
 }) {
   const { Link } = useEditorServices().navigation;
@@ -109,6 +118,14 @@ export function DeckEditorTopBar({
             <Link to={shareTo}>Share</Link>
           </Button>
         )}
+        {live ? (
+          <span className="flex shrink-0 items-center gap-2" data-deck-live-now>
+            <span className="text-caption text-muted-foreground">Live now</span>
+            <Button size="sm" variant="outline" disabled={live.rejoining} onClick={live.onRejoin}>
+              {live.rejoining ? 'Joining…' : live.label}
+            </Button>
+          </span>
+        ) : null}
         <Button
           data-deck-present
           disabled={!canPresent}
@@ -122,7 +139,16 @@ export function DeckEditorTopBar({
           {starting ? 'Starting…' : 'Start session'}
         </Button>
       </div>
-      {startIssue ? <p id="question-readiness" role="status" className="border-t border-border px-3 py-1.5 text-caption text-muted-foreground">{startIssue}</p> : null}
+      {startIssue ? (
+        <p id="question-readiness" role="status" className="flex flex-wrap items-baseline gap-x-2 border-t border-border px-3 py-1.5 text-caption text-muted-foreground">
+          <span>{startIssue}</span>
+          {onShowIssue ? (
+            <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={onShowIssue}>
+              Show the question
+            </button>
+          ) : null}
+        </p>
+      ) : null}
       {error === null ? null : (
         <p className="border-t border-border px-3 py-1.5 text-caption text-destructive" role="alert">
           {error}

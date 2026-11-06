@@ -9,9 +9,9 @@ export type * from './desktop-bridge';
 export { desktopBridge } from './desktop-bridge';
 export type * from './types';
 
-export { blankDeck, downloadDeckFile, questionReadinessMessage, renameDeck } from './deck-document';
+export { blankDeck, downloadDeckFile, questionReadinessIssue, questionReadinessMessage, renameDeck, type ReadinessIssue, type ReadinessTarget } from './deck-document';
 
-export { DeckEditor } from './deck-edit/DeckEditor';
+export { DeckEditor, type DeckEditorFocus } from './deck-edit/DeckEditor';
 export { DeckEditorTopBar } from './deck-edit/DeckEditorTopBar';
 export { SlideThumbnail } from './deck-edit/SlideThumbnail';
 export { DeckDesignPanel } from './deck-edit/properties/deck-design';

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { type OutlineAside, type OutlineStep } from '@openroom/schema';
+import { type MatchInteraction, type OutlineStep } from '@openroom/schema';
 
 import { Input } from '@openroom/ui/components/input';
-import { Textarea } from '@openroom/ui/components/textarea';
 import { cn } from '@openroom/ui/utils';
 import { LAYOUT_WORDS, LayoutThumb } from '../LayoutThumb';
 import { stepMedia } from '../outline-edit';
@@ -14,59 +13,7 @@ import { AudioSection } from './audio';
 import { ElementSection } from './elements';
 import { PartExtras } from './part-extras';
 import { RevealControls } from './reveal';
-import { writeAside } from '../AsideCanvas';
 import { layoutChoicesFor, paneSections } from './applicability';
-
-export function AsideDesign({
-  aside,
-  emptyHint,
-  onChange,
-}: {
-  aside: OutlineAside | undefined;
-  emptyHint: string;
-  onChange: (aside: OutlineAside | undefined) => void;
-}) {
-  const title = aside?.title ?? '';
-  const body = aside?.body ?? '';
-  const items = (aside?.items ?? []).join('\n');
-  const write = (next: OutlineAside) => {
-    writeAside(aside, next, onChange);
-  };
-  return (
-    <>
-      <Section title="Title">
-        <Input
-          value={title}
-          onChange={(event) => write({ ...aside, title: event.currentTarget.value, body: aside?.body, items: aside?.items })}
-          placeholder="Optional title"
-        />
-      </Section>
-      <Section title="Page">
-        <Textarea
-          rows={6}
-          value={body}
-          onChange={(event) => write({ ...aside, title: aside?.title, body: event.currentTarget.value, items: aside?.items })}
-          placeholder={emptyHint}
-        />
-        <p className="text-caption text-muted-foreground">Or one thing per line below.</p>
-        <Textarea
-          rows={4}
-          value={items}
-          onChange={(event) => {
-            const next = event.currentTarget.value.split('\n');
-            write({
-              ...aside,
-              title: aside?.title,
-              body: aside?.body,
-              items: next,
-            });
-          }}
-          placeholder={'One item\nAnother item'}
-        />
-      </Section>
-    </>
-  );
-}
 
 export function DesignState(props: PropertiesPanelProps & { step: OutlineStep }) {
   const { step, groups, partKey } = props;
@@ -111,6 +58,9 @@ export function DesignState(props: PropertiesPanelProps & { step: OutlineStep })
             ? 'Assign groups and a spokesperson during the live session.'
             : 'Each participant sends their own answer.'}</p>
         </Section>
+      ) : null}
+      {interaction?.type === 'match' && props.onMatchAnswer ? (
+        <MatchPairs interaction={interaction} onMatchAnswer={props.onMatchAnswer} />
       ) : null}
       {sections.layout ? (
         <Section title="Layout" target="layout">
@@ -202,5 +152,60 @@ export function DesignState(props: PropertiesPanelProps & { step: OutlineStep })
         </Section>
       ) : null}
     </>
+  );
+}
+
+/**
+ * A match's pairs: each left item (edited on the slide) with the answer it is
+ * paired with. The slide draws the left column only, as the stage does, so
+ * this is where the right column a student matches against is read and fixed.
+ */
+function MatchPairs({
+  interaction,
+  onMatchAnswer,
+}: {
+  interaction: MatchInteraction;
+  onMatchAnswer: (index: number, text: string) => void;
+}) {
+  return (
+    <Section title="Pairs">
+      <ul className="grid gap-3">
+        {interaction.left.map((left, index) => {
+          const answer = interaction.right.find((right) => right.id === interaction.correct[left.id]);
+          return (
+            <li key={left.id} className="grid gap-1">
+              <span className="text-caption text-muted-foreground [overflow-wrap:anywhere]">
+                {left.label === '' ? `Item ${String(index + 1)}` : left.label}
+              </span>
+              <CommitInput
+                ariaLabel={`Answer paired with ${left.label === '' ? `item ${String(index + 1)}` : left.label}`}
+                value={answer?.label ?? ''}
+                onCommit={(text) => onMatchAnswer(index, text)}
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </Section>
+  );
+}
+
+function CommitInput({ ariaLabel, value, onCommit }: { ariaLabel: string; value: string; onCommit: (text: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <Input
+      aria-label={ariaLabel}
+      value={draft ?? value}
+      placeholder="Answer"
+      onFocus={() => setDraft(value)}
+      onChange={(event) => setDraft(event.currentTarget.value)}
+      onBlur={() => {
+        if (draft !== null && draft !== value) onCommit(draft);
+        setDraft(null);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+    />
   );
 }

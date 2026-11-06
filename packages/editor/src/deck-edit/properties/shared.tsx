@@ -125,6 +125,8 @@ export interface PropertiesPanelProps {
   deckId: string;
   currentVersion: number;
   versionRefresh: number;
+  loadedVersion?: number | null;
+  unsavedDraft?: boolean;
   revealFocus: number;
   paneTab: PaneTab;
   onPaneTab: (tab: PaneTab) => void;
@@ -140,6 +142,8 @@ export interface PropertiesPanelProps {
   onAddListItem: (target: ListTarget, index?: number) => void;
   onRemoveListItem: (target: ListTarget, index: number) => void;
   onOptionCorrect: (index: number) => void;
+  /** Retype the answer a match pairs with left item `index`. */
+  onMatchAnswer?: (index: number, text: string) => void;
   onGapAnswers: (index: number, answers: string[]) => void;
   onGapDistractors: (index: number, distractors: string[]) => void;
   onFillTheGapsBank: (bank: string[]) => void;

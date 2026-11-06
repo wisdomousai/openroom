@@ -13,6 +13,8 @@ import {
   type OutlineValidateResult,
 } from '@openroom/schema';
 import { useEditorServices, useIdleQuery, type ContextReturned } from '../services';
+import { ToastRegion, useToasts } from '@openroom/ui/toasts';
+import type { ReadinessTarget } from '../deck-document';
 
 import { SessionErrorList } from './SessionErrorList';
 import { Button } from '@openroom/ui/components/button';
@@ -95,6 +97,24 @@ import {
   type PictureTarget,
 } from './outline-edit';
 
+/** A request from the host to open one place in the deck (the readiness line). */
+export interface DeckEditorFocus {
+  target: ReadinessTarget;
+  /** Bumped per request, so asking for the same place twice still moves there. */
+  nonce: number;
+}
+
+/**
+ * The sentence a refused structured edit shows. The validator's own messages
+ * name schema fields; the tutor gets what to do instead.
+ */
+export function refusedEditMessage(codes: readonly string[]): string {
+  if (codes.includes('E_CORRECT_ORDER')) {
+    return 'A ranking needs a correct order before it can be a homework quiz.';
+  }
+  return 'That change was not made: the deck would no longer be valid.';
+}
+
 export type DeckEditorDialog =
   | 'templates'
   | 'picture'
@@ -128,6 +148,11 @@ export function DeckEditor({
   onEmbeddedResource,
   onRefineWithAgent,
   onEmbedCode,
+  loadedVersion = null,
+  unsavedDraft = false,
+  onLoadVersion,
+  focus,
+  recipient,
 }: {
   deckId: string;
   activeStepId?: string;
@@ -148,12 +173,27 @@ export function DeckEditor({
   fileActions?: ReactNode;
   onEmbeddedResource?: (resourceId: string, resource: OpenRoomFileResourceV1) => void;
   onEmbedCode?: (stepId: string) => Promise<string>;
+  /** The version the editor holds unchanged; null once edited. */
+  loadedVersion?: number | null;
+  /** The draft holds work no stored version has. */
+  unsavedDraft?: boolean;
+  /** A History restore. Defaults to replacing the source. */
+  onLoadVersion?: (source: string, version: number) => void;
+  focus?: DeckEditorFocus;
+  /**
+   * Who the homework page goes to: the linked student's name, null for a deck
+   * linked to nobody, undefined while the host does not know.
+   */
+  recipient?: string | null;
 }) {
   const [embedStep, setEmbedStep] = useState<string | null>(null);
   const [ribbonTab, setRibbonTab] = useState<RibbonTab>('home');
   const [selection, setSelection] = useState<RailSelection | null>(null);
   useEffect(() => { if (activeStepId) setSelection({ kind: 'step', id: activeStepId }); }, [activeStepId]);
   const [partKey, setPartKey] = useState<string | null>(null);
+  /** The homework task the readiness line asked to show. */
+  const [focusTask, setFocusTask] = useState<{ taskId: string; nonce: number } | null>(null);
+  const { toasts, push: pushToast } = useToasts();
   const [playIndex, setPlayIndex] = useState<number | null>(null);
   const [revealFocus, setRevealFocus] = useState(0);
   const [paneOpen, setPaneOpen] = useState(true);
@@ -169,8 +209,18 @@ export function DeckEditor({
     setPartKey(key);
     setOverflowFocus((previous) => ({ target, sequence: previous.sequence + 1 }));
   };
-  /** A word being looked up in the properties panel. Never enters the outline. */
-  const [lookUpWord, setLookUpWord] = useState<string | null>(null);
+  /**
+   * A word being looked up in the properties panel. Never enters the outline.
+   * It belongs to the slide part it was looked up from: `anchor` is filled in
+   * after the lookup renders, and a different slide or part clears it.
+   */
+  const [lookUp, setLookUp] = useState<{ word: string; seq: number; anchor?: string } | null>(null);
+  const lookUpWord = lookUp?.word ?? null;
+  const startLookUp = useCallback((word: string) => {
+    setLookUp((current) => ({ word, seq: (current?.seq ?? 0) + 1 }));
+    setPaneOpen(true);
+    setPaneTab('design');
+  }, []);
   const [openDialog, setOpenDialog] = useState<DeckEditorDialog>(null);
   const [htmlEditId, setHtmlEditId] = useState<string | null>(null);
   const [iframeEditId, setIframeEditId] = useState<string | null>(null);
@@ -206,6 +256,32 @@ export function DeckEditor({
   );
   const activePart = partKey !== null && groups.some((group) => group.includes(partKey)) ? partKey : null;
 
+  const lookUpAnchor = `${aside ?? step?.id ?? ''}:${activePart ?? ''}`;
+  useEffect(() => {
+    setLookUp((current) => {
+      if (current === null) return current;
+      if (current.anchor === undefined) return { ...current, anchor: lookUpAnchor };
+      return current.anchor === lookUpAnchor ? current : null;
+    });
+  }, [lookUpAnchor, lookUp?.seq]);
+
+  useEffect(() => {
+    if (focus === undefined) return;
+    if (focus.target.kind === 'step') {
+      setSelection({ kind: 'step', id: focus.target.stepId });
+      setPartKey(null);
+      setFocusTask(null);
+    } else {
+      setSelection({ kind: 'homework' });
+      setPartKey(null);
+      setFocusTask({ taskId: focus.target.taskId, nonce: focus.nonce });
+    }
+    setPaneOpen(true);
+    setPaneTab('design');
+    // The nonce is the request; the target rides along with it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.nonce]);
+
   /** The picture the open dialog is replacing, so the grid shows it selected. */
   const pictureDialogUrl = ((): string | undefined => {
     if (step === null || pictureTarget.kind === 'new') return undefined;
@@ -218,9 +294,14 @@ export function DeckEditor({
     // Structured edits must leave a document the validator still accepts.
     // An invalid write is not a warning: parseOutline then replaces the
     // editor with the repair screen. Refuse here so a button cannot.
-    if (!validateOutline(next).ok) return;
+    const verdict = validateOutline(next);
+    if (!verdict.ok) {
+      pushToast(refusedEditMessage(verdict.errors.map((error) => error.code)), 'warn');
+      return;
+    }
     onSourceChange(stringify(next, { lineWidth: 100 }));
   };
+  const loadVersion = onLoadVersion ?? ((nextSource: string) => { onSourceChange(nextSource); });
 
   const selectStep = (stepId: string) => {
     setSelection({ kind: 'step', id: stepId });
@@ -333,6 +414,7 @@ export function DeckEditor({
   const ribbon = (
     <Ribbon
       deckId={deckId}
+      aside={aside}
       tab={ribbonTab}
       onTabChange={(next) => { setRibbonTab(next); setPlayIndex(null); }}
       selected={step}
@@ -406,7 +488,9 @@ export function DeckEditor({
               deckId={deckId}
               refreshKey={versionRefresh}
               currentVersion={currentVersion}
-              onLoadVersion={(nextSource) => { onSourceChange(nextSource); }}
+              loadedVersion={loadedVersion}
+              unsavedDraft={unsavedDraft}
+              onLoadVersion={loadVersion}
             />
           </div>}
         </div>
@@ -462,6 +546,7 @@ export function DeckEditor({
           }}
           onSelectHomework={() => {
             setSelection({ kind: 'homework' });
+            setFocusTask(null);
             setPartKey(null);
             setPaneOpen(true);
             setPaneTab('design');
@@ -478,6 +563,8 @@ export function DeckEditor({
             kind={aside}
             aside={aside === 'homework' ? outline.homework : outline.recap}
             interactions={outline.interactions}
+            recipient={recipient}
+            focusTask={focusTask}
             onChange={(next) => apply(aside === 'homework' ? setHomework(outline, next) : setRecap(outline, next))}
             onAddReading={() => apply(addHomeworkReading(outline))}
             onAddWriting={() => apply(addHomeworkWriting(outline))}
@@ -493,7 +580,7 @@ export function DeckEditor({
           <SlideCanvas
             onOverflowChange={onOverflowChange}
             onReviewOverflow={() => focusOverflow('overflow')}
-            onLookUpWord={setLookUpWord}
+            onLookUpWord={startLookUp}
             deckId={deckId}
             outline={outline}
             step={step}
@@ -594,7 +681,7 @@ export function DeckEditor({
           onDeckDesign={(design) => apply(setDeckDesign(outline, design))}
             onSlideDesign={(design) => { if (step) apply(setSlideDesign(outline, step.id, design)); }}
             lookUpWord={lookUpWord}
-            onCloseLookUp={() => setLookUpWord(null)}
+            onCloseLookUp={() => setLookUp(null)}
             outline={outline}
             step={step}
             aside={aside}
@@ -604,6 +691,8 @@ export function DeckEditor({
             deckId={deckId}
             currentVersion={currentVersion}
             versionRefresh={versionRefresh}
+            loadedVersion={loadedVersion}
+            unsavedDraft={unsavedDraft}
             revealFocus={revealFocus}
             paneTab={paneTab}
             learnerFeedback={learnerWork === undefined ? undefined : <>{pickupQuery.isError ? <div className="grid gap-2 border-t border-hairline px-[18px] py-4"><p role="alert" className="text-sm">Learner work could not be loaded.</p><Button variant="outline" size="sm" disabled={pickupQuery.isFetching} onClick={() => void pickupQuery.refetch()}>Retry learner work</Button></div> : null}<FeedbackPicker corrections={pickupQuery.data?.corrections ?? []} onInsert={(correction) => {
@@ -642,6 +731,7 @@ export function DeckEditor({
             onAddListItem={(target, index) => { if (step !== null) apply(addListItem(outline, step.id, target, index)); }}
             onRemoveListItem={(target, index) => { if (step !== null) apply(removeListItem(outline, step.id, target, index)); }}
             onOptionCorrect={(index) => { if (step !== null) apply(setOptionCorrect(outline, step.id, index)); }}
+            onMatchAnswer={(index, text) => { if (step !== null) apply(setMatchAnswer(outline, step.id, index, text)); }}
             onGapAnswers={(index, answers) => { if (step !== null) apply(setGapAnswers(outline, step.id, index, answers)); }}
             onGapDistractors={(index, distractors) => { if (step !== null) apply(setGapDistractors(outline, step.id, index, distractors)); }}
             onFillTheGapsBank={(bank) => { if (step !== null) apply(setFillTheGapsBank(outline, step.id, bank)); }}
@@ -693,16 +783,20 @@ export function DeckEditor({
             onNotes={(stepId, text) => { apply(setTutorNotes(outline, stepId, text)); }}
             onHomework={(next) => apply(setHomework(outline, next))}
             onRecap={(next) => apply(setRecap(outline, next))}
-            onLoadVersion={(nextSource) => { onSourceChange(nextSource); }}
+            onLoadVersion={loadVersion}
           />
         ) : null}
       </div>
 
       <footer className="flex h-[30px] shrink-0 items-center gap-4 border-t border-border bg-chrome px-3.5 text-caption text-muted-foreground">
+        {aside !== null ? (
+          <span>{asideStatus(aside, outline)}</span>
+        ) : (
         <span>
           Slide <span className="tabular-nums">{slideNumber}</span> of{' '}
           <span className="tabular-nums">{blocks.length}</span>
         </span>
+        )}
         {kindWord === null ? null : (
           <span>
             {kindWord}
@@ -715,14 +809,18 @@ export function DeckEditor({
           </span>
         )}
         <span className="flex-1" />
-        <span>
-          <span className="tabular-nums">{asks}</span>{' '}
-          {asks === 1 ? 'activity asks the class' : 'activities ask the class'}
-        </span>
-        <span>
-          {outline.meta.durationMinutes === undefined ? 'Timed activities' : 'Lesson estimate'}{' '}
-          <span className="tabular-nums">{outline.meta.durationMinutes ?? totalMinutes(outline)}</span> min
-        </span>
+        {aside !== null ? null : (
+          <>
+            <span>
+              <span className="tabular-nums">{asks}</span>{' '}
+              {asks === 1 ? 'activity asks the class' : 'activities ask the class'}
+            </span>
+            <span>
+              {outline.meta.durationMinutes === undefined ? 'Timed activities' : 'Lesson estimate'}{' '}
+              <span className="tabular-nums">{outline.meta.durationMinutes ?? totalMinutes(outline)}</span> min
+            </span>
+          </>
+        )}
         {paneOpen ? null : (
           <button
             type="button"
@@ -734,6 +832,7 @@ export function DeckEditor({
         )}
       </footer>
 
+      <ToastRegion toasts={toasts} />
       {onEmbedCode ? <SlideEmbedDialog key={embedStep ?? 'closed'} stepId={embedStep} prepare={onEmbedCode} onClose={() => setEmbedStep(null)} /> : null}
       <TemplateGallery open={openDialog === 'templates'} onOpenChange={(open) => setOpenDialog(open ? 'templates' : null)} outline={outline}
         onWorkshop={(sequenceId) => {
@@ -958,4 +1057,12 @@ export function DeckEditor({
     </div>
   );
 }
-import { setDeckDesign, setSlideDesign, insertTemplate, insertWorkshop, resetTemplateFormatting } from './outline-edit';
+import { setDeckDesign, setSlideDesign, insertTemplate, insertWorkshop, resetTemplateFormatting, setMatchAnswer } from './outline-edit';
+
+/** The status bar for the homework or recap page: what the page holds. */
+function asideStatus(kind: 'homework' | 'recap', outline: Outline): string {
+  if (kind === 'recap') return 'Recap';
+  const tasks = outline.homework?.tasks?.length ?? 0;
+  if (tasks === 0) return 'Homework';
+  return `Homework · ${tasks === 1 ? 'one task' : `${String(tasks)} tasks`}`;
+}

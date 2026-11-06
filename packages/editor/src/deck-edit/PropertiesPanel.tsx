@@ -4,7 +4,7 @@ import { Button } from '@openroom/ui/components/button';
 import { cn } from '@openroom/ui/utils';
 
 import { useEditorServices } from '../services';
-import { AsideDesign, DesignState } from './properties/design';
+import { DesignState } from './properties/design';
 import { DictionarySection, NotesSection } from './properties/notes-dictionary';
 import { DeckDesignPanel } from './properties/deck-design';
 import type { PaneTab, PropertiesPanelProps } from './properties/shared';
@@ -82,7 +82,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           </section>
         ) : null}
         {props.paneTab === 'design' && step?.design?.templateId && props.onResetTemplate ? <div className="px-[18px] pb-3"><Button size="sm" variant="outline" onClick={props.onResetTemplate}>Reset template formatting</Button></div> : null}
-        {props.lookUpWord != null && props.onCloseLookUp !== undefined ? (
+        {props.paneTab === 'design' && props.lookUpWord != null && props.onCloseLookUp !== undefined ? (
           <DictionarySection
             word={props.lookUpWord}
             deckId={props.deckId}
@@ -95,17 +95,18 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
               deckId={props.deckId}
               refreshKey={props.versionRefresh}
               currentVersion={props.currentVersion}
+              loadedVersion={props.loadedVersion}
+              unsavedDraft={props.unsavedDraft}
               onLoadVersion={props.onLoadVersion}
             />
           </div>
         ) : props.paneTab === 'notes' ? (
           <><NotesSection {...props} />{props.learnerFeedback}</>
         ) : aside !== null ? (
-          <AsideDesign
-            aside={aside === 'homework' ? outline.homework : outline.recap}
-            emptyHint={aside === 'homework' ? 'Homework' : 'Recap'}
-            onChange={aside === 'homework' ? props.onHomework : props.onRecap}
-          />
+          // The page is edited where the student reads it: on the desk.
+          <p className="border-t border-hairline px-[18px] py-3.5 text-caption text-muted-foreground">
+            {aside === 'homework' ? 'Write the homework on the page.' : 'Write the recap on the page.'}
+          </p>
         ) : step === null ? (
           <p className="border-t border-hairline px-[18px] py-3.5 text-caption text-muted-foreground">
             Select a slide.
