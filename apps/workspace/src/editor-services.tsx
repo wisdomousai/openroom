@@ -96,6 +96,9 @@ function useDictionaryEntry(word: string, deckId: string) {
     queryKey: ['dictionary', deckId, word] as const,
     queryFn: () => lookupDictionary({ word, scope: { deckId } }),
     retry: false,
+    // Offline, a paused query would read "Looking up…" until the network
+    // returns. Run it so the failure is said at once, with Try again.
+    networkMode: 'always',
   });
 }
 
