@@ -1,6 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { ContextKind, SpaceLanguages } from '@openroom/schema';
 
 import {
@@ -9,12 +9,14 @@ import {
   listAllSpaces,
   listContexts,
   setSpaceLanguages,
+  trashContext,
   updateContext,
   type ContextDetail,
   type MySpace,
 } from '../../api';
 import { LanguagePairFields, useLanguagePair } from '../../components/LanguagePairFields';
 import { ContextFieldsEditor } from '../../components/ContextFieldsEditor';
+import { ConfirmActionDialog } from '../../components/ManagementTable';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import {
@@ -74,6 +76,7 @@ function ContextForm({
   kind,
   onKindChange,
   extra,
+  footer,
 }: {
   heading: string;
   initial?: ContextDetail;
@@ -84,18 +87,27 @@ function ContextForm({
   onKindChange?: (kind: 'person' | 'group') => void;
   /** Fields that belong to the new context's space rather than the context. */
   extra?: ReactNode;
+  /** Below the form: actions on the record itself, such as Move to trash. */
+  footer?: ReactNode;
 }) {
   const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
   const [fields, setFields] = useState<ContextFields>(() => fieldsFromContext(initial?.context));
+  /** The empty-name message sits under Name; a failed save is reported by the buttons. */
+  const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const nameField = useRef<HTMLInputElement>(null);
 
-  const save = async () => {
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
     const name = displayName.trim();
     if (name === '') {
-      setError('Enter a name.');
+      setNameError('Enter a name.');
+      nameField.current?.focus();
       return;
     }
+    setNameError(null);
     setError(null);
     setBusy(true);
     try {
@@ -108,6 +120,7 @@ function ContextForm({
 
   return (
     <div className="mx-auto flex w-full max-w-[620px] flex-col gap-5">
+    <form noValidate className="flex flex-col gap-5" onSubmit={(event) => void save(event)}>
       <header className="flex flex-col gap-2">
         <h1 className="text-screen-title">{heading}</h1>
       </header>
@@ -124,12 +137,19 @@ function ContextForm({
           Name
         </label>
         <Input
+          ref={nameField}
           id="context-name"
           required
+          aria-invalid={nameError ? true : undefined}
+          aria-describedby={nameError ? 'context-name-error' : undefined}
           placeholder="e.g. Camille, Year 9 French, Tuesday group"
           value={displayName}
-          onChange={(event) => setDisplayName(event.currentTarget.value)}
+          onChange={(event) => {
+            setDisplayName(event.currentTarget.value);
+            if (nameError && event.currentTarget.value.trim() !== '') setNameError(null);
+          }}
         />
+        {nameError ? <p id="context-name-error" role="alert" className="text-secondary text-destructive">{nameError}</p> : null}
       </div>
 
       <ContextFieldsEditor value={fields} onChange={setFields} levelSuggestions={kind === 'class' ? LEVEL_CHIPS : undefined} />
@@ -143,10 +163,12 @@ function ContextForm({
         <Button asChild type="button" variant="outline">
           <Link {...cancelTo}>Cancel</Link>
         </Button>
-        <Button type="button" disabled={busy} onClick={() => void save()}>
+        <Button type="submit" disabled={busy}>
           {busy ? 'Saving…' : submitLabel}
         </Button>
       </div>
+    </form>
+    {footer}
     </div>
   );
 }
@@ -229,19 +251,52 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify 
 
 export function ContextEditPage({ contextId }: { contextId: string }) {
   const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const [trashing, setTrashing] = useState(false);
+  const [trashError, setTrashError] = useState<string | null>(null);
   const { data: detail, cause } = useLoad(
     ['contexts', contextId, 'edit'],
     () => getContext(contextId),
     'Could not load the context',
   );
   if (detail === null) return <LoadState error={cause} what="student" />;
+  const place = to.library({ spaceId: detail.spaceId, contextId });
+  const moveToTrash = async () => {
+    setTrashing(true);
+    setTrashError(null);
+    try {
+      await trashContext(contextId);
+      await invalidateManagementData();
+      setConfirming(false);
+      // Their place shows that they are in Trash, with Restore.
+      await navigate(place);
+    } catch (failure) {
+      setTrashError(messageOf(failure, 'Could not move to trash'));
+      setTrashing(false);
+    }
+  };
   return (
     <ContextForm
-      heading={`${detail.displayName}’s context`}
+      footer={detail.deletedAt === null ? <>
+        <div className="flex justify-end border-t border-hairline pt-3.5">
+          <Button type="button" variant="outline" className="text-destructive" onClick={() => setConfirming(true)}>Move to trash</Button>
+        </div>
+        {trashError ? <p role="alert" className="text-secondary text-destructive">{trashError}</p> : null}
+        <ConfirmActionDialog
+          open={confirming}
+          onOpenChange={(open) => { if (!open && !trashing) setConfirming(false); }}
+          title={`Move ${detail.displayName} to trash`}
+          description={`Moves ${detail.displayName} to Trash. Their access links stop working until you restore them. Permanently deleting them from Trash also deletes their decks, access links and learner work.`}
+          confirmLabel="Move to trash"
+          busy={trashing}
+          onConfirm={() => void moveToTrash()}
+        />
+      </> : null}
+      heading={`Edit ${detail.displayName}`}
       initial={detail}
       kind={detail.kind}
       submitLabel="Save"
-      cancelTo={to.library({ spaceId: detail.spaceId, contextId })}
+      cancelTo={place}
       onSubmit={async (input) => {
         await updateContext(contextId, {
           displayName: input.displayName,
@@ -249,7 +304,7 @@ export function ContextEditPage({ contextId }: { contextId: string }) {
           context: input.context,
         });
         await invalidateManagementData();
-        await navigate(to.library({ spaceId: detail.spaceId, contextId }));
+        await navigate(place);
       }}
     />
   );
