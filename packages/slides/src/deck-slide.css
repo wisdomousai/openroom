@@ -852,6 +852,12 @@
   justify-content: flex-start;
 }
 
+/* A split or activity step with nothing authored for its second column has
+   no second column: the words take the whole width. */
+.slide-surface .outline-step:is(.outline-step--layout-split, .outline-step--layout-activity):not(:has(> .outline-step__region--support)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* A picture in the supporting column fills that side edge to edge. */
 .slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support,
 .slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support {

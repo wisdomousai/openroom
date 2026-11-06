@@ -425,8 +425,13 @@ function StepContent(props: StepLayoutProps): ReactNode {
       // `activity` is the kind's own two-column arrangement — what the learners
       // do on the left, what has to be on the table on the right — so it groups
       // exactly like `split` does.
-      const columns = split || layout === 'activity';
       const picture = step.media;
+      // The second column holds the materials or the picture. With neither
+      // authored there is nothing to put there, and the instructions take the
+      // whole width. Authored, not shown: materials revealed late still keep
+      // their column, so the instructions do not re-wrap when they appear.
+      const second = picture !== undefined || (step.materials !== undefined && step.materials.length > 0);
+      const columns = split || layout === 'activity';
       // Materials are things the learners need in front of them, not steps they
       // perform — a separate block, and one reveal part. It normally has the
       // second region to itself; when the activity carries a picture, the
@@ -479,18 +484,8 @@ function StepContent(props: StepLayoutProps): ReactNode {
           )}
           {region(
             'support',
-            columns,
-            picture === undefined ? (
-              materials
-            ) : show('image') ? (
-              <>
-                {decorate('image')}
-                {pictureNode(picture, part.hostAttrs('image'))}
-                {picture.caption && pixabayCredit(picture) === null ? (
-                  <p className="outline-step__caption">{picture.caption}</p>
-                ) : null}
-              </>
-            ) : null,
+            columns && second,
+            picture === undefined ? materials : picturePart(),
           )}
         </section>
       );

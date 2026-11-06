@@ -358,6 +358,25 @@ describe('a picture on a split slide', () => {
   });
 });
 
+describe('an activity with nothing for its second column', () => {
+  const bare = { ...STEPS.activity, materials: undefined, media: undefined } as SlideStep;
+
+  it('draws no second region, so the instructions take the width', () => {
+    for (const layout of ['activity', 'split'] as const) {
+      const html = renderToStaticMarkup(<StepLayout step={{ ...bare, layout } as SlideStep} />);
+      expect([layout, html.includes('outline-step__region--lede'), html.includes('outline-step__region--support')]).toEqual([layout, true, false]);
+    }
+  });
+
+  it('keeps the second region while authored materials wait for their reveal', () => {
+    const html = renderToStaticMarkup(
+      <StepLayout step={{ ...STEPS.activity, media: undefined } as SlideStep} hiddenParts={new Set(['materials'])} />,
+    );
+    expect(html).toContain('outline-step__region--support');
+    expect(html).not.toContain('data-part="materials"');
+  });
+});
+
 describe('sizes that come from the authored count', () => {
   it('keeps the answer row size while a reveal hides answers', () => {
     const options = Array.from({ length: 7 }, (_, index) => ({ id: `o${String(index)}`, label: `Answer ${String(index)}` }));
