@@ -20,6 +20,11 @@ Acceptance:
 - Revocation denies the old link; replacement retains Léa's work and practice.
 - The learner page has no host navigation, account gate or tutor-private notes.
 - The phone page fits without horizontal scrolling.
+- Only a refused link (401) shows "This link no longer works", also when a
+  later request is refused while the page is open. A network failure or server
+  error on first load shows "Your page could not be loaded" with Try again; a
+  failed Lesson or Feedback tab shows its own sentence with Try again; a rate
+  limit on a tab says to wait a minute.
 - Worker tests separately prove stable live-seat identity, context isolation,
   cookie/PAT separation and current credential denial.
 
