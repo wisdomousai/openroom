@@ -1,4 +1,5 @@
 import {
+  fillTheGapsPromptText,
   LAYOUTS_FOR_KIND,
   partKeysForStep,
   stepElements,
@@ -103,7 +104,9 @@ export function stepTitle(outline: Outline, step: OutlineStep): string {
   if (step.kind === 'interaction') {
     if (step.title !== undefined && step.title !== '') return step.title;
     const interaction = outline.interactions.find((item) => item.id === step.interactionId);
-    return interaction?.prompt ?? step.interactionId;
+    if (interaction === undefined) return step.interactionId;
+    // A gap reads as a blank in the rail and its accessible name, not `{{g1}}`.
+    return interaction.type === 'fill-the-gaps' ? fillTheGapsPromptText(interaction.prompt) : interaction.prompt;
   }
   if (step.kind === 'timer' && step.title !== undefined && step.title !== '') {
     // Expand duration tokens so the rail matches the slide, not the raw plan.

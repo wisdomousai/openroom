@@ -32,6 +32,9 @@ export function PartExtras({
   const [headerRange, setHeaderRange] = useState({ start: 0, end: 0 });
   const index = target === 'material' ? undefined : indexOfKey(partKey);
   const isOption = partKey.startsWith('option-');
+  // Only a choice marks one option correct. A ranking's order and a match's
+  // pairs are its answer key, so the button would do nothing there.
+  const markable = isOption && interaction?.type === 'choice';
   const optionIndex = isOption ? (indexOfKey(partKey) ?? 0) : 0;
   const correct = isOption && optionCorrect(outline, step, optionIndex);
   const breakout = outline.steps.find(
@@ -50,7 +53,7 @@ export function PartExtras({
           onSelectRange={fillTheGapsHeader ? (start, end) => setHeaderRange({ start, end }) : undefined}
         />
       ) : null}
-      {isOption ? (
+      {markable ? (
         <Button
           type="button"
           size="sm"

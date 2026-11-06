@@ -101,6 +101,7 @@ import {
   setMediaSize,
   setMinutes,
   setOptionCorrect,
+  setMatchAnswer,
   setGapAnswers,
   setGapDistractors,
   setFillTheGapsBank,
@@ -247,7 +248,8 @@ export type FuzzOpName =
   | 'timer-placement'
   | 'timer-persist'
   | 'ask'
-  | 'gap-extras';
+  | 'gap-extras'
+  | 'match-answer';
 
 /**
  * Every runtime export of `outline-edit` is one of these. Types vanish at
@@ -329,6 +331,7 @@ export const EDIT_WRITE_OPS = {
   setGapDistractors: 'gap-extras',
   setFillTheGapsBank: 'gap-extras',
   insertGapAtRange: 'gap-extras',
+  setMatchAnswer: 'match-answer',
 } as const satisfies Record<string, FuzzOpName | readonly FuzzOpName[]>;
 
 export const EDIT_READS = [
@@ -421,6 +424,7 @@ export const FUZZ_OP_NAMES: FuzzOpName[] = [
   'timer-persist',
   'ask',
   'gap-extras',
+  'match-answer',
 ];
 
 function applyNamedOp(state: FuzzState, name: FuzzOpName, rng: () => number): FuzzState {
@@ -772,6 +776,13 @@ function applyNamedOp(state: FuzzState, name: FuzzOpName, rng: () => number): Fu
       if (step.kind !== 'interaction') return state;
       const next = { ...askInteraction(step.interactionId, pick(rng, ASK_KINDS) ?? 'choice'), responseMode: rng() < 0.5 ? 'group' as const : 'individual' as const };
       return { outline: setInteraction(outline, step.id, next), selectedId: step.id };
+    }
+    case 'match-answer': {
+      if (step.kind !== 'interaction') return state;
+      const interaction = outline.interactions.find((item) => item.id === step.interactionId);
+      if (interaction === undefined || interaction.type !== 'match') return state;
+      const index = Math.floor(rng() * (interaction.left.length + 1));
+      return { outline: setMatchAnswer(outline, step.id, index, rng() < 0.3 ? '' : 'retyped answer'), selectedId: step.id };
     }
     case 'gap-extras': {
       if (step.kind !== 'interaction') return state;

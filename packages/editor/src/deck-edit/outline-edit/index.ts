@@ -121,6 +121,7 @@ export {
   setFillTheGapsBank,
   setGapAnswers,
   setGapDistractors,
+  setMatchAnswer,
   setOptionCorrect,
 } from './lists';
 
