@@ -15,6 +15,7 @@ import { ErrorCodes, type SessionError, type Session } from './types.js';
 import { compileSimpleSession, isSimpleSession } from './simple-session.js';
 import { validateDraftSession, validateSession } from './validate.js';
 import { stripDeprecatedOutlineFields } from './normalize.js';
+import { outlineWarnings, resolvedStepLayout } from './outline-fit.js';
 import { describeParseError, describeSchemaError, withoutBranchNoise } from './outline-errors.js';
 import { isHomeworkQuizType } from './homework.js';
 import { elementMarkupIssue } from './element-html.js';
@@ -610,7 +611,13 @@ export function validateOutline(rawInput: unknown): OutlineValidateResult {
 
   const sessionResult = validateDraftSession(toSession(outline));
   if (!sessionResult.ok) return sessionResult;
-  return { ok: true, outline, session: sessionResult.session };
+  return {
+    ok: true,
+    outline,
+    session: sessionResult.session,
+    layouts: outline.steps.map(resolvedStepLayout),
+    warnings: outlineWarnings(outline),
+  };
 }
 
 /** Compile for a live session: saved draft content must now be complete. */
