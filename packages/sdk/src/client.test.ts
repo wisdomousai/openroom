@@ -360,6 +360,60 @@ describe('createSessionClient', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(fetches).toBe(after);
   });
+
+  it('reports a rejected token once through onGone and stops polling and the socket', async () => {
+    for (const rejected of [401, 403, 404, 410]) {
+      let fetches = 0;
+      const fetchFake: FetchLike = async () => {
+        fetches++;
+        return jsonRes(rejected, { error: 'unauthorized' });
+      };
+      const gone: number[] = [];
+      const statuses: string[] = [];
+      createSessionClient<ParticipantSnapshot>({
+        baseUrl: 'https://api.test',
+        sessionCode: 'r',
+        token: 't',
+        role: 'participant',
+        fetch: fetchFake,
+        WebSocket: FakeSocket,
+        onStatus: (s) => statuses.push(s),
+        onGone: (status) => gone.push(status),
+      });
+      await flush();
+      expect(gone).toEqual([rejected]);
+      expect(statuses).not.toContain('offline');
+      expect(FakeSocket.last?.closed).toBe(true);
+      const after = fetches;
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(fetches).toBe(after);
+    }
+  });
+
+  it('keeps a 5xx as offline and polls on, with or without onGone', async () => {
+    let fetches = 0;
+    const fetchFake: FetchLike = async () => {
+      fetches++;
+      return jsonRes(503, {});
+    };
+    const gone: number[] = [];
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: null,
+      onGone: (status) => gone.push(status),
+    });
+    await flush();
+    expect(client.getStatus()).toBe('offline');
+    const after = fetches;
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(fetches).toBeGreaterThan(after);
+    expect(gone).toEqual([]);
+    client.close();
+  });
 });
 
 describe('joinSession', () => {

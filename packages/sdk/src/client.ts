@@ -51,6 +51,14 @@ export interface SessionClientOptions<S extends Snapshot = Snapshot> {
   role: Role;
   onChange?: (snapshot: S) => void;
   onStatus?: (status: ConnectionStatus) => void;
+  /**
+   * The server refused this token for this session for good: 401, 403, 404 or
+   * 410 on the snapshot read. The token expired, the session was wiped, or it
+   * never existed, so retrying cannot help. When this listener is set the
+   * client stops polling and closes the socket before calling it with the HTTP
+   * status. Without it such a response reads as `offline` and polling goes on.
+   */
+  onGone?: (httpStatus: number) => void;
   /** Testing seams — all default to the browser globals. */
   fetch?: FetchLike;
   WebSocket?: WebSocketCtor | null;
@@ -83,6 +91,9 @@ const WS_BACKOFF_MAX_MS = 30_000;
  * socket — which would otherwise force a reconnect + snapshot refetch cycle.
  */
 const WS_KEEPALIVE_MS = 30_000;
+
+/** Snapshot responses that mean the token or the session is gone, not the network. */
+const GONE_STATUSES = new Set([401, 403, 404, 410]);
 
 function defaultOrigin(): string {
   const loc = (globalThis as { location?: { origin?: string } }).location;
@@ -203,6 +214,15 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
         return;
       }
       if (!res.ok) {
+        if (GONE_STATUSES.has(res.status) && options.onGone) {
+          shutdown();
+          try {
+            options.onGone(res.status);
+          } catch {
+            /* listener errors must not break the client */
+          }
+          return;
+        }
         setStatus('offline');
         return;
       }
@@ -410,6 +430,30 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
     return { ok: false, error: err };
   }
 
+  /* ------------------------------------------------------------ close */
+
+  function shutdown(): void {
+    closed = true;
+    stopPolling();
+    stopKeepalive();
+    if (wsRetryTimer !== null) {
+      clearTimeout(wsRetryTimer);
+      wsRetryTimer = null;
+    }
+    if (ws) {
+      try {
+        ws.onopen = null;
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.onmessage = null;
+        ws.close();
+      } catch {
+        /* ignore */
+      }
+      ws = null;
+    }
+  }
+
   /* ------------------------------------------------------------- start */
 
   try {
@@ -426,28 +470,9 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
     getStatus: () => status,
     refresh: () => fetchSnapshot(),
     submit,
-    close(): void {
-      closed = true;
-      stopPolling();
-      stopKeepalive();
-      if (wsRetryTimer !== null) {
-        clearTimeout(wsRetryTimer);
-        wsRetryTimer = null;
-      }
-      if (ws) {
-        try {
-          ws.onopen = null;
-          ws.onclose = null;
-          ws.onerror = null;
-          ws.onmessage = null;
-          ws.close();
-        } catch {
-          /* ignore */
-        }
-        ws = null;
-      }
-    },
+    close: shutdown,
   };
+
 }
 
 /* ---------------------------------------------------------------- join */
