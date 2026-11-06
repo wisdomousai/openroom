@@ -130,7 +130,7 @@ export function LanguagePairFields({
         >
           <SelectTrigger id={`${idPrefix}-taught`} className={triggerClassName}>
             <SelectValue
-              placeholder={pair.native === '' ? 'Pick a students’ language first' : 'Pick a language'}
+              placeholder={pair.native === '' ? 'Students’ language first' : 'Pick a language'}
             />
           </SelectTrigger>
           <SelectContent>

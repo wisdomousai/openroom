@@ -293,7 +293,10 @@ describe('workspace hierarchy', () => {
     const body = (await tree.json()) as {
       decks: { id: string; title: string; contents?: { slides: number; askTheClass: number; homework: boolean } }[];
       sessions: { id: string; deckId: string }[];
+      space: { context: { id: string; displayName: string } | null };
     };
+    // A student's own space names its student, for its settings page.
+    expect(body.space.context).toEqual({ id: contextId, displayName: 'Test context' });
     const listed = body.decks.find((d) => d.id === created.deck.id);
     expect(listed).toBeTruthy();
     expect(listed?.contents).toEqual({

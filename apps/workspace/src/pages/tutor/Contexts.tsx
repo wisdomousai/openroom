@@ -1,14 +1,19 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
-import type { ContextKind } from '@openroom/schema';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { ContextKind, SpaceLanguages } from '@openroom/schema';
 
 import {
   createContext,
   getContext,
+  listAllSpaces,
   listContexts,
+  setSpaceLanguages,
   updateContext,
   type ContextDetail,
+  type MySpace,
 } from '../../api';
+import { LanguagePairFields, useLanguagePair } from '../../components/LanguagePairFields';
 import { ContextFieldsEditor } from '../../components/ContextFieldsEditor';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
@@ -67,6 +72,7 @@ function ContextForm({
   onSubmit,
   kind,
   onKindChange,
+  extra,
 }: {
   heading: string;
   initial?: ContextDetail;
@@ -75,6 +81,8 @@ function ContextForm({
   onSubmit: (input: { displayName: string; context: Record<string, unknown> }) => Promise<void>;
   kind?: ContextKind;
   onKindChange?: (kind: 'person' | 'group') => void;
+  /** Fields that belong to the new context's space rather than the context. */
+  extra?: ReactNode;
 }) {
   const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
   const [fields, setFields] = useState<ContextFields>(() => fieldsFromContext(initial?.context));
@@ -125,6 +133,8 @@ function ContextForm({
 
       <ContextFieldsEditor value={fields} onChange={setFields} levelSuggestions={kind === 'class' ? LEVEL_CHIPS : undefined} />
 
+      {extra}
+
       {error ? <p role="alert" className="text-secondary text-destructive">{error}</p> : null}
 
       <div className="flex items-center gap-2 border-t border-hairline bg-background py-3.5">
@@ -140,11 +150,39 @@ function ContextForm({
   );
 }
 
+/**
+ * The pair a new student starts with: the one last saved on another student,
+ * else the one the new space would inherit from where it was added.
+ */
+export function suggestedLanguages(spaces: readonly MySpace[], sourceSpaceId?: string): SpaceLanguages | null {
+  const students = spaces
+    .filter((space) => space.id.startsWith('sp_ctx_') && space.role === 'owner' && space.settings.languages)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  if (students[0]?.settings.languages) return students[0].settings.languages;
+  const source = sourceSpaceId
+    ? spaces.find((space) => space.id === sourceSpaceId)
+    : spaces.filter((space) => !space.shared).sort((a, b) => a.createdAt - b.createdAt)[0];
+  return source?.settings.languages ?? null;
+}
+
 export function ContextNewPage({ sourceSpaceId, experience = 'tutoring' }: { sourceSpaceId?: string; experience?: 'tutoring' | 'classroom' }) {
   const navigate = useNavigate();
   const [kind, setKind] = useState<'person' | 'group'>('person');
+  const spacesQuery = useQuery({ queryKey: ['spaces', 'all'] as const, queryFn: listAllSpaces });
+  const suggested = useMemo(
+    () => suggestedLanguages(spacesQuery.data ?? [], sourceSpaceId),
+    [sourceSpaceId, spacesQuery.data],
+  );
+  const pair = useLanguagePair(suggested);
   return (
     <ContextForm
+      extra={
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 text-row-title">Dictionary languages</legend>
+          <p className="text-secondary text-muted-foreground">Optional. Word lookup in these lessons uses this pair.</p>
+          <LanguagePairFields pair={pair} idPrefix="new-context" />
+        </fieldset>
+      }
       heading={experience === 'classroom' ? 'Add class' : 'Add student or group'}
       kind={experience === 'classroom' ? 'class' : kind}
       onKindChange={experience === 'tutoring' ? setKind : undefined}
@@ -158,6 +196,8 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring' }: { sou
           sourceSpaceId,
           experience,
         });
+        // The pair lives on the new space; what the form shows is what it gets.
+        await setSpaceLanguages(created.spaceId, pair.complete ? { taught: pair.taught, native: pair.native } : null);
         await invalidateManagementData();
         await navigate(to.library({ spaceId: created.spaceId, contextId: created.id }));
       }}

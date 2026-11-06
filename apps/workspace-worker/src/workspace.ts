@@ -372,9 +372,17 @@ export async function getSpaceRoute(
    * not a language-tutoring space carries no language state at all.
    */
   const settings = await spaceSettings(env, spaceId);
+  // A student's own space names its student, so settings can say whose they are.
+  const owner = await env.DB.prepare(
+    `SELECT c.id AS id, c.display_name AS display_name FROM space_contexts sc
+       JOIN contexts c ON c.id = sc.context_id WHERE sc.space_id = ?1`,
+  ).bind(spaceId).first<{ id: string; display_name: string }>();
 
   return json({
-    space: { id: space.id, name: space.name, role: access.role, settings },
+    space: {
+      id: space.id, name: space.name, role: access.role, settings,
+      context: owner === null ? null : { id: owner.id, displayName: owner.display_name },
+    },
     itemTags,
     records: (records ?? []).map((r) => ({
       id: r.id,

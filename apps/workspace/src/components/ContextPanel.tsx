@@ -100,7 +100,7 @@ export function ContextPanel({
         */}
         <p className="min-w-0 flex-1 text-caption text-muted-foreground">
           {languages === undefined
-            ? 'No language pair set for this space. Word lookup needs one.'
+            ? `No language pair for ${who}. Word lookup needs one.`
             : `Agents and the CLI read this context before drafting a deck for ${who}.`}
         </p>
         {languages === undefined && settingsTo ? (
