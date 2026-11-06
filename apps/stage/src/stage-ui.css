@@ -883,6 +883,16 @@
   touch-action: none;
 }
 
+/* The console plate is a tab stop; the word outline shows which word, this which plate. */
+.ink-overlay:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.ink-overlay:focus-visible .ink-lock {
+  opacity: 0.9;
+}
+
 /* --------------------------------------------------------- meaning breakout */
 
 /*

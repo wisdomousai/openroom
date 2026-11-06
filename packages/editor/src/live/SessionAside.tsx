@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { Button } from '@openroom/ui/components/button';
 import { Textarea } from '@openroom/ui/components/textarea';
@@ -33,6 +33,30 @@ export interface SessionAsideProps {
   onMarkAnswered: (questionId: string) => void;
   onToggleHidden: (questionId: string, hidden: boolean) => void;
   onSetStage: (mode: 'off' | 'list' | 'spotlight', questionId?: string) => void;
+}
+
+/**
+ * The slide list is one tab stop: Tab lands on the slide on screen, the arrow
+ * keys (and Home, End) move between rows, Enter or Space shows the row. Fifteen
+ * rows are no longer fifteen stops between the slide and the notes.
+ */
+function onRailKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+  const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+  if (!keys.includes(event.key)) return;
+  const rows = [...event.currentTarget.querySelectorAll<HTMLButtonElement>(':scope > button:not(:disabled)')];
+  if (rows.length === 0) return;
+  const at = rows.indexOf(document.activeElement as HTMLButtonElement);
+  const next =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? rows.length - 1
+        : event.key === 'ArrowDown'
+          ? Math.min(rows.length - 1, at + 1)
+          : Math.max(0, at - 1);
+  event.preventDefault();
+  event.stopPropagation();
+  rows[next]?.focus();
 }
 
 /**
@@ -104,7 +128,7 @@ export function SessionAside({
       {liveControls}
       {pane === 'session' ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div className="flex flex-col gap-px px-2 pb-3">
+          <div className="flex flex-col gap-px px-2 pb-3" aria-label="Slides" role="group" onKeyDown={onRailKeyDown}>
             {outline
               ? outlineSteps.map((step, index) => {
                   const current = index === outlineIndex;
@@ -114,6 +138,8 @@ export function SessionAside({
                       key={step.id}
                       type="button"
                       disabled={!canPresent}
+                      tabIndex={current ? 0 : -1}
+                      aria-current={current ? 'step' : undefined}
                       onClick={() => onSelectStep(step.id)}
                       className={
                         current
@@ -165,6 +191,8 @@ export function SessionAside({
                       key={item.id}
                       type="button"
                       disabled={!canPresent}
+                      tabIndex={current || (selectedId === null && index === 0) ? 0 : -1}
+                      aria-current={current ? 'step' : undefined}
                       onClick={() => onSelectItem(item.id)}
                       className={
                         current

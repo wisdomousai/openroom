@@ -17,6 +17,9 @@ const INK_SWATCH: Record<InkColor, string> = {
   green: 'bg-chart-2',
 };
 
+/** Rub out is a gesture on the slide, so the tools that draw say where it is. */
+const RUB_OUT_HINT = 'Double-click a mark on the slide to rub it out.';
+
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-none flex-col items-center justify-between gap-1 px-3.5">
@@ -90,6 +93,9 @@ export interface LiveRibbonProps {
   inkColor: InkColor;
   onInkColor: (color: InkColor) => void;
   onClearMarks: () => void;
+  /** Takes back the last mark, or brings back the marks Clear removed. */
+  canUndoMarks: boolean;
+  onUndoMarks: () => void;
   /** The launcher armed the next word click; the card opens itself on the hit. */
   lookUpArmed: boolean;
   onLookUp: () => void;
@@ -151,7 +157,7 @@ export function LiveRibbon(props: LiveRibbonProps) {
               Close answering
             </Button>
             {props.resultsUp ? (
-              <span className="inline-flex h-8 items-center rounded-md bg-live-tint px-3 text-sm font-semibold text-live-tint-foreground">
+              <span className="inline-flex h-8 items-center rounded-md bg-live-tint px-3 text-row-title text-live-tint-foreground">
                 Results shown
               </span>
             ) : null}
@@ -181,7 +187,7 @@ export function LiveRibbon(props: LiveRibbonProps) {
               </Button>
             ) : null}
             {props.correctShown ? (
-              <span className="inline-flex h-8 items-center rounded-md bg-accent px-2.5 text-sm font-semibold text-accent-foreground">
+              <span className="inline-flex h-8 items-center rounded-md bg-accent px-2.5 text-row-title text-accent-foreground">
                 ✓ {props.hasCorrect ? 'Correct answer shown' : 'Results shown'}
               </span>
             ) : props.canReveal ? (
@@ -295,6 +301,7 @@ export function LiveRibbon(props: LiveRibbonProps) {
                 key={shape}
                 type="button"
                 variant="subtle"
+                title={RUB_OUT_HINT}
                 aria-pressed={props.drawTool === shape}
                 className={cn(
                   props.drawTool === shape && 'bg-live-tint font-semibold text-live-tint-foreground hover:bg-live-tint',
@@ -307,6 +314,7 @@ export function LiveRibbon(props: LiveRibbonProps) {
             <Button
               type="button"
               variant="subtle"
+              title={RUB_OUT_HINT}
               aria-pressed={props.drawTool === 'pen'}
               className={cn(
                 props.drawTool === 'pen' && 'bg-live-tint font-semibold text-live-tint-foreground hover:bg-live-tint',
@@ -318,6 +326,15 @@ export function LiveRibbon(props: LiveRibbonProps) {
             <Button
               type="button"
               variant="subtle"
+              disabled={!props.canUndoMarks}
+              onClick={props.onUndoMarks}
+            >
+              Undo
+            </Button>
+            <Button
+              type="button"
+              variant="subtle"
+              title="Removes every mark on this slide. Undo brings them back."
               className="text-destructive hover:bg-[color-mix(in_oklab,var(--destructive)_8%,var(--card))]"
               onClick={props.onClearMarks}
             >

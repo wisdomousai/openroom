@@ -9,6 +9,7 @@ import {
   isMarkShape,
   type InkColor,
   type MarkShape,
+  type SessionMarkView,
 } from '@openroom/sdk';
 
 import { useEditorServices } from '../services';
@@ -268,8 +269,6 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
     nextQuestion();
   }, [outline, outlineIndex, outlineSteps.length, nextQuestion, run]);
 
-  usePresentationKeys({ enabled: canPresent && Boolean(onReturnToDeck) && !ended, next, previous, close: () => onReturnToDeck?.() });
-
   // Outline-aware labels/actions live in deriveHostFlow (shared with PresenterRemote).
   // Reveal still wins over "Next step" when results are hidden.
   const primaryLabel = flow?.label ?? null;
@@ -392,6 +391,67 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   );
 
   const lookupFlow = useMeaningLookup({ sessionCode: live.sessionCode, snapshot, run });
+
+  /**
+   * Escape takes back the innermost armed thing before it leaves: an armed
+   * lookup, then an ink tool. An open card or chart menu closes itself on the
+   * same key, so the console stays. Only a bare Escape returns to the deck.
+   */
+  const cancelArmed = useCallback((): boolean => {
+    if (lookupFlow.lookUpArmed) {
+      lookupFlow.toggleArmed();
+      return true;
+    }
+    if (drawTool !== 'none') {
+      setDrawTool('none');
+      return true;
+    }
+    return false;
+  }, [lookupFlow, drawTool]);
+  const escapeConsole = useCallback(() => {
+    if (chartMenu !== null || lookupFlow.cardOpen) return;
+    if (cancelArmed()) return;
+    onReturnToDeck?.();
+  }, [chartMenu, lookupFlow.cardOpen, cancelArmed, onReturnToDeck]);
+  usePresentationKeys({ enabled: canPresent && Boolean(onReturnToDeck) && !ended, next, previous, close: escapeConsole });
+  // The hosted console has no Escape exit, but an armed lookup or tool still cancels.
+  useHotkeys(
+    [{ hotkey: 'Escape', callback: () => { cancelArmed(); } }],
+    {
+      enabled: !onReturnToDeck && (lookupFlow.lookUpArmed || drawTool !== 'none'),
+      ignoreInputs: true,
+      preventDefault: true,
+      conflictBehavior: 'replace',
+    },
+  );
+
+  /*
+   * Undo for ink. Clear removes every mark at once, so the marks it removed are
+   * kept here until the slide changes; Undo brings them back when the slide has
+   * none, and otherwise takes back the newest mark.
+   */
+  const marks = (snapshot?.marks ?? []) as SessionMarkView[];
+  const [clearedMarks, setClearedMarks] = useState<SessionMarkView[] | null>(null);
+  const outlineStepId = outlineStep?.id;
+  useEffect(() => {
+    setClearedMarks(null);
+  }, [outlineStepId]);
+  const clearMarks = useCallback(() => {
+    if (marks.length > 0) setClearedMarks(marks);
+    void run({ command: 'mark.clear' });
+  }, [marks, run]);
+  const canUndoMarks = marks.length > 0 || (clearedMarks !== null && clearedMarks.length > 0);
+  const undoMarks = useCallback(async () => {
+    if (marks.length === 0 && clearedMarks !== null) {
+      setClearedMarks(null);
+      for (const { id: _id, ...mark } of clearedMarks) {
+        if (!(await run({ command: 'mark.set', mark }))) return;
+      }
+      return;
+    }
+    const last = marks[marks.length - 1];
+    if (last !== undefined) await run({ command: 'mark.remove', id: last.id });
+  }, [marks, clearedMarks, run]);
 
   /*
    * Private scratchpad. Held in this browser, keyed by join code, never sent
@@ -822,9 +882,9 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
       <div className="flex min-h-0 flex-1">
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-desk">
           {!snapshot ? (
-            <p className="p-6 text-sm text-muted-foreground">Loading session…</p>
+            <p className="p-6 text-secondary text-muted-foreground">Loading session…</p>
           ) : !stageToken ? (
-            <p className="p-6 text-sm text-muted-foreground">Loading…</p>
+            <p className="p-6 text-secondary text-muted-foreground">Loading…</p>
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-5" style={{ containerType: 'size' }}>
               <div
@@ -848,7 +908,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
                   onTool={setDrawTool}
                   color={inkColor}
                   onColor={setInkColor}
-                  onClear={() => void run({ command: 'mark.clear' })}
+                  onClear={clearMarks}
                   target={markTarget}
                   onShape={applyShape}
                   onLookUp={lookupFlow.lookUpWord}
