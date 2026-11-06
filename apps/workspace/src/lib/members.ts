@@ -18,14 +18,15 @@ export function groupSpaces(spaces: MySpace[]): GroupedSpaces {
 }
 
 /**
- * Spaces the nav lists, without a student's own space (`sp_ctx_…`) whose
- * student is in Trash or permanently deleted: that space is only reached
- * through its student. Before the students have loaded, nothing is left out.
+ * Spaces the nav lists, without a student's own space (`sp_ctx_…`) while that
+ * student is in Trash: the trashed place is reached through Trash. Once the
+ * student is restored, or purged with something still filed in the space, it
+ * is listed again.
  */
-export function navigableSpaces(spaces: MySpace[], liveContexts: readonly { spaceId: string }[] | undefined): MySpace[] {
-  if (liveContexts === undefined) return spaces;
-  const withStudent = new Set(liveContexts.map((context) => context.spaceId));
-  return spaces.filter((space) => !space.id.startsWith('sp_ctx_') || withStudent.has(space.id));
+export function navigableSpaces(spaces: MySpace[], trashedContexts: readonly { spaceId: string }[] | undefined): MySpace[] {
+  if (!trashedContexts?.length) return spaces;
+  const trashed = new Set(trashedContexts.map((context) => context.spaceId));
+  return spaces.filter((space) => !(space.id.startsWith('sp_ctx_') && trashed.has(space.id)));
 }
 
 /** The space whose browser the pathname is on, or null at `/space`. */

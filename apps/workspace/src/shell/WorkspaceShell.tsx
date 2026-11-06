@@ -66,6 +66,11 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     queryFn: () => listContexts(),
     enabled: signedIn === true,
   });
+  const trashedContextsQuery = useQuery({
+    queryKey: ['contexts', 'trashed'] as const,
+    queryFn: () => listContexts({ trash: true }),
+    enabled: signedIn === true,
+  });
   const decksQuery = useQuery({
     queryKey: ['decks', 'all'] as const,
     queryFn: () => listDecks(),
@@ -74,7 +79,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
 
   const allSpaces = spacesQuery.data ?? [];
   // A trashed student's own space keeps resolving as the current space, but the nav does not list it.
-  const spaces = navigableSpaces(allSpaces, contextsQuery.data);
+  const spaces = navigableSpaces(allSpaces, trashedContextsQuery.data);
   const { mine: ownedSpaces, shared: invitedSpaces } = groupSpaces(spaces);
   const personal = ownedSpaces[0] ?? null;
   const contexts = contextsQuery.data ?? [];
@@ -115,6 +120,10 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
   }, [decks]);
 
   const newDeckTo = useMemo(() => {
+    // A student in Trash takes no new decks; the button files into the first own space instead.
+    if (activeContextId && trashedContextsQuery.data?.some((row) => row.id === activeContextId)) {
+      return personal ? to.deckNew({ spaceId: personal.id }) : to.deckNew();
+    }
     if (activeContextId) {
       const context = contexts.find((row) => row.id === activeContextId);
       return to.deckNew({
@@ -128,7 +137,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     }
     if (currentSpace) return to.deckNew({ spaceId: currentSpace.id });
     return to.deckNew();
-  }, [activeContextId, activeFolderId, activeSpaceId, contexts, currentSpace]);
+  }, [activeContextId, activeFolderId, activeSpaceId, contexts, currentSpace, personal, trashedContextsQuery.data]);
 
   const libraryTo = currentSpace ? to.library({ spaceId: currentSpace.id }) : to.library();
   const libraryPath = pathname === '/space' || (pathname !== '/space/new' && /^\/space\/[^/]+$/.test(pathname));
@@ -186,7 +195,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
 
       <div className="flex min-h-0 flex-1">
         <aside className={cn("min-h-0 w-[244px] shrink-0 flex-col border-r border-border bg-chrome", accountPage ? "hidden md:flex" : "flex")}>
-          <div className="px-2 pt-2"><SpaceSwitcher current={currentSpace} spaces={spaces} /></div>
+          <div className="px-2 pt-2"><SpaceSwitcher current={currentSpace} spaces={currentSpace && !spaces.includes(currentSpace) ? [...spaces, currentSpace] : spaces} /></div>
           <div className="px-3 pb-2 pt-3">
             <Button asChild className="h-[34px] w-full">
               <Link {...newDeckTo}>New deck</Link>

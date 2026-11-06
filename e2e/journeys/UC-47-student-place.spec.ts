@@ -229,6 +229,10 @@ test('a student place at laptop sizes: open links, whole group name, page-length
   await expect(page.getByText(`${student} is in Trash.`)).toBeVisible();
   const main = page.getByRole('main');
   await expect(main.getByRole('link', { name: 'New deck', exact: true })).toHaveCount(0);
+  // The sidebar's New deck does not file into the trashed student.
+  const sidebarNewDeck = page.getByRole('link', { name: 'New deck', exact: true });
+  await expect(sidebarNewDeck).toHaveCount(1);
+  expect(await sidebarNewDeck.getAttribute('href')).not.toContain(contextId);
   await expect(page.getByRole('heading', { name: 'Access links', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
   // The nav lists neither the student nor their space.
