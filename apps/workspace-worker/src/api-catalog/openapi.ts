@@ -8,6 +8,33 @@ import { jsonHeaders } from './headers';
  */
 const CONTINUITY_REQUIRED = { '403': { description: 'continuity-required: the space owner lacks the continuity capability. Data is retained; trash, restore and permanent deletion stay available.' } };
 
+/** What a launch or a deck start answers. Shared so the two routes cannot drift. */
+const LAUNCHED = {
+  description: 'Launched',
+  content: {
+    'application/json': {
+      schema: {
+        type: 'object',
+        properties: {
+          sessionId: { type: 'string' },
+          sessionCode: { type: 'string' },
+          code: { type: 'string' },
+          hostToken: { type: 'string' },
+          stageToken: { type: 'string' },
+          stageUrl: { type: 'string', format: 'uri', description: 'Absolute projector page URL carrying the stage token' },
+          joinUrl: { type: 'string', format: 'uri', description: 'Absolute join URL. Absent for an identified session: mint the student link with sessionCode for the join URL that carries it.' },
+          contextId: { type: 'string', description: 'The student context the session was filed under, when there is one' },
+          deckId: { type: 'string' },
+          deckVersion: { type: 'integer' },
+          status: { type: 'string', enum: ['draft', 'live'] },
+          started: { type: 'boolean' },
+          startFailed: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
 function recapOperations(account: boolean) {
   const parameters = [{ name: 'sessionCode', in: 'path', required: true, schema: { type: 'string' } }];
   const security = account ? [{ SessionCookie: [] }, { UserBearer: [] }] : [{ BearerAuth: [] }];
@@ -665,6 +692,38 @@ export function openapiDocument(origin: string): unknown {
           responses: { '204': { description: 'Discarded' } },
         },
       },
+      '/api/decks/{deckId}/start': {
+        post: {
+          operationId: 'startDeck',
+          summary: 'Retry-safe start of the current saved deck',
+          description: 'requestId becomes the sessionId. Repeated calls by the same creator with the same requestId answer the same live session without resetting position, answers or reveals; a new audience needs a new UUID.',
+          security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
+          parameters: [{ name: 'deckId', in: 'path', required: true, schema: { type: 'string' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['requestId'],
+                  properties: {
+                    requestId: { type: 'string', format: 'uuid', description: 'Generated once before the first call and reused on retries' },
+                    stepId: { type: 'string', description: 'Optional slide to open on' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': LAUNCHED,
+            '403': { description: 'team-required, roster-required or continuity-required (identified sessions), from the space owner' },
+            '404': { description: 'deck-not-found' },
+            '409': { description: 'request-id-conflict, deck-content-not-found or session-already-ended' },
+            '410': { description: 'session-expired' },
+            '422': { description: 'request-id-required, activity-not-found or identified-session-needs-context (an identified deck must be filed under a student)' },
+          },
+        },
+      },
       '/api/decks/{deckId}/restore': {
         post: { operationId: 'restoreDeck', summary: 'Restore deck from trash', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], parameters: [{ name: 'deckId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Restored' } } },
       },
@@ -734,7 +793,8 @@ export function openapiDocument(origin: string): unknown {
                       code: { type: 'string' },
                       hostToken: { type: 'string' },
                       stageToken: { type: 'string' },
-                      joinUrl: { type: 'string', format: 'uri' },
+                      joinUrl: { type: 'string', format: 'uri', description: 'Absolute join URL' },
+                      stageUrl: { type: 'string', format: 'uri', description: 'Absolute projector page URL carrying the stage token' },
                     },
                   },
                 },
@@ -742,7 +802,7 @@ export function openapiDocument(origin: string): unknown {
             },
             '403': { description: 'team-required, roster-required (identityMode roster) or continuity-required (identityMode identified), from the space owner or the creating account' },
             '404': { description: 'deck, context, or folder not found' },
-            '422': { description: 'invalid-deck-version or status-server-owned' },
+            '422': { description: 'invalid-deck-version, status-server-owned, or identified-session-needs-context (an outline body has no student context, so identified is refused; start a deck filed under the student instead)' },
           },
         },
       },
@@ -799,9 +859,10 @@ export function openapiDocument(origin: string): unknown {
             },
           },
           responses: {
-            '201': { description: 'Session created' },
+            '201': LAUNCHED,
             '403': { description: 'team-required, roster-required or continuity-required (identified sessions), from the space owner' },
             '409': { description: 'session-already-live or deck-content-not-found' },
+            '422': { description: 'identified-session-needs-context (an identified deck must be filed under a student) or invalid-presentation-cursor' },
           },
         },
       },

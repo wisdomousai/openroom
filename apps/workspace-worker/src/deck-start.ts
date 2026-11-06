@@ -45,6 +45,7 @@ export async function startDeckRoute(request: Request, env: ControlEnv, deckId: 
     outline: content.outline, start: true,
     ...(step ? { cursor: { stepId: step.id, shown: resolveRevealOrder(step, content.outline.interactions).length } } : {}),
     ...(guard.connectionId ? { connectionId: guard.connectionId } : {}),
+    origin: new URL(request.url).origin,
   }, guard.user);
 }
 

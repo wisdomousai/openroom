@@ -531,6 +531,44 @@ describe('identified sessions', () => {
   });
 });
 
+describe('identified session URLs', () => {
+  it('offers no bare join URL at launch and a link-bearing one at mint', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie, 'Camille');
+    const sessionId = await createSession(cookie, contextId);
+    const launched = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, { method: 'POST', body: JSON.stringify({ start: true }) });
+    const live = (await launched.json()) as { code: string; stageToken: string; joinUrl?: string; stageUrl?: string; contextId?: string };
+    expect(live.joinUrl).toBeUndefined();
+    expect(live.contextId).toBe(contextId);
+    expect(live.stageUrl).toBe(`${BASE}/stage/?session=${live.code}&token=${encodeURIComponent(live.stageToken)}`);
+
+    const minted = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: JSON.stringify({ sessionCode: live.code.toLowerCase() }) });
+    expect(minted.status).toBe(201);
+    const link = (await minted.json()) as { token: string; joinUrl: string; learnerUrl: string };
+    expect(link.learnerUrl).toBe(`${BASE}/host/#/learn?token=${encodeURIComponent(link.token)}`);
+    // Absolute (new URL would throw on a path), on the deployment's join origin.
+    const join = new URL(link.joinUrl);
+    expect(join.searchParams.get('link')).toBe(link.token);
+    const joined = await joinWith({ code: join.searchParams.get('code'), contextLink: join.searchParams.get('link') });
+    expect(joined.status).toBe(200);
+
+    // A code from another context is refused rather than baked into a dead URL.
+    const other = await createContext(cookie, 'Noor');
+    const elsewhere = await asBrowser(cookie, `/api/tutoring/contexts/${other}/links`, { method: 'POST', body: JSON.stringify({ sessionCode: live.code }) });
+    expect(elsewhere.status).toBe(422);
+    expect(await elsewhere.json()).toEqual({ error: 'session-not-in-context' });
+  });
+
+  it('gives a pseudonymous launch absolute join and stage URLs', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie, 'Camille');
+    const sessionId = await createSession(cookie, contextId, 'pseudonymous');
+    const live = (await (await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, { method: 'POST', body: JSON.stringify({ start: true }) })).json()) as { code: string; joinUrl: string; stageUrl: string };
+    expect(new URL(live.joinUrl).searchParams.get('code')).toBe(live.code);
+    expect(live.stageUrl.startsWith(`${BASE}/stage/?session=${live.code}&token=`)).toBe(true);
+  });
+});
+
 describe('identified sessions require a started session', () => {
   it('refuses an identified join while the session is still in the lobby', async () => {
     const { cookie } = await seedSession();

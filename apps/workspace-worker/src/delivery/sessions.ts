@@ -468,6 +468,7 @@ export async function launchSessionRoute(
   }
   return launch({
     ...(guard.connectionId ? { connectionId: guard.connectionId } : {}),
+    origin: new URL(request.url).origin,
     sessionId: session.id,
     deckId: session.deck_id,
     contextId: session.context_id,

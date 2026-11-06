@@ -41,6 +41,8 @@ export const DECK_SHAPE_SET: ReadonlySet<string> = new Set(DECK_SHAPES);
 export interface SessionLaunchInput {
   /** Server-derived credential provenance, never taken from the request body. */
   connectionId?: string;
+  /** The request's own origin, used only to build absolute stage and join URLs. */
+  origin?: string;
   sessionId: string;
   deckId: string;
   contextId: string | null;

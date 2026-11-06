@@ -363,7 +363,7 @@ describe('MCP protocol core', () => {
       SERVER_INFO,
     );
     expect((blocked as any).result.isError).toBe(true);
-    expect(toolResultJson(blocked)).toEqual({ error: 'path is outside the tutoring API allowlist' });
+    expect(toolResultJson(blocked)).toEqual({ error: expect.stringMatching(/^path is outside the tutoring API allowlist; paths start with \/api\/decks, /) });
   });
 
   it('deck_get reads a deck and passes a requested version through', async () => {
@@ -585,6 +585,43 @@ describe('MCP protocol core', () => {
       { method: 'POST', path: '/api/sessions', body: { deckId: 'd1', deckVersion: 2 } },
       { method: 'POST', path: '/api/sessions/sess-9/launch', body: { start: true } },
     ]);
+  });
+
+  it('deck_start with a requestId goes through the retry-safe start route', async () => {
+    const calls: unknown[] = [];
+    const requestId = '6f1c2b8e-3d4a-4f5b-9c6d-7e8f9a0b1c2d';
+    const deps = stubDeps({
+      controlRequest: async (method, path, body) => {
+        calls.push({ method, path, body });
+        return { status: 201, body: { sessionId: requestId, sessionCode: 'CODE1234' } };
+      },
+    });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await handleMcpMessage(rpc('tools/call', { name: 'deck_start', arguments: { deckId: 'd1', requestId } }), deps, SERVER_INFO);
+      expect(toolResultJson(response)).toMatchObject({ ok: true, sessionId: requestId, status: 201 });
+    }
+    expect(calls).toEqual([
+      { method: 'POST', path: '/api/decks/d1/start', body: { requestId } },
+      { method: 'POST', path: '/api/decks/d1/start', body: { requestId } },
+    ]);
+    const mixed = await handleMcpMessage(rpc('tools/call', { name: 'deck_start', arguments: { deckId: 'd1', requestId, version: 2 } }), deps, SERVER_INFO);
+    expect((mixed as any).result.isError).toBe(true);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('session_create returns absolute join and stage URLs', async () => {
+    const response = await handleMcpMessage(
+      rpc('tools/call', { name: 'session_create', arguments: { outline: VALID_SESSION_YAML } }),
+      stubDeps({
+        appOrigin: 'https://app.test/',
+        createSession: async () => ({ sessionCode: 'CODE1234', code: 'CODE1234', joinUrl: '/join/?code=CODE1234', hostToken: 'h', stageToken: 's t' }),
+      }),
+      SERVER_INFO,
+    );
+    expect(toolResultJson(response)).toMatchObject({
+      joinUrl: 'https://app.test/join/?code=CODE1234',
+      stageUrl: 'https://app.test/stage/?session=CODE1234&token=s%20t',
+    });
   });
 
   it('deck_start reports the create failure rather than launching nothing', async () => {

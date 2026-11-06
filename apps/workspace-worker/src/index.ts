@@ -199,6 +199,28 @@ function authenticate(
  */
 
 /**
+ * The absolute URLs an agent hands to people, built here so no client has to
+ * know their shapes: the stage (projector) URL and the join URL. With
+ * JOIN_ORIGIN unset the join SPA is path-mounted on this origin.
+ *
+ * An identified session admits nobody by code alone, so its result carries no
+ * joinUrl at all; the usable join URL is the one the link mint returns with the
+ * student's link in it (`mintContextLinkRoute` with a sessionCode).
+ */
+function sessionShareUrls(
+  session: CreatedSession,
+  origin: string | undefined,
+  identified: boolean,
+): { joinUrl?: string; stageUrl?: string } {
+  const join = session.joinUrl;
+  const joinUrl = origin !== undefined && join.startsWith('/') ? `${origin}${join}` : join;
+  const stageUrl = origin === undefined
+    ? undefined
+    : `${origin}/stage/?session=${encodeURIComponent(session.sessionCode)}&token=${encodeURIComponent(session.stageToken)}`;
+  return { joinUrl: identified ? undefined : joinUrl, ...(stageUrl === undefined ? {} : { stageUrl }) };
+}
+
+/**
  * An identified session admits only holders of an access link minted for the
  * session's own student context (`resolveJoinIdentity`). Without a context the
  * session can be started but nobody can ever join it, so refuse at the start and
@@ -375,6 +397,8 @@ export async function launchSessionForUser(
 
   return json({
     ...created.session,
+    ...sessionShareUrls(created.session, input.origin, validation.outline.defaults?.identityMode === 'identified'),
+    ...(input.contextId === null ? {} : { contextId: input.contextId }),
     sessionId: input.sessionId,
     deckId: input.deckId,
     deckVersion: input.version,
@@ -454,7 +478,7 @@ async function createLiveSessionRoute(request: Request, env: Env): Promise<Respo
     });
   }
 
-  return json({ ...created.session }, 201);
+  return json({ ...created.session, ...sessionShareUrls(created.session, new URL(request.url).origin, false) }, 201);
 }
 
 /**

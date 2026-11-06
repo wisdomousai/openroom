@@ -24,6 +24,9 @@
  * Only `sha256Hex(token)` is ever stored; the raw token is shown once, at mint.
  */
 
+import { normalizeSessionCode } from '@openroom/domain';
+import { joinUrlForCode, type JoinOriginEnv } from 'openroom-relay/join-url';
+
 import { sha256Hex } from './api-tokens.js';
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
@@ -308,11 +311,18 @@ export async function listContextLinksRoute(
 }
 
 /**
- * POST /api/tutoring/contexts/:id/links  body { learnerId? | displayName?, expiresInDays? }
+ * POST /api/tutoring/contexts/:id/links  body { learnerId? | displayName?, expiresInDays?, sessionCode? }
  *
  * Returns the raw token exactly once. Nothing stores it, nothing can read it
  * back, and `GET .../links` deliberately exposes only the prefix — a tutor who
  * loses the link selects the same learner, mints a new one, and revokes the old.
+ *
+ * The answer also carries the URLs built from that token, so an agent can hand
+ * them on without knowing their shapes: `learnerUrl` (the student's own page)
+ * and, when `sessionCode` names a session of this context, `joinUrl` (the
+ * session's join page with the link in it — the only usable join URL of an
+ * identified session). The token is already in the same answer, so the URLs
+ * expose nothing new; nothing stores them.
  */
 export async function mintContextLinkRoute(
   request: Request,
@@ -332,6 +342,14 @@ export async function mintContextLinkRoute(
   if (requestedId !== undefined && (typeof requestedId !== 'string' || requestedId === '')) return json({ error: 'invalid-learner' }, 422);
   if (requestedName !== undefined && (typeof requestedName !== 'string' || requestedName.trim() === '' || requestedName.length > 200)) return json({ error: 'invalid-learner-name' }, 422);
   if (requestedId !== undefined && requestedName !== undefined) return json({ error: 'choose-learner-or-name' }, 422);
+  let sessionCode: string | undefined;
+  if (body.sessionCode !== undefined) {
+    if (typeof body.sessionCode !== 'string' || body.sessionCode.trim() === '') return json({ error: 'invalid-session-code' }, 422);
+    sessionCode = normalizeSessionCode(body.sessionCode);
+    // The caller administers this context, so saying "not one of yours" names
+    // nothing about any other context.
+    if ((await contextIdForSessionCode(env, sessionCode)) !== contextId) return json({ error: 'session-not-in-context' }, 422);
+  }
   let learnerId: string;
   let displayName: string;
   let createLearner = false;
@@ -385,6 +403,8 @@ export async function mintContextLinkRoute(
   ).bind(id, contextId, learnerId, hash, prefix, now, expiresAt));
   await env.DB.batch(statements);
 
+  const origin = new URL(request.url).origin;
+  const join = sessionCode === undefined ? undefined : joinUrlForCode(env as ControlEnv & JoinOriginEnv, sessionCode);
   return json(
     {
       id,
@@ -394,6 +414,10 @@ export async function mintContextLinkRoute(
       token,
       learnerId,
       displayName,
+      learnerUrl: `${origin}/host/#/learn?token=${encodeURIComponent(token)}`,
+      ...(join === undefined
+        ? {}
+        : { joinUrl: `${join.startsWith('/') ? origin : ''}${join}&link=${encodeURIComponent(token)}` }),
     },
     201,
   );
