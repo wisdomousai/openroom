@@ -24,7 +24,9 @@ import {
   parseOutline,
   parseStartOutline,
   resolveRevealOrder,
+  slideTheme,
   validateOutline,
+  type OutlineValidateResult,
 } from '@openroom/schema';
 
 import { OUTLINE_SCHEMA_RESOURCE_URI } from './schema-resource.js';
@@ -34,6 +36,45 @@ const LAYOUTS_BY_KIND =
   'Layouts by kind (the first is the default): ' +
   Object.entries(LAYOUTS_FOR_KIND).map(([kind, layouts]) => `${kind}: ${layouts.join(', ')}`).join('; ') +
   '. ';
+
+/**
+ * The fit contract: what outline_validate, deck_save_version and deck_preview
+ * report about a valid outline that will not draw as written. The budgets are
+ * what the estimator in @openroom/schema passes at 16:9 with the default
+ * margin; test/fit-budgets.test.ts holds them to it.
+ */
+const FIT_WARNINGS =
+  'A valid result also carries "warnings": advice, never a refusal, so read it before you start a session. Each warning has code, path, message and the layout the step is drawn with. ' +
+  'W_TEXT_FIT: the words are taller than the slide and will be cut, or run into the bottom margin. W_MEDIA_PLACE and W_MEDIA_SIZE: the layout draws the picture somewhere other than media.place or media.size say. ' +
+  'W_ELEMENT_BOUNDS: an element box runs past the slide edge. W_ELEMENT_OVERLAP: a box covers the step title, the master logo or the footer. W_SPAN_SIZE: a styled span is under 60 percent, too small to read. ' +
+  'W_INTERACTION_FIELDS: an interaction step carries fields the live wall does not draw. ' +
+  'Each step in the result gives "layout", the layout it is drawn with, which can differ from the one authored. ' +
+  'Text budgets at 16:9 with the default margin of 8: a title slide heading of about 100 characters; a statement body of about 300 characters under a short heading; ' +
+  '4 cards of up to 140 characters or 6 cards of up to 70; 6 steps, activity instructions or debrief prompts of up to 40 characters each, or 3 of up to 80. ' +
+  '16:10 and 4:3 give more height; a larger master safeArea gives less. ';
+
+/** What each layout does with media.place and media.size. The schema field descriptions point here. */
+const PLACE_BY_LAYOUT =
+  'Pictures by layout. split: place left or right picks the side (default right); top and bottom draw as right; fill leaves no column for the words, so use the media layout instead; ' +
+  'size is the picture column’s share of the width, and above 60 the words get too narrow. ' +
+  'title, text and grid: place top or bottom (the default) puts the picture above or below the words, and size is its most height; left or right draw the step as split; fill draws the picture under the words. ' +
+  'media: the picture takes the whole picture area whatever place and size say. activity: the picture sits in the 38% side column and size is ignored. ' +
+  'On the media layout a still fills its area and is cropped (focal picks what stays), so a portrait photo loses most of its height; set media.aspect "9:16" to show it whole, or use split. ';
+
+/** How freeform element boxes and html elements scale with the slide. */
+const ELEMENT_BOXES =
+  'Element boxes {x, y, w, h} are percent of the slide width and height at the deck’s own aspect ratio; keep x+w and y+h at 100 or less. ' +
+  'Text in a box is cut at the box edge, mid-line, so size the box for its text. A blank step draws its title at the top of the slide and elements draw over it. ' +
+  'In html element css, px, vw and vh do not scale with the slide, so the element looks different on the editor, the wall and a phone; use em, percent or an svg viewBox. ';
+
+/** One saved theme, so an agent can copy the full shape design.theme needs. */
+const THEME_EXAMPLE =
+  `design.theme is the full saved theme, not a family name alone; the "clean" family is ${JSON.stringify(slideTheme('clean'))}. `;
+
+/** The fit report attached to every valid outline a tool returns. */
+function fitReport(parsed: Extract<OutlineValidateResult, { ok: true }>) {
+  return { warnings: parsed.warnings ?? [] };
+}
 
 /**
  * The one rule about identified sessions, stated in every tool that can start
@@ -171,6 +212,10 @@ const TOOLS: ToolDefinition[] = [
       'order) and el-<id> (one per freeform element); keys you leave out are revealed last, so a ' +
       'partial order is safe. ' +
       LAYOUTS_BY_KIND +
+      PLACE_BY_LAYOUT +
+      ELEMENT_BOXES +
+      THEME_EXAMPLE +
+      FIT_WARNINGS +
       'The live wall draws an interaction step from its question alone: the prompt with the answer count, then the results chart once results show. ' +
       'It ignores the step’s own title, body, media and layout, which the editor, Presenter and deck_preview do draw, so put what students must see into the question prompt. ' +
       'An embedded web-page slide is a blank ' +
@@ -323,7 +368,7 @@ const TOOLS: ToolDefinition[] = [
       'Render a read-only preview of an OpenRoom deck before starting a session. Pass exactly one ' +
       'source: an Outline v1 draft in "outline", or a saved "deckId" with an optional stamped ' +
       '"version". Clients with MCP Apps UI support show the projector-accurate preview; every other ' +
-      'client receives the same validated outline as JSON text.',
+      'client receives the same validated outline as JSON text, with the outline_validate warnings.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -350,6 +395,7 @@ const TOOLS: ToolDefinition[] = [
         previewVersion: { type: 'number' },
         source: { type: 'object' },
         outline: { type: 'object' },
+        warnings: { type: 'array', items: { type: 'object' } },
         links: { type: 'object' },
         errors: { type: 'array' },
         status: { type: 'number' },
@@ -376,7 +422,8 @@ const TOOLS: ToolDefinition[] = [
       'schema errors instead. "baseVersion" is the version this edit started from: the save is refused ' +
       'with a version-conflict (HTTP 409, latestVersion included) when someone else stamped in the ' +
       'meantime — re-read with deck_get, re-apply, and save again rather than retrying blindly. ' +
-      'Saving identical content answers unchanged:true without creating a version.',
+      'Saving identical content answers unchanged:true without creating a version. ' +
+      'A saved version also returns the outline_validate warnings for its content.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -579,15 +626,16 @@ export async function callTool(
         title: parsed.outline.meta.title,
         stepCount: parsed.outline.steps.length,
         interactionCount: parsed.session.interactions.length,
-        steps: parsed.outline.steps.map((step) => ({
+        steps: parsed.outline.steps.map((step, index) => ({
           id: step.id,
           kind: step.kind,
-          ...(step.layout === undefined ? {} : { layout: step.layout }),
+          ...(parsed.layouts?.[index] === undefined ? {} : { layout: parsed.layouts[index] }),
           ...(step.reveal === undefined
             ? {}
             : { reveal: resolveRevealOrder(step, parsed.outline.interactions) }),
           ...(step.breakoutOf === undefined ? {} : { breakoutOf: step.breakoutOf }),
         })),
+        ...fitReport(parsed),
       };
     }
     case 'session_create': {
@@ -686,6 +734,7 @@ export async function callTool(
           previewVersion: 1,
           source: { kind: 'draft' },
           outline: parsed.outline,
+          ...fitReport(parsed),
           ...(deps.appOrigin === undefined
             ? {}
             : { links: { assetOrigin: normalizedOrigin(deps.appOrigin) } }),
@@ -726,6 +775,7 @@ export async function callTool(
             : {}),
         },
         outline: parsed.outline,
+        ...fitReport(parsed),
         ...(origin === undefined
           ? {}
           : {
@@ -761,7 +811,7 @@ export async function callTool(
           hint: 'version-conflict: another save landed first — call deck_get, re-apply the edit on the returned content, and save again with the new currentVersion as baseVersion.',
         };
       }
-      return { ok, ...response };
+      return { ok, ...response, ...(ok ? fitReport(parsed) : {}) };
     }
     case 'deck_draft_put': {
       const deckId = requireString(args, 'deckId');

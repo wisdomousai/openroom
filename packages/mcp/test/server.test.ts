@@ -209,9 +209,10 @@ describe('MCP protocol core', () => {
       stepCount: 2,
       interactionCount: 1,
       steps: [
-        { id: 'welcome', kind: 'title' },
-        { id: 'check', kind: 'interaction' },
+        { id: 'welcome', kind: 'title', layout: 'title' },
+        { id: 'check', kind: 'interaction', layout: 'poll' },
       ],
+      warnings: [],
     });
   });
 
