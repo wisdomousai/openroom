@@ -68,6 +68,12 @@
   height: 100%;
 }
 
+/* Paint containment makes the box the containing block of everything in the
+   fragment, `position: fixed` included, so nothing paints outside the box. */
+.slide-surface .outline-step__element--html {
+  contain: paint;
+}
+
 /*
  * A page that will not draw says so here, and only here. The live stage never
  * shows a diagnostic over a slide.
