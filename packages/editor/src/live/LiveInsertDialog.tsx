@@ -18,7 +18,13 @@ export type LiveInsertKind = 'term' | 'statement' | 'question';
 export type LiveInsertDraft =
   | { kind: 'term'; term: string; meaning: string }
   | { kind: 'statement'; title: string; body: string }
-  | { kind: 'question'; prompt: string; options: [string, string, string, string] };
+  | {
+      kind: 'question';
+      prompt: string;
+      options: [string, string, string, string];
+      /** Which option fields are marked correct; none marked means no correct answer. */
+      correct: [boolean, boolean, boolean, boolean];
+    };
 
 const TITLES: Record<LiveInsertKind, string> = {
   term: 'Insert term',
@@ -35,7 +41,12 @@ const EDIT_TITLES: Record<LiveInsertKind, string> = {
 function emptyDraft(kind: LiveInsertKind): LiveInsertDraft {
   if (kind === 'term') return { kind: 'term', term: '', meaning: '' };
   if (kind === 'statement') return { kind: 'statement', title: '', body: '' };
-  return { kind: 'question', prompt: '', options: ['', '', '', ''] };
+  return {
+    kind: 'question',
+    prompt: '',
+    options: ['', '', '', ''],
+    correct: [false, false, false, false],
+  };
 }
 
 export function LiveInsertDialog({
@@ -151,22 +162,44 @@ export function LiveInsertDialog({
               />
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Options (at least two)</span>
-              {draft.options.map((option, index) => (
-                <Input
-                  key={index}
-                  value={option}
-                  placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                  aria-label={`Option ${String.fromCharCode(65 + index)}`}
-                  onChange={(event) => {
-                    const options: [string, string, string, string] = [
-                      ...draft.options,
-                    ];
-                    options[index] = event.currentTarget.value;
-                    setDraft({ ...draft, options });
-                  }}
-                />
-              ))}
+              <span className="text-secondary font-semibold">Options (at least two)</span>
+              {draft.options.map((option, index) => {
+                const letter = String.fromCharCode(65 + index);
+                const correct = draft.correct[index] === true;
+                return (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      value={option}
+                      placeholder={`Option ${letter}`}
+                      aria-label={`Option ${letter}`}
+                      className="flex-1"
+                      onChange={(event) => {
+                        const options: [string, string, string, string] = [
+                          ...draft.options,
+                        ];
+                        options[index] = event.currentTarget.value;
+                        setDraft({ ...draft, options });
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={correct ? 'default' : 'outline'}
+                      aria-pressed={correct}
+                      aria-label={`Mark correct, option ${letter}`}
+                      onClick={() => {
+                        const marks: [boolean, boolean, boolean, boolean] = [
+                          ...draft.correct,
+                        ];
+                        marks[index] = !correct;
+                        setDraft({ ...draft, correct: marks });
+                      }}
+                    >
+                      {correct ? '✓ Correct' : 'Mark correct'}
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : null}

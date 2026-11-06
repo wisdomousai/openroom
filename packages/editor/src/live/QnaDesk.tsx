@@ -289,14 +289,14 @@ export function QnaQuestionList({
           >
             <span className="min-w-0">
               {handles?.[question.participantId] ? (
-                <span className="text-xs font-medium text-muted-foreground no-underline">
+                <span className="text-caption text-muted-foreground no-underline">
                   {handles[question.participantId]}:{' '}
                 </span>
               ) : null}
               {question.text}
               <span className="text-xs text-muted-foreground"> · {question.votes} votes</span>
               {spotlighted ? (
-                <span className="ml-2 rounded-full bg-chart-2/15 px-2 py-0.5 text-xs font-medium text-foreground no-underline">
+                <span className="ml-2 rounded-full bg-chart-2/15 px-2 py-0.5 text-caption font-semibold text-foreground no-underline">
                   On stage
                 </span>
               ) : null}

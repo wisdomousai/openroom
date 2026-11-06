@@ -17,6 +17,8 @@ import { useHostSession } from './useHostSession';
 import { useQuestionRail } from './useQuestionRail';
 import { cn } from '@openroom/ui/utils';
 import { EndSessionDialog } from './EndSessionDialog';
+import { onInteractionSlide } from './snapshot';
+import { slideLabel } from './slide-label';
 import type { ConnectionStatus, StoredSession } from '../types';
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -164,20 +166,22 @@ export function PresenterRemote({
   const timerStep = outlineStep?.kind === 'timer' ? outlineStep : null;
   const isTimer = timerStep !== null;
   const clockLabel = ticking.label ?? (timerStep ? formatClock(timerStep.seconds) : null);
+  /*
+   * The heading names the slide on screen. The last question stays active
+   * after the tutor moves on, so on an outline its prompt is used only on its
+   * own slide; any other slide goes by its own name.
+   */
+  const onActiveSlide = onInteractionSlide(host.snapshot, host.activeId);
   const outlinePrompt =
     outlineStep === undefined
       ? null
-      : 'title' in outlineStep && typeof outlineStep.title === 'string' && outlineStep.title.trim() !== ''
-        ? outlineStep.title
-        : outlineStep.kind === 'interaction'
-          ? null
-          : outlineStep.kind === 'timer'
-            ? (outlineStep.title ?? `${formatClock(outlineStep.seconds)}`)
-            : `Step ${outlineIndex + 1}: ${outlineStep.kind}`;
+      : outlineStep.kind === 'timer' && !('title' in outlineStep && outlineStep.title?.trim())
+        ? formatClock(outlineStep.seconds)
+        : slideLabel(outlineStep, outline?.content.interactions);
   const focusPrompt =
+    (outline ? outlinePrompt : null) ||
     focus?.prompt?.trim() ||
     host.activePrompt?.trim() ||
-    outlinePrompt ||
     (host.ended ? 'Session ended' : 'Waiting…');
 
   const slideCount = outline ? outlineStepCount : host.items.length;
@@ -188,15 +192,16 @@ export function PresenterRemote({
 
   const canReveal =
     !host.ended &&
-    Boolean(host.activeId) &&
+    onActiveSlide &&
     (host.activeStatus === 'open' || host.activeStatus === 'closed') &&
     !host.audienceSeesResults;
-  const canClose = !host.ended && Boolean(host.activeId) && host.activeStatus === 'open';
-  const canBlank =
+  const canClose = !host.ended && onActiveSlide && host.activeStatus === 'open';
+  const canToggleResults =
     !host.ended &&
-    Boolean(host.activeId) &&
+    onActiveSlide &&
     host.activeStatus !== null &&
     host.activeStatus !== 'pending';
+  const activeStatus = onActiveSlide ? host.activeStatus : null;
 
   const stateLine = isTimer
     ? ticking.running
@@ -208,13 +213,13 @@ export function PresenterRemote({
           : clockLabel
             ? `Paused · ${clockLabel}`
             : 'Not started'
-    : host.activeStatus === 'open'
+    : activeStatus === 'open'
       ? remaining !== null
         ? `Open · ${formatQuestionLeft(remaining)} left`
         : 'Open'
-      : host.activeStatus === 'closed'
+      : activeStatus === 'closed'
         ? 'Closed'
-        : host.activeStatus === 'revealed'
+        : activeStatus === 'revealed'
           ? 'Results shown'
           : host.ended
             ? 'Session ended'
@@ -272,7 +277,7 @@ export function PresenterRemote({
           <span
             className={cn(
               'text-sm tabular-nums',
-              isQuestion && host.activeStatus === 'open'
+              isQuestion && activeStatus === 'open'
                 ? 'text-live-tint-foreground'
                 : 'text-muted-foreground',
             )}
@@ -357,7 +362,7 @@ export function PresenterRemote({
               >
                 Close answers
               </Button>
-              {host.canUndoRevote ? (
+              {host.canUndoRevote && onActiveSlide ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -371,7 +376,7 @@ export function PresenterRemote({
                   type="button"
                   variant="outline"
                   className="h-12 rounded-xl text-title-bar font-normal"
-                  disabled={!host.canPresent || !host.canRevote}
+                  disabled={!host.canPresent || !host.canRevote || !onActiveSlide}
                   onClick={host.revoteActive}
                 >
                   Second vote
@@ -385,13 +390,20 @@ export function PresenterRemote({
           type="button"
           variant="outline"
           className="h-12 rounded-xl text-title-bar font-normal"
-          disabled={!host.canPresent || !canBlank}
+          disabled={!host.canPresent || !canToggleResults}
+          aria-pressed={canToggleResults ? !host.audienceSeesResults : undefined}
+          title={
+            canToggleResults
+              ? 'Hide or show this question’s results on the audience screen'
+              : 'Available on a question slide once answering has started'
+          }
           onClick={() => {
             if (host.audienceSeesResults) host.hideResultsActive();
             else host.showResultsActive();
           }}
         >
-          Blank the screen
+          {/* One toggle, as on the console ribbon: pressed while the results are hidden. */}
+          {canToggleResults && !host.audienceSeesResults ? '✓ Hide results' : 'Hide results'}
         </Button>
 
         {host.qna ? (

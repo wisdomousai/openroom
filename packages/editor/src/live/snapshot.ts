@@ -57,6 +57,20 @@ export function sessionInteraction(session: Session | null, id: string | null): 
   return session.interactions.find((i) => i.id === id) ?? null;
 }
 
+/**
+ * Whether the slide on screen is this question's own slide. The session keeps
+ * the last question active after the tutor moves on, so its open, closed or
+ * revealed state belongs on its own slide only. A session without an outline
+ * has only question slides.
+ */
+export function onInteractionSlide(snapshot: HostSnapshot | null, id: string | null): boolean {
+  if (!id) return false;
+  const outline = snapshot?.outline;
+  if (!outline) return true;
+  const step = outline.content.steps[outline.currentStepIndex];
+  return step?.kind === 'interaction' && step.interactionId === id;
+}
+
 export function activeId(snapshot: HostSnapshot | null): string | null {
   if (!snapshot) return null;
   if (typeof snapshot.activeInteractionId === 'string') return snapshot.activeInteractionId;

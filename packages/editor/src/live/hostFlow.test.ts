@@ -163,6 +163,34 @@ describe('deriveHostFlow', () => {
     ).toEqual({ kind: 'reveal', label: 'Reveal the results' });
   });
 
+  it('outline decks: a closed question left on an earlier slide does not take the primary action', () => {
+    expect(
+      deriveHostFlow(
+        snap({
+          status: 'live',
+          activeInteractionId: 'q1',
+          interactionStatus: 'closed',
+          interactions: [{ id: 'q1', type: 'choice', prompt: 'P', status: 'closed', answered: 1 }],
+          outline: {
+            outlineVersion: 1,
+            currentStepIndex: 1,
+            content: {
+              version: 1,
+              meta: { title: 'L' },
+              steps: [
+                { id: 'poll', kind: 'interaction', interactionId: 'q1' },
+                { id: 'b', kind: 'title', title: 'B' },
+                { id: 'c', kind: 'title', title: 'C' },
+              ],
+              interactions: [],
+            },
+          },
+        }),
+        { pendingLeft: 0, audienceSeesResults: false },
+      ),
+    ).toEqual({ kind: 'advance', label: 'Next slide' });
+  });
+
   it('outline decks: end on the last step', () => {
     expect(
       deriveHostFlow(

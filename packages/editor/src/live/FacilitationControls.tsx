@@ -17,7 +17,7 @@ export function FacilitationControls({ snapshot, run }: {
   };
   return <section aria-label="Facilitators" className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card px-4 py-2 text-sm">
     <div className="min-w-0 flex-1">
-      <p role="status" className="font-medium">{view.canPresent ? 'You are presenting' : `${presenter?.name ?? 'Another facilitator'} is presenting`}</p>
+      <p role="status" className="font-semibold">{view.canPresent ? 'You are presenting' : `${presenter?.name ?? 'Another facilitator'} is presenting`}</p>
       {!view.canPresent ? <p className="text-caption text-muted-foreground">You can moderate responses and manage groups.</p> : null}
     </div>
     {view.canPresent ? <DropdownMenu>

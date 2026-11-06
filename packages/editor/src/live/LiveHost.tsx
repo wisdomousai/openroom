@@ -1,5 +1,5 @@
 import { FacilitationControls } from './FacilitationControls';
-import { usePresentationKeys } from '../presenter/usePresentationKeys';
+import { focusOwnsKey, usePresentationKeys } from '../presenter/usePresentationKeys';
 import { canAdvanceOutline, canRetreatOutline } from './outline-navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHotkeys } from '@tanstack/react-hotkeys';
@@ -30,6 +30,7 @@ import {
   counts as countsOf,
   notesOf,
   displayOf,
+  onInteractionSlide,
   sessionInteraction,
   resultsHiddenOf,
   statusOf,
@@ -58,8 +59,8 @@ import {
   entriesOf,
   hasCorrectAnswer,
   readAnswered,
-  stepLabel,
 } from './utils';
+import { slideLabel } from './slide-label';
 import type {
   InteractionStatus,
   StoredSession,
@@ -127,7 +128,6 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
     endToken?: number;
   } | null>(null);
   const [inkColor, setInkColor] = useState<InkColor>('red');
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [insertKind, setInsertKind] = useState<LiveInsertKind | null>(null);
   const [insertMode, setInsertMode] = useState<'insert' | 'edit'>('insert');
   const [insertInitial, setInsertInitial] = useState<LiveInsertDraft | null>(null);
@@ -192,9 +192,9 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
       return;
     }
     if (exitKind === 'library') {
-      navigate({ kind: 'library' }, { replace: true });
+      navigate({ kind: 'library', place: exit.deckPlace }, { replace: true });
     }
-  }, [exitKind, exitSessionId, navigate]);
+  }, [exitKind, exitSessionId, navigate, exit.deckPlace]);
 
   const sessionTheme = snapshot?.theme;
   const { setSessionThemeId } = theme;
@@ -283,6 +283,14 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   const focusInteraction = sessionInteraction(session, focusId);
   const onStage = Boolean(activeId && focusId === activeId);
   const audienceSees = audienceSeesResults(snapshot, session, focusId);
+  /*
+   * The question's own slide is on screen. The session keeps the last question
+   * active after the tutor moves on; its answering and results controls and
+   * chips belong to its slide, not to the statement after it.
+   */
+  const focusOnSlide = onInteractionSlide(snapshot, focusId);
+  const focusLive =
+    focusOnSlide && (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed');
 
   const hideResults = useCallback(() => {
     if (focusId && focusId === activeId) hideResultsActive();
@@ -330,29 +338,35 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
     [ended, run, push],
   );
 
-  const canHideResults =
-    !ended && onStage && (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed') && audienceSees;
-  const canShowResults =
-    !ended &&
-    onStage &&
-    (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed') &&
-    !audienceSees;
+  const canHideResults = !ended && onStage && focusLive && audienceSees;
+  const canShowResults = !ended && onStage && focusLive && !audienceSees;
 
   // ---- keyboard shortcuts -------------------------------------------------
+  /*
+   * A shortcut runs only when the focused control does not own the key, the
+   * same rule the Presenter keys follow: Space on a focused Back presses Back.
+   * The key is consumed only when the shortcut runs.
+   */
+  const shortcut = (action: () => void) => (event: KeyboardEvent) => {
+    if (focusOwnsKey(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+  };
   useHotkeys([
-    { hotkey: 'Space', callback: primaryGo, options: { enabled: canPresent && !onReturnToDeck && !ended && Boolean(primaryLabel) } },
-    { hotkey: 'ArrowLeft', callback: previous, options: { enabled: canPresent && !onReturnToDeck } },
-    { hotkey: 'ArrowRight', callback: next, options: { enabled: canPresent && !onReturnToDeck } },
+    { hotkey: 'Space', callback: shortcut(primaryGo), options: { enabled: canPresent && !onReturnToDeck && !ended && Boolean(primaryLabel) } },
+    { hotkey: 'ArrowLeft', callback: shortcut(previous), options: { enabled: canPresent && !onReturnToDeck } },
+    { hotkey: 'ArrowRight', callback: shortcut(next), options: { enabled: canPresent && !onReturnToDeck } },
     {
       hotkey: 'H',
-      callback: () => { if (canHideResults) hideResults(); else showResults(); },
+      callback: shortcut(() => { if (canHideResults) hideResults(); else showResults(); }),
       options: { enabled: canPresent && (canHideResults || canShowResults) },
     },
-    { hotkey: 'F', callback: toggleFreeze, options: { enabled: canPresent && !ended } },
+    { hotkey: 'F', callback: shortcut(toggleFreeze), options: { enabled: canPresent && !ended } },
   ], {
     ignoreInputs: true,
-    preventDefault: true,
-    stopPropagation: true,
+    preventDefault: false,
+    stopPropagation: false,
     conflictBehavior: 'replace',
   });
 
@@ -634,15 +648,17 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
     (focus ? defaultDisplay(focus.type) : undefined);
   const onQuestionSlide =
     outlineStep?.kind === 'interaction' || (!outline && Boolean(focus));
-  const chartMenuEnabled = canPresent && onQuestionSlide && onStage && Boolean(focus) && !ended;
-  const sessionTitle = [learner?.displayName, outline?.content.meta.title ?? session?.meta?.title]
+  const chartMenuEnabled =
+    canPresent && onQuestionSlide && focusOnSlide && onStage && Boolean(focus) && !ended;
+  /* An identified header already leads with the student's name; it is not said twice. */
+  const sessionTitle = [showCode ? learner?.displayName : null, outline?.content.meta.title ?? session?.meta?.title]
     .filter(Boolean)
     .join(' / ');
 
   const footerItems = outline
     ? outlineSteps.map((step, index) => ({
         id: step.id,
-        label: stepLabel(step),
+        label: slideLabel(step, outline.content.interactions),
         visited: index < outlineIndex,
       }))
     : items.map((item, index) => ({
@@ -660,11 +676,11 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
       : items.length > 0
         ? `Slide ${selectedIndex + 1} of ${items.length}`
         : null,
-    onQuestionSlide && focusStatus === 'open'
+    focusOnSlide && focusStatus === 'open'
       ? 'question open'
-      : onQuestionSlide && focusStatus === 'closed'
+      : focusOnSlide && focusStatus === 'closed'
         ? 'question closed'
-        : onQuestionSlide && focusStatus === 'revealed'
+        : focusOnSlide && focusStatus === 'revealed'
           ? 'results up'
           : timerStep
             ? ticking.running
@@ -766,12 +782,12 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
           canNext={outline ? canAdvanceOutline(outline) : selectedIndex < items.length - 1}
           onBack={previous}
           onNext={next}
-          canClose={Boolean(activeId) && focusStatus === 'open'}
+          canClose={Boolean(activeId) && focusOnSlide && focusStatus === 'open'}
           onClose={() => closeActive()}
-          resultsUp={audienceSees && (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed')}
-          canRevote={canRevote}
+          resultsUp={audienceSees && focusLive}
+          canRevote={canRevote && focusOnSlide}
           onRevote={revoteActive}
-          canUndoRevote={canUndoRevote}
+          canUndoRevote={canUndoRevote && focusOnSlide}
           onUndoRevote={undoRevoteActive}
           currentDisplayLabel={
             chartMenuEnabled && currentDisplay ? displayMenuLabel(currentDisplay) : null
@@ -780,22 +796,18 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
             const box = anchor.getBoundingClientRect();
             setChartMenu({ x: box.left, y: box.bottom + 4 });
           }}
-          correctShown={focusStatus === 'revealed'}
+          correctShown={focusOnSlide && focusStatus === 'revealed'}
           hasCorrect={hasCorrectAnswer(focusInteraction)}
-          canReveal={Boolean(activeId) && (focusStatus === 'open' || focusStatus === 'closed')}
+          canReveal={Boolean(activeId) && focusOnSlide && (focusStatus === 'open' || focusStatus === 'closed')}
           onReveal={showResults}
-          canBlank={canHideResults || canShowResults}
-          blanked={!audienceSees && (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed')}
-          onBlank={() => {
+          canToggleResults={canHideResults || canShowResults}
+          resultsHidden={!audienceSees && focusLive}
+          onToggleResults={() => {
             if (canHideResults) hideResults();
             else if (canShowResults) showResults();
           }}
           canInsert={Boolean(outline) && !ended}
           onInsert={(kind) => {
-            if (kind === 'library') {
-              setLibraryOpen(true);
-              return;
-            }
             setInsertMode('insert');
             setInsertInitial(null);
             setInsertKind(kind);
@@ -908,16 +920,17 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
 
           // Question: new choice poll + interaction step (insert only).
           const filled = draft.options
-            .map((label) => label.trim())
-            .filter((label) => label !== '');
+            .map((label, index) => ({ label: label.trim(), correct: draft.correct[index] === true }))
+            .filter((option) => option.label !== '');
           const interactionId = `live-q-${Date.now().toString(36)}`;
           const interaction = {
             id: interactionId,
             type: 'choice' as const,
             prompt: draft.prompt.trim(),
-            options: filled.map((label, index) => ({
+            options: filled.map((option, index) => ({
               id: `o${index + 1}`,
-              label,
+              label: option.label,
+              ...(option.correct ? { correct: true as const } : {}),
             })),
           };
           const step = {
@@ -928,6 +941,8 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
             ...(breakoutOf === undefined ? {} : { breakoutOf }),
           };
           void run({ command: 'outline.insert', step, interaction, show: true });
+          // The new question is open on screen: Home holds Close answering and Reveal.
+          setRibbonTab('home');
         }}
       />
 
@@ -1129,8 +1144,20 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
         }
         actions={
           primaryLabel ? (
-            <Button type="button" variant="live" size="sm" className="h-[34px] px-[18px]" onClick={primaryGo}>
+            <Button
+              type="button"
+              variant="live"
+              size="sm"
+              className="h-[34px] px-[18px]"
+              aria-keyshortcuts={onReturnToDeck ? undefined : 'Space'}
+              onClick={primaryGo}
+            >
               {primaryLabel}
+              {onReturnToDeck ? null : (
+                <kbd aria-hidden="true" className="font-sans text-caption opacity-80">
+                  Space
+                </kbd>
+              )}
             </Button>
           ) : null
         }

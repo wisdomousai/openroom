@@ -104,7 +104,7 @@ function FormsSection({ section, highlight }: { section: FormSection; highlight:
   const flat = section.columnLabels.length === 0;
   return (
     <div>
-      <div className="mb-2 text-caption font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="mb-2 text-caption font-semibold text-muted-foreground">
         {section.label}
       </div>
       {flat ? (

@@ -41,11 +41,14 @@ function Large({
   label,
   onClick,
   disabled,
+  keys,
   children,
 }: {
   label: string;
   onClick?: () => void;
   disabled?: boolean;
+  /** The keyboard shortcut, for assistive tech; the icon shows the key. */
+  keys?: string;
   children: ReactNode;
 }) {
   return (
@@ -53,6 +56,7 @@ function Large({
       type="button"
       disabled={disabled}
       onClick={onClick}
+      aria-keyshortcuts={keys}
       className="flex h-[60px] w-14 flex-col items-center justify-center gap-1 rounded-lg text-caption text-foreground hover:bg-chrome disabled:pointer-events-none disabled:opacity-50"
     >
       {children}
@@ -83,11 +87,13 @@ export interface LiveRibbonProps {
   hasCorrect?: boolean;
   canReveal: boolean;
   onReveal: () => void;
-  canBlank: boolean;
-  blanked: boolean;
-  onBlank: () => void;
+  /** A question with answers is on its own slide, so its results can be hidden or shown. */
+  canToggleResults: boolean;
+  /** The audience does not see this question's results right now. */
+  resultsHidden: boolean;
+  onToggleResults: () => void;
   canInsert: boolean;
-  onInsert: (kind: 'term' | 'statement' | 'question' | 'library') => void;
+  onInsert: (kind: 'term' | 'statement' | 'question') => void;
   drawTool: 'none' | MarkShape | 'pen';
   onDrawTool: (tool: 'none' | MarkShape | 'pen') => void;
   inkColor: InkColor;
@@ -135,12 +141,12 @@ export function LiveRibbon(props: LiveRibbonProps) {
       <TabsContent value="home" className="mt-0 border-b border-border bg-card">
         <Row>
           <Group label="Slides">
-            <Large label="Back" disabled={!props.canBack} onClick={props.onBack}>
+            <Large label="Back" keys="ArrowLeft" disabled={!props.canBack} onClick={props.onBack}>
               <span aria-hidden="true" className="text-option">
                 ←
               </span>
             </Large>
-            <Large label="Next" disabled={!props.canNext} onClick={props.onNext}>
+            <Large label="Next" keys="ArrowRight" disabled={!props.canNext} onClick={props.onNext}>
               <span aria-hidden="true" className="text-option">
                 →
               </span>
@@ -198,12 +204,44 @@ export function LiveRibbon(props: LiveRibbonProps) {
           </Group>
           <Rule />
           <Group label="Screen">
-            <Large label="Blank" disabled={!props.canBlank} onClick={props.onBlank}>
-              <span
-                aria-hidden="true"
-                className={cn('block h-4 w-6 rounded-sm', props.blanked ? 'bg-muted-foreground' : 'bg-foreground')}
-              />
-            </Large>
+            {/*
+              It hides this question's results from the audience and nothing
+              else, so it says so. The title sits on a wrapper: a disabled
+              button shows no tooltip of its own.
+            */}
+            <span
+              className="inline-flex"
+              title={
+                props.canToggleResults
+                  ? 'Hide or show this question’s results on the audience screen (H)'
+                  : 'Available on a question slide once answering has started'
+              }
+            >
+              <Button
+                type="button"
+                variant="subtle"
+                size="sm"
+                aria-pressed={props.resultsHidden}
+                aria-keyshortcuts="H"
+                disabled={!props.canToggleResults}
+                /* The colour sits on the label: on the button it would merge away the button's type size. */
+                className={cn(props.resultsHidden && 'bg-accent font-semibold hover:bg-accent')}
+                onClick={props.onToggleResults}
+              >
+                <span className={props.resultsHidden ? 'text-accent-foreground' : undefined}>
+                  {props.resultsHidden ? <span aria-hidden="true">✓ </span> : null}
+                  Hide results
+                </span>
+                <kbd aria-hidden="true" className="font-sans text-caption text-muted-foreground">
+                  H
+                </kbd>
+              </Button>
+            </span>
+            {props.resultsHidden ? (
+              <span className="text-caption text-muted-foreground">
+                Results hidden
+              </span>
+            ) : null}
           </Group>
           {props.clock ? (
             <>
@@ -271,17 +309,6 @@ export function LiveRibbon(props: LiveRibbonProps) {
               onClick={() => props.onInsert('question')}
             >
               Question
-            </Button>
-          </Group>
-          <Rule />
-          <Group label="Library">
-            <Button
-              type="button"
-              variant="subtle"
-              disabled={!props.canInsert}
-              onClick={() => props.onInsert('library')}
-            >
-              From library
             </Button>
           </Group>
           <Rule />
