@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { defaultDeckDesign, resolveSlideDesign, slideTheme, SLIDE_THEME_FAMILIES, DECK_ASPECT_RATIOS, type SlideBackground, type SlideMaster, type SlideFont } from '@openroom/schema';
+import { defaultDeckDesign, resolveSlideDesign, slideTheme, SLIDE_THEME_FAMILIES, DECK_ASPECT_RATIOS, type SlideBackground, type SlideMaster, type SlideFont, type SlidePalette } from '@openroom/schema';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
 import { cn } from '@openroom/ui/utils';
 import { Section, type PropertiesPanelProps } from './shared';
 import { DesignImagePicker } from './design-image';
+import { defaultImageOverlay } from './image-overlay';
 
 type ImageStorage = Pick<PropertiesPanelProps, 'spaceId' | 'onEmbeddedResource'>;
 
@@ -15,7 +16,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   </label>;
 }
 
-function BackgroundFields({ background, onChange, spaceId, onEmbeddedResource }: ImageStorage & { background: SlideBackground; onChange: (value: SlideBackground) => void }) {
+function BackgroundFields({ background, palette, onChange, spaceId, onEmbeddedResource }: ImageStorage & { background: SlideBackground; palette: SlidePalette; onChange: (value: SlideBackground) => void }) {
   return <div className="flex flex-col gap-3">
     <div className="flex gap-1" aria-label="Background type">
       <Button size="sm" variant={background.kind === 'solid' ? 'default' : 'outline'} onClick={() => onChange({ kind: 'solid', color: background.kind === 'gradient' ? background.from : background.kind === 'solid' ? background.color : background.overlay.color })}>Solid</Button>
@@ -30,7 +31,7 @@ function BackgroundFields({ background, onChange, spaceId, onEmbeddedResource }:
     <DesignImagePicker label="Background" value={background.kind === 'image' ? background : undefined} spaceId={spaceId} onEmbedded={onEmbeddedResource}
       onChange={(source) => onChange({ kind: 'image', ...source,
         focal: background.kind === 'image' ? background.focal : { x: 50, y: 50 },
-        overlay: background.kind === 'image' ? background.overlay : { color: '#FFFFFF', opacity: 0.8 },
+        overlay: background.kind === 'image' ? background.overlay : defaultImageOverlay(palette),
       })} />
     {background.kind === 'image' ? <>
       <ColorField label="Readability overlay" value={background.overlay.color} onChange={(color) => onChange({ ...background, overlay: { ...background.overlay, color } })} />
@@ -105,13 +106,13 @@ export function DeckDesignPanel({ outline, step, onDeckDesign, onSlideDesign, sp
       </Select>
       <label className="grid gap-1 text-sm">Footer<Input key={`${master.id}-${master.footer ?? ''}`} defaultValue={master.footer ?? ''} maxLength={120} onBlur={(event) => updateMaster({ footer: event.currentTarget.value })} /></label>
       <LogoFields key={`${master.id}-logo`} logo={master.logo} spaceId={spaceId} onEmbeddedResource={onEmbeddedResource} onChange={(logo) => updateMaster({ logo })} />
-      <BackgroundFields key={master.id} background={master.background ?? { kind: 'solid', color: design.theme.colors.background }} spaceId={spaceId} onEmbeddedResource={onEmbeddedResource} onChange={(background) => updateMaster({ background })} />
+      <BackgroundFields key={master.id} background={master.background ?? { kind: 'solid', color: design.theme.colors.background }} palette={(master.theme ?? design.theme).colors} spaceId={spaceId} onEmbeddedResource={onEmbeddedResource} onChange={(background) => updateMaster({ background })} />
       <Button size="sm" variant="subtle" onClick={() => updateMaster({ background: undefined })}>Use theme background</Button>
     </Section>
     {step ? <Section title="This slide">
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={step.design?.hideMasterDecorations ?? false} onChange={(event) => onSlideDesign({ ...step.design, hideMasterDecorations: event.currentTarget.checked })} />Hide logo, footer and decoration</label>
       {step.design?.background ? <>
-        <BackgroundFields key={`${step.id}-background`} background={step.design.background} spaceId={spaceId} onEmbeddedResource={onEmbeddedResource} onChange={(background) => onSlideDesign({ ...step.design, background })} />
+        <BackgroundFields key={`${step.id}-background`} background={step.design.background} palette={resolveSlideDesign(design, step.design).theme.colors} spaceId={spaceId} onEmbeddedResource={onEmbeddedResource} onChange={(background) => onSlideDesign({ ...step.design, background })} />
         <Button size="sm" variant="subtle" onClick={() => { const { background: _background, ...rest } = step.design!; onSlideDesign(rest); }}>Use master background</Button>
       </> : <Button size="sm" variant="outline" onClick={() => onSlideDesign({ ...step.design, background: resolveSlideDesign(design, step.design).background })}>Customize this background</Button>}
       <Button size="sm" variant="subtle" onClick={() => onSlideDesign(step.design?.templateId ? { templateId: step.design.templateId } : {})}>Reset to deck master</Button>
