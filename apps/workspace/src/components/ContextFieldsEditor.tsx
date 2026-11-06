@@ -64,7 +64,7 @@ export function ContextFieldsEditor({ value, onChange, levelSuggestions = LANGUA
             className="h-[30px] min-w-[160px] flex-1 rounded-full"
             onChange={(event) => onChange({ ...value, level: event.currentTarget.value })}
             // Enter keeps the typed level, like picking a chip; it does not submit the form.
-            onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault(); }}
+            onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) event.preventDefault(); }}
           />
         </div>
       </fieldset>
