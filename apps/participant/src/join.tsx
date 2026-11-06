@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { comeBackLine } from './join-error';
 import { useSessionTheme } from './theme';
 
 interface Props {
@@ -170,7 +171,7 @@ export function GoneScreen({
   onJoinWithCode: () => void;
 }) {
   useSessionTheme(null);
-  const identified = identityMode === 'identified';
+  const comeBack = comeBackLine(identityMode);
   return (
     <main className="page">
       <div className="topbar">
@@ -179,13 +180,12 @@ export function GoneScreen({
       <section className="waiting" role="status" aria-live="polite">
         <p className="waiting__title">This session is no longer open</p>
         <p className="hint">
-          {identified
-            ? 'Open the personal link your tutor sent you to come back to the lesson.'
-            : identityMode === undefined
+          {comeBack ??
+            (identityMode === undefined
               ? 'Open the personal link your tutor sent you, or ask your tutor for the join code.'
-              : 'Ask your tutor for the join code.'}
+              : 'Ask your tutor for the join code.')}
         </p>
-        {identified ? null : (
+        {comeBack !== null ? null : (
           <button type="button" className="btn btn--primary btn--wide" onClick={onJoinWithCode}>
             Join with a code
           </button>

@@ -121,6 +121,17 @@ test.describe('UC-44 participant phone states', () => {
     await phone.getByRole('button', { name: 'Send answer', exact: true }).click();
     await expect(phone.getByText('Answer received', { exact: true })).toBeVisible();
 
+    // Editing a sent answer survives a pause too (each pause is a new snapshot).
+    await phone.getByRole('button', { name: 'Change answer', exact: true }).click();
+    await gap2.fill('ai pris');
+    await command(session.sessionCode, session.hostToken, { command: 'session.freeze' });
+    await expect(gap2).toBeDisabled();
+    await command(session.sessionCode, session.hostToken, { command: 'session.unfreeze' });
+    await expect(gap2).toBeEnabled();
+    await expect(gap2).toHaveValue('ai pris');
+    await phone.getByRole('button', { name: 'Send answer', exact: true }).click();
+    await expect(phone.getByText('Answer received', { exact: true })).toBeVisible();
+
     // A ranking does not open in the authored order.
     await openStep(session, 'q-rank');
     const items = phone.locator('.ranking__label');
@@ -187,7 +198,7 @@ test.describe('UC-44 participant phone states', () => {
     // Leave names the way back; the code alone then says to use the link.
     await phone.getByRole('button', { name: 'Leave', exact: true }).click();
     await expect(
-      phone.getByText('Leave this session? To come back, open the personal link your tutor sent you.', { exact: true }),
+      phone.getByText('Leave this session? Open the personal link your tutor sent you to come back to the lesson.', { exact: true }),
     ).toBeVisible();
     await phone.getByRole('button', { name: 'Leave session', exact: true }).click();
     await phone.getByRole('textbox', { name: 'Join code' }).fill(seed.code);

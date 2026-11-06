@@ -7,7 +7,8 @@ import {
   type SessionClient,
 } from '@openroom/sdk';
 import { useSessionTheme } from '../theme';
-import type { StoredSession } from '../session';
+import { clearSession, type StoredSession } from '../session';
+import { comeBackLine } from '../join-error';
 import { Body } from './body';
 import { LearnerLookup } from './learner-lookup';
 import { SessionQna } from '../qna';
@@ -39,6 +40,8 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
   goneRef.current = onGone;
   const identityRef = useRef(session.identityMode);
   identityRef.current = snapshot?.identityMode ?? session.identityMode;
+  const endedRef = useRef(false);
+  endedRef.current = snapshot?.status === 'ended';
 
   useEffect(() => {
     const client = createSessionClient<ParticipantSnapshot>({
@@ -48,7 +51,12 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
       role: 'participant',
       onChange: setSnapshot,
       onStatus: setStatus,
-      onGone: () => goneRef.current(identityRef.current),
+      onGone: () => {
+        // An ended session that has since been wiped: the "Session ended" view
+        // already says everything. Forget the seat and keep showing it.
+        if (endedRef.current) clearSession(session);
+        else goneRef.current(identityRef.current);
+      },
     });
     clientRef.current = client;
     return () => {
@@ -137,7 +145,7 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
   const participantLabel = handle ?? snapshot?.yourLabel;
   const [noticeSeen, setNoticeSeen] = useState(() => wasNoticeSeen(session.sessionCode));
   const ended = snapshot?.status === 'ended';
-  const identified = (snapshot?.identityMode ?? session.identityMode) === 'identified';
+  const comeBack = comeBackLine(snapshot?.identityMode ?? session.identityMode);
 
   return (
     <main className="page" data-session>
@@ -164,9 +172,9 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
       {confirmLeave && !ended ? (
         <div className="notice" role="alertdialog" aria-labelledby="leave-confirm-text">
           <p className="notice__text" id="leave-confirm-text">
-            {identified
-              ? 'Leave this session? To come back, open the personal link your tutor sent you.'
-              : 'Leave this session? You will join as a new participant.'}
+            {comeBack === null
+              ? 'Leave this session? You will join as a new participant.'
+              : `Leave this session? ${comeBack}`}
           </p>
           <div className="leave-confirm__actions">
             <button type="button" className="btn btn--secondary" onClick={onLeave}>

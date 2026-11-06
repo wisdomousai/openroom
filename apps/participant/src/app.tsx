@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { joinSession } from '@openroom/sdk';
 import { GoneScreen, JoinScreen, WaitingToStartScreen } from './join';
-import { isNotStarted, joinErrorMessage } from './join-error';
+import { isNotStarted, isTransient, joinErrorMessage } from './join-error';
 import { LiveScreen } from './live/screen';
 import {
   clearSession,
@@ -37,6 +37,8 @@ export function App() {
   const [gone, setGone] = useState<{ identityMode?: string } | null>(null);
   const autoJoined = useRef(false);
   const joiningRef = useRef(false);
+  const waitingRef = useRef(false);
+  waitingRef.current = waitingForStart;
 
   const doJoin = useCallback(async (code: string, recoveryHandle?: string) => {
     if (joiningRef.current) return;
@@ -85,8 +87,10 @@ export function App() {
     } catch (err) {
       // Arriving by link before the tutor starts is not an error: wait, and
       // the retry below joins once the session is live. The gate itself is
-      // unchanged — the session keeps refusing until then.
-      if (isNotStarted(err) && (contextLink !== null || rosterInvite !== null)) {
+      // unchanged — the session keeps refusing until then. A dropped
+      // connection or a server fault while waiting keeps waiting too.
+      const byLink = contextLink !== null || rosterInvite !== null;
+      if (byLink && (isNotStarted(err) || (waitingRef.current && isTransient(err)))) {
         setWaitingForStart(true);
       } else {
         setWaitingForStart(false);

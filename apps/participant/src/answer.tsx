@@ -86,9 +86,12 @@ function ChoiceAnswer({
   const [selected, setSelected] = useState<string[]>(initial);
   const multiple = interaction.multiple === true;
 
+  // Keyed on the value: every snapshot refetch hands back a new `ownAnswer`
+  // object, and a pause or another learner's answer must not reset a choice.
+  const submitted = ownAnswer?.kind === 'choice' ? ownAnswer.optionIds.join('|') : '';
   useEffect(() => {
     setSelected(ownAnswer?.kind === 'choice' ? ownAnswer.optionIds : []);
-  }, [interaction.id, ownAnswer]);
+  }, [interaction.id, submitted]);
 
   function toggle(id: string): void {
     if (multiple) {
@@ -274,7 +277,8 @@ type TypedField = HTMLInputElement | HTMLTextAreaElement;
 /**
  * Inserts an accent key at the caret of a typed field. The field keeps focus
  * (the keys cancel their own mousedown), so the phone keyboard stays up; the
- * selection last seen on blur is the fallback when the field is not focused.
+ * last selection the field reported is the fallback when it is not focused
+ * (a pause disables the field without a reliable blur).
  */
 function useCaretInsert<E extends TypedField>() {
   const pendingCaret = useRef<{ el: E; at: number } | null>(null);
@@ -299,7 +303,7 @@ function useCaretInsert<E extends TypedField>() {
       const start = focused ? (el.selectionStart ?? el.value.length) : (saved?.start ?? el.value.length);
       const end = focused ? (el.selectionEnd ?? el.value.length) : (saved?.end ?? el.value.length);
       const next = insertAt(el.value, start, end, char, max);
-      pendingCaret.current = { el, at: next.caret };
+      if (next.value !== el.value) pendingCaret.current = { el, at: next.caret };
       return next.value;
     },
   };
@@ -361,7 +365,7 @@ function TextAnswer({
           {...PRACTICE_FIELD}
           aria-describedby="text-counter"
           onInput={(e) => setText(e.currentTarget.value)}
-          onBlur={(e) => caret.remember(e.currentTarget)}
+          onSelect={(e) => caret.remember(e.currentTarget)}
         />
         {accents.length > 0 ? (
           <AccentKeys
@@ -625,10 +629,12 @@ function FillTheGapsAnswer({
   /** The typed gap the accent keys write into: the one last focused. */
   const [typingGap, setTypingGap] = useState<string | null>(null);
   const caret = useCaretInsert<HTMLInputElement>();
+  // Keyed on the value, as in RankingAnswer: a refetch must not wipe an edit.
+  const submitted = ownAnswer?.kind === 'fill-the-gaps' ? JSON.stringify(ownAnswer.gaps) : '';
   useEffect(() => {
     setGaps(ownAnswer?.kind === 'fill-the-gaps' ? ownAnswer.gaps : {});
     setOpenGap(null);
-  }, [interaction.id, ownAnswer]);
+  }, [interaction.id, submitted]);
 
   const tokens = splitFillTheGapsPrompt(interaction.prompt);
   const valid = interaction.gaps.every((gap) => (gaps[gap.id] ?? '').trim() !== '');
@@ -682,7 +688,7 @@ function FillTheGapsAnswer({
                 maxLength={GAP_MAX}
                 value={gaps[id] ?? ''}
                 onFocus={() => setTypingGap(id)}
-                onBlur={(event) => caret.remember(event.currentTarget)}
+                onSelect={(event) => caret.remember(event.currentTarget)}
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter' || next === undefined) return;
                   event.preventDefault();
@@ -869,10 +875,12 @@ function MatchAnswer({
   const initial = ownAnswer?.kind === 'match' ? ownAnswer.pairs : {};
   const [pairs, setPairs] = useState<Record<string, string>>(initial);
   const [picked, setPicked] = useState<string | null>(null);
+  // Keyed on the value, as in RankingAnswer: a refetch must not wipe an edit.
+  const submitted = ownAnswer?.kind === 'match' ? JSON.stringify(ownAnswer.pairs) : '';
   useEffect(() => {
     setPairs(ownAnswer?.kind === 'match' ? ownAnswer.pairs : {});
     setPicked(null);
-  }, [interaction.id, ownAnswer]);
+  }, [interaction.id, submitted]);
 
   const rightOrder = shuffleIds(
     interaction.right.map((item) => item.id),
