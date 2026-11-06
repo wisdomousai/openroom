@@ -833,12 +833,25 @@
   gap: 0.75rem 2.5rem;
 }
 
+/*
+ * The legend beside a pie, donut or radial plot: --or-rows is its row count
+ * (half the options). Room for about three wrapped lines per row.
+ */
+.plate .or-chart-legend--columns .barrow__label {
+  font-size: min(1.9cqw, calc(100cqh / (var(--or-rows, 2) * 3.9)));
+}
+
 .plate .or-scale-ends {
   font-size: clamp(1rem, 1.6vw, 1.6rem);
 }
 
 .plate .or-mean-chip {
   font-size: clamp(1rem, 1.5vw, 1.5rem);
+}
+
+/* Match pairs: one line per pair, sized so every row of the grid fits the body. */
+.plate .or-pairs-chart {
+  font-size: min(2.4cqw, calc(100cqh / (var(--or-rows, 4) * 1.75)));
 }
 
 .plate .or-emoji-item {

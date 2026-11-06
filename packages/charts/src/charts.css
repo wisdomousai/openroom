@@ -60,6 +60,43 @@
 }
 
 /**
+ * Pie, donut and radial at stage size: the plot keeps two fifths of the width
+ * (and never less than the height allows), the legend sits beside it in two
+ * wrapped columns. A long legend no longer pushes the plot out of the body.
+ */
+.or-polar-chart--side {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem 2rem;
+}
+
+.or-polar-chart--side .or-chart-frame {
+  justify-self: center;
+  min-width: 0;
+}
+
+.or-chart-legend.or-chart-legend--columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: 0.5em 1.5em;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.or-chart-legend--columns .barrow {
+  flex-wrap: nowrap;
+  align-items: baseline;
+  min-height: 0;
+}
+
+.or-chart-legend--columns .or-swatch {
+  align-self: center;
+}
+
+/**
  * Peer instruction reuses the bars grid (labels left, plot right); each label
  * block sits on its pair of round-1/round-2 bars via the shared row bands.
  */
@@ -254,8 +291,7 @@
   font-weight: 600;
 }
 
-.or-gaps-chart .barrow,
-.or-pairs-chart .barrow {
+.or-gaps-chart .barrow {
   min-height: 1.75rem;
 }
 
@@ -264,6 +300,86 @@
   margin-left: auto;
   padding: 0.05em 0.5em;
   border: 1px solid var(--border);
+}
+
+/**
+ * Match: one row per left item, the item in the first column and the answer
+ * it got in the second. Each cell keeps to one line; extra answers fold into
+ * "+N more", and the full reading stays in the figure caption.
+ */
+.or-pairs-chart {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4em;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.or-pairs-chart__rows {
+  display: grid;
+  gap: 0.35em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.or-pairs-chart__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0 1em;
+  line-height: 1.25;
+}
+
+.or-pairs-chart__label,
+.or-pairs-chart__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.or-pairs-chart__label {
+  font-weight: 600;
+}
+
+.or-pairs-chart__answers {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  min-width: 0;
+}
+
+.or-pairs-chart__answer {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.or-pairs-chart__answer .or-pairs-chart__count {
+  margin-left: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.or-pairs-chart__answer .tag-correct {
+  margin-left: 0;
+}
+
+.or-pairs-chart__more,
+.or-pairs-chart__empty,
+.or-pairs-chart__total {
+  margin: 0;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.or-pairs-chart__more {
+  margin-left: auto;
 }
 
 .or-cloud-chart svg {

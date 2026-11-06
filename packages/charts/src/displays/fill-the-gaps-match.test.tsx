@@ -113,14 +113,31 @@ describe('AggregateChart fill-the-gaps displays', () => {
 });
 
 describe('PairsChart', () => {
-  it('shows each left item with the right items the audience chose', () => {
+  it('gives each left item one row with its most chosen answer and a count of the rest', () => {
     const html = renderToStaticMarkup(
       <PairsChart interaction={match} pairs={pairs} total={3} dontKnow={0} revealed={false} />,
     );
+    expect(html.match(/or-pairs-chart__row"/g)).toHaveLength(2);
     expect(html).toContain('data-or-pair="l1:r1"');
-    expect(html).toContain('data-or-pair="l1:r2"');
+    expect(html).not.toContain('data-or-pair="l1:r2"');
+    expect(html).toContain('+1 more');
     expect(html).toContain('data-or-pair="l2:r2"');
     expect(html).not.toContain('data-or-correct');
+  });
+
+  it('keeps the correct answer in the row after reveal when the room chose another', () => {
+    const html = renderToStaticMarkup(
+      <PairsChart
+        interaction={{ ...match, correct: { l1: 'r2', l2: 'r2' } }}
+        pairs={pairs}
+        total={3}
+        dontKnow={0}
+        revealed
+      />,
+    );
+    expect(html).toContain('data-or-pair="l1:r1"');
+    expect(html).toMatch(/data-or-pair="l1:r2"[^>]*data-or-correct/);
+    expect(html).not.toContain('+1 more');
   });
 
   it('marks the correct pairing per left item after reveal', () => {

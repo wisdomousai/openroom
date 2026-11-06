@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { MatchInteractionView } from '@openroom/sdk';
 import { CorrectTag, Frame } from '../frame';
 import { TokenWords } from '../tokens';
@@ -54,7 +55,23 @@ function pairsSummary(rows: LeftRow[], total: number, revealed: boolean): string
   return `${String(total)} answer${total === 1 ? '' : 's'}. ${parts.join('; ')}`;
 }
 
-/** Match results: for each left item, which right item the audience chose. */
+/**
+ * The answers drawn for one left item: the most chosen one and, after the
+ * reveal, the correct one when it is not already that. Everything else is
+ * folded into a count so each pair stays one row however the room split.
+ */
+function shownChoices(row: LeftRow): { shown: ChoiceRow[]; more: number } {
+  const top = row.choices[0];
+  if (top === undefined) return { shown: [], more: 0 };
+  const correct = row.choices.find((choice) => choice.correct);
+  const shown = correct !== undefined && correct !== top ? [top, correct] : [top];
+  return { shown, more: row.choices.length - shown.length };
+}
+
+/**
+ * Match results as a two-column grid: the left item, then the answer the
+ * audience gave it. One row per pair, so six long pairs still fit the plate.
+ */
 export function PairsChart({
   interaction,
   pairs,
@@ -77,45 +94,53 @@ export function PairsChart({
   return (
     <Frame summary={pairsSummary(rows, total, revealed)}>
       <div
-        className={cn(
-          'or-pairs-chart flex max-h-full flex-col gap-3 overflow-y-auto',
-          compact && 'or-chart--compact',
-        )}
+        className={cn('or-pairs-chart', compact && 'or-chart--compact')}
+        style={{ '--or-rows': String(rows.length + 1) } as CSSProperties}
         data-or-chart="pairs"
       >
-        {rows.map((row, rowIndex) => (
-          <section key={row.id} className="flex flex-col gap-1.5" data-or-option={row.id}>
-            <p className="or-pairs-chart__label m-0 font-bold" data-part={`option-${String(rowIndex)}`}>
-              <TokenWords text={row.label} />
-            </p>
-            {row.choices.length === 0 ? (
-              <p className="m-0 text-sm text-muted-foreground">No answers yet.</p>
-            ) : (
-              <ul className="or-chart-legend m-0 list-none p-0">
-                {row.choices.map((choice, index) => (
-                  <li
-                    key={choice.id}
-                    className={cn('barrow', choice.correct && 'barrow--correct')}
-                    data-or-pair={`${row.id}:${choice.id}`}
-                    {...(choice.correct ? { 'data-or-correct': '' } : {})}
-                  >
-                    <span
-                      className="or-swatch"
-                      style={{ background: choice.correct ? 'var(--ok)' : chartColor(index) }}
-                      aria-hidden="true"
-                    />
-                    <span className="barrow__label">{choice.label}</span>
-                    <span className="or-pairs-chart__count font-bold tabular-nums">
-                      {showCount ? choice.count : `${String(pct(choice.count, row.answered))}%`}
-                    </span>
-                    {choice.correct ? <CorrectTag /> : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
-        <p className="m-0 text-sm text-muted-foreground">
+        <ul className="or-pairs-chart__rows">
+          {rows.map((row, rowIndex) => {
+            const { shown, more } = shownChoices(row);
+            return (
+              <li key={row.id} className="or-pairs-chart__row" data-or-option={row.id}>
+                <span className="or-pairs-chart__label" data-part={`option-${String(rowIndex)}`}>
+                  <TokenWords text={row.label} />
+                </span>
+                <span className="or-pairs-chart__answers">
+                  {shown.length === 0 ? (
+                    <span className="or-pairs-chart__empty">No answers yet</span>
+                  ) : (
+                    shown.map((choice) => (
+                      <span
+                        key={choice.id}
+                        className={cn('or-pairs-chart__answer', choice.correct && 'barrow--correct')}
+                        data-or-pair={`${row.id}:${choice.id}`}
+                        {...(choice.correct ? { 'data-or-correct': '' } : {})}
+                      >
+                        <span
+                          className="or-swatch"
+                          style={{
+                            background: choice.correct
+                              ? 'var(--ok)'
+                              : chartColor(row.choices.indexOf(choice)),
+                          }}
+                          aria-hidden="true"
+                        />
+                        <span className="or-pairs-chart__text">{choice.label}</span>
+                        <span className="or-pairs-chart__count">
+                          {showCount ? choice.count : `${String(pct(choice.count, row.answered))}%`}
+                        </span>
+                        {choice.correct ? <CorrectTag /> : null}
+                      </span>
+                    ))
+                  )}
+                  {more > 0 ? <span className="or-pairs-chart__more">+{more} more</span> : null}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="or-pairs-chart__total">
           {total} answer{total === 1 ? '' : 's'}
           {dontKnow > 0 ? `, ${String(dontKnow)} don't know` : ''}
         </p>
