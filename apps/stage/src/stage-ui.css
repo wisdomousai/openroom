@@ -107,11 +107,15 @@
   grid-template-rows: 1fr;
 }
 
+/*
+ * A tall window stacks the join rail above the plate. Only a stage that shows
+ * the rail stacks: with one child (no rail, idle, or the console mirror) an
+ * `auto` first row would take that child and collapse the slide to no height.
+ */
 @media (max-aspect-ratio: 1/1) {
-  .stage__grid,
-  .stage[data-idle='true'] .stage__grid {
+  .stage[data-rail='true'] .stage__grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .rail {
     flex-direction: row;
@@ -574,14 +578,23 @@
   overflow: visible;
 }
 
+/*
+ * The spoken reading stays visible for an audience that cannot tell the
+ * colours apart (STAGE-06), but on one line (decision LD11): the chart above
+ * labels every value, and the full sentence stays the caption's text for
+ * screen readers. A wrapped caption took the height the results needed.
+ */
 .plate .or-chart-viz figcaption {
   position: static;
   width: auto;
   height: auto;
   margin: 0;
-  overflow: visible;
+  overflow: hidden;
   clip-path: none;
-  white-space: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  /* One unbroken line must not widen the plate's grid track to its full length. */
+  contain: inline-size;
   padding-top: 14px;
   border-top: 1px solid var(--hairline, var(--border));
   font-size: 19px;
@@ -674,15 +687,20 @@
   }
 }
 
+/*
+ * Sized from the plate body (a size container), not the window: the console
+ * mirror draws this plate at a fraction of the viewport width.
+ */
 .pending__value {
   font-family: var(--font-display);
-  font-size: clamp(4rem, 14vw, 14rem);
+  font-size: min(14cqw, 40cqh);
   font-weight: 600;
   line-height: 1;
 }
 
 .pending__label {
-  font-size: clamp(0.9rem, 1.5vw, 1.6rem);
+  font-size: min(1.7cqw, 6cqh);
+  line-height: 1.2;
   letter-spacing: 0;
   text-transform: none;
   font-weight: 600;
@@ -1017,8 +1035,6 @@
   color: var(--muted-foreground);
   font-size: 0.85em;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 /* Wide tables scroll in their own box; the panel itself never scrolls sideways. */
