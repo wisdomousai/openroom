@@ -6,7 +6,9 @@
  * names the student and says where the Next session note appears. Notes kept
  * on this device join the private notes on request. Re-saving an older
  * session's Notes leaves the Next session note written by a later session.
+ * A refused save names what stays on this device and downloads every field.
  */
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 import { waitForWorker } from '../fixtures/session';
@@ -67,7 +69,7 @@ test('notes after a lesson: Library prompt, student name, device notes and the N
   await page.getByLabel('Tutor notes', { exact: true }).fill('DEVICE NOTE');
   await page.getByRole('link', { name: 'Cancel', exact: true }).click();
   await page.evaluate((id) => { location.hash = `/sessions/${id}/record`; }, sessionId);
-  const device = page.getByRole('region', { name: 'Notes on this device', exact: true });
+  const device = page.getByRole('region', { name: 'Unsaved tutor notes', exact: true });
   await expect(device).toContainText('DEVICE NOTE');
   await expect(page.getByLabel('Tutor notes', { exact: true })).toHaveValue('SAVED NOTE');
   await device.getByRole('button', { name: 'Add to private notes', exact: true }).click();
@@ -81,4 +83,15 @@ test('notes after a lesson: Library prompt, student name, device notes and the N
   expect(saved.nextNote).toBe('NEXT FROM THE FIRST LESSON');
   const current = (await (await page.request.get(`/api/tutoring/contexts/${context.id}`)).json()).context;
   expect(current.nextNote).toBe('NEXT FROM THE SECOND LESSON');
+
+  // When shared saving is refused, the alert names what stays on this device and the download carries every text field.
+  await page.evaluate((id) => { location.hash = `/sessions/${id}/record`; }, sessionId);
+  await page.route('**/api/sessions/*/record', (route) => route.request().method() === 'PUT' ? route.fulfill({ status: 403, json: { error: 'forbidden' } }) : route.continue());
+  await page.getByLabel('Outcomes (one per line)', { exact: true }).fill('Ordered a coffee');
+  await nextSession.fill('NEXT AFTER ACCESS CHANGED');
+  await page.getByRole('button', { name: 'Update notes', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveText('Your access changed, so these notes were not saved. Tutor notes are kept on this device. Download notes to keep the outcomes, Next session and tutor notes.');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download notes', exact: true }).click()]);
+  expect(readFileSync((await download.path())!, 'utf8')).toBe('Outcomes\nOrdered a coffee\n\nNext session\nNEXT AFTER ACCESS CHANGED\n\nTutor notes\nSAVED NOTE\n\nDEVICE NOTE');
+  await page.screenshot({ path: testInfo.outputPath('notes-access-changed.png'), fullPage: true });
 });

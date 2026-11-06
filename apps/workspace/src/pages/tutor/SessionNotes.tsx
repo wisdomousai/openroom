@@ -87,6 +87,11 @@ export function SessionNotesPage({ sessionId }: { sessionId: string }) {
   return <SessionNotesForm key={`${user.id}:${sessionId}`} learners={data.learners} sessionId={sessionId} title={title} contextName={data.contextName} record={data.record} published={data.published} hasContext={data.session.contextId !== null} place={place} />;
 }
 
+/** The notes as plain text, one labelled block per filled field, for the download after a failed save. */
+function notesText(fields: Array<[label: string, value: string]>): string {
+  return fields.filter(([, value]) => value.trim()).map(([label, value]) => `${label}\n${value.trim()}`).join('\n\n');
+}
+
 function downloadPrivateNotes(text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'openroom-private-notes.txt';
@@ -155,6 +160,7 @@ function SessionNotesForm({
   const [scratchpad] = useState(() => readSessionNotes(sessionId));
   const [addedScratchpad, setAddedScratchpad] = useState(false);
   const hasSeparateScratchpad = !!record?.notes && !!scratchpad && record.notes !== scratchpad;
+  const notesLabel = hasContext ? 'Tutor notes' : 'Private notes';
   const form = useForm({
     defaultValues: {
       outcomes: (record?.outcomes ?? []).map(String).join('\n'),
@@ -186,9 +192,11 @@ function SessionNotesForm({
         await navigate(to.library(place));
       } catch (cause) {
         if (cause instanceof ApiError && [401, 403, 404].includes(cause.status)) {
+          // Only the tutor notes field is kept on this device; the download carries the other fields too.
           writeSessionNotes(sessionId, value.notes);
           setAccessLost(true);
-          setError(isContinuityRequired(cause) ? CONTINUITY_REQUIRED : 'Your access changed. Shared notes were not saved. Your private notes are kept on this device; download a copy before leaving.');
+          const kept = `${notesLabel} are kept on this device. Download notes to keep the outcomes, Next session and ${notesLabel.toLowerCase()}.`;
+          setError(isContinuityRequired(cause) ? CONTINUITY_REQUIRED : cause.status === 401 ? `Your sign-in expired, so these notes were not saved. ${kept} Then sign in again.` : `Your access changed, so these notes were not saved. ${kept}`);
           return;
         }
         setError(cause instanceof ApiError && cause.status === 409 ? 'Another tutor changed the homework. Copy your edits before reloading.' : cause instanceof ApiError && cause.message === 'invalid-homework-audience' ? 'Check the selected learners. Each individual task needs at least one person from this context.' : messageOf(cause, 'Could not save notes'));
@@ -199,18 +207,18 @@ function SessionNotesForm({
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <PageHeading title={title} description={hasContext ? 'Share outcomes and homework with learners. Next session and tutor notes stay private.' : 'Record the outcomes and a note for the next session. These notes stay in this space.'} />
-      {hasSeparateScratchpad && !addedScratchpad ? <section className="grid gap-3 rounded-xl border border-border bg-card p-6" aria-label="Notes on this device"><h2 className="text-section">Notes on this device</h2><p className="whitespace-pre-wrap break-words text-secondary">{scratchpad}</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={accessLost} onClick={() => { const next = [form.getFieldValue('notes'), scratchpad].filter(Boolean).join('\n\n'); form.setFieldValue('notes', next); writeSessionNotes(sessionId, next); setAddedScratchpad(true); }}>Add to private notes</Button><Button type="button" variant="ghost" onClick={() => downloadPrivateNotes(scratchpad)}>Download private notes</Button></div></section> : null}
+      {hasSeparateScratchpad && !addedScratchpad ? <section className="grid gap-3 rounded-xl border border-border bg-card p-6" aria-labelledby="unsaved-notes-heading"><div><h2 id="unsaved-notes-heading" className="text-section">Unsaved {notesLabel.toLowerCase()}</h2><p className="mt-1 text-secondary text-muted-foreground">Kept on this device from an edit that was not saved.</p></div><p className="whitespace-pre-wrap break-words text-secondary">{scratchpad}</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={accessLost} onClick={() => { const next = [form.getFieldValue('notes'), scratchpad].filter(Boolean).join('\n\n'); form.setFieldValue('notes', next); writeSessionNotes(sessionId, next); setAddedScratchpad(true); }}>Add to private notes</Button><Button type="button" variant="ghost" onClick={() => downloadPrivateNotes(scratchpad)}>Download private notes</Button></div></section> : null}
       <form onSubmit={(event) => { event.preventDefault(); void form.handleSubmit(); }}>
         <Card>
           <CardContent className="flex flex-col gap-5 p-6">
             <fieldset disabled={accessLost} className="contents">
             <form.Field name="outcomes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-outcomes">Outcomes (one per line)</Label><Textarea id="record-outcomes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
             <form.Field name="nextNote">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-next">Next session</Label>{contextName ? <p id="record-next-help" className="text-secondary text-muted-foreground">Tutors only. Shown with {contextName} in the Library and at the top of their next deck.</p> : null}<Textarea id="record-next" aria-describedby={contextName ? 'record-next-help' : undefined} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
-            <form.Field name="notes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-notes">{hasContext ? 'Tutor notes' : 'Private notes'}</Label><Textarea id="record-notes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => { field.handleChange(event.currentTarget.value); writeSessionNotes(sessionId, event.currentTarget.value); }} /></div>}</form.Field>
+            <form.Field name="notes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-notes">{notesLabel}</Label><Textarea id="record-notes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => { field.handleChange(event.currentTarget.value); writeSessionNotes(sessionId, event.currentTarget.value); }} /></div>}</form.Field>
             {hasContext ? <form.Subscribe selector={(state) => state.isSubmitting}>{(busy) => <HomeworkAssignments tasks={tasks} audience={audience} learners={learners} onTasks={setTasks} onAudience={setAudience} disabled={busy} />}</form.Subscribe> : null}
             </fieldset>
-            {accessLost ? <form.Subscribe selector={(state) => state.values.notes}>{(notes) => <Button type="button" variant="outline" className="w-fit" onClick={() => downloadPrivateNotes(notes)}>Download private notes</Button>}</form.Subscribe> : null}
-            {error === CONTINUITY_REQUIRED ? <><ContinuityLock /><p role="alert" className="text-secondary text-destructive">Shared notes not saved. Private notes are kept on this device.</p></> : error ? <p role="alert" className="text-secondary text-destructive">{error}</p> : null}
+            {accessLost ? <form.Subscribe selector={(state) => state.values}>{(values) => <Button type="button" variant="outline" className="w-fit" onClick={() => downloadPrivateNotes(notesText([['Outcomes', values.outcomes], ['Next session', values.nextNote], [notesLabel, values.notes]]))}>Download notes</Button>}</form.Subscribe> : null}
+            {error === CONTINUITY_REQUIRED ? <><ContinuityLock /><p role="alert" className="text-secondary text-destructive">Shared notes not saved. {notesLabel} are kept on this device. Download notes to keep the outcomes, Next session and {notesLabel.toLowerCase()}.</p></> : error ? <p role="alert" className="text-secondary text-destructive">{error}</p> : null}
             <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting] as const}>{([canSubmit, isSubmitting]) => <div className="flex gap-2"><Button type="submit" disabled={accessLost || !canSubmit || isSubmitting || hasMissingRecipients}>{isSubmitting ? 'Saving…' : record ? 'Update notes' : 'Save notes'}</Button><Button asChild type="button" variant="outline"><Link {...to.library(place)}>Cancel</Link></Button></div>}</form.Subscribe>
           </CardContent>
         </Card>
