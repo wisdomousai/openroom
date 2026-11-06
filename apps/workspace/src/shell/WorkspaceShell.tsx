@@ -11,7 +11,7 @@ import { ThemeStudio } from '@openroom/ui/theme-studio';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { initials } from '../lib/initials';
-import { groupSpaces } from '../lib/members';
+import { groupSpaces, navigableSpaces } from '../lib/members';
 import { cn } from '@openroom/ui/utils';
 import { to } from '../destinations';
 import { useAuth } from '../useAuth';
@@ -72,7 +72,9 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     enabled: signedIn === true,
   });
 
-  const spaces = spacesQuery.data ?? [];
+  const allSpaces = spacesQuery.data ?? [];
+  // A trashed student's own space keeps resolving as the current space, but the nav does not list it.
+  const spaces = navigableSpaces(allSpaces, contextsQuery.data);
   const { mine: ownedSpaces, shared: invitedSpaces } = groupSpaces(spaces);
   const personal = ownedSpaces[0] ?? null;
   const contexts = contextsQuery.data ?? [];
@@ -88,7 +90,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     ?? asId(search.sourceSpaceId) ?? asId(search.spaceId)
     ?? contexts.find((context) => context.id === pathContextId)?.spaceId
     ?? sessionQuery.data?.session.spaceId ?? null;
-  const currentSpace = spaces.find((space) => space.id === activeSpaceId) ?? personal;
+  const currentSpace = allSpaces.find((space) => space.id === activeSpaceId) ?? personal;
   const experience = currentSpace?.settings.experience ?? 'classroom';
   const profile = EXPERIENCES[experience];
   const mine = ownedSpaces.filter((space) => space.settings.experience === experience);
@@ -164,7 +166,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
               key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: deck.folderId, itemId: deck.id })}
               onClick={() => setSearchOpen(false)} className="block rounded p-2 hover:bg-accent focus:bg-accent">
               <span className="block text-sm">{deck.title}</span>
-              <span className="block text-xs text-muted-foreground">{spaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
+              <span className="block text-xs text-muted-foreground">{allSpaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
             </Link>)}
           </div> : null}
         </form>

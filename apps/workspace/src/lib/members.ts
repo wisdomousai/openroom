@@ -17,6 +17,17 @@ export function groupSpaces(spaces: MySpace[]): GroupedSpaces {
   return { mine, shared };
 }
 
+/**
+ * Spaces the nav lists, without a student's own space (`sp_ctx_…`) whose
+ * student is in Trash or permanently deleted: that space is only reached
+ * through its student. Before the students have loaded, nothing is left out.
+ */
+export function navigableSpaces(spaces: MySpace[], liveContexts: readonly { spaceId: string }[] | undefined): MySpace[] {
+  if (liveContexts === undefined) return spaces;
+  const withStudent = new Set(liveContexts.map((context) => context.spaceId));
+  return spaces.filter((space) => !space.id.startsWith('sp_ctx_') || withStudent.has(space.id));
+}
+
 /** The space whose browser the pathname is on, or null at `/space`. */
 export function activeSpaceId(pathname: string): string | null {
   const match = /^\/space\/([^/]+)/.exec(pathname);
