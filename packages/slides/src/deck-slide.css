@@ -1264,7 +1264,9 @@
   color: var(--muted-foreground);
   pointer-events: none;
 }
-.slide-surface [contenteditable][data-placeholder] {
+/* Only an empty part needs a hit area. A part with text keeps the automatic
+   minimum of a flex item, so the editor squeezes nothing the wall would not. */
+.slide-surface [contenteditable][data-placeholder]:is(:empty, [data-empty='true']) {
   min-height: 1em;
 }
 
