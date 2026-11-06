@@ -19,14 +19,14 @@ export function SpaceWelcome({ spaceId, contextId, experience }: { spaceId: stri
       await navigate(to.deckEditor(deck.id));
     },
   });
-  return <section aria-label="Getting started" className="mx-5 mb-5 mt-4 rounded-xl border bg-card p-5">
-    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{profile.label}</p>
-    <h2 className="mt-2 text-lg font-semibold">Open a sample and make it yours</h2>
-    <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{profile.starterTitle}. A short deck with an audience question, an activity and a recap.</p>
+  return <section aria-labelledby="space-welcome-heading" className="mx-5 mb-5 mt-4 rounded-[var(--radius-xl)] border border-border bg-card p-5">
+    <h2 id="space-welcome-heading" className="text-section">Sample deck</h2>
+    <p className="mt-2 max-w-md text-secondary text-muted-foreground">{profile.starterTitle}. A short deck with an audience question, an activity and a recap.</p>
     <div className="mt-4 flex flex-wrap items-center gap-3">
       <Button onClick={() => addSample.mutate()} disabled={addSample.isPending}>{addSample.isPending ? 'Opening…' : 'Open sample deck'}</Button>
-      <Button asChild variant="subtle"><Link {...to.spaceEdit(spaceId)}>Choose experience</Link></Button>
+      {/* A student space has no experience choice (its settings show languages and brand kits only). */}
+      {contextId ? null : <Button asChild variant="subtle"><Link {...to.spaceEdit(spaceId)}>Choose experience</Link></Button>}
     </div>
-    {addSample.error ? <p role="alert" className="mt-3 text-sm text-destructive">{messageOf(addSample.error, 'Could not open the sample')}</p> : null}
+    {addSample.error ? <p role="alert" className="mt-3 text-secondary text-destructive">{messageOf(addSample.error, 'Could not open the sample')}</p> : null}
   </section>;
 }
