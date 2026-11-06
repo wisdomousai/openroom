@@ -280,6 +280,29 @@ test('a long Next session note takes two lines above the console until Show all'
   await expect(banner).toHaveCount(0);
 });
 
+test('the hidden-results counter fits the console mirror and the wall', async ({ page, browser }, testInfo) => {
+  const session = await createSession({
+    version: 1, meta: { title: 'Counter' }, defaults: { resultVisibility: 'hidden-until-close' },
+    interactions: [{ id: 'ready', type: 'choice', prompt: 'Ready?', options: [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'Not yet' }] }],
+    steps: [{ id: 'ready', kind: 'interaction', interactionId: 'ready' }],
+  });
+  await command(session.sessionCode, session.hostToken, { command: 'session.start' });
+  await command(session.sessionCode, session.hostToken, { command: 'interaction.open', interactionId: 'ready' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(hostUrl(session));
+  const stage = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+  await stage.goto(stageUrl(session));
+  for (const [name, surface] of [['mirror', page.locator('.stage-mirror')], ['wall', stage.locator('.stage')]] as const) {
+    const label = surface.locator('.pending__label');
+    await expect(label).toHaveText('answers so far');
+    await expect.poll(() => allInside(surface.locator('.plate__body').first(), surface.locator('.pending__value, .pending__label')), { message: `${name} counter inside the plate body` }).toBe(true);
+    expect(await label.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  }
+  await page.screenshot({ path: testInfo.outputPath('pending-mirror-1440.png') });
+  await stage.screenshot({ path: testInfo.outputPath('pending-wall-1920.png') });
+  await stage.close();
+});
+
 test('when the notes cannot open after a session, the console says so and offers a way back', async ({ page }, testInfo) => {
   const session = await createSession({ version: 1, meta: { title: 'Short lesson' }, steps: [{ id: 'welcome', kind: 'title', title: 'Hello' }], interactions: [] });
   await command(session.sessionCode, session.hostToken, { command: 'session.start' });
