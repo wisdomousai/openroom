@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DictionaryTable } from '@openroom/slides';
 import type { DictionaryEntry } from '@openroom/schema';
 
@@ -22,16 +22,42 @@ export function LearnerLookup({
   sessionCode,
   token,
   word,
+  returnFocus,
   onClose,
 }: {
   baseUrl: string;
   sessionCode: string;
   token: string;
   word: string;
+  /** The tapped word: focus goes back to it when the sheet closes. */
+  returnFocus?: Element | null;
   onClose: () => void;
 }) {
   const [result, setResult] = useState<LookupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const closeLatest = useRef(onClose);
+  closeLatest.current = onClose;
+  const returnLatest = useRef(returnFocus);
+  returnLatest.current = returnFocus;
+
+  // The sheet is not modal: the sentence stays tappable and a second tap
+  // replaces the word. It still takes focus, and Escape closes it.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) closeLatest.current();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      focusBack(returnLatest.current);
+    };
+  }, []);
+
+  // Each new word moves focus to the sheet, so it is announced.
+  useEffect(() => {
+    closeRef.current?.focus({ preventScroll: true });
+  }, [word]);
 
   useEffect(() => {
     let live = true;
@@ -44,18 +70,19 @@ export function LearnerLookup({
     })
       .then(async (res) => {
         if (!live) return;
-        if (res.status === 429) {
-          setError('Lookup limit reached.');
-          return;
-        }
         if (!res.ok) {
-          setError('No dictionary for this session.');
+          const code = await res
+            .json()
+            .then((body: { error?: unknown }) => (typeof body?.error === 'string' ? body.error : undefined))
+            .catch(() => undefined);
+          if (live) setError(lookupError(res.status, code));
           return;
         }
-        setResult((await res.json()) as LookupResult);
+        const body = (await res.json()) as LookupResult;
+        if (live) setResult(body);
       })
       .catch(() => {
-        if (live) setError('Lookup failed.');
+        if (live) setError('Lookup failed. Check the connection and try again.');
       });
     return () => {
       live = false;
@@ -66,7 +93,7 @@ export function LearnerLookup({
     <div className="learner-lookup" role="dialog" aria-label={`Dictionary: ${word}`}>
       <div className="learner-lookup__bar">
         <strong>{word}</strong>
-        <button type="button" onClick={onClose} aria-label="Close">
+        <button ref={closeRef} type="button" onClick={onClose} aria-label="Close">
           ✕
         </button>
       </div>
@@ -88,4 +115,22 @@ export function LearnerLookup({
       ) : null}
     </div>
   );
+}
+
+/** What the learner can do about a refused lookup, by the route's error code. */
+export function lookupError(status: number, code: string | undefined): string {
+  if (status === 429 || code === 'lookup-rate-limited') return 'Lookup limit reached. Try again in a minute.';
+  if (code === 'invalid-word') return 'This word cannot be looked up. Tap a single word.';
+  if (code === 'languages-not-configured' || status === 404) return 'No dictionary for this session.';
+  return 'Lookup failed. Try again.';
+}
+
+function focusBack(target: Element | null | undefined): void {
+  if (!(target instanceof HTMLElement) || !target.isConnected) return;
+  // A word token is a span: it takes focus only for this hand-back.
+  if (!target.hasAttribute('tabindex')) {
+    target.setAttribute('tabindex', '-1');
+    target.addEventListener('blur', () => target.removeAttribute('tabindex'), { once: true });
+  }
+  target.focus({ preventScroll: true });
 }

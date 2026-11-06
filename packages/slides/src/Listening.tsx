@@ -4,7 +4,16 @@ import type { SlideMedia } from './slide-types';
 /** Only an individual learner gets a player inside the shared slide renderer. */
 export const ListeningAudience = createContext<'audience' | 'participant'>('audience');
 
-export function AudioPlayer({ src, label }: { src: string; label: string }) {
+export function AudioPlayer({
+  src,
+  label,
+  loadError = 'This audio could not be loaded. Check the connection or choose another recording.',
+}: {
+  src: string;
+  label: string;
+  /** What a failed load says; the default is written for the tutor, who can pick another file. */
+  loadError?: string;
+}) {
   const audio = useRef<HTMLAudioElement>(null);
   const [speed, setSpeed] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +40,7 @@ export function AudioPlayer({ src, label }: { src: string; label: string }) {
     <audio ref={audio} src={src} controls preload="metadata" aria-label={label}
       onRateChange={(event) => setSpeed(event.currentTarget.playbackRate)}
       onPlay={() => setError(null)}
-      onError={() => setError('This audio could not be loaded. Check the connection or choose another recording.')} />
+      onError={() => setError(loadError)} />
     <div className="listening-player__controls">
       <button type="button" onClick={() => void replay()}>Replay</button>
       <div role="group" aria-label="Playback speed">

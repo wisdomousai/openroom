@@ -11,6 +11,7 @@ import { clearSession, forgetSessionInUrl, type StoredSession } from '../session
 import { comeBackLine } from '../join-error';
 import { Body } from './body';
 import { LearnerLookup } from './learner-lookup';
+import type { ContentView } from './step-view';
 import { SessionQna } from '../qna';
 
 interface Props {
@@ -30,7 +31,11 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
   /** 'now' = the active poll; 'qna' = the session-wide question list. */
   const [view, setView] = useState<'now' | 'qna'>('now');
   /** The word this learner is looking up. Nobody else ever learns it. */
-  const [lookUpWord, setLookUpWord] = useState<string | null>(null);
+  const [lookUp, setLookUp] = useState<{ word: string; token: Element } | null>(null);
+  /** Slide or Reading, kept across steps and questions for this session. */
+  const [contentView, setContentView] = useState<ContentView | null>(() => readContentView(session.sessionCode));
+  /** The error only said "no connection", so a reconnect makes it stale. */
+  const connectionError = useRef(false);
   const clientRef = useRef<SessionClient<ParticipantSnapshot> | null>(null);
   // The host can switch the session theme mid-session; every snapshot re-applies it.
   useSessionTheme(snapshot?.theme);
@@ -82,6 +87,31 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
     }
   }, [interaction?.id]);
 
+  // A lookup belongs to the sentence it came from: a new step or question closes it.
+  const stepId = snapshot?.outline?.currentStep?.id;
+  useEffect(() => {
+    setLookUp(null);
+  }, [interaction?.id, stepId]);
+
+  // Back online: "No connection" no longer describes anything. An unsent
+  // answer stays named until the learner sends again.
+  useEffect(() => {
+    if ((status === 'live' || status === 'polling') && connectionError.current) {
+      connectionError.current = false;
+      setError(null);
+    }
+  }, [status]);
+
+  function fail(code: string, message: string): void {
+    connectionError.current = code === 'E_NETWORK';
+    setError(friendlyError(code, message));
+  }
+
+  function chooseView(next: ContentView): void {
+    setContentView(next);
+    storeContentView(session.sessionCode, next);
+  }
+
   async function submitAnswer(answer: AnswerInput): Promise<void> {
     const client = clientRef.current;
     if (!client || !interaction) return;
@@ -95,7 +125,10 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
     });
     setBusy(false);
     if (res.ok) setEditing(false);
-    else setError(friendlyError(res.error.code, res.error.message));
+    else if (res.error.code === 'E_NETWORK') {
+      connectionError.current = false;
+      setError('Your answer was not sent. Try again.');
+    } else fail(res.error.code, res.error.message);
   }
 
   async function voteFor(targetParticipantId: string): Promise<void> {
@@ -108,7 +141,7 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
       targetParticipantId,
     });
     setBusy(false);
-    if (!res.ok) setError(friendlyError(res.error.code, res.error.message));
+    if (!res.ok) fail(res.error.code, res.error.message);
   }
 
   async function askSessionQuestion(text: string): Promise<void> {
@@ -122,7 +155,7 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
       text,
     });
     setBusy(false);
-    if (!res.ok) setError(friendlyError(res.error.code, res.error.message));
+    if (!res.ok) fail(res.error.code, res.error.message);
   }
 
   async function upvoteSessionQuestion(questionId: string): Promise<void> {
@@ -132,7 +165,7 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
     setError(null);
     const res = await client.submit({ command: 'qna.upvote', questionId });
     setBusy(false);
-    if (!res.ok) setError(friendlyError(res.error.code, res.error.message));
+    if (!res.ok) fail(res.error.code, res.error.message);
   }
 
   const connectionNotice = useMemo(() => {
@@ -211,8 +244,8 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
       ) : null}
 
       {/* One wrapper, two behaviours: `display: contents` on the phone (the
-          column is exactly what it was), a scrolling content region on the
-          tutoring surface, where the action region below stays put.
+          column is the column and the document scrolls), a scrolling content
+          region on the wider tutoring surface.
           Ink is NOT mounted here — `display: contents` has no box, so an
           absolute overlay would float against the wrong frame. Ink sits on
           the slide plate itself (see StepView). */}
@@ -279,20 +312,23 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
               onEdit={() => setEditing(true)}
               onAnswer={(a) => void submitAnswer(a)}
               onVote={(id) => void voteFor(id)}
-              onLookUp={canLookUp ? setLookUpWord : undefined}
+              view={contentView}
+              onView={chooseView}
+              onLookUp={canLookUp ? (word, token) => setLookUp({ word, token }) : undefined}
             />
           )}
         </>
       )}
       </div>
 
-      {lookUpWord === null ? null : (
+      {lookUp === null ? null : (
         <LearnerLookup
           baseUrl={baseUrl}
           sessionCode={session.sessionCode}
           token={session.token}
-          word={lookUpWord}
-          onClose={() => setLookUpWord(null)}
+          word={lookUp.word}
+          returnFocus={lookUp.token}
+          onClose={() => setLookUp(null)}
         />
       )}
     </main>
@@ -316,22 +352,41 @@ function joinFromSession(
   }
 }
 
+const VIEW_PREFIX = 'openroom:view:';
 const NOTICE_PREFIX = 'openroom:notice:';
 
-function wasNoticeSeen(sessionCode: string): boolean {
+/** Per-session flags in sessionStorage; private mode just forgets them on reload. */
+function readSessionValue(prefix: string, sessionCode: string): string | null {
   try {
-    return sessionStorage.getItem(NOTICE_PREFIX + sessionCode) === '1';
+    return sessionStorage.getItem(prefix + sessionCode);
   } catch {
-    return false;
+    return null;
   }
 }
 
-function markNoticeSeen(sessionCode: string): void {
+function writeSessionValue(prefix: string, sessionCode: string, value: string): void {
   try {
-    sessionStorage.setItem(NOTICE_PREFIX + sessionCode, '1');
+    sessionStorage.setItem(prefix + sessionCode, value);
   } catch {
-    /* private mode — the notice just reappears on reload */
+    /* private mode */
   }
+}
+
+function readContentView(sessionCode: string): ContentView | null {
+  const stored = readSessionValue(VIEW_PREFIX, sessionCode);
+  return stored === 'slide' || stored === 'reading' ? stored : null;
+}
+
+function storeContentView(sessionCode: string, view: ContentView): void {
+  writeSessionValue(VIEW_PREFIX, sessionCode, view);
+}
+
+function wasNoticeSeen(sessionCode: string): boolean {
+  return readSessionValue(NOTICE_PREFIX, sessionCode) === '1';
+}
+
+function markNoticeSeen(sessionCode: string): void {
+  writeSessionValue(NOTICE_PREFIX, sessionCode, '1');
 }
 
 function friendlyError(code: string, message: string): string {

@@ -11,7 +11,7 @@ import {
 import { SpanText } from '@openroom/slides';
 import { Results } from '../results';
 import { CountdownLabel } from './countdown';
-import { StepView } from './step-view';
+import { StepView, type ContentView } from './step-view';
 
 /**
  * The prompt as the author wrote it, styled when the interaction carries spans.
@@ -36,8 +36,11 @@ interface BodyProps {
   onEdit: () => void;
   onAnswer: (answer: AnswerInput) => void;
   onVote: (targetParticipantId: string) => void;
+  /** Slide or Reading, as the learner last chose; null before any choice. */
+  view: ContentView | null;
+  onView: (view: ContentView) => void;
   /** Absent unless the learner has a lookup in this session. */
-  onLookUp?: (word: string) => void;
+  onLookUp?: (word: string, token: Element) => void;
 }
 
 export function Body({
@@ -49,6 +52,8 @@ export function Body({
   onEdit,
   onAnswer,
   onVote,
+  view,
+  onView,
   onLookUp,
 }: BodyProps) {
   if (snapshot.status === 'ended') {
@@ -82,6 +87,8 @@ export function Body({
           dictionary={snapshot.dictionary}
           clock={snapshot.clock}
           join={join}
+          view={view}
+          onView={onView}
           onLookUp={onLookUp}
         />
       );
@@ -261,6 +268,7 @@ export function Body({
           <Results
             interaction={interaction}
             aggregate={snapshot.aggregate}
+            revealed={snapshot.interactionStatus === 'revealed'}
             round1Aggregate={snapshot.round1Aggregate ?? null}
           />
         )
