@@ -800,11 +800,18 @@
 }
 
 /* `bottom`, the default on these layouts, is under everything else: below a
-   list or a grid of cards, not between it and the heading. */
+   list or a grid of cards, not between it and the heading. The caption moves
+   with its picture for both `bottom` and `top`. */
 .slide-surface
   .outline-step--has-picture[data-picture-place='bottom']:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
   > :is([data-part='image'], .outline-step__caption) {
   order: 1;
+}
+
+.slide-surface
+  .outline-step--has-picture[data-picture-place='top']:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > .outline-step__caption {
+  order: -1;
 }
 
 .slide-surface .outline-step--layout-split .outline-step__region--lede,
