@@ -847,6 +847,13 @@ export interface StageSnapshot {
    * from remainingSecAt / remainingSec while `running`.
    */
   clock?: SessionClockView;
+  /**
+   * Identity regime of the session: 'anonymous' | 'pseudonymous' |
+   * 'identified'. Carries no name. An identified session admits only its
+   * access link, so the Stage prints no join code or QR for it. Older relays
+   * omit it.
+   */
+  identityMode?: string;
 }
 
 export interface HostInteractionSummary {

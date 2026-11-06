@@ -7,18 +7,22 @@ import {
   type SessionClient,
 } from '@openroom/sdk';
 import { useSessionTheme } from '../theme';
-import type { StoredSession } from '../session';
+import { clearSession, forgetSessionInUrl, type StoredSession } from '../session';
+import { comeBackLine } from '../join-error';
 import { Body } from './body';
 import { LearnerLookup } from './learner-lookup';
+import type { ContentView } from './step-view';
 import { SessionQna } from '../qna';
 
 interface Props {
   baseUrl: string;
   session: StoredSession;
   onLeave: () => void;
+  /** The server no longer accepts this seat: the token expired or the session is gone. */
+  onGone: (identityMode: string | undefined) => void;
 }
 
-export function LiveScreen({ baseUrl, session, onLeave }: Props) {
+export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
   const [snapshot, setSnapshot] = useState<ParticipantSnapshot | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [busy, setBusy] = useState(false);
@@ -27,11 +31,22 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
   /** 'now' = the active poll; 'qna' = the session-wide question list. */
   const [view, setView] = useState<'now' | 'qna'>('now');
   /** The word this learner is looking up. Nobody else ever learns it. */
-  const [lookUpWord, setLookUpWord] = useState<string | null>(null);
+  const [lookUp, setLookUp] = useState<{ word: string; token: Element } | null>(null);
+  /** Slide or Reading, kept across steps and questions for this session. */
+  const [contentView, setContentView] = useState<ContentView | null>(() => readContentView(session.sessionCode));
+  /** The error only said "no connection", so a reconnect makes it stale. */
+  const connectionError = useRef(false);
   const clientRef = useRef<SessionClient<ParticipantSnapshot> | null>(null);
   // The host can switch the session theme mid-session; every snapshot re-applies it.
   useSessionTheme(snapshot?.theme);
   const lastInteractionId = useRef<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const goneRef = useRef(onGone);
+  goneRef.current = onGone;
+  const identityRef = useRef(session.identityMode);
+  identityRef.current = snapshot?.identityMode ?? session.identityMode;
+  const endedRef = useRef(false);
+  endedRef.current = snapshot?.status === 'ended';
 
   useEffect(() => {
     const client = createSessionClient<ParticipantSnapshot>({
@@ -41,6 +56,14 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
       role: 'participant',
       onChange: setSnapshot,
       onStatus: setStatus,
+      onGone: () => {
+        // An ended session that has since been wiped: the "Session ended" view
+        // already says everything. Forget the seat and keep showing it.
+        if (endedRef.current) {
+          clearSession(session);
+          forgetSessionInUrl();
+        } else goneRef.current(identityRef.current);
+      },
     });
     clientRef.current = client;
     return () => {
@@ -64,6 +87,39 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
     }
   }, [interaction?.id]);
 
+  // A lookup belongs to the sentence it came from: a new step or question closes it.
+  const stepId = snapshot?.outline?.currentStep?.id;
+  useEffect(() => {
+    setLookUp(null);
+  }, [interaction?.id, stepId]);
+
+  // Back online: "No connection" no longer describes anything. An unsent
+  // answer stays named until the learner sends again.
+  useEffect(() => {
+    if ((status === 'live' || status === 'polling') && connectionError.current) {
+      connectionError.current = false;
+      setError(null);
+    }
+  }, [status]);
+
+  function fail(code: string, message: string): void {
+    // The connection may already be back by the time the failed call returns.
+    const stillOffline = clientRef.current?.getStatus() === 'offline';
+    connectionError.current = code === 'E_NETWORK' && stillOffline;
+    setError(code === 'E_NETWORK' && !stillOffline ? 'Not sent. Try again.' : friendlyError(code, message));
+  }
+
+  // The page scrolls now: bring a new error into view from wherever the learner tapped.
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error !== null) errorRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [error]);
+
+  function chooseView(next: ContentView): void {
+    setContentView(next);
+    storeContentView(session.sessionCode, next);
+  }
+
   async function submitAnswer(answer: AnswerInput): Promise<void> {
     const client = clientRef.current;
     if (!client || !interaction) return;
@@ -77,7 +133,10 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
     });
     setBusy(false);
     if (res.ok) setEditing(false);
-    else setError(friendlyError(res.error.code, res.error.message));
+    else if (res.error.code === 'E_NETWORK') {
+      connectionError.current = false;
+      setError('Your answer was not sent. Try again.');
+    } else fail(res.error.code, res.error.message);
   }
 
   async function voteFor(targetParticipantId: string): Promise<void> {
@@ -90,7 +149,7 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
       targetParticipantId,
     });
     setBusy(false);
-    if (!res.ok) setError(friendlyError(res.error.code, res.error.message));
+    if (!res.ok) fail(res.error.code, res.error.message);
   }
 
   async function askSessionQuestion(text: string): Promise<void> {
@@ -104,7 +163,7 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
       text,
     });
     setBusy(false);
-    if (!res.ok) setError(friendlyError(res.error.code, res.error.message));
+    if (!res.ok) fail(res.error.code, res.error.message);
   }
 
   async function upvoteSessionQuestion(questionId: string): Promise<void> {
@@ -114,7 +173,7 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
     setError(null);
     const res = await client.submit({ command: 'qna.upvote', questionId });
     setBusy(false);
-    if (!res.ok) setError(friendlyError(res.error.code, res.error.message));
+    if (!res.ok) fail(res.error.code, res.error.message);
   }
 
   const connectionNotice = useMemo(() => {
@@ -128,6 +187,8 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
   const handle = session.handle ?? snapshot?.yourHandle;
   const participantLabel = handle ?? snapshot?.yourLabel;
   const [noticeSeen, setNoticeSeen] = useState(() => wasNoticeSeen(session.sessionCode));
+  const ended = snapshot?.status === 'ended';
+  const comeBack = comeBackLine(snapshot?.identityMode ?? session.identityMode);
 
   return (
     <main className="page" data-session>
@@ -138,14 +199,40 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
             <strong>{participantLabel}</strong>
           </span>
         ) : null}
-        <button type="button" className="btn btn--leave" onClick={onLeave}>
-          Leave
-        </button>
+        {/* After the end there is nothing to leave: the page can simply be closed. */}
+        {ended ? null : (
+          <button
+            type="button"
+            className="btn btn--leave"
+            aria-expanded={confirmLeave}
+            onClick={() => setConfirmLeave(true)}
+          >
+            Leave
+          </button>
+        )}
       </div>
+
+      {confirmLeave && !ended ? (
+        <div className="notice" role="alertdialog" aria-labelledby="leave-confirm-text">
+          <p className="notice__text" id="leave-confirm-text">
+            {comeBack === null
+              ? 'Leave this session? You will join as a new participant.'
+              : `Leave this session? ${comeBack}`}
+          </p>
+          <div className="leave-confirm__actions">
+            <button type="button" className="btn btn--secondary" onClick={onLeave}>
+              Leave session
+            </button>
+            <button type="button" className="btn btn--ghost" autoFocus onClick={() => setConfirmLeave(false)}>
+              Stay
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* The pseudonymous-handle notice promises no name is collected, which is
           not true of a tutoring session: the tutor already knows the learner. */}
-      {snapshot?.identityMode === 'pseudonymous' && handle && !noticeSeen ? (
+      {snapshot?.identityMode === 'pseudonymous' && handle && !noticeSeen && !ended ? (
         <div className="notice" role="status">
           <p className="notice__text">
             Handle: <strong>{handle}</strong>. Use it to rejoin. Answers are deleted 30 minutes
@@ -165,8 +252,8 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
       ) : null}
 
       {/* One wrapper, two behaviours: `display: contents` on the phone (the
-          column is exactly what it was), a scrolling content region on the
-          tutoring surface, where the action region below stays put.
+          column is the column and the document scrolls), a scrolling content
+          region on the wider tutoring surface.
           Ink is NOT mounted here — `display: contents` has no box, so an
           absolute overlay would float against the wrong frame. Ink sits on
           the slide plate itself (see StepView). */}
@@ -183,7 +270,7 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
             <span aria-hidden="true">⏸</span> Paused
           </p>
         ) : null}
-        {error ? <p className="banner banner--error">{error}</p> : null}
+        {error ? <p ref={errorRef} className="banner banner--error">{error}</p> : null}
       </div>
 
       {!snapshot ? (
@@ -233,20 +320,23 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
               onEdit={() => setEditing(true)}
               onAnswer={(a) => void submitAnswer(a)}
               onVote={(id) => void voteFor(id)}
-              onLookUp={canLookUp ? setLookUpWord : undefined}
+              view={contentView}
+              onView={chooseView}
+              onLookUp={canLookUp ? (word, token) => setLookUp({ word, token }) : undefined}
             />
           )}
         </>
       )}
       </div>
 
-      {lookUpWord === null ? null : (
+      {lookUp === null ? null : (
         <LearnerLookup
           baseUrl={baseUrl}
           sessionCode={session.sessionCode}
           token={session.token}
-          word={lookUpWord}
-          onClose={() => setLookUpWord(null)}
+          word={lookUp.word}
+          returnFocus={lookUp.token}
+          onClose={() => setLookUp(null)}
         />
       )}
     </main>
@@ -270,22 +360,41 @@ function joinFromSession(
   }
 }
 
+const VIEW_PREFIX = 'openroom:view:';
 const NOTICE_PREFIX = 'openroom:notice:';
 
-function wasNoticeSeen(sessionCode: string): boolean {
+/** Per-session flags in sessionStorage; private mode just forgets them on reload. */
+function readSessionValue(prefix: string, sessionCode: string): string | null {
   try {
-    return sessionStorage.getItem(NOTICE_PREFIX + sessionCode) === '1';
+    return sessionStorage.getItem(prefix + sessionCode);
   } catch {
-    return false;
+    return null;
   }
 }
 
-function markNoticeSeen(sessionCode: string): void {
+function writeSessionValue(prefix: string, sessionCode: string, value: string): void {
   try {
-    sessionStorage.setItem(NOTICE_PREFIX + sessionCode, '1');
+    sessionStorage.setItem(prefix + sessionCode, value);
   } catch {
-    /* private mode — the notice just reappears on reload */
+    /* private mode */
   }
+}
+
+function readContentView(sessionCode: string): ContentView | null {
+  const stored = readSessionValue(VIEW_PREFIX, sessionCode);
+  return stored === 'slide' || stored === 'reading' ? stored : null;
+}
+
+function storeContentView(sessionCode: string, view: ContentView): void {
+  writeSessionValue(VIEW_PREFIX, sessionCode, view);
+}
+
+function wasNoticeSeen(sessionCode: string): boolean {
+  return readSessionValue(NOTICE_PREFIX, sessionCode) === '1';
+}
+
+function markNoticeSeen(sessionCode: string): void {
+  writeSessionValue(NOTICE_PREFIX, sessionCode, '1');
 }
 
 function friendlyError(code: string, message: string): string {

@@ -6,6 +6,8 @@ export interface StoredSession {
   participantId: string;
   /** Session-local handle (pseudonymous sessions only). */
   handle?: string;
+  /** Identity regime from the join answer; says how to come back once the seat is gone. */
+  identityMode?: string;
 }
 
 const SESSION_PREFIX = 'openroom:participant:session:';

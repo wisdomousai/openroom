@@ -109,20 +109,29 @@ function parseJsonl(text: string): UpstreamRow[] {
   return rows;
 }
 
-async function fetchRows(
+/**
+ * `missing` means upstream has no file under this spelling (a 404). A timeout,
+ * a 5xx or a network error is not a miss: it says nothing about the word.
+ */
+async function fetchRowsOrMissing(
   url: string,
   fetchImpl: typeof fetch,
-): Promise<UpstreamRow[] | null> {
+): Promise<{ rows: UpstreamRow[] | null; missing: boolean }> {
   try {
     const response = await fetchImpl(url, {
       headers: { accept: 'application/json', 'user-agent': USER_AGENT },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!response.ok) return null;
-    return parseJsonl(await response.text());
+    if (!response.ok) return { rows: null, missing: response.status === 404 };
+    const rows = parseJsonl(await response.text());
+    return { rows, missing: rows.length === 0 };
   } catch {
-    return null;
+    return { rows: null, missing: false };
   }
+}
+
+async function fetchRows(url: string, fetchImpl: typeof fetch): Promise<UpstreamRow[] | null> {
+  return (await fetchRowsOrMissing(url, fetchImpl)).rows;
 }
 
 function textList(value: unknown, max: number): string[] {
@@ -280,8 +289,30 @@ export async function resolveEntry(
   const cached = entryCache.get(cacheKey);
   if (cached !== undefined && now < cached.until) return cached.value;
 
-  const url = wordPath(`dictionary/${root}`, word);
-  const rows = await fetchRows(url, fetchImpl);
+  // A failed fetch says nothing about the word, so its result is not cached.
+  let failed = false;
+  const ask = async (target: string) => {
+    const result = await fetchRowsOrMissing(target, fetchImpl);
+    if (result.rows === null && !result.missing) failed = true;
+    return result;
+  };
+
+  let found = word;
+  let url = wordPath(`dictionary/${root}`, word);
+  const verbatim = await ask(url);
+  let rows = verbatim.rows;
+  /*
+   * Upstream paths are case-sensitive, and a sentence-initial `Je` is filed as
+   * `je`. Verbatim goes first because German nouns are filed capitalised
+   * (`Haus`); the lower-case form is asked once, only after a real miss — a
+   * slow or failing upstream gets no second request.
+   */
+  const lower = word.toLocaleLowerCase(lang);
+  if (verbatim.missing && lower !== word) {
+    found = lower;
+    url = wordPath(`dictionary/${root}`, lower);
+    rows = (await ask(url)).rows;
+  }
 
   let entry: DictionaryEntry | null = null;
   if (rows !== null && rows.length > 0) {
@@ -289,16 +320,16 @@ export async function resolveEntry(
     if (row !== null) {
       const hasForms = Array.isArray(row.forms) && row.forms.length > 0;
       const lemma = hasForms ? null : lemmaTarget(row);
-      if (lemma !== null && lemma !== word && isLookupWord(lemma)) {
+      if (lemma !== null && lemma !== found && isLookupWord(lemma)) {
         const lemmaUrl = wordPath(`dictionary/${root}`, lemma);
-        const lemmaRows = await fetchRows(lemmaUrl, fetchImpl);
+        const lemmaRows = (await ask(lemmaUrl)).rows;
         const lemmaRow = lemmaRows === null ? null : bestRow(lemmaRows, lang);
         entry =
           lemmaRow === null
-            ? toEntry(row, { word, lemma: word, lang, url })
-            : toEntry(lemmaRow, { word, lemma, lang, url: lemmaUrl, resolvedFrom: word });
+            ? toEntry(row, { word, lemma: found, lang, url })
+            : toEntry(lemmaRow, { word, lemma, lang, url: lemmaUrl, resolvedFrom: found });
       } else {
-        entry = toEntry(row, { word, lemma: word, lang, url });
+        entry = toEntry(row, { word, lemma: found, lang, url });
       }
     }
   }
@@ -307,7 +338,7 @@ export async function resolveEntry(
   let unsupported: LookupResult['unsupported'];
   if (meaningLang !== undefined) {
     if (nativeNeedsEdition(lang, meaningLang)) {
-      const result = await fetchMeaning(entry?.lemma ?? word, lang, meaningLang, fetchImpl);
+      const result = await fetchMeaning(entry?.lemma ?? found, lang, meaningLang, fetchImpl);
       meaning = result.meaning;
       if (result.unsupported) unsupported = 'meaning-language';
     } else {
@@ -326,6 +357,8 @@ export async function resolveEntry(
     meaning,
     ...(unsupported === undefined ? {} : { unsupported }),
   };
+
+  if (failed) return value;
 
   // Sweep on write rather than on a timer: the map lives for the isolate's
   // lifetime and nothing else here executes often enough to notice.

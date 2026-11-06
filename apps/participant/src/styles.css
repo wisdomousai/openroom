@@ -99,6 +99,7 @@
   --radius-lg: 6px;
   --radius-xl: 8px;
   --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 20px rgba(0, 0, 0, 0.1);
+  --shadow-overlay: 0 8px 32px rgba(0, 0, 0, 0.26);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -120,6 +121,7 @@
     --border: #454e5e;
     --input: #5c6675;
     --ring: #7fa9ff;
+    --shadow-overlay: 0 8px 32px rgba(0, 0, 0, 0.48);
   }
 }
 
@@ -218,11 +220,13 @@ a {
   flex-direction: column;
   gap: 1rem;
   background: var(--card);
-  /* Definite height so the slide plate can letterbox with container queries. */
-  height: 100dvh;
+  /* At least one screen tall, and the document scrolls when the column is
+     taller: Send, results and long Reading must stay reachable by finger.
+     Only the >=640px session block below fixes the height, for the letterbox. */
   min-height: 100dvh;
   box-sizing: border-box;
-  overflow: hidden;
+  /* Vertical scroll only: a wide table or long token never pans the page sideways. */
+  overflow-x: clip;
 }
 
 .topbar {
@@ -230,7 +234,9 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 0 8px;
+  /* Same height as before Leave grew to the 44px target. */
+  min-height: 46px;
+  padding: 0 0 2px;
   font-size: 13px;
   color: var(--muted-foreground);
 }
@@ -395,11 +401,11 @@ a {
 
 .btn--leave {
   flex: none;
-  min-height: 32px;
-  height: 32px;
-  padding: 0 10px;
+  min-height: var(--tap);
+  height: var(--tap);
+  padding: 0 14px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 22px;
   background: var(--chrome, var(--muted));
   color: var(--secondary-foreground);
   font-size: 13px;
@@ -407,8 +413,8 @@ a {
 
 .btn--gotit {
   align-self: flex-start;
-  min-height: 36px;
-  height: 36px;
+  min-height: var(--tap);
+  height: var(--tap);
   padding: 0 14px;
   border: 1px solid var(--input);
   border-radius: var(--radius-xl, 8px);
@@ -898,8 +904,8 @@ a {
 }
 
 .viewtabs__tab {
-  min-height: 38px;
-  height: 38px;
+  min-height: var(--tap);
+  height: var(--tap);
   padding: 0 0.6rem;
   border: 0;
   border-radius: var(--radius-lg, 6px);
@@ -917,6 +923,27 @@ a {
   background: var(--card);
   color: var(--foreground);
   font-weight: 600;
+}
+
+/*
+ * A short window (a phone held sideways, or a browser that shrinks the layout
+ * for the keyboard; iOS Safari does not): the top gap shrinks to the safe area
+ * and the chrome above the question tightens, so the prompt and the field fit.
+ * Type sizes stay as they are.
+ */
+@media (max-height: 520px) {
+  .page {
+    padding-top: max(12px, env(safe-area-inset-top));
+    gap: 0.6rem;
+  }
+
+  .viewtabs {
+    margin-bottom: 8px;
+  }
+
+  .textarea {
+    min-height: 4.5rem;
+  }
 }
 
 /* ====================================================================== */
@@ -1353,9 +1380,17 @@ a {
   flex-direction: column;
   gap: 0.75rem;
   min-height: 0;
-  overflow: hidden;
+  /* The slide plate letterboxes inside this box; a question, its Send and the
+     results scroll here when a landscape phone or short window is too low. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   /* Full width: the slide owns the measure, not a phone column. */
   max-width: none;
+}
+
+.page[data-session] .page__body > .learner-slide {
+  /* A short landscape window scrolls the region rather than shrinking the slide away. */
+  min-height: 12rem;
 }
 
 .page[data-session] .option,
@@ -1372,7 +1407,7 @@ a {
   container-type: size; gap: 0.5rem;
 }
 .learner-slide__view { display: flex; justify-content: center; gap: 0.25rem; }
-.learner-slide__view button { font: inherit; padding: 0.45rem 0.9rem; border: 1px solid var(--border); border-radius: 0.5rem; color: var(--foreground); background: var(--background); }
+.learner-slide__view button { font: inherit; min-height: var(--tap); padding: 0.45rem 0.9rem; border: 1px solid var(--border); border-radius: 0.5rem; color: var(--foreground); background: var(--background); }
 .learner-slide__view button[aria-pressed='true'] { background: var(--foreground); color: var(--background); }
 .learner-slide__plate {
   position: relative; align-self: center;
@@ -1393,11 +1428,14 @@ a {
 .learner-slide[data-reading='true'] .learner-slide__plate { flex: none; width: 100%; aspect-ratio: auto; overflow: visible; }
 .learner-slide[data-reading='true'] .slide-surface { height: auto; aspect-ratio: auto; min-height: 16rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step { display: flex; flex-direction: column; height: auto; min-height: 16rem; gap: 1.25rem; padding: 1.25rem; font-size: 1rem; overflow: visible; }
-.learner-slide[data-reading='true'] .slide-surface .outline-step h1,
-.learner-slide[data-reading='true'] .slide-surface .outline-step__term { max-width: none; font-size: 1.75rem; line-height: 1.2; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step h1 { max-width: none; font-size: 1.75rem; line-height: 1.2; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step h2 { font-size: 1.15rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step p,
 .learner-slide[data-reading='true'] .slide-surface .outline-step li { font-size: 1rem; line-height: 1.55; max-width: none; }
+/* The headword and the stat are paragraphs, so they name the element to win over the
+   body rule above and keep the title's lead over the body text. */
+.learner-slide[data-reading='true'] .slide-surface .outline-step p.outline-step__term,
+.learner-slide[data-reading='true'] .slide-surface .outline-step p.outline-step__stat { max-width: none; font-size: 1.75rem; line-height: 1.2; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__region { padding: 0; border: 0; overflow: visible; gap: 1rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__cards,
 .learner-slide[data-reading='true'] .slide-surface .outline-step__sequence,
@@ -1406,10 +1444,27 @@ a {
 .learner-slide[data-reading='true'] .slide-surface .outline-step__sequence li { padding: 1rem; overflow: visible; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__elements { position: relative; display: grid; gap: 1rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__element { position: relative; inset: auto !important; width: 100% !important; height: auto !important; font-size: 1rem !important; min-height: 1em; overflow: visible; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step__element.outline-step__element--heading { font-size: 1.4rem !important; line-height: 1.25; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__element--iframe,
 .learner-slide[data-reading='true'] .slide-surface .outline-step__element--pdf { height: 24rem !important; }
 .learner-slide[data-reading='true'] .slide-surface__footer { position: relative; display: block; left: auto; bottom: auto; padding: 0 1.25rem 1rem; font-size: 0.8rem; }
 .learner-slide[data-reading='true'] .slide-surface__logo { display: none; }
+
+/* The learner's own listening player, under the slide at phone size. */
+.learner-listening {
+  flex: none;
+  align-self: center;
+  width: 100%;
+  max-width: 34rem;
+}
+.learner-listening .listening-player {
+  font: inherit;
+  font-size: 1rem;
+}
+.learner-listening .listening-player button {
+  min-height: var(--tap);
+  min-width: var(--tap);
+}
 
 .learner-ink {
   position: absolute;
@@ -1443,26 +1498,34 @@ a {
   right: 0;
   bottom: 0;
   z-index: 40;
-  max-height: 62vh;
+  max-height: 62dvh;
   overflow: auto;
-  padding: 0.9rem 1rem 1.4rem;
+  padding: 0 1rem 1.4rem;
   background: var(--card);
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
   border-radius: 14px 14px 0 0;
-  box-shadow: 0 -8px 30px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-overlay);
   font-size: 0.9rem;
 }
 
+/* The word and Close stay in view while a long forms table scrolls under them. */
 .learner-lookup__bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.5rem;
+  padding: 0.5rem 0 0.25rem;
+  background: var(--card);
 }
 
 .learner-lookup__bar button {
+  min-width: var(--tap);
+  min-height: var(--tap);
   padding: 0.25rem 0.6rem;
   background: none;
   border: 1px solid var(--border);
@@ -1508,7 +1571,7 @@ a {
   color: var(--card-foreground);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl, 8px);
-  box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
+  box-shadow: var(--shadow-overlay);
   font-size: clamp(0.8rem, 2vw, 1.1rem);
   line-height: 1.35;
 }
@@ -1650,8 +1713,6 @@ a {
   color: var(--muted-foreground);
   font-size: 0.8em;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .learner-lookup .dict-scroll,
@@ -1738,6 +1799,36 @@ a {
   font-weight: 600;
 }
 
+/* A typed gap sits in the sentence, like the bank slot beside it. */
+.prompt .gap-input {
+  display: inline-block;
+  width: 8rem;
+  max-width: 100%;
+  min-height: var(--tap);
+  margin: 0.1em 0.15em;
+  padding: 6px 10px;
+  vertical-align: baseline;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+/* Wraps an answer form so a pause disables it without unmounting the draft. */
+.answer-fieldset {
+  display: contents;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.leave-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .gap-picker {
   position: fixed;
   inset: 0;
@@ -1767,7 +1858,7 @@ a {
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
   border-radius: 14px 14px 0 0;
-  box-shadow: 0 -8px 30px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-overlay);
 }
 
 @media (min-width: 640px) {
@@ -1780,7 +1871,7 @@ a {
     transform: translate(-50%, -50%);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl, 8px);
-    box-shadow: 0 16px 40px rgb(0 0 0 / 22%);
+    box-shadow: var(--shadow-overlay);
   }
 }
 

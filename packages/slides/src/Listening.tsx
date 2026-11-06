@@ -1,10 +1,37 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { SlideMedia } from './slide-types';
 
-/** Only an individual learner gets a player inside the shared slide renderer. */
+/**
+ * Who holds the player. A learner gets their own player and an error they can
+ * act on; everyone else is the tutor side, who can pick another recording.
+ */
 export const ListeningAudience = createContext<'audience' | 'participant'>('audience');
 
-export function AudioPlayer({ src, label }: { src: string; label: string }) {
+const LOAD_ERROR = {
+  audience: 'This audio could not be loaded. Check the connection or choose another recording.',
+  participant: 'This audio could not be loaded. Check your connection, then tap Retry loading.',
+} as const;
+
+/** What a recording is called until the tutor gives it a label. */
+const UNTITLED = 'Listening';
+
+function titleOf(label: string | undefined): string {
+  const trimmed = label?.trim() ?? '';
+  return trimmed === '' ? UNTITLED : trimmed;
+}
+
+export function AudioPlayer({
+  src,
+  label,
+  loadError,
+}: {
+  src: string;
+  label: string;
+  /** What a failed load says; the default follows ListeningAudience. */
+  loadError?: string;
+}) {
+  const audience = useContext(ListeningAudience);
+  const failedToLoad = loadError ?? LOAD_ERROR[audience];
   const audio = useRef<HTMLAudioElement>(null);
   const [speed, setSpeed] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +55,10 @@ export function AudioPlayer({ src, label }: { src: string; label: string }) {
     }
   };
   return <div className="listening-player">
-    <audio ref={audio} src={src} controls preload="metadata" aria-label={label}
+    <audio ref={audio} src={src} controls preload="metadata" aria-label={titleOf(label)}
       onRateChange={(event) => setSpeed(event.currentTarget.playbackRate)}
       onPlay={() => setError(null)}
-      onError={() => setError('This audio could not be loaded. Check the connection or choose another recording.')} />
+      onError={() => setError(failedToLoad)} />
     <div className="listening-player__controls">
       <button type="button" onClick={() => void replay()}>Replay</button>
       <div role="group" aria-label="Playback speed">
@@ -47,7 +74,7 @@ export function ListeningBlock({ media }: { media: SlideMedia }) {
   const role = useContext(ListeningAudience);
   const individual = media.listening?.mode === 'individual';
   return <section className="listening-block" aria-label="Listening">
-    <p className="listening-block__title">{media.alt}</p>
+    <p className="listening-block__title">{titleOf(media.alt)}</p>
     <p className="listening-block__instruction">{individual ? 'Listen on your own device.' : 'Listen together. Your tutor plays the recording.'}</p>
     {role === 'participant' && individual && media.url ? <AudioPlayer key={media.url} src={media.url} label={media.alt} /> : null}
     {media.listening?.transcript ? <div className="listening-block__transcript"><h3>Transcript</h3><p>{media.listening.transcript}</p></div> : null}

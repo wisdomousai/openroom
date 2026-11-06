@@ -11,7 +11,7 @@ import {
 import { SpanText } from '@openroom/slides';
 import { Results } from '../results';
 import { CountdownLabel } from './countdown';
-import { StepView } from './step-view';
+import { StepView, type ContentView } from './step-view';
 
 /**
  * The prompt as the author wrote it, styled when the interaction carries spans.
@@ -36,8 +36,11 @@ interface BodyProps {
   onEdit: () => void;
   onAnswer: (answer: AnswerInput) => void;
   onVote: (targetParticipantId: string) => void;
+  /** Slide or Reading, as the learner last chose; null before any choice. */
+  view: ContentView | null;
+  onView: (view: ContentView) => void;
   /** Absent unless the learner has a lookup in this session. */
-  onLookUp?: (word: string) => void;
+  onLookUp?: (word: string, token: Element) => void;
 }
 
 export function Body({
@@ -49,12 +52,17 @@ export function Body({
   onEdit,
   onAnswer,
   onVote,
+  view,
+  onView,
   onLookUp,
 }: BodyProps) {
   if (snapshot.status === 'ended') {
     return (
       <section className="waiting" aria-live="polite">
         <p className="waiting__title">Session ended</p>
+        {snapshot.identityMode === 'identified' ? (
+          <p className="hint">Your personal link opens your lesson page.</p>
+        ) : null}
         <p className="hint">You can close this page.</p>
       </section>
     );
@@ -79,6 +87,8 @@ export function Body({
           dictionary={snapshot.dictionary}
           clock={snapshot.clock}
           join={join}
+          view={view}
+          onView={onView}
           onLookUp={onLookUp}
         />
       );
@@ -99,11 +109,17 @@ export function Body({
     (interaction as { peerInstruction?: boolean }).peerInstruction === true;
   const discuss =
     peer && snapshot.interactionStatus === 'closed' && (snapshot.round ?? 1) === 1 && !snapshot.aggregate;
-  const open = snapshot.interactionStatus === 'open' && !snapshot.frozen;
+  /** The question takes answers; a pause stops sending but keeps what is typed. */
+  const accepting = snapshot.interactionStatus === 'open';
+  const paused = accepting && snapshot.frozen;
+  const open = accepting && !snapshot.frozen;
   const allowChange = interaction.allowAnswerChange !== false;
   const answered = snapshot.answered && snapshot.ownAnswer !== null;
   const groupQuestion = interaction.responseMode === 'group';
   const canAnswer = !groupQuestion || snapshot.yourGroup?.isSpokesperson === true;
+  // The form stays mounted through a pause, disabled, so a half-typed answer is
+  // still there when the tutor resumes.
+  const showForm = accepting && canAnswer && (!answered || editing);
 
   if (interaction.type === 'qna') {
     const entries = snapshot.aggregate?.kind === 'qna' ? snapshot.aggregate.entries : [];
@@ -112,11 +128,14 @@ export function Body({
       <section className="stack">
         <h1 className="prompt"><Prompt interaction={interaction} /></h1>
         {open ? <CountdownLabel closesAt={snapshot.closesAt} /> : null}
-        {open ? (
-          <QnaForm busy={busy} onSubmit={onAnswer} />
+        {accepting ? (
+          <fieldset className="answer-fieldset" disabled={paused}>
+            <QnaForm busy={busy} onSubmit={onAnswer} />
+          </fieldset>
         ) : (
           <p className="hint">Closed</p>
         )}
+        {paused ? <p className="hint">Answers paused.</p> : null}
         <h2 className="field__label" id="qna-heading">
           Questions ({visible.length})
         </h2>
@@ -177,7 +196,7 @@ export function Body({
       ) : null}
 
       <h1
-        className={interaction.type === 'fill-the-gaps' && open && canAnswer && (!answered || editing) ? 'sr-only' : 'prompt'}
+        className={interaction.type === 'fill-the-gaps' && showForm ? 'sr-only' : 'prompt'}
         style={
           interaction.type === 'fill-the-gaps' ? promptFontStyle(interaction.promptFont) : undefined
         }
@@ -197,19 +216,23 @@ export function Body({
         </div>
       ) : null}
 
-      {open && canAnswer && (!answered || editing) ? (
-        <>
+      {showForm ? (
+        <fieldset className="answer-fieldset" disabled={paused}>
           <AnswerForm key={groupQuestion ? snapshot.yourGroup?.id : interaction.id}
             interaction={interaction}
             ownAnswer={snapshot.ownAnswer}
+            participantId={participantId}
             busy={busy}
             onSubmit={onAnswer}
           />
           {interaction.allowDontKnow ? <DontKnowButton busy={busy} onSubmit={onAnswer} /> : null}
-        </>
+        </fieldset>
+      ) : null}
+      {showForm && paused ? (
+        <p className="hint" aria-live="polite">Answers paused.</p>
       ) : null}
 
-      {answered && (!open || !editing || !canAnswer) ? (
+      {answered && !showForm ? (
         <div className="stack" aria-live="polite">
           <p className="ack">
             <span aria-hidden="true">✓</span>
@@ -229,7 +252,7 @@ export function Body({
         </div>
       ) : null}
 
-      {!open && !answered ? (
+      {!showForm && !open && !answered ? (
         <p className="hint" aria-live="polite">
           {snapshot.frozen ? 'Answers paused.' : 'Question closed.'}
         </p>
@@ -245,6 +268,7 @@ export function Body({
           <Results
             interaction={interaction}
             aggregate={snapshot.aggregate}
+            revealed={snapshot.interactionStatus === 'revealed'}
             round1Aggregate={snapshot.round1Aggregate ?? null}
           />
         )

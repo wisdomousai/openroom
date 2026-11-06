@@ -360,6 +360,224 @@ describe('createSessionClient', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(fetches).toBe(after);
   });
+
+  it('reports a token rejected twice in a row through onGone and stops polling and the socket', async () => {
+    for (const rejected of [401, 403, 404, 410]) {
+      let fetches = 0;
+      const fetchFake: FetchLike = async () => {
+        fetches++;
+        return jsonRes(rejected, { error: 'unauthorized' });
+      };
+      const gone: number[] = [];
+      const statuses: string[] = [];
+      createSessionClient<ParticipantSnapshot>({
+        baseUrl: 'https://api.test',
+        sessionCode: 'r',
+        token: 't',
+        role: 'participant',
+        fetch: fetchFake,
+        WebSocket: FakeSocket,
+        onStatus: (s) => statuses.push(s),
+        onGone: (status) => gone.push(status),
+      });
+      await flush();
+      expect(gone).toEqual([]);
+      await vi.advanceTimersByTimeAsync(2000);
+      await flush();
+      expect(gone).toEqual([rejected]);
+      expect(statuses).not.toContain('offline');
+      expect(FakeSocket.last?.closed).toBe(true);
+      const after = fetches;
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(fetches).toBe(after);
+    }
+  });
+
+  it('needs the gone answer to hold for 1.5 s, not just for two quick reads', async () => {
+    const fetchFake: FetchLike = async () => jsonRes(404, { error: 'session-not-found' });
+    const gone: number[] = [];
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: null,
+      onGone: (status) => gone.push(status),
+    });
+    await flush();
+    await client.refresh();
+    await flush();
+    expect(gone).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1600);
+    await flush();
+    expect(gone).toEqual([404]);
+  });
+
+  it('does not give up a seat over one stray 404', async () => {
+    let fetches = 0;
+    const fetchFake: FetchLike = async () => {
+      fetches++;
+      return fetches === 1 ? jsonRes(404, { error: 'session-not-found' }) : jsonRes(200, snap(5));
+    };
+    const gone: number[] = [];
+    const changes: number[] = [];
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: null,
+      onChange: (s) => changes.push(s.revision),
+      onGone: (status) => gone.push(status),
+    });
+    await flush();
+    await vi.advanceTimersByTimeAsync(2000);
+    await flush();
+    expect(gone).toEqual([]);
+    expect(changes).toEqual([5]);
+    client.close();
+  });
+
+  it('keeps a 5xx as offline and polls on, with or without onGone', async () => {
+    let fetches = 0;
+    const fetchFake: FetchLike = async () => {
+      fetches++;
+      return jsonRes(503, {});
+    };
+    const gone: number[] = [];
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: null,
+      onGone: (status) => gone.push(status),
+    });
+    await flush();
+    expect(client.getStatus()).toBe('offline');
+    const after = fetches;
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(fetches).toBeGreaterThan(after);
+    expect(gone).toEqual([]);
+    client.close();
+  });
+});
+
+describe('createSessionClient after a lost connection', () => {
+  it('asks again as soon as the device is back, and clears offline', async () => {
+    let down = false;
+    let fetches = 0;
+    const fetchFake: FetchLike = async (_url, init) => {
+      if (down) throw new TypeError('network down');
+      if (init?.method !== 'POST') fetches++;
+      return jsonRes(200, snap(1));
+    };
+    let wake: ((reason: 'online' | 'visible') => void) | null = null;
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: FakeSocket,
+      subscribeWake: (listener) => {
+        wake = listener;
+        return () => {
+          wake = null;
+        };
+      },
+    });
+    await flush();
+    FakeSocket.last?.open();
+    await flush();
+    expect(client.getStatus()).toBe('live');
+
+    down = true;
+    const sent = await client.submit({ command: 'qna.upvote', questionId: 'q' });
+    expect(sent.ok).toBe(false);
+    expect(client.getStatus()).toBe('offline');
+
+    down = false;
+    const before = fetches;
+    const stale = FakeSocket.last!;
+    wake!('online');
+    await flush();
+    expect(fetches).toBe(before + 1);
+    // The network changed under the socket: it is replaced, not trusted.
+    expect(stale.closed).toBe(true);
+    expect(FakeSocket.last).not.toBe(stale);
+    FakeSocket.last?.open();
+    await flush();
+    expect(client.getStatus()).toBe('live');
+
+    client.close();
+    expect(wake).toBeNull();
+  });
+
+  it('stays offline when the socket falls back to polling until a poll gets through', async () => {
+    let down = false;
+    const fetchFake: FetchLike = async () => {
+      if (down) throw new TypeError('network down');
+      return jsonRes(200, snap(1));
+    };
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: FakeSocket,
+      isHidden: () => false,
+      subscribeWake: () => () => {},
+    });
+    await flush();
+    FakeSocket.last?.open();
+    await flush();
+
+    down = true;
+    await client.submit({ command: 'qna.upvote', questionId: 'q' });
+    FakeSocket.last?.fail();
+    await vi.advanceTimersByTimeAsync(1100);
+    FakeSocket.last?.fail();
+    await flush();
+    expect(client.getStatus()).toBe('offline');
+
+    down = false;
+    await vi.advanceTimersByTimeAsync(1600);
+    expect(client.getStatus()).toBe('polling');
+    client.close();
+  });
+
+  it('retries on its own while offline over a socket that stayed open', async () => {
+    let down = false;
+    const fetchFake: FetchLike = async () => {
+      if (down) throw new TypeError('network down');
+      return jsonRes(200, snap(1, false));
+    };
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: FakeSocket,
+      subscribeWake: () => () => {},
+    });
+    await flush();
+    FakeSocket.last?.open();
+    await flush();
+
+    down = true;
+    await client.submit({ command: 'qna.upvote', questionId: 'q' });
+    expect(client.getStatus()).toBe('offline');
+    down = false;
+    await vi.advanceTimersByTimeAsync(6500);
+    expect(client.getStatus()).toBe('live');
+    client.close();
+  });
 });
 
 describe('joinSession', () => {

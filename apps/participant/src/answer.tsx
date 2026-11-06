@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   gradeFillTheGaps,
   seededShuffle,
@@ -6,6 +6,25 @@ import {
 } from '@openroom/schema';
 import type { AnswerInput, Ballot, InteractionView, TextSpanView } from '@openroom/sdk';
 import { SpanText } from '@openroom/slides';
+
+/**
+ * A submitted ballot as a stable string. Every snapshot refetch hands back a
+ * new `ownAnswer` object, so a form resets its draft only when this changes:
+ * a pause or another learner's answer must not wipe an edit in progress.
+ */
+export function ballotKey(ballot: Ballot | null): string {
+  const stable = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(stable)
+      : value !== null && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.entries(value as Record<string, unknown>)
+              .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+              .map(([key, entry]) => [key, stable(entry)]),
+          )
+        : value;
+  return ballot === null ? '' : JSON.stringify(stable(ballot));
+}
 
 /** An option label as the author styled it, or the plain string when unstyled. */
 function OptionLabel({ label, spans }: { label: string; spans?: TextSpanView[] }) {
@@ -27,6 +46,8 @@ export function promptFontStyle(
 interface Props {
   interaction: InteractionView;
   ownAnswer: Ballot | null;
+  /** Seeds per-learner starting orders (ranking). */
+  participantId?: string;
   busy: boolean;
   onSubmit: (answer: AnswerInput) => void;
 }
@@ -84,9 +105,10 @@ function ChoiceAnswer({
   const [selected, setSelected] = useState<string[]>(initial);
   const multiple = interaction.multiple === true;
 
+  const submitted = ballotKey(ownAnswer);
   useEffect(() => {
     setSelected(ownAnswer?.kind === 'choice' ? ownAnswer.optionIds : []);
-  }, [interaction.id, ownAnswer]);
+  }, [interaction.id, submitted]);
 
   function toggle(id: string): void {
     if (multiple) {
@@ -240,6 +262,90 @@ function accentChars(locale: string | undefined): string[] {
   return row ? row.split(' ') : [];
 }
 
+/**
+ * Put `char` over the selection `start`–`end` of `value`. Refuses (returns the
+ * value unchanged) when the result would pass `max`, so a key never chops the
+ * end of an answer.
+ */
+export function insertAt(
+  value: string,
+  start: number,
+  end: number,
+  char: string,
+  max: number,
+): { value: string; caret: number } {
+  const from = Math.max(0, Math.min(start, value.length));
+  const to = Math.max(from, Math.min(end, value.length));
+  const next = value.slice(0, from) + char + value.slice(to);
+  if (next.length > max) return { value, caret: to };
+  return { value: next, caret: from + char.length };
+}
+
+/** Typed language-practice fields: the learner's own spelling is the evidence. */
+const PRACTICE_FIELD = {
+  autoCorrect: 'off',
+  autoCapitalize: 'off',
+  autoComplete: 'off',
+  spellCheck: false,
+} as const;
+
+type TypedField = HTMLInputElement | HTMLTextAreaElement;
+
+/**
+ * Inserts an accent key at the caret of a typed field. The field keeps focus
+ * (the keys cancel their own mousedown), so the phone keyboard stays up; the
+ * last selection the field reported is the fallback when it is not focused
+ * (a pause disables the field without a reliable blur).
+ */
+function useCaretInsert<E extends TypedField>() {
+  const pendingCaret = useRef<{ el: E; at: number } | null>(null);
+  const lastSelection = useRef(new WeakMap<E, { start: number; end: number }>());
+  useLayoutEffect(() => {
+    const pending = pendingCaret.current;
+    if (pending === null) return;
+    pendingCaret.current = null;
+    pending.el.focus();
+    pending.el.setSelectionRange(pending.at, pending.at);
+  });
+  return {
+    remember(el: E): void {
+      lastSelection.current.set(el, {
+        start: el.selectionStart ?? el.value.length,
+        end: el.selectionEnd ?? el.value.length,
+      });
+    },
+    insert(el: E, char: string, max: number): string {
+      const focused = el.ownerDocument.activeElement === el;
+      const saved = lastSelection.current.get(el);
+      const start = focused ? (el.selectionStart ?? el.value.length) : (saved?.start ?? el.value.length);
+      const end = focused ? (el.selectionEnd ?? el.value.length) : (saved?.end ?? el.value.length);
+      const next = insertAt(el.value, start, end, char, max);
+      if (next.value !== el.value) pendingCaret.current = { el, at: next.caret };
+      return next.value;
+    },
+  };
+}
+
+function AccentKeys({ chars, onKey }: { chars: string[]; onKey: (char: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Accents">
+      {chars.map((char) => (
+        <button
+          key={char}
+          type="button"
+          className="btn btn--ghost btn--compact"
+          // Keep focus (and the phone keyboard) in the field being typed in.
+          onMouseDown={(event) => event.preventDefault()}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => onKey(char)}
+        >
+          {char}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function TextAnswer({
   interaction,
   ownAnswer,
@@ -251,6 +357,8 @@ function TextAnswer({
   const over = text.length > max;
   const valid = text.trim().length > 0 && !over;
   const accents = accentChars(interaction.match?.locale);
+  const field = useRef<HTMLTextAreaElement>(null);
+  const caret = useCaretInsert<HTMLTextAreaElement>();
 
   return (
     <form
@@ -266,26 +374,23 @@ function TextAnswer({
         </label>
         <textarea
           id="text-answer"
+          ref={field}
           className="textarea"
           value={text}
           maxLength={max}
           lang={interaction.match?.locale}
+          {...PRACTICE_FIELD}
           aria-describedby="text-counter"
           onInput={(e) => setText(e.currentTarget.value)}
+          onSelect={(e) => caret.remember(e.currentTarget)}
         />
         {accents.length > 0 ? (
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Accents">
-            {accents.map((char) => (
-              <button
-                key={char}
-                type="button"
-                className="btn btn--ghost btn--compact"
-                onClick={() => setText((current) => (current + char).slice(0, max))}
-              >
-                {char}
-              </button>
-            ))}
-          </div>
+          <AccentKeys
+            chars={accents}
+            onKey={(char) => {
+              if (field.current) setText(caret.insert(field.current, char, max));
+            }}
+          />
         ) : null}
         <span id="text-counter" className={`counter${over ? ' counter--over' : ''}`}>
           {text.length} / {max} characters
@@ -312,24 +417,34 @@ export function orderedBy(optionIds: string[], options: { id: string; label: str
   return ordered;
 }
 
+/**
+ * Where an unanswered ranking starts: shuffled per learner and question, and
+ * never the authored order, which is often the answer key.
+ */
+export function startingOrder(optionIds: readonly string[], seed: string): string[] {
+  const shuffled = seededShuffle(optionIds, seed);
+  const unchanged = shuffled.every((id, index) => id === optionIds[index]);
+  return unchanged && shuffled.length > 1 ? [...shuffled.slice(1), shuffled[0] as string] : shuffled;
+}
+
 function RankingAnswer({
   interaction,
   ownAnswer,
+  participantId,
   busy,
   onSubmit,
 }: Props & { interaction: Extract<InteractionView, { type: 'ranking' }> }) {
   const initial = (): string[] =>
     ownAnswer?.kind === 'ranking'
       ? orderedBy(ownAnswer.optionIds, interaction.options)
-      : interaction.options.map((o) => o.id);
+      : startingOrder(
+          interaction.options.map((o) => o.id),
+          `${participantId ?? ''}:${interaction.id}`,
+        );
 
   const [order, setOrder] = useState<string[]>(initial);
   const [announcement, setAnnouncement] = useState('');
-  // A snapshot refetch hands back a fresh `ownAnswer` object on every revision
-  // bump, so the reset below keys off the VALUE, not the object identity —
-  // otherwise someone else answering would wipe an in-progress reorder.
-  const submitted =
-    ownAnswer?.kind === 'ranking' ? ownAnswer.optionIds.join('|') : '';
+  const submitted = ballotKey(ownAnswer);
   // Keyboard operability: the button that performed a move travels with its
   // item, so focus is restored to it after the list re-renders.
   const focusKey = useRef<string | null>(null);
@@ -510,6 +625,9 @@ export function describeAnswer(interaction: InteractionView, ballot: Ballot): st
   }
 }
 
+/** The domain refuses a gap answer over 200 characters (apply/ballot.ts). */
+const GAP_MAX = 200;
+
 function FillTheGapsAnswer({
   interaction,
   ownAnswer,
@@ -520,10 +638,15 @@ function FillTheGapsAnswer({
   const [gaps, setGaps] = useState<Record<string, string>>(initial);
   const [openGap, setOpenGap] = useState<string | null>(null);
   const gapRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  /** The typed gap the accent keys write into: the one last focused. */
+  const [typingGap, setTypingGap] = useState<string | null>(null);
+  const caret = useCaretInsert<HTMLInputElement>();
+  const submitted = ballotKey(ownAnswer);
   useEffect(() => {
     setGaps(ownAnswer?.kind === 'fill-the-gaps' ? ownAnswer.gaps : {});
     setOpenGap(null);
-  }, [interaction.id, ownAnswer]);
+  }, [interaction.id, submitted]);
 
   const tokens = splitFillTheGapsPrompt(interaction.prompt);
   const valid = interaction.gaps.every((gap) => (gaps[gap.id] ?? '').trim() !== '');
@@ -531,6 +654,11 @@ function FillTheGapsAnswer({
   const selectable = display === 'bank' || display === 'choices';
   const bankWords = interaction.bankWords ?? [];
   const used = new Set(Object.values(gaps).filter((word) => word.trim() !== ''));
+  const locale = interaction.match?.locale;
+  const accents = selectable ? [] : accentChars(locale);
+  // Gaps are numbered in reading order, as results and the learner page number them.
+  const gapOrder = tokens.flatMap((token) => (token.kind === 'gap' ? [token.id] : []));
+  const gapNumber = (id: string): number => gapOrder.indexOf(id) + 1;
 
   function pick(gapId: string, word: string | null): void {
     setGaps((current) => {
@@ -557,12 +685,27 @@ function FillTheGapsAnswer({
           const id = token.id;
           const filled = (gaps[id] ?? '').trim();
           if (!selectable) {
+            const next = gapOrder[gapOrder.indexOf(id) + 1];
             return (
               <input
                 key={id}
-                className="input"
-                aria-label={`Gap ${id}`}
+                ref={(node) => {
+                  inputRefs.current[id] = node;
+                }}
+                className="input gap-input"
+                aria-label={`Gap ${gapNumber(id)}`}
+                lang={locale}
+                {...PRACTICE_FIELD}
+                enterKeyHint={next === undefined ? 'send' : 'next'}
+                maxLength={GAP_MAX}
                 value={gaps[id] ?? ''}
+                onFocus={() => setTypingGap(id)}
+                onSelect={(event) => caret.remember(event.currentTarget)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' || next === undefined) return;
+                  event.preventDefault();
+                  inputRefs.current[next]?.focus();
+                }}
                 onInput={(event) => {
                   const value = event.currentTarget.value;
                   setGaps((current) => ({ ...current, [id]: value }));
@@ -580,7 +723,7 @@ function FillTheGapsAnswer({
               className={`gap-slot${filled !== '' ? ' gap-slot--filled' : ''}`}
               aria-haspopup="dialog"
               aria-expanded={openGap === id}
-              aria-label={filled !== '' ? `Gap ${id}: ${filled}` : `Gap ${id}`}
+              aria-label={filled !== '' ? `Gap ${gapNumber(id)}: ${filled}` : `Gap ${gapNumber(id)}`}
               onClick={() => setOpenGap(id)}
             >
               {filled !== '' ? filled : '\u00a0'}
@@ -588,6 +731,18 @@ function FillTheGapsAnswer({
           );
         })}
       </p>
+      {accents.length > 0 ? (
+        <AccentKeys
+          chars={accents}
+          onKey={(char) => {
+            const id = typingGap ?? gapOrder[0];
+            const el = id === undefined ? null : inputRefs.current[id];
+            if (id === undefined || !el) return;
+            const value = caret.insert(el, char, GAP_MAX);
+            setGaps((current) => ({ ...current, [id]: value }));
+          }}
+        />
+      ) : null}
       {selectable && openGap !== null ? (
         <GapPicker
           font={interaction.promptFont}
@@ -732,10 +887,11 @@ function MatchAnswer({
   const initial = ownAnswer?.kind === 'match' ? ownAnswer.pairs : {};
   const [pairs, setPairs] = useState<Record<string, string>>(initial);
   const [picked, setPicked] = useState<string | null>(null);
+  const submitted = ballotKey(ownAnswer);
   useEffect(() => {
     setPairs(ownAnswer?.kind === 'match' ? ownAnswer.pairs : {});
     setPicked(null);
-  }, [interaction.id, ownAnswer]);
+  }, [interaction.id, submitted]);
 
   const rightOrder = shuffleIds(
     interaction.right.map((item) => item.id),
