@@ -102,7 +102,7 @@ function SignedInGate({ children }: { children: ReactNode }) {
   if (session.user === undefined) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
-        <p className="text-sm text-muted-foreground">Checking your account…</p>
+        <p className="text-secondary text-muted-foreground">Checking your account…</p>
       </div>
     );
   }

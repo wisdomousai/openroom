@@ -93,7 +93,7 @@ export function PageHeading({
 export function EmptyCollection({ children }: { children: ReactNode }) {
   return (
     <Card>
-      <CardContent className="p-6 text-sm text-muted-foreground">{children}</CardContent>
+      <CardContent className="p-6 text-secondary text-muted-foreground">{children}</CardContent>
     </Card>
   );
 }
@@ -154,7 +154,7 @@ export function ItemLocation({
 
   if (!spaceId) {
     return (
-      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-secondary text-muted-foreground">
         Not saved in a space yet. Open a space folder and start from there.
         {error ? <p className="mt-1 text-destructive">{error}</p> : null}
       </div>
@@ -166,19 +166,19 @@ export function ItemLocation({
   const path = [spaceName ?? 'Space', ...trail.map((f) => f.name)].join(' › ');
 
   return (
-    <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+    <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-secondary">
       {contextLabel ? (
         <p className="text-muted-foreground">
-          For <span className="font-medium text-foreground">{contextLabel}</span>
+          For <span className="font-semibold text-foreground">{contextLabel}</span>
         </p>
       ) : null}
       <p>
         <span className="text-muted-foreground">Saving in </span>
-        <Link className="font-medium underline-offset-4 hover:underline" {...placeTo}>
+        <Link className="font-semibold underline-offset-4 hover:underline" {...placeTo}>
           {path}
         </Link>
       </p>
-      {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
+      {error ? <p className="mt-1 text-caption text-destructive">{error}</p> : null}
     </div>
   );
 }
@@ -201,7 +201,7 @@ export function TrashList({
         <ul className="divide-y divide-border">
           {rows.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0">
-              <span className="font-medium">{row.label}</span>
+              <span className="text-row-title">{row.label}</span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => onRestore(row.id)}>
                   <ArchiveRestore /> Restore

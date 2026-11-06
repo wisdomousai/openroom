@@ -107,9 +107,6 @@ export function MoveTreePicker({
         </li>
         {tree.map((node) => renderNode(node, 1))}
       </ul>
-      <p className="text-caption font-normal text-muted-foreground">
-        Real hierarchy, filterable. Never a flat list of every folder.
-      </p>
     </div>
   );
 }

@@ -46,21 +46,20 @@ export function SavedResultsPage({ archiveId, userId }: { archiveId: string; use
       </nav>
       <article className="overflow-hidden rounded-xl border border-border bg-card">
         <header className="border-t-4 border-t-primary px-6 pb-7 pt-8 sm:px-10">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Saved results</p>
-          <h1 className="break-words font-display text-3xl font-semibold leading-tight sm:text-4xl">{results.title}</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">Results are kept for 90 days. Download a copy to keep them. This file is available to your account and current members of its space.</p>
+          <h1 className="break-words font-display text-page-title">{results.title}</h1>
+          <p className="mt-4 max-w-2xl text-secondary text-muted-foreground">Saved results are kept for 90 days. Download a copy to keep them. This file is available to your account and current members of its space.</p>
           <div className="mt-6 flex flex-wrap gap-3"><Button disabled={busy} onClick={() => void download('report')}>Download report</Button>{file.hasIndividualResponses ? <Button disabled={busy} variant="outline" onClick={() => void download('ballots')}>Download individual responses</Button> : null}<Button disabled={busy} variant="ghost" onClick={() => void download('json')}>Download data</Button></div>
-          <p className="mt-3 text-xs text-muted-foreground">Data downloads{file.hasIndividualResponses ? ' and individual responses' : ''} can contain names and hidden entries. Review files before sharing.</p>
-          {error ? <p role="alert" className="mt-4 text-sm text-destructive">{error}</p> : null}
+          <p className="mt-3 text-caption text-muted-foreground">Data downloads{file.hasIndividualResponses ? ' and individual responses' : ''} can contain names and hidden entries. Review files before sharing.</p>
+          {error ? <p role="alert" className="mt-4 text-secondary text-destructive">{error}</p> : null}
         </header>
         <div className="divide-y divide-border border-t border-border">
           {results.questions.map((question, index) => <section key={index} className="px-6 py-7 sm:px-10">
-            <h2 className="whitespace-pre-wrap break-words text-xl font-semibold leading-snug">{question.prompt}</h2>
-            {question.rows.length ? <table className="mt-5 w-full table-fixed text-sm"><caption className="sr-only">{question.prompt} — {question.measure}</caption><thead><tr className="border-b border-border text-muted-foreground"><th scope="col" className="pb-2 text-left font-normal">{question.measure === 'Summary' ? 'Measure' : 'Answer'}</th><th scope="col" className="w-28 pb-2 text-right font-normal">{question.measure}</th></tr></thead><tbody>{question.rows.map((row, rowIndex) => <tr key={rowIndex} className="border-b border-border/60 last:border-0"><th scope="row" className="break-words py-3 pr-4 text-left font-normal">{row.label}</th><td className="py-3 text-right font-medium tabular-nums">{number(row.value)}</td></tr>)}</tbody></table> : null}
-            {question.entries.length ? <ul className="mt-5 space-y-3">{question.entries.map((entry, entryIndex) => <li key={entryIndex} className="whitespace-pre-wrap break-words border-l-2 border-primary/30 pl-4 text-sm leading-relaxed">{entry}</li>)}</ul> : null}
-            {!question.rows.length && !question.entries.length ? <p className="mt-3 text-sm text-muted-foreground">No visible responses were saved for this question.</p> : null}
+            <h2 className="whitespace-pre-wrap break-words text-screen-title">{question.prompt}</h2>
+            {question.rows.length ? <table className="mt-5 w-full table-fixed text-secondary"><caption className="sr-only">{question.prompt} — {question.measure}</caption><thead><tr className="border-b border-border text-muted-foreground"><th scope="col" className="pb-2 text-left font-normal">{question.measure === 'Summary' ? 'Measure' : 'Answer'}</th><th scope="col" className="w-28 pb-2 text-right font-normal">{question.measure}</th></tr></thead><tbody>{question.rows.map((row, rowIndex) => <tr key={rowIndex} className="border-b border-border/60 last:border-0"><th scope="row" className="break-words py-3 pr-4 text-left font-normal">{row.label}</th><td className="py-3 text-right font-semibold tabular-nums">{number(row.value)}</td></tr>)}</tbody></table> : null}
+            {question.entries.length ? <ul className="mt-5 space-y-3">{question.entries.map((entry, entryIndex) => <li key={entryIndex} className="whitespace-pre-wrap break-words border-l-2 border-primary/30 pl-4 text-secondary">{entry}</li>)}</ul> : null}
+            {!question.rows.length && !question.entries.length ? <p className="mt-3 text-secondary text-muted-foreground">No visible responses were saved for this question.</p> : null}
           </section>)}
-          {!results.questions.length ? <p className="px-6 py-8 text-muted-foreground">This deck did not contain questions.</p> : null}
+          {!results.questions.length ? <p className="px-6 py-8 text-secondary text-muted-foreground">This deck did not contain questions.</p> : null}
         </div>
       </article>
     </div>

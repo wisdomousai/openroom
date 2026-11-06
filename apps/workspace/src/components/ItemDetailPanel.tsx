@@ -132,7 +132,7 @@ export function ItemDetailPanel({
       aria-label={`${title} details`}
       className={cn(
         'flex min-h-0 w-full flex-col bg-card',
-        variant === 'panel' ? 'h-full w-[300px] shrink-0 overflow-hidden border-l border-border' : 'gap-4',
+        variant === 'panel' ? 'h-full shrink-0 overflow-hidden border-l border-border' : 'gap-4',
       )}
     >
       <div
@@ -230,7 +230,7 @@ export function ItemDetailPanel({
               <span className="absolute left-[3px] top-[10px] h-[1.5px] w-[17px] bg-input" />
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-[13px] font-semibold">Slides</span>
+              <span className="text-rail">Slides</span>
               <span className="text-caption text-muted-foreground">{slidesLine(contents)}</span>
             </span>
           </Link>
@@ -240,12 +240,12 @@ export function ItemDetailPanel({
           >
             <span
               aria-hidden="true"
-              className="grid h-[17px] w-[26px] shrink-0 place-items-center rounded-sm border border-input bg-card text-[9px] text-muted-foreground"
+              className="grid h-[17px] w-[26px] shrink-0 place-items-center rounded-sm border border-input bg-card text-caption leading-none text-muted-foreground"
             >
               ✎
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-[13px] font-semibold">Homework</span>
+              <span className="text-rail">Homework</span>
               <span className="text-caption text-muted-foreground">{homeworkLine(aside?.homework)}</span>
             </span>
           </Link>
@@ -255,12 +255,12 @@ export function ItemDetailPanel({
           >
             <span
               aria-hidden="true"
-              className="grid h-[17px] w-[26px] shrink-0 place-items-center rounded-sm border border-dashed border-input bg-background text-[10px] text-muted-foreground"
+              className="grid h-[17px] w-[26px] shrink-0 place-items-center rounded-sm border border-dashed border-input bg-background text-caption leading-none text-muted-foreground"
             >
               ＋
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-[13px] font-semibold text-muted-foreground">Recap</span>
+              <span className="text-rail text-muted-foreground">Recap</span>
               <span className="text-caption text-muted-foreground">{recapLine(aside?.recap)}</span>
             </span>
           </Link>
@@ -273,7 +273,7 @@ export function ItemDetailPanel({
               <Link
                 key={record.id}
                 {...to.sessionNotes(record.sessionId)}
-                className="truncate rounded-md px-2 py-1.5 text-[13px] hover:bg-chrome"
+                className="truncate rounded-md px-2 py-1.5 text-rail font-normal hover:bg-chrome"
               >
                 {record.label}
               </Link>
@@ -343,7 +343,7 @@ export function ItemDetailPanel({
 /** The third column with nothing chosen. Still a column, never a blank slot. */
 export function EmptyInspector() {
   return (
-    <div className="flex h-full w-[300px] shrink-0 flex-col items-center justify-center gap-2 border-l border-border bg-card p-8 text-center">
+    <div className="flex h-full w-full shrink-0 flex-col items-center justify-center gap-2 border-l border-border bg-card p-8 text-center">
       <p className="text-row-title">Nothing selected</p>
     </div>
   );

@@ -30,7 +30,7 @@ export function SavedResultsLinks({ compact = false, ...scope }: ResultsScope & 
     <h3 className="mb-1.5 px-2 text-caption font-normal text-muted-foreground">Saved results</h3>
     {files.map((file) => {
       const ordinal = (titles.get(file.title) ?? 0) + 1; titles.set(file.title, ordinal);
-      return <Link key={file.id} {...to.savedResults(file.id)} className="rounded-md px-2 py-2 text-[13px] hover:bg-chrome">
+      return <Link key={file.id} {...to.savedResults(file.id)} className="rounded-md px-2 py-2 text-rail font-normal hover:bg-chrome">
         <span className="block truncate">{file.title}{ordinal > 1 ? ` · ${ordinal}` : ''}</span>
         <span className="block text-caption text-muted-foreground">{file.hasIndividualResponses ? 'Summary · individual responses' : 'Summary'}</span>
       </Link>;
