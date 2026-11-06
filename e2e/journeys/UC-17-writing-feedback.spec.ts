@@ -26,8 +26,11 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   await learner.getByRole('tab', { name: 'Practice', exact: true }).click();
   await learner.getByRole('tab', { name: 'Lesson', exact: true }).click();
   await expect(writing).toHaveValue('Je suis allé à Berlin. Le train était confortable.');
-  await learner.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+  // Saving by keyboard keeps focus on the button and announces Saved.
+  await learner.getByRole('button', { name: 'Save', exact: true }).focus();
+  await learner.keyboard.press('Enter');
+  await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeFocused();
+  await expect(learner.getByRole('status').filter({ hasText: /^Saved$/ })).toHaveCount(1);
 
   await page.goto(`/host/#/space/${context.spaceId}?contextId=${context.id}`);
   await page.getByRole('link', { name: 'Review learner work', exact: true }).click();
@@ -82,7 +85,17 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   await writing.fill('Je suis allée à Berlin. Le train était confortable.');
   await learner.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+  // Leaving with unsaved feedback asks first; Cancel keeps the text, Discard changes leaves.
+  await page.getByLabel('Feedback', { exact: true }).fill('UNSAVED REVISION');
   await page.getByRole('link', { name: 'Back to learner work', exact: true }).click();
+  const leave = page.getByRole('alertdialog', { name: 'Leave without saving?', exact: true });
+  await expect(leave).toHaveAccessibleDescription('Your changes to the feedback for Léa are not saved.');
+  await page.screenshot({ path: testInfo.outputPath('tutor-leave-unsaved.png') });
+  await leave.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByLabel('Feedback', { exact: true })).toHaveValue('UNSAVED REVISION');
+  await page.getByRole('link', { name: 'Back to learner work', exact: true }).click();
+  await leave.getByRole('button', { name: 'Discard changes', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'French conversation — Learner work', exact: true })).toBeVisible();
   await page.getByRole('link', { name: /Léa.*Review response/s }).click();
   await expect(page.getByLabel('Feedback', { exact: true })).toHaveValue('');
   await page.getByText('Other responses to this task', { exact: true }).click();

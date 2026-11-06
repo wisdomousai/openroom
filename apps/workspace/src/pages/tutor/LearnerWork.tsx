@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useBlocker } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { Play, Plus, Trash2 } from 'lucide-react';
 import type { LearnerFeedback } from '@openroom/schema';
@@ -12,6 +12,7 @@ import { Label } from '@openroom/ui/components/label';
 import { Textarea } from '@openroom/ui/components/textarea';
 import { to } from '../../destinations';
 import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../../components/ContinuityLock';
+import { ConfirmActionDialog } from '../../components/ManagementTable';
 import { LoadState, PageHeading, messageOf } from './shared';
 
 /** A voice row carries its length, so a cut-off or empty take shows before it is opened. */
@@ -72,6 +73,10 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
     const draft = detail.feedback.draft ?? { message: '', corrections: [] };
     return draft.audioComments ? { ...draft, audioComments: byTime(draft.audioComments) } : draft;
   });
+  // The draft as last stored; leaving with other edits asks first.
+  const [stored, setStored] = useState(feedback);
+  const unsaved = JSON.stringify(feedback) !== JSON.stringify(stored);
+  const leave = useBlocker({ shouldBlockFn: () => true, disabled: !unsaved, withResolver: true });
   const [version, setVersion] = useState(detail.feedback.version);
   const [published, setPublished] = useState(detail.feedback.published);
   const [busy, setBusy] = useState(false);
@@ -105,7 +110,7 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
     setBusy(true);
     try {
       const saved = await saveLearnerFeedback(contextId, work.id, { feedback, version, action });
-      setVersion(saved.version); setPublished(saved.published);
+      setVersion(saved.version); setPublished(saved.published); setStored(feedback);
       queryClient.setQueryData(['contexts', contextId, 'work', work.id], { ...detail, feedback: { draft: feedback, published: saved.published, version: saved.version } });
       setNotice(action === 'publish' ? `Feedback shared with ${work.displayName}.` : 'Draft saved. Only tutors in this space can see it.');
     } catch (cause) {
@@ -123,6 +128,7 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
   const emptyReason = `${work.task.kind === 'writing' ? 'Write feedback or add a correction to share.' : work.audio ? 'Write feedback or add a comment to share.' : 'Write feedback to share.'}${published ? ` ${work.displayName} still sees the shared feedback below.` : ''}`;
   const isVoice = Boolean(work.audio);
   return <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <ConfirmActionDialog open={leave.status === 'blocked'} onOpenChange={(open) => { if (!open) leave.reset?.(); }} title="Leave without saving?" description={`Your changes to the feedback for ${work.displayName} are not saved.`} confirmLabel="Discard changes" onConfirm={() => leave.proceed?.()} />
     <PageHeading title={`${work.displayName}’s ${work.task.kind === 'voice' ? 'voice response' : 'writing'}`} description="Draft feedback stays private until you share it with the learner." />
     <Button asChild variant="outline" className="w-fit"><Link {...to.studentWork(contextId)}>Back to learner work</Link></Button>
     <div className="grid items-start gap-6 lg:grid-cols-2">
