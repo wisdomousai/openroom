@@ -372,10 +372,22 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   const showCode = !identified;
 
   /**
-   * The marks the last Clear removed, for Undo. Kept until the slide changes or
-   * the tutor draws again: Undo then takes back that newer mark instead.
+   * The marks the last Clear removed, for Undo, and how many of them are back
+   * on the slide. Any other change to this console's ink (a new mark, a rub-out,
+   * another Clear, a slide change) ends it; the generation tells an Undo still
+   * in flight that it has been overtaken.
    */
-  const [clearedMarks, setClearedMarks] = useState<SessionMarkView[] | null>(null);
+  const [clearedMarks, setClearedMarks] = useState<{
+    marks: SessionMarkView[];
+    restored: number;
+    /** The mark that failed on the last Undo; failing again, it is skipped. */
+    failedAt?: number;
+  } | null>(null);
+  const inkGenerationRef = useRef(0);
+  const endClearUndo = useCallback(() => {
+    inkGenerationRef.current += 1;
+    setClearedMarks(null);
+  }, []);
 
   /** Put one shape over a word or a span, in the colour the ribbon is showing. */
   const applyShape = useCallback(
@@ -383,7 +395,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
       shape: MarkShape,
       target: { partKey: string; token: number; endToken?: number },
     ) => {
-      setClearedMarks(null);
+      endClearUndo();
       void run({
         command: 'mark.set',
         mark: {
@@ -395,7 +407,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
         },
       });
     },
-    [run, inkColor],
+    [run, inkColor, endClearUndo],
   );
 
   const lookupFlow = useMeaningLookup({ sessionCode: live.sessionCode, snapshot, run });
@@ -441,33 +453,53 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
 
   /*
    * Undo for ink. Clear removes every mark at once, so Undo right after it
-   * brings those marks back; otherwise Undo takes back the newest mark.
+   * brings those marks back; otherwise Undo takes back the newest mark. A mark
+   * someone else adds after the Clear is newer than it, so Undo takes that one.
    */
   const marks = (snapshot?.marks ?? []) as SessionMarkView[];
   const undoingRef = useRef(false);
   const outlineStepId = outlineStep?.id;
   useEffect(() => {
-    setClearedMarks(null);
-  }, [outlineStepId]);
+    endClearUndo();
+  }, [outlineStepId, endClearUndo]);
   const clearMarks = useCallback(() => {
-    if (marks.length > 0) setClearedMarks(marks);
+    inkGenerationRef.current += 1;
+    setClearedMarks(marks.length > 0 ? { marks, restored: 0 } : null);
     void run({ command: 'mark.clear' });
   }, [marks, run]);
-  const canUndoMarks = marks.length > 0 || (clearedMarks !== null && clearedMarks.length > 0);
+  const restorable =
+    clearedMarks !== null &&
+    clearedMarks.restored < clearedMarks.marks.length &&
+    marks.length <= clearedMarks.restored;
+  const canUndoMarks = marks.length > 0 || restorable;
   const undoMarks = useCallback(async () => {
     // One Undo at a time: a second press while marks come back would remove one.
     if (undoingRef.current) return;
     undoingRef.current = true;
     try {
-      if (clearedMarks !== null && clearedMarks.length > 0) {
-        const pending = [...clearedMarks];
-        while (pending.length > 0) {
-          const { id: _id, ...mark } = pending[0]!;
-          // A mark that does not go through stays pending for the next Undo.
-          if (!(await run({ command: 'mark.set', mark }))) break;
-          pending.shift();
+      if (restorable && clearedMarks !== null) {
+        const generation = inkGenerationRef.current;
+        let restored = clearedMarks.restored;
+        let failedAt: number | undefined;
+        while (restored < clearedMarks.marks.length) {
+          const { id: _id, ...mark } = clearedMarks.marks[restored]!;
+          const ok = await run({ command: 'mark.set', mark });
+          // A Clear, a new mark or a slide change while this ran: stop here.
+          if (inkGenerationRef.current !== generation) return;
+          if (ok) {
+            restored += 1;
+            continue;
+          }
+          // Failing twice in a row, a mark is skipped so Undo is not stuck on it.
+          if (clearedMarks.failedAt === restored) restored += 1;
+          else failedAt = restored;
+          break;
         }
-        setClearedMarks(pending.length > 0 ? pending : null);
+        setClearedMarks(
+          restored < clearedMarks.marks.length
+            ? { marks: clearedMarks.marks, restored, ...(failedAt === undefined ? {} : { failedAt }) }
+            : null,
+        );
         return;
       }
       const last = marks[marks.length - 1];
@@ -475,7 +507,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
     } finally {
       undoingRef.current = false;
     }
-  }, [marks, clearedMarks, run]);
+  }, [marks, clearedMarks, restorable, run]);
 
   /*
    * Private scratchpad. Held in this browser, keyed by join code, never sent
@@ -944,7 +976,12 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
                     track={canPresent && Boolean(outlineStep) && !ended}
                     onTarget={setMarkTarget}
                     onErase={
-                      canPresent && Boolean(outlineStep) && !ended ? (id) => void run({ command: 'mark.remove', id }) : undefined
+                      canPresent && Boolean(outlineStep) && !ended
+                        ? (id) => {
+                            endClearUndo();
+                            void run({ command: 'mark.remove', id });
+                          }
+                        : undefined
                     }
                     onCircle={(partKey, token, word, endToken) => {
                       const shape: MarkShape = isMarkShape(drawTool) ? drawTool : 'circle';
@@ -952,7 +989,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
                       if (lookupFlow.lookUpArmed) lookupFlow.lookUpWord({ partKey, token, word });
                     }}
                     onStroke={(points) => {
-                      setClearedMarks(null);
+                      endClearUndo();
                       void run({ command: 'mark.set', mark: { kind: 'pen', points, color: inkColor } });
                     }}
                   />

@@ -257,6 +257,8 @@ export function InkOverlay({
   const [keyLabel, setKeyLabel] = useState('');
   /** The element the keyboard is on; a slide change replaces it, which resets the picker. */
   const keyElementRef = useRef<HTMLElement | null>(null);
+  /** That element's text when the keyboard moved to it; a slide may reuse the node. */
+  const keyTextRef = useRef('');
   /** The word a keyboard-opened menu is for, so the menu does not hit-test a point. */
   const menuHitRef = useRef<TokenHit | null>(null);
   /** The mark under the pointer — thickened, because a double-click erases it. */
@@ -355,25 +357,33 @@ export function InkOverlay({
   const lockBoxes = lineBoxes(locked.flatMap((hit) => hit.boxes));
   const keyboard = track || shaping;
 
+  /** The keyboard word is gone or is another word now: the slide changed under it. */
+  function keyWordStale(): boolean {
+    const element = keyElementRef.current;
+    return element !== null && (!element.isConnected || element.textContent !== keyTextRef.current);
+  }
+
   function resetKeyWord(): void {
     keyElementRef.current = null;
+    keyTextRef.current = '';
     setKeyWord(null);
     setKeyLabel('');
     if (spanRef.current === null) setLocked([]);
   }
 
-  // A new slide replaces the word elements: drop the old word and its outline.
+  // A new slide replaces the words: drop the old word and its outline. Watched
+  // only while the keyboard is on a word.
+  const onWord = keyWord !== null;
   useEffect(() => {
     const scope = rootRef.current?.parentElement;
-    if (!keyboard || scope == null || typeof MutationObserver === 'undefined') return;
+    if (!keyboard || !onWord || scope == null || typeof MutationObserver === 'undefined') return;
     const observer = new MutationObserver(() => {
-      const element = keyElementRef.current;
-      if (element !== null && !element.isConnected) resetKeyWord();
+      if (keyWordStale()) resetKeyWord();
     });
-    observer.observe(scope, { childList: true, subtree: true });
+    observer.observe(scope, { childList: true, subtree: true, characterData: true });
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- resetKeyWord only calls setters and reads refs
-  }, [keyboard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the helpers only call setters and read refs
+  }, [keyboard, onWord]);
 
   /** Put the keyboard on one word and outline it as the pointer would. */
   function keyTo(index: number): TokenHit | null {
@@ -383,6 +393,7 @@ export function InkOverlay({
     const element = words[at] ?? null;
     const hit = hitOf(element, rootRef.current);
     keyElementRef.current = element;
+    keyTextRef.current = element?.textContent ?? '';
     setKeyWord(at);
     setLocked(hit === null ? [] : [hit]);
     setKeyLabel(hit?.word ?? '');
@@ -406,6 +417,8 @@ export function InkOverlay({
         clientY: box.top + box.height / 2,
       }),
     );
+    // The handler ran during dispatch; a menu that never opened leaves no word behind.
+    menuHitRef.current = null;
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -414,7 +427,8 @@ export function InkOverlay({
     const count = words.length;
     if (count === 0) return;
     // A word from a slide that has since changed counts as no word.
-    const current = keyWord !== null && words[keyWord] === keyElementRef.current ? keyWord : null;
+    const current =
+      keyWord !== null && words[keyWord] === keyElementRef.current && !keyWordStale() ? keyWord : null;
     const at = current ?? -1;
     const menu = event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
     let handled = true;
@@ -484,6 +498,7 @@ export function InkOverlay({
         const keyed = menuHitRef.current;
         menuHitRef.current = null;
         if (keyed !== null) {
+          spanRef.current = null;
           onTarget?.({ partKey: keyed.partKey, token: keyed.token, word: keyed.word });
           return;
         }

@@ -55,16 +55,27 @@ function leftRows(
   });
 }
 
-/** The full reading: every answer each left item got, which the rows fold into "+N more". */
-function pairsSummary(rows: LeftRow[], total: number, revealed: boolean): string {
+/**
+ * The full reading: every answer each left item got, which the rows fold into
+ * "+N more", in the counts or percentages the rows show.
+ */
+function pairsSummary(
+  rows: LeftRow[],
+  total: number,
+  dontKnow: number,
+  revealed: boolean,
+  showCount: boolean,
+): string {
   const parts = rows.map((row) => {
     if (row.choices.length === 0) return `${row.label}: no answers yet`;
-    const answers = row.choices.map(
-      (choice) => `${choice.label} ${String(choice.count)}${revealed && choice.correct ? ' (correct)' : ''}`,
-    );
+    const answers = row.choices.map((choice) => {
+      const value = showCount ? String(choice.count) : `${String(pct(choice.count, row.answered))}%`;
+      return `${choice.label} ${value}${revealed && choice.correct ? ' (correct)' : ''}`;
+    });
     return `${row.label} → ${answers.join(', ')}`;
   });
-  return `${String(total)} answer${total === 1 ? '' : 's'}. ${parts.join('; ')}`;
+  const unsure = dontKnow > 0 ? `, ${String(dontKnow)} don't know` : '';
+  return `${String(total)} answer${total === 1 ? '' : 's'}${unsure}. ${parts.join('; ')}`;
 }
 
 /**
@@ -104,7 +115,7 @@ export function PairsChart({
   const rows = leftRows(interaction, pairs, revealed);
 
   return (
-    <Frame summary={pairsSummary(rows, total, revealed)}>
+    <Frame summary={pairsSummary(rows, total, dontKnow, revealed, showCount)}>
       <div
         className={cn('or-pairs-chart', compact && 'or-chart--compact')}
         style={{ '--or-rows': String(rows.length + 1) } as CSSProperties}

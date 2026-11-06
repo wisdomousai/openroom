@@ -129,6 +129,16 @@ test('the console keeps its slide on a portrait tablet and every live control an
   await expect(underline).toHaveCount(2);
   await undo.click();
   await expect(underline).toHaveCount(1);
+  // Drawing after a Clear ends its undo: Undo takes back the newer mark only.
+  await presenter.getByRole('button', { name: 'Clear', exact: true }).click();
+  await expect(underline).toHaveCount(0);
+  await overlay.focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await expect(underline).toHaveCount(1);
+  await undo.click();
+  await expect(underline).toHaveCount(0);
+  await expect(undo).toBeDisabled();
   await presenter.getByRole('button', { name: 'Underline', exact: true }).click();
 
   // The slide rail is one tab stop; arrows move focus, Enter goes to the slide.
