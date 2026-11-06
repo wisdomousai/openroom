@@ -77,8 +77,10 @@ export function homeworkLine(
     const n = homework.items.length;
     return `${n} ${n === 1 ? 'item' : 'items'}${shared}`;
   }
-  if (homework.title?.trim() && !homework.body?.trim()) return homework.title.trim();
-  return forStudent ? 'Shared when you save Notes' : 'Written';
+  const title = homework.title?.trim();
+  if (homework.body?.trim()) return forStudent ? 'Shared when you save Notes' : 'Written';
+  if (title) return `${title}${shared}`;
+  return 'Not written';
 }
 
 export function recapLine(recap: { title?: string; body?: string; items?: string[] } | null | undefined): string {

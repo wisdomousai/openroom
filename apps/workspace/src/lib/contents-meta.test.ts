@@ -66,6 +66,10 @@ describe('aside lines', () => {
     );
     // A deck with no student promises no delivery.
     expect(homeworkLine({ tasks: [{}, {}] })).toBe('2 tasks');
+    expect(homeworkLine({ body: 'Read page 4.' })).toBe('Written');
+    expect(homeworkLine({ title: 'Reading' }, { forStudent: true })).toBe('Reading · shared when you save Notes');
+    // Blank homework is not written, whoever the deck is for.
+    expect(homeworkLine({ title: ' ', body: '  ' }, { forStudent: true })).toBe('Not written');
     expect(recapLine(undefined)).toBe('Not written');
   });
 });
