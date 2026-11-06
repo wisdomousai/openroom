@@ -62,8 +62,14 @@ export function useStageMirror(live: StoredSession) {
   }, [live.sessionCode, stageToken]);
 
   const retryStageToken = useCallback(() => setAttempt((n) => n + 1), []);
-  /** Refetch the projector feed now, rather than on the client's next poll. */
+  const statusRef = useRef(stageStatus);
+  statusRef.current = stageStatus;
+  /**
+   * Refetch the projector feed now, rather than on the client's next poll. A
+   * live socket already pushes the change, so only a polling mirror refetches.
+   */
   const refreshStage = useCallback(() => {
+    if (statusRef.current === 'live') return;
     void clientRef.current?.refresh().catch(() => {
       /* the next poll or socket message brings it */
     });

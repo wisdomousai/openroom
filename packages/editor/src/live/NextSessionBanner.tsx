@@ -5,8 +5,8 @@ import { cn } from '@openroom/ui/utils';
 /**
  * The tutor's saved "Next session" note, as a strip above the work: two lines
  * at most, the rest one click away. A long note no longer pushes the ribbon and
- * the slide (or the deck list) down the screen. The live console and the deck
- * editor both show it; Hide is the caller's to remember.
+ * the slide down the screen. The live console shows it, and the deck editor's
+ * note can use it too; Hide is the caller's to remember.
  */
 export function NextSessionBanner({
   note,

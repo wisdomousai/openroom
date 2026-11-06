@@ -1,7 +1,7 @@
 import { FacilitationControls } from './FacilitationControls';
 import { usePresentationKeys } from '../presenter/usePresentationKeys';
 import { canAdvanceOutline, canRetreatOutline } from './outline-navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHotkeys } from '@tanstack/react-hotkeys';
 import { getTheme, type ThemeId } from '@openroom/ui';
 import { deckAspectRatio } from '@openroom/schema';
@@ -371,12 +371,19 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
    */
   const showCode = !identified;
 
+  /**
+   * The marks the last Clear removed, for Undo. Kept until the slide changes or
+   * the tutor draws again: Undo then takes back that newer mark instead.
+   */
+  const [clearedMarks, setClearedMarks] = useState<SessionMarkView[] | null>(null);
+
   /** Put one shape over a word or a span, in the colour the ribbon is showing. */
   const applyShape = useCallback(
     (
       shape: MarkShape,
       target: { partKey: string; token: number; endToken?: number },
     ) => {
+      setClearedMarks(null);
       void run({
         command: 'mark.set',
         mark: {
@@ -417,7 +424,13 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   usePresentationKeys({ enabled: canPresent && Boolean(onReturnToDeck) && !ended, next, previous, close: escapeConsole });
   // The hosted console has no Escape exit, but an armed lookup or tool still cancels.
   useHotkeys(
-    [{ hotkey: 'Escape', callback: () => { cancelArmed(); } }],
+    [{
+      hotkey: 'Escape',
+      callback: () => {
+        if (chartMenu !== null || lookupFlow.cardOpen) return;
+        cancelArmed();
+      },
+    }],
     {
       enabled: !onReturnToDeck && (lookupFlow.lookUpArmed || drawTool !== 'none'),
       ignoreInputs: true,
@@ -427,12 +440,11 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   );
 
   /*
-   * Undo for ink. Clear removes every mark at once, so the marks it removed are
-   * kept here until the slide changes; Undo brings them back when the slide has
-   * none, and otherwise takes back the newest mark.
+   * Undo for ink. Clear removes every mark at once, so Undo right after it
+   * brings those marks back; otherwise Undo takes back the newest mark.
    */
   const marks = (snapshot?.marks ?? []) as SessionMarkView[];
-  const [clearedMarks, setClearedMarks] = useState<SessionMarkView[] | null>(null);
+  const undoingRef = useRef(false);
   const outlineStepId = outlineStep?.id;
   useEffect(() => {
     setClearedMarks(null);
@@ -443,15 +455,26 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   }, [marks, run]);
   const canUndoMarks = marks.length > 0 || (clearedMarks !== null && clearedMarks.length > 0);
   const undoMarks = useCallback(async () => {
-    if (marks.length === 0 && clearedMarks !== null) {
-      setClearedMarks(null);
-      for (const { id: _id, ...mark } of clearedMarks) {
-        if (!(await run({ command: 'mark.set', mark }))) return;
+    // One Undo at a time: a second press while marks come back would remove one.
+    if (undoingRef.current) return;
+    undoingRef.current = true;
+    try {
+      if (clearedMarks !== null && clearedMarks.length > 0) {
+        const pending = [...clearedMarks];
+        while (pending.length > 0) {
+          const { id: _id, ...mark } = pending[0]!;
+          // A mark that does not go through stays pending for the next Undo.
+          if (!(await run({ command: 'mark.set', mark }))) break;
+          pending.shift();
+        }
+        setClearedMarks(pending.length > 0 ? pending : null);
+        return;
       }
-      return;
+      const last = marks[marks.length - 1];
+      if (last !== undefined) await run({ command: 'mark.remove', id: last.id });
+    } finally {
+      undoingRef.current = false;
     }
-    const last = marks[marks.length - 1];
-    if (last !== undefined) await run({ command: 'mark.remove', id: last.id });
   }, [marks, clearedMarks, run]);
 
   /*
@@ -928,9 +951,10 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
                       applyShape(shape, { partKey, token, endToken });
                       if (lookupFlow.lookUpArmed) lookupFlow.lookUpWord({ partKey, token, word });
                     }}
-                    onStroke={(points) =>
-                      void run({ command: 'mark.set', mark: { kind: 'pen', points, color: inkColor } })
-                    }
+                    onStroke={(points) => {
+                      setClearedMarks(null);
+                      void run({ command: 'mark.set', mark: { kind: 'pen', points, color: inkColor } });
+                    }}
                   />
                 </PlateInkMenu>
                 {lookupFlow.lookUpArmed && (snapshot.meaning || snapshot.dictionary) ? (

@@ -84,8 +84,16 @@ test('the console keeps its slide on a portrait tablet and every live control an
   await expect(presenter.getByRole('button', { name: 'Look up a word', exact: true })).toBeVisible();
   await expect(presenter.getByRole('button', { name: 'End session', exact: true }).first()).toBeVisible();
 
-  // The slide is one tab stop; arrows walk the words and the live region names each.
+  // A mouse click on the slide does not take the clicker keys from the page.
   const overlay = mirror.locator('.ink-overlay');
+  await overlay.click({ position: { x: 20, y: 20 } });
+  await expect(overlay).not.toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(mirror.getByText('Ready?', { exact: true })).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await expect(mirror.getByText('Ein Plan', { exact: true })).toBeVisible();
+
+  // The slide is one tab stop; arrows walk the words and the live region names each.
   await overlay.focus();
   await page.keyboard.press('ArrowRight');
   await expect(overlay.locator('[aria-live]')).toHaveText('Ein');
