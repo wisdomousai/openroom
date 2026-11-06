@@ -914,11 +914,11 @@
   overflow: hidden;
 }
 
-/* One to three cards or steps: rows as tall as their content, from the top,
-   rather than boxes stretched over the slide and mostly empty. The count is
-   the authored one, so a reveal does not change the rows. */
+/* One to three cards, steps or prompts: rows as tall as their content, from
+   the top, rather than boxes stretched over the slide and mostly empty. The
+   count is the authored one, so a reveal does not change the rows. */
 .slide-surface .outline-step--layout-grid
-  :is(.outline-step__cards, .outline-step__sequence):is([data-item-count='1'], [data-item-count='2'], [data-item-count='3']) {
+  :is(.outline-step__cards, .outline-step__sequence, .outline-step__bullets):is([data-item-count='1'], [data-item-count='2'], [data-item-count='3']) {
   grid-auto-rows: minmax(0, max-content);
   align-content: start;
 }

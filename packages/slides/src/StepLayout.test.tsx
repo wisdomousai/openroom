@@ -344,6 +344,8 @@ describe('sizes that come from the authored count', () => {
   it('keeps the grid rows while a reveal hides cells', () => {
     const html = renderToStaticMarkup(<StepLayout step={STEPS.steps} hiddenParts={new Set(['cell-2', 'cell-3'])} />);
     expect(html).toContain('class="outline-step__sequence" data-item-count="4"');
+    const debrief = renderToStaticMarkup(<StepLayout step={STEPS.debrief} hiddenParts={new Set(['cell-1'])} />);
+    expect(debrief).toContain('outline-step__bullets--questions" data-item-count="2"');
   });
 });
 

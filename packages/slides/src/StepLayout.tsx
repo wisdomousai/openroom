@@ -572,7 +572,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
           {region(
             'support',
             split,
-            <ul className="outline-step__bullets outline-step__bullets--questions">
+            <ul className="outline-step__bullets outline-step__bullets--questions" data-item-count={step.prompts.length}>
               {step.prompts.map((item, index) =>
                 show(`cell-${String(index)}`) ? (
                   <li key={`${String(index)}-${item}`} {...part.attrs(`cell-${String(index)}`)}>
