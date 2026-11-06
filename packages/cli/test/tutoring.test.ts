@@ -117,6 +117,27 @@ interactions:
       title: 'French B1',
       stepCount: 2,
       interactionCount: 1,
+      warnings: [],
     });
+  });
+
+  it('prints the warnings of a valid outline that will not draw as written', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'openroom-cli-outline-'));
+    writeFileSync(join(cwd, 'outline.yaml'), `version: 1
+meta:
+  title: Le zoo
+steps:
+  - id: rule
+    kind: statement
+    body: Le zoo
+    media: { type: image, url: "https://example.test/zoo.png", alt: A zoo, place: right }
+interactions: []
+`, 'utf8');
+    const output = capture();
+    expect(await run(['outline', 'validate', 'outline.yaml'], { cwd, io: output.io })).toBe(0);
+    expect(output.err.join('\n')).toContain('W_MEDIA_PLACE /steps/0/media/place');
+    const json = capture();
+    expect(await run(['outline', 'validate', 'outline.yaml', '--json'], { cwd, io: json.io })).toBe(0);
+    expect(JSON.parse(json.out[0] as string)).toMatchObject({ steps: [{ id: 'rule', layout: 'split' }], warnings: [{ code: 'W_MEDIA_PLACE' }] });
   });
 });

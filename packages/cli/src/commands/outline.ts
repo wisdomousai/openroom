@@ -33,17 +33,22 @@ export function cmdOutline(args: ParsedArgs, reporter: Reporter, cwd = process.c
     title: result.outline.meta.title,
     stepCount: result.outline.steps.length,
     interactionCount: result.session.interactions.length,
-    steps: result.outline.steps.map((step) => ({
+    steps: result.outline.steps.map((step, index) => ({
       id: step.id,
       kind: step.kind,
-      ...(step.layout === undefined ? {} : { layout: step.layout }),
+      ...(result.layouts?.[index] === undefined ? {} : { layout: result.layouts[index] }),
       ...(step.reveal === undefined ? {} : { reveal: resolveRevealOrder(step, result.outline.interactions) }),
       ...(step.breakoutOf === undefined ? {} : { breakoutOf: step.breakoutOf }),
     })),
+    warnings: result.warnings ?? [],
   };
   reporter.line(
     `✓ valid outline (${String(value.stepCount)} steps, ${String(value.interactionCount)} interactions)`,
   );
+  // Warnings are advice about how the outline will draw; the file is still valid.
+  for (const warning of value.warnings) {
+    reporter.errorLine(`${warning.code} ${warning.path} ${warning.message}`);
+  }
   reporter.emit(value);
   return 0;
 }
