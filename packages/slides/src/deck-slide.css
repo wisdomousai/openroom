@@ -760,6 +760,48 @@
   order: -1;
 }
 
+/*
+ * A picture on a stacked layout (title, text, grid) sits in the flow with the
+ * words. It is at most its size tall and gives way first when the slide is
+ * full: it takes only the height the words leave, so no text is pushed off
+ * the slide. `left` and `right` never get here; such a step is drawn as split.
+ */
+.slide-surface
+  .outline-step--has-picture:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > [data-part='image'] {
+  flex: 0 1000 auto;
+  min-height: 0;
+  max-height: var(--picture-size, 42%);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* An aspect frame has no content width of its own: its height sets its width,
+   so the ratio holds while the picture gives way. */
+.slide-surface
+  .outline-step--has-picture:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > .outline-step__media-frame {
+  height: var(--picture-size, 42%);
+}
+
+/* A credited photo keeps the whole picture when it gives way. */
+.slide-surface
+  .outline-step--has-picture:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > .outline-step__media-photo
+  > img {
+  height: 100%;
+  object-fit: contain;
+}
+
+/* `bottom`, the default on these layouts, is under everything else: below a
+   list or a grid of cards, not between it and the heading. */
+.slide-surface
+  .outline-step--has-picture[data-picture-place='bottom']:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > :is([data-part='image'], .outline-step__caption) {
+  order: 1;
+}
+
 .slide-surface .outline-step--layout-split .outline-step__region--lede,
 .slide-surface .outline-step--layout-split .outline-step__region--support {
   display: flex;
