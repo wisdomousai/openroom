@@ -925,10 +925,13 @@
 
 /* A step number is never taller than its cell: in a full grid the badge
    shrinks with the row instead of being cut by the cell border. Number and
-   text are centred on the same line, so a shrunk badge still lines up. */
+   text share the first baseline, so a shrunk badge still lines up. */
 .slide-surface .outline-step--layout-grid .outline-step__sequence li {
   grid-template-rows: minmax(0, 1fr);
-  align-items: center;
+}
+
+.slide-surface .outline-step--layout-grid .outline-step__sequence li > :is(span:not([data-slide-decoration]), p) {
+  align-self: first baseline;
 }
 
 .slide-surface .outline-step--layout-grid .outline-step__sequence li > span:not([data-slide-decoration]) {
