@@ -7,6 +7,15 @@
  * first; the ended view drops Leave and the handle notice; a refused seat says
  * the session is no longer open; join failures read as plain sentences; a
  * personal link opened before the start waits and enters on its own.
+ *
+ * The phone page scrolls by finger at short, narrow and landscape sizes, so
+ * Send, the answered state and the results stay reachable; list-heavy slides
+ * open in Reading below 640 px and the learner's choice survives a question;
+ * the individual listening player sits under the slide with a learner error;
+ * a lost connection names the unsent answer and the banner clears once the
+ * phone is back;
+ * a looked-up word loses its punctuation, the sheet keeps Close in view, takes
+ * focus, closes on Escape and when the step changes.
  */
 import { test, expect, devices, type APIRequestContext, type Page } from '@playwright/test';
 
@@ -54,6 +63,78 @@ const OUTLINE = {
     },
   ],
 };
+
+const PHRASES = [
+  'Je voudrais réserver une table pour deux personnes, s’il vous plaît.',
+  'Est-ce que vous pouvez répéter plus lentement ?',
+  'Je ne suis pas sûr de comprendre la question.',
+  'Pouvez-vous me montrer le chemin jusqu’à la gare ?',
+  'Je cherche une pharmacie qui est ouverte le dimanche.',
+  'Nous avons rendez-vous à quinze heures trente.',
+  'Il faut changer de train à Lyon pour aller à Grenoble.',
+  'Je préfère payer par carte si c’est possible.',
+  'Merci beaucoup, vous avez été très gentil.',
+];
+
+const CHOICES = Array.from(
+  { length: 10 },
+  (_, index) => `Réponse ${index + 1} : une phrase assez longue pour passer sur deux lignes au téléphone`,
+);
+
+const REACH = {
+  version: 1,
+  meta: { title: 'Phone reach', subject: 'French', level: 'A2' },
+  steps: [
+    { id: 'phrases', kind: 'steps', title: 'Phrases utiles', items: PHRASES },
+    {
+      id: 'listen',
+      kind: 'media',
+      title: 'Écoutez le rendez-vous',
+      media: { type: 'audio', url: '/api/assets/missing-recording', alt: 'Le rendez-vous', listening: { mode: 'individual' } },
+    },
+    { id: 's-text', kind: 'interaction', interactionId: 'q-text' },
+    { id: 's-many', kind: 'interaction', interactionId: 'q-many' },
+  ],
+  interactions: [
+    {
+      id: 'q-text',
+      type: 'text',
+      prompt: 'Où êtes-vous allé ce matin ?',
+      correctAnswers: ['Je suis allé au marché'],
+      match: { locale: 'fr' },
+    },
+    {
+      id: 'q-many',
+      type: 'choice',
+      prompt: 'Choisissez la bonne réponse.',
+      options: CHOICES.map((label, index) => ({ id: `c${index + 1}`, label })),
+    },
+  ],
+};
+
+/**
+ * Scroll the way a thumb does, with the wheel at the middle of the screen, until
+ * the target sits inside the viewport. A programmatic scroll would also move an
+ * overflow-hidden box, which is exactly the bug this guards against.
+ */
+async function reachByScrolling(page: Page, target: ReturnType<Page['locator']>): Promise<boolean> {
+  const viewport = page.viewportSize()!;
+  await page.mouse.move(viewport.width / 2, viewport.height / 2);
+  for (let step = 0; step < 40; step++) {
+    const box = await target.boundingBox();
+    if (box && box.y >= 0 && box.y + box.height <= viewport.height) return true;
+    await page.mouse.wheel(0, 200);
+    await page.waitForTimeout(40);
+  }
+  return false;
+}
+
+async function scrollToTop(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    document.querySelector('.page__body')?.scrollTo(0, 0);
+  });
+}
 
 test.beforeAll(async () => {
   await waitForWorker();
@@ -179,9 +260,149 @@ test.describe('UC-44 participant phone states', () => {
     await context.close();
   });
 
+  test('the phone page scrolls to Send and results, keeps the view choice and the player', async ({ browser }, testInfo) => {
+    const session = await createSession(REACH);
+    await command(session.sessionCode, session.hostToken, { command: 'session.start' });
+    await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 'phrases' });
+
+    const context = await browser.newContext(PHONE);
+    const phone = await context.newPage();
+    await joinInBrowser(phone, session.code);
+
+    // A list-heavy slide opens in Reading below 640 px; its last line is reachable.
+    const reading = phone.getByRole('button', { name: 'Reading', exact: true });
+    const slide = phone.getByRole('button', { name: 'Slide', exact: true });
+    await expect(reading).toHaveAttribute('aria-pressed', 'true');
+    const lastPhrase = phone.getByText(PHRASES.at(-1)!, { exact: true });
+    expect(await reachByScrolling(phone, lastPhrase)).toBe(true);
+    await phone.screenshot({ path: testInfo.outputPath('reading-last-line-390.png') });
+
+    // The learner's choice survives a question in between.
+    await scrollToTop(phone);
+    await slide.click();
+    await openStep(session, 'q-text');
+    await expect(phone.getByRole('textbox', { name: 'Answer', exact: true })).toBeVisible();
+    await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 'phrases' });
+    await expect(slide).toHaveAttribute('aria-pressed', 'true');
+
+    // The individual player sits under the slide, at the 44 px target, with a learner error.
+    await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 'listen' });
+    const player = phone.getByRole('region', { name: 'Your player', exact: true });
+    await expect(player).toBeVisible();
+    const plate = (await phone.locator('.learner-slide__plate').boundingBox())!;
+    expect((await player.boundingBox())!.y).toBeGreaterThanOrEqual(plate.y + plate.height);
+    const replay = player.getByRole('button', { name: 'Replay', exact: true });
+    expect((await replay.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    const failed = player.getByRole('alert');
+    await expect(failed).toHaveText(/This audio could not be loaded\. Check your connection, then tap Retry loading\./);
+    expect(await reachByScrolling(phone, failed)).toBe(true);
+    await phone.screenshot({ path: testInfo.outputPath('listening-player-390.png') });
+
+    // A short window (keyboard open): Send, then Change answer, are reachable by finger.
+    await scrollToTop(phone);
+    await phone.setViewportSize({ width: 390, height: 340 });
+    await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 's-text' });
+    await openStep(session, 'q-text');
+    const answer = phone.getByRole('textbox', { name: 'Answer', exact: true });
+    await answer.fill('Je suis allé au marché');
+    const send = phone.getByRole('button', { name: 'Send answer', exact: true });
+    expect(await reachByScrolling(phone, send)).toBe(true);
+    await phone.screenshot({ path: testInfo.outputPath('send-390x340.png') });
+    await send.click();
+    await expect(phone.getByText('Answer received', { exact: true })).toBeVisible();
+    expect(await reachByScrolling(phone, phone.getByRole('button', { name: 'Change answer', exact: true }))).toBe(true);
+
+    // Landscape: the content region scrolls to the revealed result and the accepted form.
+    await scrollToTop(phone);
+    await phone.setViewportSize({ width: 844, height: 390 });
+    await command(session.sessionCode, session.hostToken, { command: 'interaction.close', interactionId: 'q-text' });
+    await command(session.sessionCode, session.hostToken, { command: 'interaction.reveal', interactionId: 'q-text' });
+    const accepted = phone.getByText('Accepted answer:', { exact: false });
+    await expect(accepted).toContainText('Je suis allé au marché');
+    expect(await reachByScrolling(phone, accepted)).toBe(true);
+    await phone.screenshot({ path: testInfo.outputPath('revealed-844x390.png') });
+
+    // Ten long options at 360x640: the last option is reachable, and a tap sends it.
+    await scrollToTop(phone);
+    await phone.setViewportSize({ width: 360, height: 640 });
+    await openStep(session, 'q-many');
+    const lastOption = phone.getByRole('radio', { name: CHOICES.at(-1)!, exact: true });
+    expect(await reachByScrolling(phone, lastOption)).toBe(true);
+    await phone.screenshot({ path: testInfo.outputPath('choice-10-360x640.png') });
+    await lastOption.click();
+    await expect(phone.getByText('Answer received', { exact: true })).toBeVisible();
+
+    // A lost connection names the unsent answer. The banner clears once the phone
+    // is back; the unsent line stays until the learner sends again.
+    const change = phone.getByRole('button', { name: 'Change answer', exact: true });
+    expect(await reachByScrolling(phone, change)).toBe(true);
+    await change.click();
+    await context.setOffline(true);
+    const firstOption = phone.getByRole('radio', { name: CHOICES[0]!, exact: true });
+    await firstOption.click();
+    const unsent = phone.getByText('Your answer was not sent. Try again.', { exact: true });
+    await expect(unsent).toBeVisible();
+    await expect(phone.getByText(/Offline — reconnecting/)).toBeVisible();
+    await context.setOffline(false);
+    await expect(phone.getByText(/Offline|Reconnecting/)).toHaveCount(0, { timeout: 15_000 });
+    await expect(unsent).toBeVisible();
+    await firstOption.click();
+    await expect(phone.getByText('Answer received', { exact: true })).toBeVisible();
+    await expect(unsent).toHaveCount(0);
+    await context.close();
+  });
+
+  test('a looked-up word drops its punctuation; the sheet keeps Close, takes focus and closes', async ({ page, browser }, testInfo) => {
+    const api = await signIn(page);
+    const seed = await seedIdentifiedLobby(api, LOOKUP);
+    await command(seed.sessionCode, seed.hostToken, { command: 'session.start' });
+
+    const context = await browser.newContext(PHONE);
+    const phone = await context.newPage();
+    const asked: string[] = [];
+    await phone.route('**/api/sessions/*/dictionary', async (route) => {
+      const word = route.request().postDataJSON().word as string;
+      asked.push(word);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ entry: longEntry(word), meaning: `meaning of ${word}` }) });
+    });
+    await phone.goto(joinUrl(seed.code, seed.linkToken));
+    const token = phone.locator('.learner-slide__plate [data-token]', { hasText: 'passé,' });
+    await expect(token).toBeVisible({ timeout: 20_000 });
+
+    await token.click();
+    const sheet = phone.getByRole('dialog', { name: 'Dictionary: passé', exact: true });
+    await expect(sheet.locator('.learner-lookup__meaning')).toHaveText('meaning of passé');
+    expect(asked).toEqual(['passé']);
+    const close = sheet.getByRole('button', { name: 'Close', exact: true });
+    await expect(close).toBeFocused();
+    const closeBox = (await close.boundingBox())!;
+    expect(Math.min(closeBox.width, closeBox.height)).toBeGreaterThanOrEqual(44);
+
+    // Close stays in view while the forms table scrolls under it.
+    await sheet.evaluate((element) => element.scrollTo(0, element.scrollHeight));
+    const sheetBox = (await sheet.boundingBox())!;
+    const scrolledClose = (await close.boundingBox())!;
+    expect(scrolledClose.y).toBeGreaterThanOrEqual(sheetBox.y);
+    await phone.screenshot({ path: testInfo.outputPath('lookup-scrolled.png') });
+
+    // Escape closes the sheet and hands focus back to the word.
+    await phone.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
+    await expect(token).toBeFocused();
+
+    // Brackets come off too; a new step closes an open sheet.
+    await phone.locator('.learner-slide__plate [data-token]', { hasText: '(vraiment)' }).click();
+    await expect(phone.getByRole('dialog', { name: 'Dictionary: vraiment', exact: true }).locator('.learner-lookup__meaning')).toHaveText('meaning of vraiment');
+    expect(asked).toEqual(['passé', 'vraiment']);
+    await command(seed.sessionCode, seed.hostToken, { command: 'outline.goto', stepId: 'end' });
+    await expect(phone.getByText('Fin', { exact: true }).first()).toBeVisible();
+    await expect(phone.getByRole('dialog')).toHaveCount(0);
+    await context.close();
+  });
+
   test('a personal link opened before the start waits, then enters on its own', async ({ page, browser }) => {
     const api = await signIn(page);
-    const seed = await seedIdentifiedLobby(api);
+    const seed = await seedIdentifiedLobby(api, OUTLINE);
 
     const context = await browser.newContext(PHONE);
     const phone = await context.newPage();
@@ -232,7 +453,44 @@ async function signIn(page: Page): Promise<APIRequestContext> {
   return api;
 }
 
-async function seedIdentifiedLobby(api: APIRequestContext) {
+const LOOKUP = {
+  version: 1,
+  meta: { title: 'Phone lookup', subject: 'French', level: 'A2' },
+  steps: [
+    { id: 'read', kind: 'statement', title: 'Hier', body: 'Il est passé, (vraiment) hier.' },
+    { id: 'end', kind: 'title', title: 'Fin' },
+  ],
+  interactions: [],
+};
+
+/** An entry with a forms table taller than the sheet. */
+function longEntry(word: string) {
+  return {
+    word,
+    lemma: word,
+    lang: 'fr',
+    pos: 'verb',
+    labels: [],
+    senses: [{ gloss: `meaning of ${word}` }],
+    sections: [
+      {
+        key: 'indicative-present',
+        label: 'Present',
+        columnLabels: ['Form'],
+        rows: Array.from({ length: 12 }, (_, index) => ({ label: `Person ${index + 1}`, cells: [`${word}${index}`] })),
+      },
+      {
+        key: 'indicative-past',
+        label: 'Past',
+        columnLabels: ['Form'],
+        rows: Array.from({ length: 12 }, (_, index) => ({ label: `Person ${index + 1}`, cells: [`${word}-p${index}`] })),
+      },
+    ],
+    source: { name: 'Test dictionary', url: 'https://dictionary.invalid/' },
+  };
+}
+
+async function seedIdentifiedLobby(api: APIRequestContext, outline: typeof OUTLINE | typeof LOOKUP) {
   const stamp = Date.now();
   const contextRes = await api.post(`${BASE}/api/tutoring/contexts`, {
     headers: CSRF,
@@ -248,7 +506,7 @@ async function seedIdentifiedLobby(api: APIRequestContext) {
       spaceId,
       shape: 'tutoring',
       createSession: true,
-      content: { ...OUTLINE, defaults: { identityMode: 'identified' } },
+      content: { ...outline, defaults: { identityMode: 'identified' } },
     },
   });
   expect(deckRes.status()).toBe(201);
