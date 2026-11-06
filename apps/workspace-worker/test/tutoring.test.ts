@@ -643,9 +643,14 @@ describe('control plane hardening', () => {
     const emptiedSpace = `sp_ctx_${emptied}`;
     expect((await asBrowser(cookie, `/api/my/spaces/${emptiedSpace}/folders`, { method: 'POST', body: JSON.stringify({ name: 'Week 1' }) })).status).toBe(201);
     expect((await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Theirs', outline: SAMPLE_CONTENT, contextId: emptied }) })).status).toBe(201);
+    // A lesson run there: its saved results must stay reachable once the space is gone.
+    await env.DB.prepare("INSERT INTO live_sessions (code, user_id, title, created_at, ended, space_id) VALUES ('LIVE01', NULL, 'Lesson', 0, 1, ?1)")
+      .bind(emptiedSpace).run();
     await purge(emptied);
     expect(await listed()).not.toContain(emptiedSpace);
     expect((await asBrowser(cookie, `/api/my/spaces/${emptiedSpace}`)).status).toBe(404);
+    const live = await env.DB.prepare("SELECT space_id FROM live_sessions WHERE code = 'LIVE01'").first<{ space_id: string | null }>();
+    expect(live?.space_id).toBeNull();
 
     // A deck filed there without the student keeps the space and the deck.
     const kept = await createContext(cookie);

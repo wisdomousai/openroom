@@ -469,26 +469,26 @@ function deletionPage(title: string, body: string, status = 200): Response {
 }
 
 /**
- * The space made for a student (`sp_ctx_<id>`) goes with them when its owner
- * purges them and nothing else is filed in it: its folders, tags, invites and
- * members, then the space. A deck, session, picture or brand kit still filed
- * there keeps the space, which the nav then lists like any other. Saved results
- * of its lessons stay with the tutor who ran them. A space the context was only
- * attached to is never touched. This is tidying after the purge: if it cannot
- * finish, the space stays and the purge still stands.
+ * The space made for a student (`sp_ctx_<id>`) goes with them when nothing else
+ * is filed in it: its folders, tags, invites and members, then the space. The
+ * purge itself is the permission: whoever may delete the student and their
+ * decks may delete the empty space that held them. A deck, session, picture or
+ * brand kit still filed there keeps the space. Saved results of its lessons
+ * stay with the tutor who ran them. A space the context was only attached to is
+ * never touched. This is tidying after the purge: if it cannot finish, the
+ * space stays and the purge still stands.
  */
-async function removeEmptyStudentSpace(env: ControlEnv, userId: string, contextId: string, spaceId: string): Promise<void> {
+async function removeEmptyStudentSpace(env: ControlEnv, contextId: string, spaceId: string): Promise<void> {
   if (spaceId !== `sp_ctx_${contextId}`) return;
   const space = await env.DB.prepare(
-    `SELECT s.owner_user_id AS owner,
-            (EXISTS (SELECT 1 FROM decks WHERE space_id = s.id)
+    `SELECT (EXISTS (SELECT 1 FROM decks WHERE space_id = s.id)
              OR EXISTS (SELECT 1 FROM sessions WHERE space_id = s.id)
              OR EXISTS (SELECT 1 FROM media_assets WHERE space_id = s.id)
              OR EXISTS (SELECT 1 FROM brand_kits WHERE space_id = s.id)
              OR EXISTS (SELECT 1 FROM contexts WHERE space_id = s.id)) AS kept
        FROM spaces s WHERE s.id = ?1`,
-  ).bind(spaceId).first<{ owner: string; kept: number }>();
-  if (space === null || space.owner !== userId || space.kept) return;
+  ).bind(spaceId).first<{ kept: number }>();
+  if (space === null || space.kept) return;
   try {
     await env.DB.batch([
       // Archive access then falls back to the tutor who ran the lesson.
@@ -500,8 +500,9 @@ async function removeEmptyStudentSpace(env: ControlEnv, userId: string, contextI
       env.DB.prepare('DELETE FROM space_contexts WHERE space_id = ?1').bind(spaceId),
       env.DB.prepare('DELETE FROM spaces WHERE id = ?1').bind(spaceId),
     ]);
-  } catch {
-    // Something was filed there after the check; the batch rolled back and the space stays.
+  } catch (cause) {
+    // The batch rolled back and the space stays; the workspace nav leaves an empty one out.
+    console.error('student-space-cleanup-failed', spaceId, cause);
   }
 }
 
@@ -554,7 +555,7 @@ export async function confirmPermanentDeletionRoute(
       env.DB.prepare('DELETE FROM space_contexts WHERE context_id = ?1').bind(resource.id),
       env.DB.prepare('DELETE FROM contexts WHERE id = ?1').bind(resource.id),
     ]);
-    await removeEmptyStudentSpace(env, user.id, resource.id, resource.space_id);
+    await removeEmptyStudentSpace(env, resource.id, resource.space_id);
   } else if (intent.resource_type === 'folder') {
     const ok = await confirmFolderDeletion(env, user, intent.resource_id, purgeDeck);
     if (!ok) return notInTrash();
