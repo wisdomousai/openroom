@@ -62,7 +62,7 @@ describe('aside lines', () => {
       '6 slides · 16 min',
     );
     expect(homeworkLine({ items: ['a', 'b', 'c', 'd', 'e', 'f'] })).toBe(
-      '6 items · sent when the session ends',
+      '6 items · shared when you save Notes',
     );
     expect(recapLine(undefined)).toBe('Not written');
   });
