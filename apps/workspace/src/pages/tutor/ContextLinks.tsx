@@ -218,8 +218,12 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
   const [learnerChoice, setLearnerChoice] = useState<string | null>(null);
   const learnersQuery = useQuery({ queryKey: ['contexts', contextId, 'learners'], queryFn: () => listContextLearners(contextId) });
   const contextQuery = useQuery({ queryKey: ['contexts', contextId], queryFn: () => getContext(contextId) });
-  const onePerson = contextQuery.data?.kind === 'person';
-  const selectedLearner = onePerson ? 'person' : learnerChoice ?? (learnersQuery.data?.length === 0 ? 'new' : '');
+  const person = contextQuery.data?.kind === 'person';
+  /** Learners other than the student themself: only an older or agent-made context has them. */
+  const otherLearners = (learnersQuery.data ?? []).filter((learner) => !person || learner.id !== `person-${contextId}`);
+  /** A 1:1 student is the only learner, so there is nobody to choose. */
+  const onePerson = person && otherLearners.length === 0;
+  const selectedLearner = onePerson ? 'person' : learnerChoice ?? (person ? 'person' : otherLearners.length === 0 ? 'new' : '');
   const ready = contextQuery.isSuccess && learnersQuery.isSuccess;
   const [minted, setMinted] = useState<MintedContextLink | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -295,13 +299,13 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
             {!ready ? <p role={contextQuery.isError || learnersQuery.isError ? 'alert' : 'status'} className="text-secondary text-muted-foreground">
               {contextQuery.isError || learnersQuery.isError ? 'Could not load learners. Reload this page to try again.' : 'Loading learners…'}
             </p> : null}
-            {/* A 1:1 student is the only learner: there is nobody to choose. */}
-            {ready && !onePerson && (learnersQuery.data?.length ?? 0) > 0 ? <div className="grid gap-2">
+            {ready && !onePerson && otherLearners.length > 0 ? <div className="grid gap-2">
               <Label>Learner</Label>
               <Select value={selectedLearner} onValueChange={setLearnerChoice}>
                 <SelectTrigger aria-label="Learner"><SelectValue placeholder="Choose a learner" /></SelectTrigger>
                 <SelectContent>
-                  {learnersQuery.data?.map((person) => <SelectItem key={person.id} value={person.id}>{person.displayName}</SelectItem>)}
+                  {person ? <SelectItem value="person">{contextQuery.data?.displayName}</SelectItem> : null}
+                  {otherLearners.map((learner) => <SelectItem key={learner.id} value={learner.id}>{learner.displayName}</SelectItem>)}
                   <SelectItem value="new">New learner</SelectItem>
                 </SelectContent>
               </Select>

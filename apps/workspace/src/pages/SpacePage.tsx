@@ -416,8 +416,8 @@ export function SpacePage({
     setRestoring(true);
     try {
       await restoreContext(person.id);
+      // Refetches this page's student and tree with every other list.
       await invalidateManagementData();
-      await refresh();
       notify(`Restored ${person.displayName}`);
     } catch (cause) {
       notify(cause instanceof Error ? cause.message : 'Could not restore', 'error');
