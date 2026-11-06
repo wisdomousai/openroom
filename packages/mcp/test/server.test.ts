@@ -298,6 +298,13 @@ describe('MCP protocol core', () => {
     expect(toolResultJson(response)).toEqual({ error: 'session-not-found' });
   });
 
+  it('session_status passes the slide position through from the export', async () => {
+    const position = { stepId: 'rule', stepIndex: 1, stepCount: 4, kind: 'statement', shownGroups: 1, revealGroups: 2 };
+    const deps = stubDeps({ getExport: async () => ({ sessionCode: 'S', code: 'S', status: 'live', revision: 3, participantCount: 1, position, interactions: [] }) });
+    const response = await handleMcpMessage(rpc('tools/call', { name: 'session_status', arguments: { code: 'S' } }), deps, SERVER_INFO);
+    expect(toolResultJson(response).position).toEqual(position);
+  });
+
   it('session_results slices to one interaction when interactionId is given', async () => {
     const exported = {
       summary: { title: 'Result', questions: [{ prompt: 'One', rows: [], entries: [] }, { prompt: 'Two', rows: [], entries: ['A suggestion'] }] },

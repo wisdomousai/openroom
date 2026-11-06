@@ -69,6 +69,20 @@ function handler(req: IncomingMessage, res: ServerResponse): void {
         activeInteractionId: 'warm-up',
         participantCount: 12,
         answeredCount: 9,
+        outline: {
+          outlineVersion: 1,
+          currentStepIndex: 1,
+          shownGroups: 1,
+          content: {
+            version: 1,
+            meta: { title: 'Le zoo' },
+            steps: [
+              { id: 'welcome', kind: 'title', title: 'Le zoo' },
+              { id: 'rule', kind: 'statement', title: 'Le passé composé', body: 'avoir ou être', reveal: [['header'], ['body']] },
+            ],
+            interactions: [],
+          },
+        },
         interactions: [
           {
             id: 'warm-up',
@@ -254,6 +268,7 @@ items:
     expect(await run(['session', 'status'], { io: status.io })).toBe(0);
     expect(received.some((r) => r.url === '/api/sessions/CODE1234/state?role=host')).toBe(true);
     expect(status.out.join('\n')).toContain('joined:   12   answered: 9');
+    expect(status.out.join('\n')).toContain('slide:    rule (2 of 2), revealed 1 of 2');
 
     const results = capture();
     expect(await run(['results'], { io: results.io })).toBe(0);

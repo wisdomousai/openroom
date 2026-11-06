@@ -220,8 +220,9 @@ const TOOLS: ToolDefinition[] = [
     name: 'session_status',
     annotations: READ_ONLY,
     description:
-      'Get a session’s current status by join code: session status, participant count, and ' +
-      'each question’s lifecycle state (pending/open/closed/revealed). No results included.',
+      'Get a session’s current status by join code: session status, participant count, ' +
+      'each question’s lifecycle state (pending/open/closed/revealed), and position: the slide showing ' +
+      '{stepId, stepIndex (from 0), stepCount, kind, shownGroups, revealGroups}. shownGroups equals revealGroups when the whole slide is showing. No results included.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -470,7 +471,9 @@ const TOOLS: ToolDefinition[] = [
       'Control a live session you created or joined with session_facilitate. Only the active presenter may change slides, reveals, timers, playback settings, annotations, or end the session. Other facilitators may use text.hide/unhide, qna.hide/unhide and group.set/remove. presentation.handoff takes {facilitatorId} from the joined facilitator list, retaining slide, reveal and ballot state. presentation.recover restores control to the current caller, only for the creator or space owner. Account/space access is rechecked on every request. Supports every host command, ' +
       'including session.start/end/freeze/unfreeze/advance, interaction open/close/reveal, session.theme, and ' +
       'outline.goto/next/previous/insert/replace. Use outline.insert only after the tutor has approved a private AI preview. ' +
+      'Drive a session that has slides (every deck) with outline.next/previous/goto: they open the question on an interaction slide and close it on leaving. session.advance only opens the next pending question and does not move the slide. ' +
       'outline.next reveals the next group before advancing slides; outline.previous hides the last revealed group before returning to the previous slide shown in full. Both skip on-demand breakouts. ' +
+      'On the last slide shown in full, outline.next fails; end the lesson with session.end. session_status reports the slide showing. ' +
       'meaning.publish takes {stepId,partKey,token,word,text?,entry?}; it atomically replaces the visible word card on that current slide. ' +
       'Keep lookup and wording drafts in the client; publish only the tutor-selected meaning and forms (entry.sections), never the full unselected lookup by default. Text is limited to 200 characters and the entry to 8 KB. ' +
       'meaning.clear takes {stepId,partKey,token} and clears that word card only. Navigation clears the card; a stale-slide publish fails. ' +
@@ -611,6 +614,7 @@ export async function callTool(
         status: exported['status'],
         revision: exported['revision'],
         participantCount: exported['participantCount'],
+        ...(exported['position'] === undefined ? {} : { position: exported['position'] }),
         ...(exported['endedAt'] === undefined ? {} : { endedAt: exported['endedAt'] }),
         interactions: interactions.map((i) => ({
           id: i['id'],

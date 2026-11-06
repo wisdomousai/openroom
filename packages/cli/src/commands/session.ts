@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { recapHtml, type OutlineStep, type SessionRecap } from '@openroom/schema';
+import { recapHtml, resolveRevealOrder, type Outline, type OutlineStep, type SessionRecap } from '@openroom/schema';
 import { parse as parseYaml } from 'yaml';
 
 import { ApiClient, type FetchLike, type HostCommand } from '../api.js';
@@ -247,6 +247,19 @@ function asInteractions(snapshot: Record<string, unknown>): HostInteractionSumma
   return Array.isArray(raw) ? (raw as HostInteractionSummary[]) : [];
 }
 
+/** "rule (2 of 5), revealed 1 of 2" from the host snapshot's outline. */
+function slideLine(raw: unknown): string | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const outline = raw as { content?: Outline; currentStepIndex?: number; shownGroups?: number };
+  const steps = outline.content?.steps;
+  const index = outline.currentStepIndex;
+  const step = typeof index === 'number' ? steps?.[index] : undefined;
+  if (steps === undefined || index === undefined || step === undefined) return undefined;
+  const groups = resolveRevealOrder(step, outline.content?.interactions).length;
+  const shown = outline.shownGroups ?? groups;
+  return `${step.id} (${String(index + 1)} of ${String(steps.length)})${groups > 1 ? `, revealed ${String(shown)} of ${String(groups)}` : ''}`;
+}
+
 async function sessionStatus(
   args: ParsedArgs,
   reporter: Reporter,
@@ -269,6 +282,8 @@ async function sessionStatus(
   reporter.line(
     `  active:   ${activeId === null || activeId === undefined ? '—' : `${String(activeId)}${active === undefined ? '' : ` [${active.status}]`}`}`,
   );
+  const slide = slideLine(snapshot['outline']);
+  if (slide !== undefined) reporter.line(`  slide:    ${slide}`);
   const limit = snapshot['participantLimit'];
   reporter.line(`  joined:   ${String(joined)}${typeof limit === 'number' ? ` of ${String(limit)}` : ''}   answered: ${String(answered)}`);
   reporter.emit({ ok: true, ...snapshot });
