@@ -1082,6 +1082,7 @@
 .slide-surface .outline-step--layout-media .outline-step__region--lede {
   order: 2;
   flex: none;
+  box-sizing: border-box;
   max-height: 30%;
   /* Clipped top and bottom only: a reveal badge left of the title stays. */
   overflow-y: clip;
@@ -1483,12 +1484,15 @@
 .slide-surface__background { z-index: -1; }
 .slide-surface__background img { object-fit: cover; }
 .slide-surface__logo { position: absolute; z-index: 2; top: 2cqw; right: 3cqw; width: 9cqw; height: 4cqw; object-fit: contain; pointer-events: none; }
-.slide-surface__footer { position: absolute; z-index: 2; left: var(--slide-safe-area); bottom: 1.6cqw; max-width: 80%; font-size: 1.4cqw; line-height: 1.4; color: var(--muted-foreground); pointer-events: none;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 /* The footer sits in the bottom margin and takes at most two lines. A margin
    narrower than that grows to hold it, so content always ends above the
    footer. `--slide-footer-band` is the height to keep clear. */
-.slide-surface[data-slide-footer] { --slide-footer-band: calc(1.6cqw + 2 * 1.4cqw * 1.4 + 1.2cqw); }
+.slide-surface[data-slide-footer] {
+  --slide-footer-bottom: 1.6cqw; --slide-footer-size: 1.4cqw; --slide-footer-leading: 1.4;
+  --slide-footer-band: calc(var(--slide-footer-bottom) + 2 * var(--slide-footer-size) * var(--slide-footer-leading) + 1.2cqw);
+}
+.slide-surface__footer { position: absolute; z-index: 2; left: var(--slide-safe-area); bottom: var(--slide-footer-bottom); max-width: 80%; font-size: var(--slide-footer-size); line-height: var(--slide-footer-leading); color: var(--muted-foreground); pointer-events: none;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .slide-surface[data-slide-footer] > .outline-step { padding-bottom: max(var(--slide-safe-area, 8cqw), var(--slide-footer-band)); }
 .slide-surface[data-slide-decoration='rule']::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1cqw; background: var(--slide-accent); pointer-events: none; }
 .slide-surface[data-slide-decoration='corner']::after { content: ''; position: absolute; right: 0; bottom: 0; width: 14cqw; height: 1.4cqw; background: var(--slide-accent); pointer-events: none; }

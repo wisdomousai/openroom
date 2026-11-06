@@ -425,19 +425,19 @@ function StepContent(props: StepLayoutProps): ReactNode {
       // `activity` is the kind's own two-column arrangement — what the learners
       // do on the left, what has to be on the table on the right — so it groups
       // exactly like `split` does.
-      const picture = step.media;
+      const authoredMaterials = step.materials !== undefined && step.materials.length > 0 ? step.materials : null;
       // The second column holds the materials or the picture. With neither
       // authored there is nothing to put there, and the instructions take the
       // whole width. Authored, not shown: materials revealed late still keep
       // their column, so the instructions do not re-wrap when they appear.
-      const second = picture !== undefined || (step.materials !== undefined && step.materials.length > 0);
+      const second = hasPicture || authoredMaterials !== null;
       const columns = split || layout === 'activity';
       // Materials are things the learners need in front of them, not steps they
       // perform — a separate block, and one reveal part. It normally has the
       // second region to itself; when the activity carries a picture, the
       // picture takes that region and the list sits under the instructions.
       const materials =
-        step.materials !== undefined && step.materials.length > 0 && show('materials') ? (
+        authoredMaterials !== null && show('materials') ? (
           <div className="outline-step__materials" {...part.hostAttrs('materials')}>
             {decorate('materials')}
             <p className="outline-step__meta">Materials</p>
@@ -446,7 +446,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
                   part: it carries no `data-part`, so the rendered parts still
                   match `partKeysForStep` exactly, and clicking a line still
                   selects the one `materials` part it belongs to. */}
-              {step.materials.map((item, index) => (
+              {authoredMaterials.map((item, index) => (
                 <li key={`${String(index)}-${item}`} {...part.editAttrs(`material-${String(index)}`)}>
                   {words(item, step.materialsSpans?.[index])}
                 </li>
@@ -455,7 +455,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
           </div>
         ) : null;
       return (
-        <section className={rootClass(null, layout, picture !== undefined)} {...pictureProps}>
+        <section className={rootClass(null, layout, hasPicture)} {...pictureProps}>
           {region(
             'lede',
             columns,
@@ -479,13 +479,13 @@ function StepContent(props: StepLayoutProps): ReactNode {
                   ) : null,
                 )}
               </ul>
-              {picture === undefined ? null : materials}
+              {hasPicture ? materials : null}
             </>,
           )}
           {region(
             'support',
             columns && second,
-            picture === undefined ? materials : picturePart(),
+            hasPicture ? picturePart() : materials,
           )}
         </section>
       );
