@@ -24,6 +24,11 @@ import {
   text,
 } from '../tanstack';
 
+/** Left and right plot margin of the columns chart, in px; the label row matches it. */
+const COLUMN_INSET = 12;
+/** The band scale's padding; the label row centres each name on its column with it. */
+const COLUMN_PADDING = 0.12;
+
 export function choiceSummary(p: {
   interaction: ChoiceInteractionView;
   counts: Record<string, number>;
@@ -86,7 +91,6 @@ export function ChoiceBarsChart({
   );
   const config = useMemo(() => countsChartConfig(rows), [rows]);
   const compact = size === 'compact';
-  const correctRow = revealed ? rows.find((row) => row.correct) : undefined;
   const maximum = Math.max(1, ...rows.map((row) => row.count));
 
   const definition = useMemo(() => {
@@ -96,7 +100,7 @@ export function ChoiceBarsChart({
       marks: [
         barY(rows, {
           id: 'choice-bars-background',
-          x: 'label',
+          x: 'key',
           y1: 0,
           y2: () => maximum,
           key: 'key',
@@ -105,7 +109,7 @@ export function ChoiceBarsChart({
         }),
         barY(rows, {
           id: 'choice-bars',
-          x: 'label',
+          x: 'key',
           y: 'count',
           key: 'key',
           fill: (row) => row.color,
@@ -113,7 +117,7 @@ export function ChoiceBarsChart({
         }),
         text(labels, {
           id: 'choice-bar-values',
-          x: 'label',
+          x: 'key',
           y: 'count',
           text: 'display',
           key: 'key',
@@ -125,15 +129,13 @@ export function ChoiceBarsChart({
         }),
       ],
       x: {
-        scale: () => scaleBand<string>().padding(0.12),
-        axis: {
-          line: true,
-          ticks: { size: 0, padding: 8 },
-          tickLabels: { fontSize: compact ? 12 : 17, fontWeight: 700, thin: false },
-        },
+        scale: () => scaleBand<string>().padding(COLUMN_PADDING),
+        // The option names sit in an HTML row under the columns, where they
+        // can wrap; one-line SVG tick labels printed over each other.
+        axis: { line: true, ticks: false, tickLabels: false },
       },
       y: { scale: scaleLinear, axis: false },
-      margin: { top: compact ? 24 : 34, right: 12, bottom: 4, left: 12 },
+      margin: { top: compact ? 24 : 34, right: COLUMN_INSET, bottom: 0, left: COLUMN_INSET },
       theme: chartTheme,
       svgAnimation: chartAnimation(reduced),
     });
@@ -190,13 +192,20 @@ export function ChoiceBarsChart({
       <Frame summary={choiceSummary({ interaction, counts, total, dontKnow, revealed })}>
         <div
           className={cn('or-cols-chart', compact && 'or-chart--compact')}
+          style={
+            {
+              '--or-cols': rows.length,
+              '--or-col-inset': `${COLUMN_INSET}px`,
+              '--or-col-padding': COLUMN_PADDING,
+            } as React.CSSProperties
+          }
           data-or-chart="columns"
         >
           <ChartContainer
             config={config}
             className={cn(
               'or-chart-frame aspect-auto w-full',
-              compact ? 'min-h-40' : 'h-full min-h-48',
+              compact ? 'min-h-40' : 'min-h-48 flex-1',
             )}
           >
             <TanStackChart
@@ -205,12 +214,29 @@ export function ChoiceBarsChart({
               initialHeight={compact ? 160 : 240}
             />
           </ChartContainer>
-          {correctRow ? (
-            <p className="or-correct-note" data-or-correct="">
-              {correctRow.label}
-              <CorrectTag />
-            </p>
-          ) : null}
+          <ol className="or-chart-legend or-cols-chart__labels">
+            {rows.map((row) => (
+              <li
+                key={row.key}
+                className={cn(
+                  'barrow',
+                  row.correct && 'barrow--correct',
+                  row.abstain && 'barrow--abstain',
+                )}
+                data-or-option={row.key}
+                {...(row.correct ? { 'data-or-correct': '' } : {})}
+                {...(row.abstain ? { 'data-or-abstain': '' } : {})}
+              >
+                <span
+                  className="barrow__label"
+                  data-part={row.abstain ? 'dont-know' : `option-${String(row.index)}`}
+                >
+                  <TokenWords text={row.label} />
+                </span>
+                {row.correct ? <CorrectTag /> : null}
+              </li>
+            ))}
+          </ol>
         </div>
       </Frame>
     );

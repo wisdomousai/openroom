@@ -107,11 +107,15 @@
   grid-template-rows: 1fr;
 }
 
+/*
+ * A tall window stacks the join rail above the plate. Only a stage that shows
+ * the rail stacks: with one child (no rail, idle, or the console mirror) an
+ * `auto` first row would take that child and collapse the slide to no height.
+ */
 @media (max-aspect-ratio: 1/1) {
-  .stage__grid,
-  .stage[data-idle='true'] .stage__grid {
+  .stage[data-rail='true'] .stage__grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .rail {
     flex-direction: row;
@@ -179,6 +183,14 @@
 .rail__join {
   display: grid;
   gap: 0.15rem;
+}
+
+/* Identified session: where the code and QR would be, before the student joins. */
+.rail__waiting {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .rail__code {
@@ -474,6 +486,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+.idle__waiting {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.6vw, 2.875rem);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--foreground);
+}
+
 .idle__url {
   margin: 0;
   font-size: 24px;
@@ -557,14 +578,23 @@
   overflow: visible;
 }
 
+/*
+ * The spoken reading stays visible for an audience that cannot tell the
+ * colours apart (STAGE-06), but on one line (decision LD11): the chart above
+ * labels every value, and the full sentence stays the caption's text for
+ * screen readers. A wrapped caption took the height the results needed.
+ */
 .plate .or-chart-viz figcaption {
   position: static;
   width: auto;
   height: auto;
   margin: 0;
-  overflow: visible;
+  overflow: hidden;
   clip-path: none;
-  white-space: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  /* One unbroken line must not widen the plate's grid track to its full length. */
+  contain: inline-size;
   padding-top: 14px;
   border-top: 1px solid var(--hairline, var(--border));
   font-size: 19px;
@@ -657,15 +687,20 @@
   }
 }
 
+/*
+ * Sized from the plate body (a size container), not the window: the console
+ * mirror draws this plate at a fraction of the viewport width.
+ */
 .pending__value {
   font-family: var(--font-display);
-  font-size: clamp(4rem, 14vw, 14rem);
+  font-size: min(14cqw, 40cqh);
   font-weight: 600;
   line-height: 1;
 }
 
 .pending__label {
-  font-size: clamp(0.9rem, 1.5vw, 1.6rem);
+  font-size: min(1.7cqw, 6cqh);
+  line-height: 1.2;
   letter-spacing: 0;
   text-transform: none;
   font-weight: 600;
@@ -764,6 +799,11 @@
   font-size: min(3.2cqw, calc(var(--or-row, 5.5rem) * 0.26));
 }
 
+/* Column names share the plate width, so their size follows the column count. */
+.plate .or-cols-chart__labels .barrow__label {
+  font-size: min(clamp(1.2cqw, calc(11cqw / var(--or-cols, 4)), 2.4cqw), 7cqh);
+}
+
 .plate .or-bar-value {
   font-size: clamp(0.9rem, 1.3vw, 1.5rem);
 }
@@ -790,20 +830,34 @@
   --or-row: clamp(4.25rem, 20cqh, 8rem);
 }
 
-.plate .or-rank-chart {
-  --or-row: clamp(3.5rem, 16cqh, 7rem);
-}
-
 .plate .or-chart-legend--wrap {
   gap: 0.75rem 2.5rem;
 }
 
+/*
+ * The legend beside a pie, donut or radial plot: --or-rows is its row count
+ * (half the options). Room for about three wrapped lines per row.
+ */
+.plate .or-chart-legend--columns .barrow__label {
+  font-size: min(1.9cqw, calc(100cqh / (var(--or-rows, 2) * 3.9)));
+}
+
+/* Sized from the chart body, not the window, so the console mirror keeps the same proportions. */
 .plate .or-scale-ends {
-  font-size: clamp(1rem, 1.6vw, 1.6rem);
+  font-size: 2.2cqw;
+}
+
+.plate .or-hist-note {
+  font-size: 2cqw;
 }
 
 .plate .or-mean-chip {
   font-size: clamp(1rem, 1.5vw, 1.5rem);
+}
+
+/* Match pairs: one line per pair, sized so every row of the grid fits the body. */
+.plate .or-pairs-chart {
+  font-size: min(2.4cqw, calc(100cqh / (var(--or-rows, 4) * 1.75)));
 }
 
 .plate .or-emoji-item {
@@ -833,6 +887,16 @@
 /* A circle names a word, so the words have to be selectable one by one. */
 .ink-overlay {
   touch-action: none;
+}
+
+/* The console plate is a tab stop; the word outline shows which word, this which plate. */
+.ink-overlay:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.ink-overlay:focus-visible .ink-lock {
+  opacity: 0.9;
 }
 
 /* --------------------------------------------------------- meaning breakout */
@@ -1000,8 +1064,6 @@
   color: var(--muted-foreground);
   font-size: 0.85em;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 /* Wide tables scroll in their own box; the panel itself never scrolls sideways. */

@@ -1,7 +1,7 @@
 import { FacilitationControls } from './FacilitationControls';
-import { usePresentationKeys } from '../presenter/usePresentationKeys';
+import { focusOwnsKey, usePresentationKeys } from '../presenter/usePresentationKeys';
 import { canAdvanceOutline, canRetreatOutline } from './outline-navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHotkeys } from '@tanstack/react-hotkeys';
 import { getTheme, type ThemeId } from '@openroom/ui';
 import { deckAspectRatio } from '@openroom/schema';
@@ -9,6 +9,7 @@ import {
   isMarkShape,
   type InkColor,
   type MarkShape,
+  type SessionMarkView,
 } from '@openroom/sdk';
 
 import { useEditorServices } from '../services';
@@ -29,6 +30,7 @@ import {
   counts as countsOf,
   notesOf,
   displayOf,
+  onInteractionSlide,
   sessionInteraction,
   resultsHiddenOf,
   statusOf,
@@ -51,29 +53,39 @@ import { useSessionExit } from './useSessionExit';
 import { useMeaningLookup } from './useMeaningLookup';
 import { ListeningControls } from './ListeningControls';
 import { useStageMirror } from './useStageMirror';
+import { NextSessionBanner } from './NextSessionBanner';
 import {
   answeredKey,
   entriesOf,
   hasCorrectAnswer,
   readAnswered,
-  stepLabel,
 } from './utils';
+import { slideLabel } from './slide-label';
 import type {
   InteractionStatus,
   StoredSession,
   TextEntry,
 } from '../types';
 
-export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
+export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudienceScreen }: {
   live: StoredSession; onLeave: () => void;
   onReturnToDeck?: () => void;
   onPosition?: (position: { stepId: string; shown: number }) => void;
+  /** Desktop Presenter only: open the audience window from the Session menu. */
+  onAudienceScreen?: () => void;
 }) {
   const services = useEditorServices();
   const { navigate } = services.navigation;
   const { StageView } = services.live;
   const { scratchpad: scratchpadSlot, languagePair: languagePairSlot, SavedResults } = services.slots;
-  const host = useHostSession(live);
+  /*
+   * Exact projector feed — same role/snapshot the /stage/ app uses. Its client
+   * polls on its own timers where no socket opens (the desktop relay), so the
+   * host session asks it to refetch after each command: the tutor's own slide
+   * change shows in the preview at once, not on the next poll.
+   */
+  const { stageToken, stageSnapshot, stageStatus, retryStageToken, refreshStage } = useStageMirror(live);
+  const host = useHostSession(live, refreshStage);
   const {
     snapshot,
     canPresent,
@@ -116,7 +128,6 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
     endToken?: number;
   } | null>(null);
   const [inkColor, setInkColor] = useState<InkColor>('red');
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [insertKind, setInsertKind] = useState<LiveInsertKind | null>(null);
   const [insertMode, setInsertMode] = useState<'insert' | 'edit'>('insert');
   const [insertInitial, setInsertInitial] = useState<LiveInsertDraft | null>(null);
@@ -181,12 +192,9 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
       return;
     }
     if (exitKind === 'library') {
-      navigate({ kind: 'library' }, { replace: true });
+      navigate({ kind: 'library', place: exit.deckPlace }, { replace: true });
     }
-  }, [exitKind, exitSessionId, navigate]);
-
-  /** Exact projector feed — same role/snapshot the /stage/ app uses. */
-  const { stageToken, stageSnapshot, stageStatus, retryStageToken } = useStageMirror(live);
+  }, [exitKind, exitSessionId, navigate, exit.deckPlace]);
 
   const sessionTheme = snapshot?.theme;
   const { setSessionThemeId } = theme;
@@ -262,8 +270,6 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
     nextQuestion();
   }, [outline, outlineIndex, outlineSteps.length, nextQuestion, run]);
 
-  usePresentationKeys({ enabled: canPresent && Boolean(onReturnToDeck) && !ended, next, previous, close: () => onReturnToDeck?.() });
-
   // Outline-aware labels/actions live in deriveHostFlow (shared with PresenterRemote).
   // Reveal still wins over "Next step" when results are hidden.
   const primaryLabel = flow?.label ?? null;
@@ -277,6 +283,14 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
   const focusInteraction = sessionInteraction(session, focusId);
   const onStage = Boolean(activeId && focusId === activeId);
   const audienceSees = audienceSeesResults(snapshot, session, focusId);
+  /*
+   * The question's own slide is on screen. The session keeps the last question
+   * active after the tutor moves on; its answering and results controls and
+   * chips belong to its slide, not to the statement after it.
+   */
+  const focusOnSlide = onInteractionSlide(snapshot, focusId);
+  const focusLive =
+    focusOnSlide && (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed');
 
   const hideResults = useCallback(() => {
     if (focusId && focusId === activeId) hideResultsActive();
@@ -324,29 +338,35 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
     [ended, run, push],
   );
 
-  const canHideResults =
-    !ended && onStage && (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed') && audienceSees;
-  const canShowResults =
-    !ended &&
-    onStage &&
-    (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed') &&
-    !audienceSees;
+  const canHideResults = !ended && onStage && focusLive && audienceSees;
+  const canShowResults = !ended && onStage && focusLive && !audienceSees;
 
   // ---- keyboard shortcuts -------------------------------------------------
+  /*
+   * A shortcut runs only when the focused control does not own the key, the
+   * same rule the Presenter keys follow: Space on a focused Back presses Back.
+   * The key is consumed only when the shortcut runs.
+   */
+  const shortcut = (action: () => void) => (event: KeyboardEvent) => {
+    if (focusOwnsKey(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+  };
   useHotkeys([
-    { hotkey: 'Space', callback: primaryGo, options: { enabled: canPresent && !onReturnToDeck && !ended && Boolean(primaryLabel) } },
-    { hotkey: 'ArrowLeft', callback: previous, options: { enabled: canPresent && !onReturnToDeck } },
-    { hotkey: 'ArrowRight', callback: next, options: { enabled: canPresent && !onReturnToDeck } },
+    { hotkey: 'Space', callback: shortcut(primaryGo), options: { enabled: canPresent && !onReturnToDeck && !ended && Boolean(primaryLabel) } },
+    { hotkey: 'ArrowLeft', callback: shortcut(previous), options: { enabled: canPresent && !onReturnToDeck } },
+    { hotkey: 'ArrowRight', callback: shortcut(next), options: { enabled: canPresent && !onReturnToDeck } },
     {
       hotkey: 'H',
-      callback: () => { if (canHideResults) hideResults(); else showResults(); },
+      callback: shortcut(() => { if (canHideResults) hideResults(); else showResults(); }),
       options: { enabled: canPresent && (canHideResults || canShowResults) },
     },
-    { hotkey: 'F', callback: toggleFreeze, options: { enabled: canPresent && !ended } },
+    { hotkey: 'F', callback: shortcut(toggleFreeze), options: { enabled: canPresent && !ended } },
   ], {
     ignoreInputs: true,
-    preventDefault: true,
-    stopPropagation: true,
+    preventDefault: false,
+    stopPropagation: false,
     conflictBehavior: 'replace',
   });
 
@@ -365,12 +385,31 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
    */
   const showCode = !identified;
 
+  /**
+   * The marks the last Clear removed, for Undo, and how many of them are back
+   * on the slide. Any other change to this console's ink (a new mark, a rub-out,
+   * another Clear, a slide change) ends it; the generation tells an Undo still
+   * in flight that it has been overtaken.
+   */
+  const [clearedMarks, setClearedMarks] = useState<{
+    marks: SessionMarkView[];
+    restored: number;
+    /** The mark that failed on the last Undo; failing again, it is skipped. */
+    failedAt?: number;
+  } | null>(null);
+  const inkGenerationRef = useRef(0);
+  const endClearUndo = useCallback(() => {
+    inkGenerationRef.current += 1;
+    setClearedMarks(null);
+  }, []);
+
   /** Put one shape over a word or a span, in the colour the ribbon is showing. */
   const applyShape = useCallback(
     (
       shape: MarkShape,
       target: { partKey: string; token: number; endToken?: number },
     ) => {
+      endClearUndo();
       void run({
         command: 'mark.set',
         mark: {
@@ -382,10 +421,107 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
         },
       });
     },
-    [run, inkColor],
+    [run, inkColor, endClearUndo],
   );
 
   const lookupFlow = useMeaningLookup({ sessionCode: live.sessionCode, snapshot, run });
+
+  /**
+   * Escape takes back the innermost armed thing before it leaves: an armed
+   * lookup, then an ink tool. An open card or chart menu closes itself on the
+   * same key, so the console stays. Only a bare Escape returns to the deck.
+   */
+  const cancelArmed = useCallback((): boolean => {
+    if (lookupFlow.lookUpArmed) {
+      lookupFlow.toggleArmed();
+      return true;
+    }
+    if (drawTool !== 'none') {
+      setDrawTool('none');
+      return true;
+    }
+    return false;
+  }, [lookupFlow, drawTool]);
+  const escapeConsole = useCallback(() => {
+    if (chartMenu !== null || lookupFlow.cardOpen) return;
+    if (cancelArmed()) return;
+    onReturnToDeck?.();
+  }, [chartMenu, lookupFlow.cardOpen, cancelArmed, onReturnToDeck]);
+  usePresentationKeys({ enabled: canPresent && Boolean(onReturnToDeck) && !ended, next, previous, close: escapeConsole });
+  // The hosted console has no Escape exit, but an armed lookup or tool still cancels.
+  useHotkeys(
+    [{
+      hotkey: 'Escape',
+      callback: () => {
+        if (chartMenu !== null || lookupFlow.cardOpen) return;
+        cancelArmed();
+      },
+    }],
+    {
+      enabled: !onReturnToDeck && (lookupFlow.lookUpArmed || drawTool !== 'none'),
+      ignoreInputs: true,
+      preventDefault: true,
+      conflictBehavior: 'replace',
+    },
+  );
+
+  /*
+   * Undo for ink. Clear removes every mark at once, so Undo right after it
+   * brings those marks back; otherwise Undo takes back the newest mark. A mark
+   * someone else adds after the Clear is newer than it, so Undo takes that one.
+   */
+  const marks = (snapshot?.marks ?? []) as SessionMarkView[];
+  const undoingRef = useRef(false);
+  const outlineStepId = outlineStep?.id;
+  useEffect(() => {
+    endClearUndo();
+  }, [outlineStepId, endClearUndo]);
+  const clearMarks = useCallback(() => {
+    inkGenerationRef.current += 1;
+    setClearedMarks(marks.length > 0 ? { marks, restored: 0 } : null);
+    void run({ command: 'mark.clear' });
+  }, [marks, run]);
+  const restorable =
+    clearedMarks !== null &&
+    clearedMarks.restored < clearedMarks.marks.length &&
+    marks.length <= clearedMarks.restored;
+  const canUndoMarks = marks.length > 0 || restorable;
+  const undoMarks = useCallback(async () => {
+    // One Undo at a time: a second press while marks come back would remove one.
+    if (undoingRef.current) return;
+    undoingRef.current = true;
+    try {
+      if (restorable && clearedMarks !== null) {
+        const generation = inkGenerationRef.current;
+        let restored = clearedMarks.restored;
+        let failedAt: number | undefined;
+        while (restored < clearedMarks.marks.length) {
+          const { id: _id, ...mark } = clearedMarks.marks[restored]!;
+          const ok = await run({ command: 'mark.set', mark });
+          // A Clear, a new mark or a slide change while this ran: stop here.
+          if (inkGenerationRef.current !== generation) return;
+          if (ok) {
+            restored += 1;
+            continue;
+          }
+          // Failing twice in a row, a mark is skipped so Undo is not stuck on it.
+          if (clearedMarks.failedAt === restored) restored += 1;
+          else failedAt = restored;
+          break;
+        }
+        setClearedMarks(
+          restored < clearedMarks.marks.length
+            ? { marks: clearedMarks.marks, restored, ...(failedAt === undefined ? {} : { failedAt }) }
+            : null,
+        );
+        return;
+      }
+      const last = marks[marks.length - 1];
+      if (last !== undefined) await run({ command: 'mark.remove', id: last.id });
+    } finally {
+      undoingRef.current = false;
+    }
+  }, [marks, clearedMarks, restorable, run]);
 
   /*
    * Private scratchpad. Held in this browser, keyed by join code, never sent
@@ -472,17 +608,22 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
       <div className="flex h-svh flex-col items-center justify-center gap-4 bg-desk p-6 text-center">
         <p className="text-section">Session ended</p>
         {exitKind === 'retry' ? (
-          <div className="flex gap-2">
-            <Button onClick={exit.retryProbe}>Retry</Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                navigate({ kind: 'library', place: exit.deckPlace }, { replace: true })
-              }
-            >
-              Library
-            </Button>
-          </div>
+          <>
+            <p className="max-w-md text-secondary text-muted-foreground">
+              Notes could not open. Your private notes are kept on this device.
+            </p>
+            <div className="flex gap-2">
+              <Button onClick={exit.retryProbe}>Retry</Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  navigate({ kind: 'library', place: exit.deckPlace }, { replace: true })
+                }
+              >
+                Back to library
+              </Button>
+            </div>
+          </>
         ) : (
           <p className="text-secondary text-muted-foreground">Opening notes…</p>
         )}
@@ -507,15 +648,17 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
     (focus ? defaultDisplay(focus.type) : undefined);
   const onQuestionSlide =
     outlineStep?.kind === 'interaction' || (!outline && Boolean(focus));
-  const chartMenuEnabled = canPresent && onQuestionSlide && onStage && Boolean(focus) && !ended;
-  const sessionTitle = [learner?.displayName, outline?.content.meta.title ?? session?.meta?.title]
+  const chartMenuEnabled =
+    canPresent && onQuestionSlide && focusOnSlide && onStage && Boolean(focus) && !ended;
+  /* An identified header already leads with the student's name; it is not said twice. */
+  const sessionTitle = [showCode ? learner?.displayName : null, outline?.content.meta.title ?? session?.meta?.title]
     .filter(Boolean)
     .join(' / ');
 
   const footerItems = outline
     ? outlineSteps.map((step, index) => ({
         id: step.id,
-        label: stepLabel(step),
+        label: slideLabel(step, outline.content.interactions),
         visited: index < outlineIndex,
       }))
     : items.map((item, index) => ({
@@ -533,11 +676,11 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
       : items.length > 0
         ? `Slide ${selectedIndex + 1} of ${items.length}`
         : null,
-    onQuestionSlide && focusStatus === 'open'
+    focusOnSlide && focusStatus === 'open'
       ? 'question open'
-      : onQuestionSlide && focusStatus === 'closed'
+      : focusOnSlide && focusStatus === 'closed'
         ? 'question closed'
-        : onQuestionSlide && focusStatus === 'revealed'
+        : focusOnSlide && focusStatus === 'revealed'
           ? 'results up'
           : timerStep
             ? ticking.running
@@ -594,22 +737,11 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
         documentWindow={documentWindow}
         libraryPlace={exit.deckPlace}
         onBackToDeck={backToDeck}
+        onAudienceScreen={onAudienceScreen}
         push={push}
       />
       {pickup !== '' && !pickupDismissed && !ended ? (
-        <div className="flex items-start justify-between gap-3 border-b border-hairline bg-card px-4 py-2">
-          <p className="text-secondary">
-            <span className="text-caption text-muted-foreground">Next session · </span>
-            {pickup}
-          </p>
-          <button
-            type="button"
-            className="text-caption text-muted-foreground hover:text-foreground"
-            onClick={() => setPickupDismissed(true)}
-          >
-            Hide
-          </button>
-        </div>
+        <NextSessionBanner note={pickup} onHide={() => setPickupDismissed(true)} />
       ) : null}
 
       {frozen && !ended ? (
@@ -650,12 +782,12 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
           canNext={outline ? canAdvanceOutline(outline) : selectedIndex < items.length - 1}
           onBack={previous}
           onNext={next}
-          canClose={Boolean(activeId) && focusStatus === 'open'}
+          canClose={Boolean(activeId) && focusOnSlide && focusStatus === 'open'}
           onClose={() => closeActive()}
-          resultsUp={audienceSees && (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed')}
-          canRevote={canRevote}
+          resultsUp={audienceSees && focusLive}
+          canRevote={canRevote && focusOnSlide}
           onRevote={revoteActive}
-          canUndoRevote={canUndoRevote}
+          canUndoRevote={canUndoRevote && focusOnSlide}
           onUndoRevote={undoRevoteActive}
           currentDisplayLabel={
             chartMenuEnabled && currentDisplay ? displayMenuLabel(currentDisplay) : null
@@ -664,22 +796,18 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
             const box = anchor.getBoundingClientRect();
             setChartMenu({ x: box.left, y: box.bottom + 4 });
           }}
-          correctShown={focusStatus === 'revealed'}
+          correctShown={focusOnSlide && focusStatus === 'revealed'}
           hasCorrect={hasCorrectAnswer(focusInteraction)}
-          canReveal={Boolean(activeId) && (focusStatus === 'open' || focusStatus === 'closed')}
+          canReveal={Boolean(activeId) && focusOnSlide && (focusStatus === 'open' || focusStatus === 'closed')}
           onReveal={showResults}
-          canBlank={canHideResults || canShowResults}
-          blanked={!audienceSees && (focusStatus === 'open' || focusStatus === 'closed' || focusStatus === 'revealed')}
-          onBlank={() => {
+          canToggleResults={canHideResults || canShowResults}
+          resultsHidden={!audienceSees && focusLive}
+          onToggleResults={() => {
             if (canHideResults) hideResults();
             else if (canShowResults) showResults();
           }}
           canInsert={Boolean(outline) && !ended}
           onInsert={(kind) => {
-            if (kind === 'library') {
-              setLibraryOpen(true);
-              return;
-            }
             setInsertMode('insert');
             setInsertInitial(null);
             setInsertKind(kind);
@@ -714,7 +842,9 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
           onDrawTool={setDrawTool}
           inkColor={inkColor}
           onInkColor={setInkColor}
-          onClearMarks={() => void run({ command: 'mark.clear' })}
+          onClearMarks={clearMarks}
+          canUndoMarks={canUndoMarks && !ended}
+          onUndoMarks={() => void undoMarks()}
           lookUpArmed={lookupFlow.lookUpArmed}
           onLookUp={lookupFlow.toggleArmed}
           canReopenCard={lookupFlow.lookup !== null && !lookupFlow.cardOpen}
@@ -790,16 +920,17 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
 
           // Question: new choice poll + interaction step (insert only).
           const filled = draft.options
-            .map((label) => label.trim())
-            .filter((label) => label !== '');
+            .map((label, index) => ({ label: label.trim(), correct: draft.correct[index] === true }))
+            .filter((option) => option.label !== '');
           const interactionId = `live-q-${Date.now().toString(36)}`;
           const interaction = {
             id: interactionId,
             type: 'choice' as const,
             prompt: draft.prompt.trim(),
-            options: filled.map((label, index) => ({
+            options: filled.map((option, index) => ({
               id: `o${index + 1}`,
-              label,
+              label: option.label,
+              ...(option.correct ? { correct: true as const } : {}),
             })),
           };
           const step = {
@@ -810,15 +941,17 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
             ...(breakoutOf === undefined ? {} : { breakoutOf }),
           };
           void run({ command: 'outline.insert', step, interaction, show: true });
+          // The new question is open on screen: Home holds Close answering and Reveal.
+          setRibbonTab('home');
         }}
       />
 
       <div className="flex min-h-0 flex-1">
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-desk">
           {!snapshot ? (
-            <p className="p-6 text-sm text-muted-foreground">Loading session…</p>
+            <p className="p-6 text-secondary text-muted-foreground">Loading session…</p>
           ) : !stageToken ? (
-            <p className="p-6 text-sm text-muted-foreground">Loading…</p>
+            <p className="p-6 text-secondary text-muted-foreground">Loading…</p>
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-5" style={{ containerType: 'size' }}>
               <div
@@ -842,7 +975,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
                   onTool={setDrawTool}
                   color={inkColor}
                   onColor={setInkColor}
-                  onClear={() => void run({ command: 'mark.clear' })}
+                  onClear={clearMarks}
                   target={markTarget}
                   onShape={applyShape}
                   onLookUp={lookupFlow.lookUpWord}
@@ -858,20 +991,26 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
                     track={canPresent && Boolean(outlineStep) && !ended}
                     onTarget={setMarkTarget}
                     onErase={
-                      canPresent && Boolean(outlineStep) && !ended ? (id) => void run({ command: 'mark.remove', id }) : undefined
+                      canPresent && Boolean(outlineStep) && !ended
+                        ? (id) => {
+                            endClearUndo();
+                            void run({ command: 'mark.remove', id });
+                          }
+                        : undefined
                     }
                     onCircle={(partKey, token, word, endToken) => {
                       const shape: MarkShape = isMarkShape(drawTool) ? drawTool : 'circle';
                       applyShape(shape, { partKey, token, endToken });
                       if (lookupFlow.lookUpArmed) lookupFlow.lookUpWord({ partKey, token, word });
                     }}
-                    onStroke={(points) =>
-                      void run({ command: 'mark.set', mark: { kind: 'pen', points, color: inkColor } })
-                    }
+                    onStroke={(points) => {
+                      endClearUndo();
+                      void run({ command: 'mark.set', mark: { kind: 'pen', points, color: inkColor } });
+                    }}
                   />
                 </PlateInkMenu>
                 {lookupFlow.lookUpArmed && (snapshot.meaning || snapshot.dictionary) ? (
-                  <p role="status" className="pointer-events-none absolute inset-x-4 bottom-3 z-10 rounded-md bg-card/95 px-3 py-2 text-center text-sm shadow-sm">
+                  <p role="status" className="pointer-events-none absolute inset-x-4 bottom-3 z-10 rounded-md border border-border bg-card/95 px-3 py-2 text-center text-secondary">
                     Choose a word. The current card stays on the audience’s screen.
                   </p>
                 ) : null}
@@ -1005,8 +1144,20 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
         }
         actions={
           primaryLabel ? (
-            <Button type="button" variant="live" size="sm" className="h-[34px] px-[18px]" onClick={primaryGo}>
+            <Button
+              type="button"
+              variant="live"
+              size="sm"
+              className="h-[34px] px-[18px]"
+              aria-keyshortcuts={onReturnToDeck ? undefined : 'Space'}
+              onClick={primaryGo}
+            >
               {primaryLabel}
+              {onReturnToDeck ? null : (
+                <kbd aria-hidden="true" className="font-sans text-caption opacity-80">
+                  Space
+                </kbd>
+              )}
             </Button>
           ) : null
         }

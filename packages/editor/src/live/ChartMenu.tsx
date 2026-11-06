@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { DISPLAY_LABELS, displaysFor } from '../builder/displays';
 import { cn } from '@openroom/ui/utils';
 import type { InteractionType } from '../types';
@@ -100,14 +100,57 @@ export function ChartMenu({
   onClose: () => void;
 }) {
   const options = displaysFor(type);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  /*
+   * A menu takes focus when it opens (the chosen look, else the first item)
+   * and gives it back to whatever opened it when it closes, so the ribbon
+   * button and the keyboard route through the plate both land where they were.
+   */
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const menu = menuRef.current;
+    const first =
+      menu?.querySelector<HTMLElement>('[role="menuitemradio"][aria-checked="true"]') ??
+      menu?.querySelector<HTMLElement>('[role^="menuitem"]');
+    first?.focus();
+    return () => {
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  const onMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape' || event.key === 'Tab') {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+    const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+    if (!keys.includes(event.key)) return;
+    const items = [...event.currentTarget.querySelectorAll<HTMLElement>('[role^="menuitem"]')];
+    if (items.length === 0) return;
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    const next =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? items.length - 1
+          : event.key === 'ArrowDown'
+            ? (at + 1) % items.length
+            : (at - 1 + items.length) % items.length;
+    event.preventDefault();
+    event.stopPropagation();
+    items[next]?.focus();
+  };
 
   const viewW = typeof window === 'undefined' ? 1440 : window.innerWidth;
   const viewH = typeof window === 'undefined' ? 900 : window.innerHeight;
@@ -117,8 +160,10 @@ export function ChartMenu({
   return (
     <div className="fixed inset-0 z-40 bg-foreground/10" onClick={onClose} role="presentation">
       <div
+        ref={menuRef}
         role="menu"
         aria-label="Chart type"
+        onKeyDown={onMenuKeyDown}
         onClick={(event) => event.stopPropagation()}
         className="absolute max-h-[min(24rem,calc(100svh-2rem))] w-[266px] overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border border-border bg-card py-1.5 shadow-[var(--shadow-overlay)]"
         style={{ left, top }}
@@ -132,12 +177,13 @@ export function ChartMenu({
               type="button"
               role="menuitemradio"
               aria-checked={selected}
+              tabIndex={-1}
               onClick={() => onPick(display)}
               className={cn(
                 'flex w-full items-center gap-3 px-3.5 py-2 text-left text-secondary',
                 selected
                   ? 'bg-accent font-semibold text-accent-foreground'
-                  : 'text-foreground hover:bg-chrome',
+                  : 'text-foreground hover:bg-chrome focus-visible:bg-chrome',
               )}
             >
               <Glyph display={display} />
@@ -155,8 +201,9 @@ export function ChartMenu({
             type="button"
             role="menuitemcheckbox"
             aria-checked={correctShown}
+            tabIndex={-1}
             onClick={onCallOut}
-            className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-secondary text-foreground hover:bg-chrome"
+            className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-secondary text-foreground hover:bg-chrome focus-visible:bg-chrome"
           >
             <span aria-hidden="true" className="w-[22px] text-center text-chart-2">
               ✓
@@ -169,8 +216,9 @@ export function ChartMenu({
             type="button"
             role="menuitemcheckbox"
             aria-checked={showPercent}
+            tabIndex={-1}
             onClick={onTogglePercent}
-            className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-secondary text-foreground hover:bg-chrome"
+            className="flex w-full items-center gap-3 px-3.5 py-2 text-left text-secondary text-foreground hover:bg-chrome focus-visible:bg-chrome"
           >
             <span aria-hidden="true" className="w-[22px] text-center text-muted-foreground">
               %

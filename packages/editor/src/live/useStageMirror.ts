@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createSessionClient,
+  type SessionClient,
   type ConnectionStatus as StageConnectionStatus,
   type StageSnapshot,
 } from '@openroom/sdk';
@@ -22,6 +23,7 @@ export function useStageMirror(live: StoredSession) {
   const [attempt, setAttempt] = useState(0);
   const [stageSnapshot, setStageSnapshot] = useState<StageSnapshot | null>(null);
   const [stageStatus, setStageStatus] = useState<StageConnectionStatus>('connecting');
+  const clientRef = useRef<SessionClient<StageSnapshot> | null>(null);
 
   useEffect(() => {
     if (stageToken) return;
@@ -52,10 +54,26 @@ export function useStageMirror(live: StoredSession) {
       onChange: setStageSnapshot,
       onStatus: setStageStatus,
     });
-    return () => client.close();
+    clientRef.current = client;
+    return () => {
+      client.close();
+      if (clientRef.current === client) clientRef.current = null;
+    };
   }, [live.sessionCode, stageToken]);
 
   const retryStageToken = useCallback(() => setAttempt((n) => n + 1), []);
+  const statusRef = useRef(stageStatus);
+  statusRef.current = stageStatus;
+  /**
+   * Refetch the projector feed now, rather than on the client's next poll. A
+   * live socket already pushes the change, so only a polling mirror refetches.
+   */
+  const refreshStage = useCallback(() => {
+    if (statusRef.current === 'live') return;
+    void clientRef.current?.refresh().catch(() => {
+      /* the next poll or socket message brings it */
+    });
+  }, []);
 
-  return { stageToken, stageSnapshot, stageStatus, retryStageToken };
+  return { stageToken, stageSnapshot, stageStatus, retryStageToken, refreshStage };
 }

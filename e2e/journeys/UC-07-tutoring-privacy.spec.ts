@@ -7,7 +7,7 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
-import { command, hostUrl, waitForWorker } from '../fixtures/session';
+import { command, hostUrl, stageUrl, waitForWorker } from '../fixtures/session';
 
 const BASE = (process.env.OPENROOM_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '');
 const CSRF = { 'x-openroom-csrf': '1', 'content-type': 'application/json' };
@@ -164,6 +164,19 @@ test.describe('UC-07 tutoring privacy', () => {
     const stageBody = await stageRes.text();
     expect(stageBody).not.toMatch(/"handles"/);
     expect(stageBody).not.toMatch(/"signals"/);
+
+    // The shared screen prints no join code or QR: only the access link admits
+    // the learner, so a code on the wall would only invite bystanders.
+    const stage = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    await stage.goto(stageUrl(seed));
+    await expect(stage.getByText('Bienvenue', { exact: true })).toBeVisible();
+    await expect(stage.getByText(seed.code, { exact: true })).toHaveCount(0);
+    await expect(stage.locator('.rail__qr, .idle__qr')).toHaveCount(0);
+    await command(seed.sessionCode, seed.hostToken, { command: 'outline.goto', stepId: 'check' });
+    await expect(stage.getByText('Ready to start?', { exact: true })).toBeVisible();
+    await expect(stage.getByText(seed.code, { exact: true })).toHaveCount(0);
+    await expect(stage.getByTitle(/QR code to join/)).toHaveCount(0);
+    await stage.close();
 
     const end = await command(seed.sessionCode, seed.hostToken, { command: 'session.end' });
     expect(end.ok).toBe(true);

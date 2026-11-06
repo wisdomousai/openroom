@@ -46,8 +46,14 @@ function summaryOf(
   return (list[id] ?? null) as { round?: 1 | 2; round1Aggregate?: unknown } | null;
 }
 
-export function useHostSession(live: StoredSession) {
+/**
+ * `onCommitted` runs after every command the session accepted: the console
+ * uses it to refetch its stage mirror, which has its own client.
+ */
+export function useHostSession(live: StoredSession, onCommitted?: () => void) {
   const { fetchHostSnapshot } = useEditorServices().live;
+  const committedRef = useRef(onCommitted);
+  committedRef.current = onCommitted;
   const [snapshot, setSnapshot] = useState<HostSnapshot | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [fatal, setFatal] = useState<string | null>(null);
@@ -103,6 +109,7 @@ export function useHostSession(live: StoredSession) {
       );
       if (first.ok) {
         void clientRef.current?.refresh();
+        committedRef.current?.();
         return true;
       }
 
@@ -129,6 +136,7 @@ export function useHostSession(live: StoredSession) {
         );
         if (retry.ok) {
           void clientRef.current?.refresh();
+          committedRef.current?.();
           return true;
         }
         push(retry.message ?? retry.code ?? 'Command failed after retry', 'error');

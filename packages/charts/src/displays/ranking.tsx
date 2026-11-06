@@ -4,6 +4,7 @@ import { ChartContainer } from '../components/ui/chart';
 import { chartColor } from '../colors';
 import { Frame } from '../frame';
 import { fmt, rankRows, countsChartConfig } from '../helpers';
+import { TokenWords } from '../tokens';
 import { cn } from '../lib/utils';
 import {
   barX,
@@ -71,11 +72,14 @@ export function RankingBarsChart({
     () =>
       rankRows({ interaction, scores, avgRank }).map((row, index) => ({
         key: row.id,
-        label: `${index + 1}. ${row.label}`,
+        rank: index + 1,
+        // The authored position, so tutor ink names this item `option-N`.
+        index: colorIndex.get(row.id) ?? index,
+        label: row.label,
         count: row.score,
         color: chartColor(colorIndex.get(row.id) ?? index),
         display:
-          `${row.score} pts` +
+          `${row.score} ${row.score === 1 ? 'pt' : 'pts'}` +
           (showAvg && row.avgRank !== null ? ` · avg ${fmt(row.avgRank)}` : ''),
       })),
     [interaction, scores, avgRank, colorIndex, showAvg],
@@ -92,7 +96,7 @@ export function RankingBarsChart({
             id: 'ranking-bars-background',
             x1: 0,
             x2: () => maximum,
-            y: 'label',
+            y: 'key',
             key: 'key',
             fill: 'var(--muted)',
             maxThickness: compact ? 24 : 38,
@@ -100,7 +104,7 @@ export function RankingBarsChart({
           barX(rows, {
             id: 'ranking-bars',
             x: 'count',
-            y: 'label',
+            y: 'key',
             key: 'key',
             fill: (row) => row.color,
             maxThickness: compact ? 24 : 38,
@@ -108,7 +112,7 @@ export function RankingBarsChart({
           text(rows, {
             id: 'ranking-bar-values',
             x: 'count',
-            y: 'label',
+            y: 'key',
             text: 'display',
             key: 'key',
             fill: 'var(--foreground)',
@@ -119,15 +123,13 @@ export function RankingBarsChart({
           }),
         ],
         x: { scale: scaleLinear, axis: false },
+        // The names sit in the HTML label column beside the plot, as on the
+        // choice bars: an SVG tick label had no room and was cut to a letter.
         y: {
           scale: () => scaleBand<string>().padding(0.14),
-          axis: {
-            line: false,
-            ticks: { size: 0, padding: 0 },
-            tickLabels: { fontSize: compact ? 12 : 17, fontWeight: 700, thin: false },
-          },
+          axis: false,
         },
-        margin: { top: 0, right: compact ? 80 : 130, bottom: 0, left: 8 },
+        margin: { top: 0, right: compact ? 80 : 130, bottom: 0, left: 0 },
         theme: chartTheme,
         svgAnimation: chartAnimation(reduced),
       }),
@@ -137,14 +139,23 @@ export function RankingBarsChart({
   return (
     <Frame summary={rankingSummary({ interaction, scores, avgRank, total, dontKnow, revealed })}>
       <div
-        className={cn('or-rank-chart', compact && 'or-chart--compact')}
+        className={cn('or-bars-chart or-rank-chart', compact && 'or-chart--compact')}
         style={{ '--or-rows': rows.length } as React.CSSProperties}
         data-or-chart="ordered-bars"
       >
-        <ChartContainer
-          config={config}
-          className="or-chart-frame or-chart-frame--rows aspect-auto w-full"
-        >
+        <ol className="or-chart-legend">
+          {rows.map((row) => (
+            <li key={row.key} className="barrow" data-or-option={row.key}>
+              <span className="barrow__label">
+                <span className="barrow__rank">{row.rank}.</span>{' '}
+                <span data-part={`option-${String(row.index)}`}>
+                  <TokenWords text={row.label} />
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <ChartContainer config={config} className="or-chart-frame or-chart-frame--rows aspect-auto">
           <TanStackChart
             definition={definition}
             ariaLabel="Ranking scores"

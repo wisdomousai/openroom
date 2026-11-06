@@ -9,6 +9,8 @@ export interface DeckPlace {
   spaceId: string;
   folderId: string | null;
   itemId: string;
+  /** The student the session was run for, so the exit opens their place. */
+  contextId?: string;
 }
 
 export interface SessionExit {
@@ -84,6 +86,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
   }, [ended, probeFailed, retryProbe]);
 
   const sessionId = context?.session?.id ?? null;
+  const contextId = context?.context?.id;
 
   useEffect(() => {
     if (sessionId === null) return;
@@ -96,6 +99,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
           spaceId: session.spaceId,
           folderId: session.folderId,
           itemId: session.deckId,
+          ...(contextId ? { contextId } : {}),
         });
       })
       .catch(() => {
@@ -107,7 +111,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     return () => {
       cancelled = true;
     };
-  }, [getSessionItem, sessionId]);
+  }, [getSessionItem, sessionId, contextId]);
 
   const probe: ProbeState = probeFailed
     ? { state: 'failed' }

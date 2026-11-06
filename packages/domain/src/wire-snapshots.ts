@@ -170,6 +170,12 @@ export function stageWireSnapshot(state: SessionState): Json {
     ...(snapshot.dictionary === undefined ? {} : { dictionary: snapshot.dictionary }),
     ...(snapshot.clock === undefined ? {} : { clock: snapshot.clock }),
     ...(snapshot.listening === undefined ? {} : { listening: snapshot.listening }),
+    /*
+     * The identity regime, so the Stage can leave out the join code and QR of
+     * an identified session (a code alone admits nobody there). It carries no
+     * name: the stage still never receives handles.
+     */
+    identityMode: sessionOf(state).defaults.identityMode,
     ...(snapshot.endedAt === undefined ? {} : { endedAt: snapshot.endedAt }),
   };
 }

@@ -9,7 +9,7 @@
 
 import { canAdvanceOutline } from './outline-navigation';
 import type { HostSnapshot, InteractionStatus } from '../types';
-import { activeId as activeIdOf, statusOf } from './snapshot';
+import { activeId as activeIdOf, onInteractionSlide, statusOf } from './snapshot';
 
 export type HostFlowKind = 'start' | 'reveal' | 'advance' | 'end';
 
@@ -26,7 +26,9 @@ export function deriveHostFlow(
   if (snapshot.status === 'lobby') {
     return { kind: 'start', label: 'Start session' };
   }
-  const activeId = activeIdOf(snapshot);
+  // A question left behind on an earlier slide offers no reveal on this one.
+  const active = activeIdOf(snapshot);
+  const activeId = onInteractionSlide(snapshot, active) ? active : null;
   const activeStatus: InteractionStatus | null = activeId ? statusOf(snapshot, activeId) : null;
   const seesResults = opts.audienceSeesResults === true;
   if (

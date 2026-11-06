@@ -117,6 +117,7 @@ export function Presenter({ outline, fromStep = 0, startImmediately = false, doc
   };
   return createPortal(<div ref={containerRef} tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true" aria-label="Presenter" data-deck-preview>
     {live ? <LiveHost live={live} onLeave={close} onReturnToDeck={close}
+      onAudienceScreen={bridge ? () => void presentOn() : undefined}
       onPosition={(position) => {
         const index = steps.findIndex((candidate) => candidate.id === position.stepId);
         if (index >= 0) setCursor((current) => current.step === index && current.shown === position.shown ? current : { step: index, shown: position.shown });

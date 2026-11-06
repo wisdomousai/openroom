@@ -17,6 +17,9 @@ const INK_SWATCH: Record<InkColor, string> = {
   green: 'bg-chart-2',
 };
 
+/** Rub out is a gesture on the slide, so the tools that draw say where it is. */
+const RUB_OUT_HINT = 'Double-click a mark on the slide to rub it out.';
+
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-none flex-col items-center justify-between gap-1 px-3.5">
@@ -38,11 +41,14 @@ function Large({
   label,
   onClick,
   disabled,
+  keys,
   children,
 }: {
   label: string;
   onClick?: () => void;
   disabled?: boolean;
+  /** The keyboard shortcut, for assistive tech; the icon shows the key. */
+  keys?: string;
   children: ReactNode;
 }) {
   return (
@@ -50,6 +56,7 @@ function Large({
       type="button"
       disabled={disabled}
       onClick={onClick}
+      aria-keyshortcuts={keys}
       className="flex h-[60px] w-14 flex-col items-center justify-center gap-1 rounded-lg text-caption text-foreground hover:bg-chrome disabled:pointer-events-none disabled:opacity-50"
     >
       {children}
@@ -80,16 +87,21 @@ export interface LiveRibbonProps {
   hasCorrect?: boolean;
   canReveal: boolean;
   onReveal: () => void;
-  canBlank: boolean;
-  blanked: boolean;
-  onBlank: () => void;
+  /** A question with answers is on its own slide, so its results can be hidden or shown. */
+  canToggleResults: boolean;
+  /** The audience does not see this question's results right now. */
+  resultsHidden: boolean;
+  onToggleResults: () => void;
   canInsert: boolean;
-  onInsert: (kind: 'term' | 'statement' | 'question' | 'library') => void;
+  onInsert: (kind: 'term' | 'statement' | 'question') => void;
   drawTool: 'none' | MarkShape | 'pen';
   onDrawTool: (tool: 'none' | MarkShape | 'pen') => void;
   inkColor: InkColor;
   onInkColor: (color: InkColor) => void;
   onClearMarks: () => void;
+  /** Takes back the last mark, or brings back the marks Clear removed. */
+  canUndoMarks: boolean;
+  onUndoMarks: () => void;
   /** The launcher armed the next word click; the card opens itself on the hit. */
   lookUpArmed: boolean;
   onLookUp: () => void;
@@ -129,12 +141,12 @@ export function LiveRibbon(props: LiveRibbonProps) {
       <TabsContent value="home" className="mt-0 border-b border-border bg-card">
         <Row>
           <Group label="Slides">
-            <Large label="Back" disabled={!props.canBack} onClick={props.onBack}>
+            <Large label="Back" keys="ArrowLeft" disabled={!props.canBack} onClick={props.onBack}>
               <span aria-hidden="true" className="text-option">
                 ←
               </span>
             </Large>
-            <Large label="Next" disabled={!props.canNext} onClick={props.onNext}>
+            <Large label="Next" keys="ArrowRight" disabled={!props.canNext} onClick={props.onNext}>
               <span aria-hidden="true" className="text-option">
                 →
               </span>
@@ -151,7 +163,7 @@ export function LiveRibbon(props: LiveRibbonProps) {
               Close answering
             </Button>
             {props.resultsUp ? (
-              <span className="inline-flex h-8 items-center rounded-md bg-live-tint px-3 text-sm font-semibold text-live-tint-foreground">
+              <span className="inline-flex h-8 items-center rounded-md bg-live-tint px-3 text-row-title text-live-tint-foreground">
                 Results shown
               </span>
             ) : null}
@@ -181,7 +193,7 @@ export function LiveRibbon(props: LiveRibbonProps) {
               </Button>
             ) : null}
             {props.correctShown ? (
-              <span className="inline-flex h-8 items-center rounded-md bg-accent px-2.5 text-sm font-semibold text-accent-foreground">
+              <span className="inline-flex h-8 items-center rounded-md bg-accent px-2.5 text-row-title text-accent-foreground">
                 ✓ {props.hasCorrect ? 'Correct answer shown' : 'Results shown'}
               </span>
             ) : props.canReveal ? (
@@ -192,12 +204,44 @@ export function LiveRibbon(props: LiveRibbonProps) {
           </Group>
           <Rule />
           <Group label="Screen">
-            <Large label="Blank" disabled={!props.canBlank} onClick={props.onBlank}>
-              <span
-                aria-hidden="true"
-                className={cn('block h-4 w-6 rounded-sm', props.blanked ? 'bg-muted-foreground' : 'bg-foreground')}
-              />
-            </Large>
+            {/*
+              It hides this question's results from the audience and nothing
+              else, so it says so. The title sits on a wrapper: a disabled
+              button shows no tooltip of its own.
+            */}
+            <span
+              className="inline-flex"
+              title={
+                props.canToggleResults
+                  ? 'Hide or show this question’s results on the audience screen (H)'
+                  : 'Available on a question slide once answering has started'
+              }
+            >
+              <Button
+                type="button"
+                variant="subtle"
+                size="sm"
+                aria-pressed={props.resultsHidden}
+                aria-keyshortcuts="H"
+                disabled={!props.canToggleResults}
+                /* The colour sits on the label: on the button it would merge away the button's type size. */
+                className={cn(props.resultsHidden && 'bg-accent font-semibold hover:bg-accent')}
+                onClick={props.onToggleResults}
+              >
+                <span className={props.resultsHidden ? 'text-accent-foreground' : undefined}>
+                  {props.resultsHidden ? <span aria-hidden="true">✓ </span> : null}
+                  Hide results
+                </span>
+                <kbd aria-hidden="true" className="font-sans text-caption text-muted-foreground">
+                  H
+                </kbd>
+              </Button>
+            </span>
+            {props.resultsHidden ? (
+              <span className="text-caption text-muted-foreground">
+                Results hidden
+              </span>
+            ) : null}
           </Group>
           {props.clock ? (
             <>
@@ -268,17 +312,6 @@ export function LiveRibbon(props: LiveRibbonProps) {
             </Button>
           </Group>
           <Rule />
-          <Group label="Library">
-            <Button
-              type="button"
-              variant="subtle"
-              disabled={!props.canInsert}
-              onClick={() => props.onInsert('library')}
-            >
-              From library
-            </Button>
-          </Group>
-          <Rule />
           <Group label="This slide">
             <Button type="button" variant="subtle" disabled={!props.canChangeSlide} onClick={props.onChangeSlide}>
               Change
@@ -295,6 +328,7 @@ export function LiveRibbon(props: LiveRibbonProps) {
                 key={shape}
                 type="button"
                 variant="subtle"
+                title={RUB_OUT_HINT}
                 aria-pressed={props.drawTool === shape}
                 className={cn(
                   props.drawTool === shape && 'bg-live-tint font-semibold text-live-tint-foreground hover:bg-live-tint',
@@ -307,6 +341,7 @@ export function LiveRibbon(props: LiveRibbonProps) {
             <Button
               type="button"
               variant="subtle"
+              title={RUB_OUT_HINT}
               aria-pressed={props.drawTool === 'pen'}
               className={cn(
                 props.drawTool === 'pen' && 'bg-live-tint font-semibold text-live-tint-foreground hover:bg-live-tint',
@@ -318,6 +353,15 @@ export function LiveRibbon(props: LiveRibbonProps) {
             <Button
               type="button"
               variant="subtle"
+              disabled={!props.canUndoMarks}
+              onClick={props.onUndoMarks}
+            >
+              Undo
+            </Button>
+            <Button
+              type="button"
+              variant="subtle"
+              title="Removes every mark on this slide. Undo brings them back."
               className="text-destructive hover:bg-[color-mix(in_oklab,var(--destructive)_8%,var(--card))]"
               onClick={props.onClearMarks}
             >

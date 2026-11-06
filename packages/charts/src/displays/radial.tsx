@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import type { ChoiceInteractionView } from '@openroom/sdk';
 import { ChartContainer } from '../components/ui/chart';
 import { CorrectTag, Frame } from '../frame';
@@ -22,6 +22,9 @@ import {
   TanStackChart,
 } from '../tanstack';
 import { choiceSummary } from './bars';
+
+/** Longest option label still printed on its bar inside the plot. */
+const PLOT_LABEL_MAX = 12;
 
 export function ChoiceRadialChart({
   interaction,
@@ -62,6 +65,7 @@ export function ChoiceRadialChart({
   const config = useMemo(() => countsChartConfig(rows), [rows]);
   const maximum = Math.max(1, ...rows.map((row) => row.count));
   const compact = size === 'compact';
+  const plotLabels = rows.every((row) => row.label.length <= PLOT_LABEL_MAX);
 
   const definition = useMemo(
     () =>
@@ -94,38 +98,44 @@ export function ChoiceRadialChart({
                 key: 'key',
                 fill: (row) => row.color,
               }),
-              radialText(rows, {
-                id: 'choice-radial-labels',
-                angle: 'label',
-                radius: 'count',
-                text: 'label',
-                key: 'key',
-                fill: 'var(--foreground)',
-                fontSize: compact ? 10 : 13,
-                fontWeight: 700,
-                anchor: 'middle',
-                radiusOffset: -12,
-              }),
+              // Long labels printed on the bars run into each other; the legend
+              // beside the plot names every bar, so the plot keeps short ones only.
+              ...(plotLabels
+                ? [
+                    radialText(rows, {
+                      id: 'choice-radial-labels',
+                      angle: 'label',
+                      radius: 'count',
+                      text: 'label',
+                      key: 'key',
+                      fill: 'var(--foreground)',
+                      fontSize: compact ? 10 : 13,
+                      fontWeight: 700,
+                      anchor: 'middle',
+                      radiusOffset: -12,
+                    }),
+                  ]
+                : []),
             ],
           }),
         ],
         theme: chartTheme,
         svgAnimation: chartAnimation(reduced),
       }),
-    [rows, maximum, compact, reduced],
+    [rows, maximum, compact, reduced, plotLabels],
   );
 
   return (
     <Frame summary={choiceSummary({ interaction, counts, total, dontKnow, revealed })}>
       <div
-        className={cn('or-radial-chart', compact && 'or-chart--compact')}
+        className={cn('or-radial-chart', compact ? 'or-chart--compact' : 'or-polar-chart--side')}
         data-or-chart="radial"
       >
         <ChartContainer
           config={config}
           className={cn(
             'or-chart-frame aspect-square w-full',
-            compact ? 'max-h-56' : 'max-h-[min(100%,28rem)]',
+            compact ? 'max-h-56' : 'max-h-full',
           )}
         >
           <TanStackChart
@@ -134,7 +144,10 @@ export function ChoiceRadialChart({
             initialHeight={compact ? 220 : 360}
           />
         </ChartContainer>
-        <ul className="or-chart-legend or-chart-legend--wrap">
+        <ul
+          className={cn('or-chart-legend', compact ? 'or-chart-legend--wrap' : 'or-chart-legend--columns')}
+          style={{ '--or-rows': String(Math.ceil(rows.length / 2)) } as CSSProperties}
+        >
           {rows.map((row) => (
             <li
               key={row.key}
@@ -147,6 +160,11 @@ export function ChoiceRadialChart({
               {...(row.correct ? { 'data-or-correct': '' } : {})}
               {...(row.abstain ? { 'data-or-abstain': '' } : {})}
             >
+              <span
+                className="or-swatch"
+                style={{ background: row.color }}
+                aria-hidden="true"
+              />
               <span className="barrow__label">
                 {row.label} {row.share}%
                 {row.correct ? <CorrectTag /> : null}

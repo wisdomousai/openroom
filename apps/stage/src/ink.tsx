@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { inkHex, isMarkShape, type InkColor, type MarkShape, type ParticipantSnapshot } from '@openroom/sdk';
 import { InkMarks, lineBoxes, measureTokens, spanBoxes, tokenKey, useTokenBoxes, TOKEN_SPLIT, spanStyleOf, sliceSpans, type SlideSpanStyle, type TokenBox, type TokenBoxes } from '@openroom/slides';
 
@@ -40,7 +40,11 @@ function tokenHit(
   root: HTMLElement | null,
 ): TokenHit | null {
   if (root === null) return null;
-  const element = tokenUnder(clientX, clientY, fallback);
+  return hitOf(tokenUnder(clientX, clientY, fallback), root);
+}
+
+/** One word element of the slide, as a hit in the overlay's coordinates. */
+function hitOf(element: HTMLElement | null, root: HTMLElement): TokenHit | null {
   if (element === null || !(root.parentElement ?? root).contains(element)) return null;
   const partKey =
     element.dataset.part ??
@@ -169,6 +173,15 @@ export function markHit(
   });
 }
 
+/** Every word the circle tool can name on this slide, in reading order. */
+function slideWords(root: HTMLElement | null): HTMLElement[] {
+  if (root === null) return [];
+  const scope = root.parentElement ?? root;
+  return [...scope.querySelectorAll<HTMLElement>('[data-token]')].filter(
+    (element) => (element.textContent ?? '').trim() !== '',
+  );
+}
+
 /** Below this much travel a press is a click on one word, not a drag over several. */
 const CLICK_SLOP = 6;
 
@@ -235,6 +248,19 @@ export function InkOverlay({
     lastY: number;
     hits: Map<string, TokenHit>;
   } | null>(null);
+  /**
+   * The word the keyboard is on, by its place in `slideWords`. The plate is one
+   * tab stop; arrows step through the words, Enter applies the tool, and
+   * Shift+F10 or the Menu key opens the same word menu as a right-click.
+   */
+  const [keyWord, setKeyWord] = useState<number | null>(null);
+  const [keyLabel, setKeyLabel] = useState('');
+  /** The element the keyboard is on; a slide change replaces it, which resets the picker. */
+  const keyElementRef = useRef<HTMLElement | null>(null);
+  /** That element's text when the keyboard moved to it; a slide may reuse the node. */
+  const keyTextRef = useRef('');
+  /** The word a keyboard-opened menu is for, so the menu does not hit-test a point. */
+  const menuHitRef = useRef<TokenHit | null>(null);
   /** The mark under the pointer — thickened, because a double-click erases it. */
   const [hoveredMark, setHoveredMark] = useState<string | null>(null);
   /**
@@ -329,11 +355,127 @@ export function InkOverlay({
   }
 
   const lockBoxes = lineBoxes(locked.flatMap((hit) => hit.boxes));
+  const keyboard = track || shaping;
+
+  /** The keyboard word is gone or is another word now: the slide changed under it. */
+  function keyWordStale(): boolean {
+    const element = keyElementRef.current;
+    return element !== null && (!element.isConnected || element.textContent !== keyTextRef.current);
+  }
+
+  function resetKeyWord(): void {
+    keyElementRef.current = null;
+    keyTextRef.current = '';
+    setKeyWord(null);
+    setKeyLabel('');
+    if (spanRef.current === null) setLocked([]);
+  }
+
+  // A new slide replaces the words: drop the old word and its outline. Watched
+  // only while the keyboard is on a word.
+  const onWord = keyWord !== null;
+  useEffect(() => {
+    const scope = rootRef.current?.parentElement;
+    if (!keyboard || !onWord || scope == null || typeof MutationObserver === 'undefined') return;
+    const observer = new MutationObserver(() => {
+      if (keyWordStale()) resetKeyWord();
+    });
+    observer.observe(scope, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the helpers only call setters and read refs
+  }, [keyboard, onWord]);
+
+  /** Put the keyboard on one word and outline it as the pointer would. */
+  function keyTo(index: number): TokenHit | null {
+    const words = slideWords(rootRef.current);
+    if (words.length === 0 || rootRef.current === null) return null;
+    const at = Math.max(0, Math.min(words.length - 1, index));
+    const element = words[at] ?? null;
+    const hit = hitOf(element, rootRef.current);
+    keyElementRef.current = element;
+    keyTextRef.current = element?.textContent ?? '';
+    setKeyWord(at);
+    setLocked(hit === null ? [] : [hit]);
+    setKeyLabel(hit?.word ?? '');
+    return hit;
+  }
+
+  /** The word menu for the keyboard word, opened where a right-click would. */
+  function openWordMenu(index: number): void {
+    const root = rootRef.current;
+    const element = slideWords(root)[index];
+    if (root === null || element === undefined) return;
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    menuHitRef.current = hitOf(element, root);
+    const box = element.getBoundingClientRect();
+    root.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        clientX: box.left + box.width / 2,
+        clientY: box.top + box.height / 2,
+      }),
+    );
+    // The handler ran during dispatch; a menu that never opened leaves no word behind.
+    menuHitRef.current = null;
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.target !== event.currentTarget) return;
+    const words = slideWords(rootRef.current);
+    const count = words.length;
+    if (count === 0) return;
+    // A word from a slide that has since changed counts as no word.
+    const current =
+      keyWord !== null && words[keyWord] === keyElementRef.current && !keyWordStale() ? keyWord : null;
+    const at = current ?? -1;
+    const menu = event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+    let handled = true;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') keyTo(at + 1);
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') keyTo(at < 0 ? 0 : at - 1);
+    else if (event.key === 'Home') keyTo(0);
+    else if (event.key === 'End') keyTo(count - 1);
+    else if (menu || event.key === 'Enter' || event.key === ' ') {
+      const index = current ?? 0;
+      const hit = keyTo(index);
+      if (hit !== null) {
+        if (!menu && shaping) onCircle?.(hit.partKey, hit.token, hit.word);
+        else if (menu || (!shaping && capture !== 'pen')) openWordMenu(index);
+      }
+    } else handled = false;
+    if (handled) {
+      // The slide clicker keys must not also turn the page.
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
 
   return (
     <div
       ref={rootRef}
       className="ink-overlay"
+      {...(keyboard
+        ? {
+            tabIndex: 0,
+            role: 'application',
+            'aria-roledescription': 'slide',
+            'aria-label':
+              'Slide words. Arrow keys move between words, Enter applies the ink tool or opens the word menu, Shift+F10 opens the word menu.',
+            onKeyDown,
+            onBlur: resetKeyWord,
+            /*
+             * A click is pointer work, not a move into the word picker: the
+             * plate does not take focus from it, so the clicker keys keep
+             * turning the page. Tab reaches the picker.
+             */
+            onMouseDown: (event: { preventDefault: () => void }) => {
+              event.preventDefault();
+              const active = document.activeElement;
+              if (active instanceof HTMLElement && active !== document.body) active.blur();
+            },
+          }
+        : {})}
       style={{
         position: 'absolute',
         inset: 0,
@@ -353,6 +495,13 @@ export function InkOverlay({
       onContextMenu={(event) => {
         // Report the word under the right-click before the menu opens; the
         // event is not consumed, so the console's menu still appears.
+        const keyed = menuHitRef.current;
+        menuHitRef.current = null;
+        if (keyed !== null) {
+          spanRef.current = null;
+          onTarget?.({ partKey: keyed.partKey, token: keyed.token, word: keyed.word });
+          return;
+        }
         const span = spanRef.current;
         const hits = span === null ? [] : [...span.hits.values()];
         const hit = tokenHit(event.clientX, event.clientY, event.target, rootRef.current);
@@ -507,6 +656,11 @@ export function InkOverlay({
         onStroke?.(points);
       }}
     >
+      {keyboard ? (
+        <span className="sr-only" aria-live="polite">
+          {keyLabel}
+        </span>
+      ) : null}
       <InkMarks marks={marks} boxes={boxes} hoveredMark={hoveredMark} />
       <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} viewBox="0 0 1 1" preserveAspectRatio="none" width="100%" height="100%" aria-hidden="true">
         {preview.length > 1 ? (

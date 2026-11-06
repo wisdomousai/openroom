@@ -48,7 +48,6 @@
 .or-radial-chart,
 .or-scale-chart,
 .or-hist-chart,
-.or-rank-chart,
 .or-emoji-chart,
 .or-gauge-chart {
   display: flex;
@@ -57,6 +56,80 @@
   gap: 0.5rem;
   height: 100%;
   min-height: 0;
+}
+
+/**
+ * Columns: the option names in one row under the plot, one cell per column.
+ * The inset repeats the band scale's outer padding (half a band's padding on
+ * each side of the plot margin), so each name is centred on its column and
+ * wraps inside its width instead of printing into its neighbours.
+ */
+.or-chart-legend.or-cols-chart__labels {
+  display: grid;
+  grid-template-columns: repeat(var(--or-cols, 1), minmax(0, 1fr));
+  align-items: start;
+  gap: 0;
+  padding-inline: calc(
+    var(--or-col-inset, 12px) +
+      (100% - 2 * var(--or-col-inset, 12px)) * var(--or-col-padding, 0.12) / 2 /
+      (var(--or-cols, 1) + var(--or-col-padding, 0.12))
+  );
+}
+
+/* The plot keeps at least half the body; the names take the rest. */
+.or-cols-chart .or-chart-frame {
+  flex: 1 1 auto;
+  min-height: 50%;
+}
+
+.or-cols-chart__labels .barrow {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.25em;
+  min-height: 0;
+  padding-inline: 0.25em;
+  text-align: center;
+}
+
+.or-cols-chart__labels .tag-correct {
+  margin-left: 0;
+}
+
+/**
+ * Pie, donut and radial at stage size: the plot keeps two fifths of the width
+ * (and never less than the height allows), the legend sits beside it in two
+ * wrapped columns. A long legend no longer pushes the plot out of the body.
+ */
+.or-polar-chart--side {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem 2rem;
+}
+
+.or-polar-chart--side .or-chart-frame {
+  justify-self: center;
+  min-width: 0;
+}
+
+.or-chart-legend.or-chart-legend--columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: 0.5em 1.5em;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.or-chart-legend--columns .barrow {
+  flex-wrap: nowrap;
+  align-items: baseline;
+  min-height: 0;
+}
+
+.or-chart-legend--columns .or-swatch {
+  align-self: center;
 }
 
 /**
@@ -143,6 +216,12 @@
   line-height: 1.2;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* A ranking row's place, in front of the item it names. */
+.barrow__rank {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
 }
 
 /**
@@ -232,14 +311,26 @@
   overflow-wrap: anywhere;
 }
 
-/* Scale min/max anchors under the axis (e.g. "Guessing" / "Certain"). */
+/*
+ * Scale min/max anchors (e.g. "Guessing" / "Certain") on their own row under
+ * the tick numbers, each kept to a little under half the width and wrapped, so
+ * a long end label never prints across the ticks or into the other one.
+ */
 .or-scale-ends {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 45%) minmax(0, 45%);
   justify-content: space-between;
+  align-items: start;
   gap: 1rem;
   font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.25;
   color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+
+.or-scale-ends__max {
+  text-align: right;
 }
 
 /* Word cloud: the layout runs on a fixed canvas; the svg scales to fill. */
@@ -254,8 +345,7 @@
   font-weight: 600;
 }
 
-.or-gaps-chart .barrow,
-.or-pairs-chart .barrow {
+.or-gaps-chart .barrow {
   min-height: 1.75rem;
 }
 
@@ -266,6 +356,86 @@
   border: 1px solid var(--border);
 }
 
+/**
+ * Match: one row per left item, the item in the first column and the answer
+ * it got in the second. Each cell keeps to one line; extra answers fold into
+ * "+N more", and the full reading stays in the figure caption.
+ */
+.or-pairs-chart {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4em;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.or-pairs-chart__rows {
+  display: grid;
+  gap: 0.35em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.or-pairs-chart__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0 1em;
+  line-height: 1.25;
+}
+
+.or-pairs-chart__label,
+.or-pairs-chart__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.or-pairs-chart__label {
+  font-weight: 600;
+}
+
+.or-pairs-chart__answers {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  min-width: 0;
+}
+
+.or-pairs-chart__answer {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.or-pairs-chart__answer .or-pairs-chart__count {
+  margin-left: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.or-pairs-chart__answer .tag-correct {
+  margin-left: 0;
+}
+
+.or-pairs-chart__more,
+.or-pairs-chart__empty,
+.or-pairs-chart__total {
+  margin: 0;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.or-pairs-chart__more {
+  margin-left: auto;
+}
+
 .or-cloud-chart svg {
   width: 100%;
   height: 100%;
@@ -273,6 +443,19 @@
 
 .or-chart--compact .card {
   font-size: 0.875rem;
+}
+
+/* Histogram reading under the axis; the correct value takes the rule's green. */
+.or-hist-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.or-hist-note__correct {
+  font-weight: 600;
+  color: color-mix(in oklab, var(--ok) 72%, var(--foreground));
 }
 
 /* ------------------------------------------------------------- mean chip */

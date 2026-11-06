@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import type { ChoiceInteractionView } from '@openroom/sdk';
 import { ChartContainer } from '../components/ui/chart';
 import { CorrectTag, Frame } from '../frame';
@@ -99,14 +99,14 @@ export function ChoicePieChart({
   return (
     <Frame summary={choiceSummary({ interaction, counts, total, dontKnow, revealed })}>
       <div
-        className={cn('or-pie-chart', compact && 'or-chart--compact')}
+        className={cn('or-pie-chart', compact ? 'or-chart--compact' : 'or-polar-chart--side')}
         data-or-chart={donut ? 'donut' : 'pie'}
       >
         <ChartContainer
           config={config}
           className={cn(
             'or-chart-frame aspect-square w-full',
-            compact ? 'max-h-56' : 'max-h-[min(100%,28rem)]',
+            compact ? 'max-h-56' : 'max-h-full',
           )}
         >
           <TanStackChart
@@ -115,7 +115,10 @@ export function ChoicePieChart({
             initialHeight={compact ? 220 : 360}
           />
         </ChartContainer>
-        <ul className="or-chart-legend or-chart-legend--wrap">
+        <ul
+          className={cn('or-chart-legend', compact ? 'or-chart-legend--wrap' : 'or-chart-legend--columns')}
+          style={{ '--or-rows': String(Math.ceil(rows.length / 2)) } as CSSProperties}
+        >
           {rows.map((row) => (
             <li
               key={row.key}
