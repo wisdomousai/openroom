@@ -211,7 +211,13 @@ export function LibraryList({
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const empty = (
+  const searching = query.trim() !== '';
+  const empty = searching ? (
+    <div className="flex flex-col items-center gap-2.5 px-6 py-14 text-center">
+      <p className="text-section">No decks match</p>
+      <Button variant="outline" onClick={() => onQuery('')}>Clear search</Button>
+    </div>
+  ) : (
     <div className="flex flex-col items-center gap-2.5 px-6 py-14 text-center">
       <p className="text-section">No decks in this folder</p>
       {canEdit && createTo ? (
@@ -359,10 +365,21 @@ export function LibraryList({
                 );
               })}
             </nav>
+            {/*
+              * The buttons keep one row at 1280 px and the search takes the
+              * row below. New deck is outlined here: the sidebar's New deck is
+              * the page's one primary and files into the same place.
+              */}
             <div className="flex flex-wrap items-center gap-2">
+              {canEdit && createTo ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link {...createTo}>New deck</Link>
+                </Button>
+              ) : null}
+              {samplesTo ? <Button asChild size="sm" variant="outline"><Link {...samplesTo}>Sample lessons</Link></Button> : null}
               {settingsTo ? (
                 <Button asChild size="sm" variant="outline">
-                  <Link {...settingsTo}>Settings</Link>
+                  <Link {...settingsTo}>Space settings</Link>
                 </Button>
               ) : null}
               {shareTo ? (
@@ -370,20 +387,16 @@ export function LibraryList({
                   <Link {...shareTo}>Share</Link>
                 </Button>
               ) : null}
-              <Input
-                value={query}
-                onChange={(event) => onQuery(event.currentTarget.value)}
-                placeholder="Search all folders"
-                aria-label="Search decks"
-                className="h-8 min-w-32 flex-1 basis-40"
-              />
-              {canEdit && createTo ? (
-                <Button asChild size="sm">
-                  <Link {...createTo}>New deck</Link>
-                </Button>
-              ) : null}
-              {samplesTo ? <Button asChild size="sm" variant="outline"><Link {...samplesTo}>Sample lessons</Link></Button> : null}
             </div>
+            <Input
+              type="search"
+              value={query}
+              onChange={(event) => onQuery(event.currentTarget.value)}
+              onKeyDown={(event) => { if (event.key === 'Escape' && query) { event.preventDefault(); onQuery(''); } }}
+              placeholder="Search this space"
+              aria-label="Search this space"
+              className="h-8 w-full"
+            />
           </div>
         </div>
       ) : (

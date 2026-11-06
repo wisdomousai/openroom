@@ -591,6 +591,8 @@ export function SpacePage({
         }
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
+          {/* A student's place has a visible h1 with their name; a space or folder names itself for assistive tech. */}
+          {personView ? null : <h1 className="sr-only">{folderName}</h1>}
           <LiveNow onOpen={onOpenSession} contextId={currentContextId} />
           <WorkspaceUpdates contextId={currentContextId} />
           {personView && person ? (
@@ -609,13 +611,9 @@ export function SpacePage({
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                {/* New deck stays in the deck toolbar below and the sidebar, not a third time here. */}
                 {space?.role === 'owner' && !personTrashed ? (
                   <Button asChild variant="outline" className="h-8 bg-card"><Link {...to.spaceMembers(spaceId)}>Share</Link></Button>
-                ) : null}
-                {canEdit && createTo ? (
-                  <Button asChild className="h-8">
-                    <Link {...createTo}>New deck</Link>
-                  </Button>
                 ) : null}
               </div>
             </div>

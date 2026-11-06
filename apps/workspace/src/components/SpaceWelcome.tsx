@@ -21,7 +21,7 @@ export function SpaceWelcome({ spaceId, contextId, experience }: { spaceId: stri
   });
   return <section aria-labelledby="space-welcome-heading" className="mx-8 mb-5 mt-4 rounded-[var(--radius-xl)] border border-border bg-card p-5">
     <h2 id="space-welcome-heading" className="text-section">Sample deck</h2>
-    <p className="mt-2 max-w-md text-secondary text-muted-foreground">{profile.starterTitle}. A short deck with an audience question, an activity and a recap.</p>
+    <p className="mt-2 max-w-md text-secondary text-muted-foreground">{profile.starterTitle}. A short deck with a question, an activity and a recap.</p>
     <div className="mt-4 flex flex-wrap items-center gap-3">
       <Button onClick={() => addSample.mutate()} disabled={addSample.isPending}>{addSample.isPending ? 'Opening…' : 'Open sample deck'}</Button>
       {/* A student space has no experience choice (its settings show languages and brand kits only). */}

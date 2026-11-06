@@ -7,8 +7,9 @@
  * folders rename in place, trashing a folder takes its decks along, and the
  * purge page names what it deletes. At laptop sizes the access links are open,
  * a group keeps its whole name, a long Next session note stays short, the
- * decks scroll with the page, and a student moves to Trash from Edit student
- * and comes back with Restore.
+ * decks scroll with the page, a search with no match says so, a deck found
+ * from the top search opens in the student's place, and a student moves to
+ * Trash from Edit student and comes back with Restore.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
@@ -201,12 +202,40 @@ test('a student place at laptop sizes: open links, whole group name, page-length
   // At 1024 the header's buttons wrap instead of covering the name.
   await page.setViewportSize({ width: 1024, height: 768 });
   const title = await page.getByRole('heading', { name: student, exact: true, level: 1 }).boundingBox();
-  const newDeck = await page.getByRole('main').getByRole('link', { name: 'New deck', exact: true }).first().boundingBox();
-  expect(title && newDeck).toBeTruthy();
-  const overlaps = title!.x < newDeck!.x + newDeck!.width && newDeck!.x < title!.x + title!.width
-    && title!.y < newDeck!.y + newDeck!.height && newDeck!.y < title!.y + title!.height;
+  const share = await page.getByRole('main').getByRole('link', { name: 'Share', exact: true }).first().boundingBox();
+  expect(title && share).toBeTruthy();
+  const overlaps = title!.x < share!.x + share!.width && share!.x < title!.x + title!.width
+    && title!.y < share!.y + share!.height && share!.y < title!.y + title!.height;
   expect(overlaps).toBe(false);
   await page.setViewportSize({ width: 1280, height: 720 });
+
+  // New deck shows once in the place (the deck toolbar), beside Sample lessons on one row.
+  const main = page.getByRole('main');
+  await expect(main.getByRole('link', { name: 'New deck', exact: true })).toHaveCount(1);
+  const toolbarNewDeck = await main.getByRole('link', { name: 'New deck', exact: true }).boundingBox();
+  const samples = await main.getByRole('link', { name: 'Sample lessons', exact: true }).boundingBox();
+  expect(Math.abs(toolbarNewDeck!.y - samples!.y)).toBeLessThan(2);
+
+  // A search with no match says so and clears; it is not an empty folder.
+  const spaceSearch = page.getByRole('searchbox', { name: 'Search this space', exact: true });
+  await spaceSearch.fill('zzz-no-such-deck');
+  await expect(page.getByText('No decks match', { exact: true })).toBeVisible();
+  await expect(page.getByText('No decks in this folder')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+  await expect(spaceSearch).toHaveValue('');
+  await expect(rows).toHaveCount(8);
+
+  // A deck found from the top search opens in the student's place, and the search clears.
+  // The decks were filed through the API, so reload for the shell's deck list to see them.
+  await page.goto('/host/#/space');
+  await page.reload();
+  const topSearch = page.getByRole('textbox', { name: 'Search decks', exact: true });
+  await topSearch.fill('Leçon 3');
+  await page.getByLabel('Search results').getByRole('link', { name: new RegExp(`Leçon 3.*${student}`) }).click();
+  await expect(page.getByRole('heading', { name: student, exact: true, level: 1 })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`contextId=${contextId}`));
+  await expect(topSearch).toHaveValue('');
+  await page.goto(`/host/#/space/${spaceId}?contextId=${contextId}`);
 
   // Edit student is a real form: Enter submits, an empty name is reported on the field.
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -227,7 +256,6 @@ test('a student place at laptop sizes: open links, whole group name, page-length
 
   // The place says the student is in Trash, offers Restore, and nothing that would fail.
   await expect(page.getByText(`${student} is in Trash.`)).toBeVisible();
-  const main = page.getByRole('main');
   await expect(main.getByRole('link', { name: 'New deck', exact: true })).toHaveCount(0);
   // The sidebar's New deck does not file into the trashed student.
   const sidebarNewDeck = page.getByRole('link', { name: 'New deck', exact: true });
