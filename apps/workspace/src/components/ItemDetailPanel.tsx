@@ -246,7 +246,7 @@ export function ItemDetailPanel({
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="text-rail">Homework</span>
-              <span className="text-caption text-muted-foreground">{homeworkLine(aside?.homework)}</span>
+              <span className="text-caption text-muted-foreground">{homeworkLine(aside?.homework, { forStudent: item.data.contextId != null })}</span>
             </span>
           </Link>
           <Link

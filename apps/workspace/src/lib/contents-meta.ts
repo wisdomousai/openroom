@@ -58,19 +58,27 @@ export function summarizeOutline(outline: {
   };
 }
 
-export function homeworkLine(homework: { title?: string; body?: string; items?: string[]; tasks?: unknown[] } | null | undefined): string {
+/**
+ * The inspector's Homework line. Homework reaches a learner only on the Notes
+ * record, so a deck linked to a student says it is shared when Notes are
+ * saved; a deck with no student states only what is written.
+ */
+export function homeworkLine(
+  homework: { title?: string; body?: string; items?: string[]; tasks?: unknown[] } | null | undefined,
+  { forStudent = false }: { forStudent?: boolean } = {},
+): string {
   if (!homework) return 'Not written';
+  const shared = forStudent ? ' · shared when you save Notes' : '';
   if (homework.tasks && homework.tasks.length > 0) {
     const n = homework.tasks.length;
-    return n === 1 ? 'One task · shared when you save Notes' : `${n} tasks · shared when you save Notes`;
+    return `${n === 1 ? 'One task' : `${n} tasks`}${shared}`;
   }
   if (homework.items && homework.items.length > 0) {
     const n = homework.items.length;
-    return `${n} ${n === 1 ? 'item' : 'items'} · shared when you save Notes`;
+    return `${n} ${n === 1 ? 'item' : 'items'}${shared}`;
   }
-  if (homework.body?.trim()) return 'Shared when you save Notes';
-  if (homework.title?.trim()) return homework.title.trim();
-  return 'Shared when you save Notes';
+  if (homework.title?.trim() && !homework.body?.trim()) return homework.title.trim();
+  return forStudent ? 'Shared when you save Notes' : 'Written';
 }
 
 export function recapLine(recap: { title?: string; body?: string; items?: string[] } | null | undefined): string {
