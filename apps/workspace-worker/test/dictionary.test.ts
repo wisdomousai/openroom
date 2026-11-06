@@ -225,6 +225,15 @@ describe('resolveEntry', () => {
     expect(seen).toEqual([wordPath('dictionary/German', word)]);
   });
 
+  it('does not keep an outage as the answer once upstream is back', async () => {
+    const word = unique('gehen');
+    const routes: Record<string, string | number> = { [wordPath('dictionary/German', word)]: 503 };
+    const { fetch: impl } = upstream(routes);
+    expect((await resolveEntry({ word, lang: 'de' }, impl)).entry).toBeNull();
+    routes[wordPath('dictionary/German', word)] = jsonl(GEHEN);
+    expect((await resolveEntry({ word, lang: 'de' }, impl)).entry?.pos).toBe('verb');
+  });
+
   it('reports an unmapped taught language instead of guessing a URL', async () => {
     const { fetch: impl, seen } = upstream({});
     const result = await resolveEntry({ word: unique('szo'), lang: 'hu' }, impl);

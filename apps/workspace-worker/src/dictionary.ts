@@ -289,9 +289,17 @@ export async function resolveEntry(
   const cached = entryCache.get(cacheKey);
   if (cached !== undefined && now < cached.until) return cached.value;
 
+  // A failed fetch says nothing about the word, so its result is not cached.
+  let failed = false;
+  const ask = async (target: string) => {
+    const result = await fetchRowsOrMissing(target, fetchImpl);
+    if (result.rows === null && !result.missing) failed = true;
+    return result;
+  };
+
   let found = word;
   let url = wordPath(`dictionary/${root}`, word);
-  const verbatim = await fetchRowsOrMissing(url, fetchImpl);
+  const verbatim = await ask(url);
   let rows = verbatim.rows;
   /*
    * Upstream paths are case-sensitive, and a sentence-initial `Je` is filed as
@@ -303,7 +311,7 @@ export async function resolveEntry(
   if (verbatim.missing && lower !== word) {
     found = lower;
     url = wordPath(`dictionary/${root}`, lower);
-    rows = await fetchRows(url, fetchImpl);
+    rows = (await ask(url)).rows;
   }
 
   let entry: DictionaryEntry | null = null;
@@ -314,7 +322,7 @@ export async function resolveEntry(
       const lemma = hasForms ? null : lemmaTarget(row);
       if (lemma !== null && lemma !== found && isLookupWord(lemma)) {
         const lemmaUrl = wordPath(`dictionary/${root}`, lemma);
-        const lemmaRows = await fetchRows(lemmaUrl, fetchImpl);
+        const lemmaRows = (await ask(lemmaUrl)).rows;
         const lemmaRow = lemmaRows === null ? null : bestRow(lemmaRows, lang);
         entry =
           lemmaRow === null
@@ -349,6 +357,8 @@ export async function resolveEntry(
     meaning,
     ...(unsupported === undefined ? {} : { unsupported }),
   };
+
+  if (failed) return value;
 
   // Sweep on write rather than on a timer: the map lives for the isolate's
   // lifetime and nothing else here executes often enough to notice.
