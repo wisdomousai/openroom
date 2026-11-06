@@ -20,8 +20,11 @@ const workerDir = resolve(root, 'apps/workspace-worker');
 const relayDir = resolve(root, 'apps/relay');
 const capacity = process.argv[2] === '--capacity';
 if (capacity && process.argv.length !== 3) throw new Error('Usage: bun run verify:capacity');
-const label = capacity ? 'Capacity check' : 'Browser journeys';
-const output = resolve(root, 'e2e/verification-output', capacity ? 'capacity' : '.');
+// --serve keeps the disposable runtime up for manual or agent-driven browsing until SIGINT/SIGTERM.
+const serveOnly = process.argv[2] === '--serve';
+if (serveOnly && process.argv.length !== 3) throw new Error('Usage: bun run verify:browser --serve');
+const label = capacity ? 'Capacity check' : serveOnly ? 'Local runtime' : 'Browser journeys';
+const output = resolve(root, 'e2e/verification-output', capacity ? 'capacity' : serveOnly ? `serve-${process.pid}` : '.');
 await mkdir(output, { recursive: true });
 if (capacity) await rm(resolve(output, 'metrics.json'), { force: true });
 const temporary = await mkdtemp(resolve(tmpdir(), 'openroom-verification-'));
@@ -118,13 +121,16 @@ try {
     await healthy(serve(persist, port, [relay], 'relay'), origin);
     console.log(`${label}: relay ready at ${origin}; storage is disposable.`);
   }
+  const exited = ({ child, name }) => new Promise((_, reject) => child.once('close', (code, signal) => reject(new Error(`Local Worker (${name}) exited during ${label.toLowerCase()} (${signal ?? code}); see ${output}/worker.log`))));
+  if (serveOnly) {
+    // scripts/ci/run.mjs stops the runtimes on SIGINT/SIGTERM; the exit hook removes the storage.
+    console.log(`${label}: serving until interrupted; log at ${output}/worker.log`);
+    await Promise.race(runtimes.map(exited));
+  }
   journeys = capacity
     ? start(process.execPath, [resolve(root, 'scripts/capacity-clients.mjs')], { cwd: root, env })
     : start(bun, ['x', 'playwright', 'test', ...process.argv.slice(2)], { cwd: resolve(root, 'e2e'), env });
-  await Promise.race([
-    completed(journeys, label),
-    ...runtimes.map(({ child, name }) => new Promise((_, reject) => child.once('close', (code, signal) => reject(new Error(`Local Worker (${name}) exited during ${label.toLowerCase()} (${signal ?? code}); see ${output}/worker.log`))))),
-  ]);
+  await Promise.race([completed(journeys, label), ...runtimes.map(exited)]);
   succeeded = true;
 } finally {
   if (journeys) await stop(journeys);
