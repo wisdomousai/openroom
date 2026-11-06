@@ -16,6 +16,12 @@
  * phone is back;
  * a looked-up word loses its punctuation, the sheet keeps Close in view, takes
  * focus, closes on Escape and when the step changes.
+ *
+ * At 390x340, 844x390 and 320x568 the Join button, the last Reading line, the
+ * free-text field, the Q&A list and the last of four options are reachable;
+ * the controls around the slide clear 44 px; Reading keeps the headword and a
+ * heading element larger than the body; an unlabelled recording is Listening.
+ * The real soft keyboard is not encodable here and stays a physical-device check.
  */
 import { test, expect, devices, type APIRequestContext, type Page } from '@playwright/test';
 

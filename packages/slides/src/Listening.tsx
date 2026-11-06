@@ -7,9 +7,6 @@ export const ListeningAudience = createContext<'audience' | 'participant'>('audi
 /** What a recording is called until the tutor gives it a label. */
 const UNTITLED = 'Listening';
 
-/** A failed load, worded for a learner, who cannot pick another recording. */
-const LEARNER_LOAD_ERROR = 'This audio could not be loaded. Check your connection, then tap Retry loading.';
-
 function titleOf(label: string | undefined): string {
   const trimmed = label?.trim() ?? '';
   return trimmed === '' ? UNTITLED : trimmed;
@@ -69,7 +66,7 @@ export function ListeningBlock({ media }: { media: SlideMedia }) {
   return <section className="listening-block" aria-label="Listening">
     <p className="listening-block__title">{titleOf(media.alt)}</p>
     <p className="listening-block__instruction">{individual ? 'Listen on your own device.' : 'Listen together. Your tutor plays the recording.'}</p>
-    {role === 'participant' && individual && media.url ? <AudioPlayer key={media.url} src={media.url} label={media.alt} loadError={LEARNER_LOAD_ERROR} /> : null}
+    {role === 'participant' && individual && media.url ? <AudioPlayer key={media.url} src={media.url} label={media.alt} /> : null}
     {media.listening?.transcript ? <div className="listening-block__transcript"><h3>Transcript</h3><p>{media.listening.transcript}</p></div> : null}
   </section>;
 }

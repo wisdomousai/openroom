@@ -924,9 +924,10 @@ a {
 }
 
 /*
- * A short window (a phone with its keyboard up, or held sideways): the top gap
- * shrinks to the safe area and the chrome above the question tightens, so the
- * prompt and the field fit above the keyboard. Type sizes stay as they are.
+ * A short window (a phone held sideways, or a browser that shrinks the layout
+ * for the keyboard; iOS Safari does not): the top gap shrinks to the safe area
+ * and the chrome above the question tightens, so the prompt and the field fit.
+ * Type sizes stay as they are.
  */
 @media (max-height: 520px) {
   .page {
@@ -1425,14 +1426,14 @@ a {
 .learner-slide[data-reading='true'] .learner-slide__plate { flex: none; width: 100%; aspect-ratio: auto; overflow: visible; }
 .learner-slide[data-reading='true'] .slide-surface { height: auto; aspect-ratio: auto; min-height: 16rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step { display: flex; flex-direction: column; height: auto; min-height: 16rem; gap: 1.25rem; padding: 1.25rem; font-size: 1rem; overflow: visible; }
-.learner-slide[data-reading='true'] .slide-surface .outline-step h1,
-.learner-slide[data-reading='true'] .slide-surface .outline-step__term { max-width: none; font-size: 1.75rem; line-height: 1.2; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step h1 { max-width: none; font-size: 1.75rem; line-height: 1.2; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step h2 { font-size: 1.15rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step p,
 .learner-slide[data-reading='true'] .slide-surface .outline-step li { font-size: 1rem; line-height: 1.55; max-width: none; }
-/* The headword and the stat are paragraphs too; they keep their lead over the body text. */
+/* The headword and the stat are paragraphs, so they name the element to win over the
+   body rule above and keep the title's lead over the body text. */
 .learner-slide[data-reading='true'] .slide-surface .outline-step p.outline-step__term,
-.learner-slide[data-reading='true'] .slide-surface .outline-step p.outline-step__stat { font-size: 1.75rem; line-height: 1.2; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step p.outline-step__stat { max-width: none; font-size: 1.75rem; line-height: 1.2; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__region { padding: 0; border: 0; overflow: visible; gap: 1rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__cards,
 .learner-slide[data-reading='true'] .slide-surface .outline-step__sequence,
@@ -1502,7 +1503,7 @@ a {
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
   border-radius: 14px 14px 0 0;
-  box-shadow: var(--shadow-overlay);
+  box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
   font-size: 0.9rem;
 }
 
@@ -1855,7 +1856,7 @@ a {
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
   border-radius: 14px 14px 0 0;
-  box-shadow: var(--shadow-overlay);
+  box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
 }
 
 @media (min-width: 640px) {
@@ -1868,7 +1869,7 @@ a {
     transform: translate(-50%, -50%);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl, 8px);
-    box-shadow: var(--shadow-overlay);
+    box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
   }
 }
 
