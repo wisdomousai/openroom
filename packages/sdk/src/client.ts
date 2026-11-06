@@ -65,6 +65,13 @@ export interface SessionClientOptions<S extends Snapshot = Snapshot> {
   WebSocket?: WebSocketCtor | null;
   randomUUID?: () => string;
   isHidden?: () => boolean;
+  /**
+   * Calls `wake` when the device may have its connection back, and returns an
+   * unsubscribe: `online` true for the network coming back, false for the page
+   * turning visible. Defaults to the window `online` event and the document's
+   * visibilitychange; outside a browser it does nothing.
+   */
+  subscribeWake?: (wake: (online: boolean) => void) => () => void;
   /** Poll intervals in ms (active / idle / hidden). */
   pollIntervals?: { active?: number; idle?: number; hidden?: number };
 }
@@ -116,6 +123,28 @@ function wsUrlFrom(httpBase: string, path: string): string {
   if (base.startsWith('https:')) return `wss:${base.slice(6)}${path}`;
   if (base.startsWith('http:')) return `ws:${base.slice(5)}${path}`;
   return `${base}${path}`;
+}
+
+interface EventSourceLike {
+  addEventListener?: (type: string, listener: () => void) => void;
+  removeEventListener?: (type: string, listener: () => void) => void;
+}
+
+/** A phone coming back from sleep or a dead zone, in a browser. */
+function browserWake(wake: (online: boolean) => void): () => void {
+  const win = globalThis as EventSourceLike & { document?: EventSourceLike & { hidden?: boolean } };
+  const doc = win.document;
+  if (typeof win.addEventListener !== 'function' || doc === undefined) return () => {};
+  const onOnline = (): void => wake(true);
+  const onVisible = (): void => {
+    if (doc.hidden !== true) wake(false);
+  };
+  win.addEventListener('online', onOnline);
+  doc.addEventListener?.('visibilitychange', onVisible);
+  return () => {
+    win.removeEventListener?.('online', onOnline);
+    doc.removeEventListener?.('visibilitychange', onVisible);
+  };
 }
 
 function uuid(): string {
@@ -182,6 +211,8 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
   /** When the current run of gone answers began; null after any other outcome. */
   let goneSince: number | null = null;
   let goneTimer: ReturnType<typeof setTimeout> | null = null;
+  /** While offline over an open socket nothing else would ask again. */
+  let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
 
   function setStatus(next: ConnectionStatus): void {
     if (status === next) return;
@@ -266,6 +297,33 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
         void fetchSnapshot();
       }
       schedulePoll();
+      scheduleRecovery();
+    }
+  }
+
+  /* ---------------------------------------------------------- recovery */
+
+  function scheduleRecovery(): void {
+    if (closed || polling || status !== 'offline' || recoveryTimer !== null) return;
+    recoveryTimer = setTimeout(() => {
+      recoveryTimer = null;
+      void fetchSnapshot();
+    }, intervals.idle);
+  }
+
+  /**
+   * The device says it may be back: ask now instead of at the next timer. Only
+   * the network coming back skips the socket backoff; a tab switch does not.
+   */
+  function wake(online: boolean): void {
+    if (closed) return;
+    void fetchSnapshot();
+    if (online && WSCtor && ws === null) {
+      if (wsRetryTimer !== null) {
+        clearTimeout(wsRetryTimer);
+        wsRetryTimer = null;
+      }
+      connectWs();
     }
   }
 
@@ -288,7 +346,8 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
   function startPolling(): void {
     if (polling || closed) return;
     polling = true;
-    setStatus('polling');
+    // Offline stays offline until a poll actually gets through.
+    if (status !== 'offline') setStatus('polling');
     schedulePoll();
   }
 
@@ -315,7 +374,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
     ws = null;
     wsFailures += 1;
     if (wsFailures >= WS_FAILURES_BEFORE_POLLING) startPolling();
-    else setStatus('connecting');
+    else if (status !== 'offline') setStatus('connecting');
     const delay = Math.min(
       WS_BACKOFF_MAX_MS,
       WS_BACKOFF_BASE_MS * Math.pow(2, Math.min(wsFailures - 1, 5)),
@@ -428,6 +487,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
     }
     if ('networkError' in attempt) {
       setStatus('offline');
+      scheduleRecovery();
       return { ok: false, error: { code: 'E_NETWORK', message: 'Network error' } };
     }
     const { res } = attempt;
@@ -468,6 +528,11 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       clearTimeout(goneTimer);
       goneTimer = null;
     }
+    if (recoveryTimer !== null) {
+      clearTimeout(recoveryTimer);
+      recoveryTimer = null;
+    }
+    unsubscribeWake();
     if (ws) {
       try {
         ws.onopen = null;
@@ -489,6 +554,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
   } catch {
     /* listener errors must not break the client */
   }
+  const unsubscribeWake = (options.subscribeWake ?? browserWake)(wake);
   void fetchSnapshot();
   if (WSCtor) connectWs();
   else startPolling();
