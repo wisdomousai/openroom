@@ -217,12 +217,13 @@ test('a student place at laptop sizes: open links, whole group name, page-length
   expect(Math.abs(toolbarNewDeck!.y - samples!.y)).toBeLessThan(2);
 
   // A search with no match says so and clears; it is not an empty folder.
-  const spaceSearch = page.getByRole('searchbox', { name: 'Search this space', exact: true });
+  const spaceSearch = page.getByRole('searchbox', { name: `Search decks for ${student}`, exact: true });
   await spaceSearch.fill('zzz-no-such-deck');
   await expect(page.getByText('No decks match', { exact: true })).toBeVisible();
   await expect(page.getByText('No decks in this folder')).toHaveCount(0);
   await page.getByRole('button', { name: 'Clear search', exact: true }).click();
   await expect(spaceSearch).toHaveValue('');
+  await expect(spaceSearch).toBeFocused();
   await expect(rows).toHaveCount(8);
 
   // A deck found from the top search opens in the student's place, and the search clears.

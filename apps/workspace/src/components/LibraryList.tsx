@@ -84,6 +84,8 @@ export interface LibraryListProps {
   rowActions?: LibraryRowActions;
   /** Leave out the empty-folder line when the page already shows its own empty state. */
   hideEmpty?: boolean;
+  /** Names the search field after what it searches (a student's place searches only their decks). */
+  searchLabel?: string;
   /**
    * `list` — the rows scroll inside the column (a space's Library).
    * `page` — the rows take their full height and the column scrolls.
@@ -113,12 +115,14 @@ export function LibraryList({
   heading = 'Decks',
   rowActions,
   hideEmpty = false,
+  searchLabel = 'Search this space',
   scroll = 'list',
 }: LibraryListProps) {
   const [view, setView] = useState<'list' | 'tiles'>('list');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const editRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   /*
    * Radix holds focus inside an open menu and hands it back to the row when
@@ -215,7 +219,8 @@ export function LibraryList({
   const empty = searching ? (
     <div className="flex flex-col items-center gap-2.5 px-6 py-14 text-center">
       <p className="text-section">No decks match</p>
-      <Button variant="outline" onClick={() => onQuery('')}>Clear search</Button>
+      {/* The button goes away with the empty state, so focus returns to the field. */}
+      <Button variant="outline" onClick={() => { onQuery(''); searchRef.current?.focus(); }}>Clear search</Button>
     </div>
   ) : (
     <div className="flex flex-col items-center gap-2.5 px-6 py-14 text-center">
@@ -389,12 +394,13 @@ export function LibraryList({
               ) : null}
             </div>
             <Input
+              ref={searchRef}
               type="search"
               value={query}
               onChange={(event) => onQuery(event.currentTarget.value)}
               onKeyDown={(event) => { if (event.key === 'Escape' && query) { event.preventDefault(); onQuery(''); } }}
-              placeholder="Search this space"
-              aria-label="Search this space"
+              placeholder={searchLabel}
+              aria-label={searchLabel}
               className="h-8 w-full"
             />
           </div>
