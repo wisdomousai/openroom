@@ -22,7 +22,7 @@ import type { ConnectionStatus, StoredSession } from '../types';
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
   connecting: 'Connecting',
   live: 'Live',
-  polling: 'Polling',
+  polling: 'Connected',
   offline: 'Offline',
 };
 

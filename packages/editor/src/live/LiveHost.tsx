@@ -64,16 +64,25 @@ import type {
   TextEntry,
 } from '../types';
 
-export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
+export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudienceScreen }: {
   live: StoredSession; onLeave: () => void;
   onReturnToDeck?: () => void;
   onPosition?: (position: { stepId: string; shown: number }) => void;
+  /** Desktop Presenter only: open the audience window from the Session menu. */
+  onAudienceScreen?: () => void;
 }) {
   const services = useEditorServices();
   const { navigate } = services.navigation;
   const { StageView } = services.live;
   const { scratchpad: scratchpadSlot, languagePair: languagePairSlot, SavedResults } = services.slots;
-  const host = useHostSession(live);
+  /*
+   * Exact projector feed — same role/snapshot the /stage/ app uses. Its client
+   * polls on its own timers where no socket opens (the desktop relay), so the
+   * host session asks it to refetch after each command: the tutor's own slide
+   * change shows in the preview at once, not on the next poll.
+   */
+  const { stageToken, stageSnapshot, stageStatus, retryStageToken, refreshStage } = useStageMirror(live);
+  const host = useHostSession(live, refreshStage);
   const {
     snapshot,
     canPresent,
@@ -184,9 +193,6 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition }: {
       navigate({ kind: 'library' }, { replace: true });
     }
   }, [exitKind, exitSessionId, navigate]);
-
-  /** Exact projector feed — same role/snapshot the /stage/ app uses. */
-  const { stageToken, stageSnapshot, stageStatus, retryStageToken } = useStageMirror(live);
 
   const sessionTheme = snapshot?.theme;
   const { setSessionThemeId } = theme;

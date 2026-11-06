@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { deckAspectRatio, resolveRevealOrder, stringifyOpenRoomFile, type Outline, type PresentationPosition } from '@openroom/schema';
 import { usePresentationKeys } from './usePresentationKeys';
@@ -14,13 +14,18 @@ import { ListeningControls, type ListeningSettings } from '../live/ListeningCont
 export type { PresentationPosition } from '@openroom/schema';
 
 /** One presenter for a document, optionally connected to a live session. */
-export function Presenter({ outline, fromStep = 0, startImmediately = false, documentSource, onStart, onClose }: {
+export function Presenter({ outline, fromStep = 0, startImmediately = false, documentSource, onStart, onClose, beforeStart }: {
   outline: Outline;
   fromStep?: number;
   startImmediately?: boolean;
   documentSource?: string | null;
   onStart: (cursor: PresentationPosition) => Promise<StoredSession>;
   onClose: (stepId?: string) => void;
+  /**
+   * Drawn beside Start session before the session starts — the host app puts
+   * its "Live now · Rejoin" cue here when this deck already has a live session.
+   */
+  beforeStart?: ReactNode;
 }) {
   const steps = useMemo(() => presentableSteps(outline), [outline]);
   const groups = useMemo(() => steps.map((step) => resolveRevealOrder(step, outline.interactions)), [steps, outline]);
@@ -117,6 +122,7 @@ export function Presenter({ outline, fromStep = 0, startImmediately = false, doc
   };
   return createPortal(<div ref={containerRef} tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true" aria-label="Presenter" data-deck-preview>
     {live ? <LiveHost live={live} onLeave={close} onReturnToDeck={close}
+      onAudienceScreen={bridge ? () => void presentOn() : undefined}
       onPosition={(position) => {
         const index = steps.findIndex((candidate) => candidate.id === position.stepId);
         if (index >= 0) setCursor((current) => current.step === index && current.shown === position.shown ? current : { step: index, shown: position.shown });
@@ -127,6 +133,7 @@ export function Presenter({ outline, fromStep = 0, startImmediately = false, doc
         <span className="flex-1" />
         {bridge ? <Button size="sm" variant="outline" onClick={() => void presentOn()}>Audience screen</Button> : null}
         {displays.filter((display) => display.external).map((display) => <Button key={display.id} size="sm" variant="outline" onClick={() => void presentOn(display.id)}>{display.label}</Button>)}
+        {beforeStart}
         <Button size="sm" variant="live" disabled={starting || !step} onClick={() => void start()}>{starting ? 'Starting…' : 'Start session'}</Button>
       </header>
       {error ? <p role="alert" className="px-4 py-2 text-destructive">{error}</p> : null}

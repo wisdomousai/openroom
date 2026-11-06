@@ -4,6 +4,7 @@ import {
   Download,
   ExternalLink,
   LogOut,
+  Monitor,
   Palette,
   Smartphone,
   Snowflake,
@@ -23,10 +24,15 @@ import {
 import { Hint } from '@openroom/ui/components/tooltip';
 import type { ConnectionStatus } from '../types';
 
+/*
+ * What the tutor needs to know is whether commands and answers get through.
+ * Polling still does; it only arrives a little later than a socket, so it reads
+ * as connected rather than as a transport name that sounds degraded.
+ */
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
   connecting: 'Connecting',
   live: 'Live',
-  polling: 'Polling',
+  polling: 'Connected',
   offline: 'Offline',
 };
 
@@ -72,6 +78,8 @@ export interface HostHeaderProps {
   libraryPlace?: LibraryPlace | null;
   onBackToDeck: () => void;
   onReturnToDeck?: () => void;
+  /** Desktop Presenter: open the audience window on a display. Absent elsewhere. */
+  onAudienceScreen?: () => void;
   push: (message: string, tone?: 'info' | 'warn' | 'error') => void;
 }
 
@@ -105,12 +113,19 @@ export function HostHeader({
   libraryPlace = null,
   onBackToDeck,
   onReturnToDeck,
+  onAudienceScreen,
   push,
 }: HostHeaderProps) {
   const services = useEditorServices();
   const { navigate, shareUrl } = services.navigation;
   const remoteLink = shareUrl('remote', sessionCode, hostToken);
   const qnaLink = hasQna ? shareUrl('qna', sessionCode, hostToken) : null;
+  /*
+   * A server with no remote page for another device (the desktop relay) has no
+   * remote or recap page at all; navigating there would replace this console
+   * with a page that cannot load the session. Those items are left out.
+   */
+  const workspacePages = remoteLink !== null;
 
   return (
     <header className="flex h-11 shrink-0 items-center gap-3.5 bg-chrome px-4" data-theme-surface="">
@@ -126,17 +141,17 @@ export function HostHeader({
             onClick={onCopyJoin}
             title="Tap to copy"
             aria-label={`Join code ${code}. Copy join link.`}
-            className="inline-flex h-[26px] items-center rounded-full bg-live-tint px-2.5 text-sm font-semibold tracking-[0.08em] text-live-tint-foreground tabular-nums"
+            className="inline-flex items-center rounded-full bg-live-tint px-2.5 py-0.5 text-rail text-live-tint-foreground tabular-nums"
           >
             {code}
           </button>
         </Hint>
       ) : (
-        <span className="text-sm font-semibold">{learnerName ?? 'Session'}</span>
+        <span className="text-title-bar">{learnerName ?? 'Session'}</span>
       )}
-      {sessionTitle ? <span className="text-sm text-muted-foreground">{sessionTitle}</span> : null}
+      {sessionTitle ? <span className="text-secondary text-muted-foreground">{sessionTitle}</span> : null}
       <span className="flex-1" />
-      <span className="text-sm tabular-nums text-muted-foreground" aria-live="polite">
+      <span className="text-secondary tabular-nums text-muted-foreground" aria-live="polite">
         <strong className="font-semibold text-foreground">{joined}</strong> joined ·{' '}
         <strong className="font-semibold text-foreground">{answered}</strong> {groupAnswers ? (answered === 1 ? 'group answer' : 'group answers') : 'answered'}
       </span>
@@ -174,14 +189,22 @@ export function HostHeader({
               Stage — retry
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem
-            onSelect={() => {
-              navigate({ kind: 'sessionRemote', sessionCode });
-            }}
-          >
-            <Smartphone aria-hidden="true" />
-            Remote
-          </DropdownMenuItem>
+          {onAudienceScreen ? (
+            <DropdownMenuItem onSelect={onAudienceScreen}>
+              <Monitor aria-hidden="true" />
+              Audience screen
+            </DropdownMenuItem>
+          ) : null}
+          {workspacePages ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                navigate({ kind: 'sessionRemote', sessionCode });
+              }}
+            >
+              <Smartphone aria-hidden="true" />
+              Remote
+            </DropdownMenuItem>
+          ) : null}
           {remoteLink === null ? null : (
             <DropdownMenuItem
               onSelect={() => {
@@ -227,10 +250,12 @@ export function HostHeader({
             {frozen ? 'Unfreeze' : 'Freeze'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => { navigate({ kind: 'sessionRecap', sessionCode }); }}>
-            <Download aria-hidden="true" />
-            Prepare workshop recap
-          </DropdownMenuItem>
+          {workspacePages ? (
+            <DropdownMenuItem onSelect={() => { navigate({ kind: 'sessionRecap', sessionCode }); }}>
+              <Download aria-hidden="true" />
+              Prepare recap
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onSelect={() => onExport('json')}>
             <Download aria-hidden="true" />
             Download JSON

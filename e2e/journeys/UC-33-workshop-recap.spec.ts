@@ -22,7 +22,7 @@ test('facilitator selects, reviews and downloads a private-data-free recap, refr
   await page.setViewportSize({ width: 1440, height: 1050 });
   await page.goto(hostUrl(session));
   await page.getByRole('button', { name: 'Session menu', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Prepare workshop recap' }).click();
+  await page.getByRole('menuitem', { name: 'Prepare recap' }).click();
   await expect(page.getByRole('heading', { name: 'Workshop recap', exact: true })).toBeVisible();
   await expect(page.getByRole('checkbox')).toHaveCount(3);
   await expect(page.locator('input[type="checkbox"]:checked')).toHaveCount(0);
