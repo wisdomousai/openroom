@@ -63,14 +63,13 @@
   object-fit: cover;
 }
 
+/* Paint containment makes the host the containing block of everything in the
+   fragment, `position: fixed` included, so nothing paints outside the box. It
+   sits on the host rather than the element, so the editor's reveal badge on
+   the element can still draw outside the box. */
 .slide-surface .outline-step__html-host {
   width: 100%;
   height: 100%;
-}
-
-/* Paint containment makes the box the containing block of everything in the
-   fragment, `position: fixed` included, so nothing paints outside the box. */
-.slide-surface .outline-step__element--html {
   contain: paint;
 }
 
