@@ -84,12 +84,19 @@ export async function mySessionsRoute(request: Request, env: ControlEnv): Promis
   const now = Date.now();
 
   const { results } = await env.DB.prepare(
-    `SELECT l.code, l.title, l.created_at, l.ended, l.user_id FROM live_sessions l
+    `SELECT l.code, l.title, l.created_at, l.ended, l.user_id, l.deck_id,
+            s.context_id, c.display_name AS context_name
+       FROM live_sessions l
+       LEFT JOIN sessions s ON s.id = l.session_id
+       LEFT JOIN contexts c ON c.id = s.context_id
       WHERE l.user_id = ?1 OR EXISTS (SELECT 1 FROM space_members m WHERE m.space_id = l.space_id AND m.user_id = ?1)
       ORDER BY l.created_at DESC LIMIT 100`,
   )
     .bind(guard.user.id)
-    .all<{ code: string; title: string | null; created_at: number; ended: number; user_id: string | null }>();
+    .all<{
+      code: string; title: string | null; created_at: number; ended: number; user_id: string | null;
+      deck_id: string | null; context_id: string | null; context_name: string | null;
+    }>();
 
   const sessions = await Promise.all(
     (results ?? []).map(async (row) => {
@@ -97,11 +104,15 @@ export async function mySessionsRoute(request: Request, env: ControlEnv): Promis
       if (!access) return null;
       const shared = row.user_id !== guard.user.id;
       const recoverable = row.ended === 0 && now - row.created_at < RECOVERY_WINDOW_MS;
+      // Which deck and which student: two live lessons of decks both called
+      // "Untitled" are told apart by the student's name, never by a time.
+      const subject = { deckId: row.deck_id, contextId: row.context_id, contextName: row.context_name };
       if (!recoverable || shared) {
         return {
           code: row.code,
           sessionCode: row.code,
           title: row.title,
+          ...subject,
           createdAt: row.created_at,
           ended: row.ended === 1,
           recoverable,
@@ -116,6 +127,7 @@ export async function mySessionsRoute(request: Request, env: ControlEnv): Promis
         code: row.code,
         sessionCode: row.code,
         title: row.title,
+        ...subject,
         createdAt: row.created_at,
         ended: false,
         recoverable: true as const,

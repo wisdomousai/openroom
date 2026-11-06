@@ -547,7 +547,7 @@ export function SpacePage({
         }
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
-          <LiveNow onOpen={onOpenSession} />
+          <LiveNow onOpen={onOpenSession} contextId={currentContextId} />
           <WorkspaceUpdates contextId={currentContextId} />
           {personView && person ? (
             <div className="flex items-start gap-3.5 px-8 pb-[18px] pt-[26px]">

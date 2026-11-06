@@ -315,6 +315,26 @@ describe('folder-scoped decks and sessions', () => {
     expect(stageBody.outline.currentStep).not.toHaveProperty('tutorNotes');
   });
 
+  it('names the student and deck of each live lesson on /api/my/sessions', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie);
+    const { sessionId, deckId } = await createDeckWithSession(cookie, contextId);
+    const launch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
+      method: 'POST',
+      body: JSON.stringify({ start: true }),
+    });
+    const { sessionCode } = await launch.json() as { sessionCode: string };
+    const listed = await asBrowser(cookie, '/api/my/sessions');
+    const { sessions } = await listed.json() as {
+      sessions: { code: string; deckId: string | null; contextId: string | null; contextName: string | null }[];
+    };
+    expect(sessions.find((row) => row.code === sessionCode)).toMatchObject({
+      deckId,
+      contextId,
+      contextName: 'Camille',
+    });
+  });
+
   it('stores a compact session record and rejects writes on trashed sessions', async () => {
     const { cookie } = await seedSession();
     const { sessionId } = await createDeckWithSession(cookie, await createContext(cookie));
