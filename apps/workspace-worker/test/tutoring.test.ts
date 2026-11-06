@@ -392,6 +392,17 @@ describe('folder-scoped decks and sessions', () => {
     const anonymousConfirm = await worker.fetch(new Request(intentBody.confirmationUrl, { method: 'POST' }), env as never);
     expect(anonymousConfirm.status).toBe(401);
 
+    // The page names a person as a student and says what goes with them.
+    const page = await (await asBrowser(cookie, new URL(intentBody.confirmationUrl).pathname)).text();
+    expect(page).toContain('Permanently delete this student?');
+    expect(page).toContain('access links');
+    expect(page).toContain('learner work');
+    expect(page).not.toMatch(/template|context and/);
+    const stranger = await seedSession();
+    const wrongAccount = await asBrowser(stranger.cookie, new URL(intentBody.confirmationUrl).pathname);
+    expect(wrongAccount.status).toBe(410);
+    expect(await wrongAccount.text()).toContain('ask your agent for a new link');
+
     const confirmed = await asBrowser(cookie, new URL(intentBody.confirmationUrl).pathname, { method: 'POST' });
     expect(confirmed.status).toBe(200);
 

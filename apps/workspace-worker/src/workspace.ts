@@ -215,6 +215,13 @@ export async function spaceSettings(env: ControlEnv, spaceId: string): Promise<S
 }
 
 /**
+ * A row filed in a folder that is in Trash is not in the space: the tree, its
+ * counts and Library search leave it out, whatever its own `deleted_at` says.
+ */
+const OUTSIDE_TRASHED_FOLDER = (table: string) =>
+  `(${table}.folder_id IS NULL OR NOT EXISTS (SELECT 1 FROM folders tf WHERE tf.id = ${table}.folder_id AND tf.deleted_at IS NOT NULL))`;
+
+/**
  * GET /api/my/spaces/:id
  * Returns space meta, folders, and everything filed in it + optional folder filter.
  */
@@ -266,7 +273,7 @@ export async function getSpaceRoute(
            v.content_json AS content_json
       FROM decks d
       LEFT JOIN deck_versions v ON v.deck_id = d.id AND v.version = d.current_version
-     WHERE d.space_id = ?1 AND d.deleted_at IS NULL`;
+     WHERE d.space_id = ?1 AND d.deleted_at IS NULL AND ${OUTSIDE_TRASHED_FOLDER("d")}`;
   const deckBinds: (string | number)[] = [spaceId];
   if (folderFilter === 'root' || folderFilter === '') {
     deckQuery += ' AND (d.folder_id IS NULL OR d.folder_id = \'\')';
@@ -292,7 +299,7 @@ export async function getSpaceRoute(
     SELECT id, title, shape, status, deck_id, deck_version, folder_id, context_id,
            updated_at
       FROM sessions
-     WHERE space_id = ?1 AND deleted_at IS NULL`;
+     WHERE space_id = ?1 AND deleted_at IS NULL AND ${OUTSIDE_TRASHED_FOLDER("sessions")}`;
   const sessionBinds: (string | number)[] = [spaceId];
   if (folderFilter === 'root' || folderFilter === '') {
     sessionQuery += ' AND (folder_id IS NULL OR folder_id = \'\')';
@@ -328,7 +335,7 @@ export async function getSpaceRoute(
            rr.updated_at AS updated_at, r.title AS session_title, r.folder_id AS folder_id
       FROM session_records rr
       JOIN sessions r ON r.id = rr.session_id
-     WHERE r.space_id = ?1 AND r.deleted_at IS NULL`;
+     WHERE r.space_id = ?1 AND r.deleted_at IS NULL AND ${OUTSIDE_TRASHED_FOLDER("r")}`;
   const recordBinds: (string | number)[] = [spaceId];
   if (folderFilter === 'root' || folderFilter === '') {
     recordQuery += ' AND (r.folder_id IS NULL OR r.folder_id = \'\')';
@@ -591,7 +598,14 @@ export async function deleteFolderRoute(
   return json({ ok: true });
 }
 
-/** POST /api/my/folders/:id/trash — recoverable subtree deletion. */
+/**
+ * POST /api/my/folders/:id/trash — recoverable subtree deletion.
+ *
+ * The folder takes its contents with it: every folder below it, and the decks
+ * and sessions filed in any of them, get the same `deleted_at` marker. Restore
+ * clears exactly that marker, so a deck that was already in Trash before the
+ * folder stays there, and purge deletes the decks the marker covers.
+ */
 export async function trashFolderRoute(
   request: Request,
   env: ControlEnv,
@@ -606,9 +620,17 @@ export async function trashFolderRoute(
   const subtreeIds = await collectFolderSubtree(env, access.folder.space_id, folderId);
   const marker = Date.now();
   const placeholders = subtreeIds.map((_, i) => `?${i + 2}`).join(', ');
-  await env.DB.prepare(
-    `UPDATE folders SET deleted_at = ?1 WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
-  ).bind(marker, ...subtreeIds).run();
+  await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE folders SET deleted_at = ?1 WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
+    ).bind(marker, ...subtreeIds),
+    env.DB.prepare(
+      `UPDATE decks SET deleted_at = ?1 WHERE folder_id IN (${placeholders}) AND deleted_at IS NULL`,
+    ).bind(marker, ...subtreeIds),
+    env.DB.prepare(
+      `UPDATE sessions SET deleted_at = ?1 WHERE folder_id IN (${placeholders}) AND deleted_at IS NULL`,
+    ).bind(marker, ...subtreeIds),
+  ]);
   return json({ ok: true, recoverable: true });
 }
 
@@ -658,9 +680,17 @@ export async function restoreFolderRoute(
   if (!roleAtLeast(access.role, 'editor')) return json({ ok: false, error: 'forbidden' }, 403);
   const subtreeIds = await collectFolderSubtree(env, access.folder.space_id, folderId);
   const placeholders = subtreeIds.map((_, i) => `?${i + 2}`).join(', ');
-  await env.DB.prepare(
-    `UPDATE folders SET deleted_at = NULL WHERE deleted_at = ?1 AND id IN (${placeholders})`,
-  ).bind(access.folder.deleted_at, ...subtreeIds).run();
+  await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE folders SET deleted_at = NULL WHERE deleted_at = ?1 AND id IN (${placeholders})`,
+    ).bind(access.folder.deleted_at, ...subtreeIds),
+    env.DB.prepare(
+      `UPDATE decks SET deleted_at = NULL WHERE deleted_at = ?1 AND folder_id IN (${placeholders})`,
+    ).bind(access.folder.deleted_at, ...subtreeIds),
+    env.DB.prepare(
+      `UPDATE sessions SET deleted_at = NULL WHERE deleted_at = ?1 AND folder_id IN (${placeholders})`,
+    ).bind(access.folder.deleted_at, ...subtreeIds),
+  ]);
   return json({ ok: true });
 }
 
@@ -694,18 +724,36 @@ export async function createFolderDeletionIntentRoute(
   }, 202);
 }
 
+/**
+ * The permanent purge of a trashed folder: the folder, every folder below it,
+ * and every deck filed in them, each deck with its sessions, Notes and learner
+ * work (`purgeDeck`). A session filed here whose deck lives elsewhere outlives
+ * the folder: it goes back to the space root, out of Trash if the folder put it
+ * there, because its deck still exists.
+ *
+ * `purgeDeck` is passed in so this module does not import the delivery layer,
+ * which imports this one.
+ */
 export async function confirmFolderDeletion(
   env: ControlEnv,
   user: SessionUser,
   folderId: string,
+  purgeDeck: (env: ControlEnv, deckId: string) => Promise<void>,
 ): Promise<boolean> {
   const access = await folderAccess(env, user, folderId, true);
   if (access === null || access.folder.deleted_at === null) return false;
   const subtreeIds = await collectFolderSubtree(env, access.folder.space_id, folderId);
   const placeholders = subtreeIds.map((_, i) => `?${i + 1}`).join(', ');
+  const { results: decks } = await env.DB.prepare(`SELECT id FROM decks WHERE folder_id IN (${placeholders})`)
+    .bind(...subtreeIds).all<{ id: string }>();
+  for (const deck of decks ?? []) await purgeDeck(env, deck.id);
+  const marker = subtreeIds.length + 1;
   await env.DB.batch([
-    env.DB.prepare(`UPDATE decks SET folder_id = NULL WHERE folder_id IN (${placeholders})`).bind(...subtreeIds),
-    env.DB.prepare(`UPDATE sessions SET folder_id = NULL WHERE folder_id IN (${placeholders})`).bind(...subtreeIds),
+    env.DB.prepare(
+      `UPDATE sessions SET folder_id = NULL,
+              deleted_at = CASE WHEN deleted_at = ?${marker} THEN NULL ELSE deleted_at END
+        WHERE folder_id IN (${placeholders})`,
+    ).bind(...subtreeIds, access.folder.deleted_at),
     env.DB.prepare(`DELETE FROM folders WHERE id IN (${placeholders})`).bind(...subtreeIds),
   ]);
   return true;

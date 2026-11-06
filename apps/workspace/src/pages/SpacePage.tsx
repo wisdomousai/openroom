@@ -630,7 +630,9 @@ export function SpacePage({
         }}
         title={pendingDelete?.kind === 'folder' ? 'Move folder to trash' : 'Move to trash'}
         description={
-          pendingDelete ? `Moves “${pendingDelete.label}” to Trash.` : ''
+          pendingDelete?.kind === 'folder'
+            ? `Moves “${pendingDelete.label}”, the folders inside it and their decks to Trash. Restore brings them back together.`
+            : pendingDelete ? `Moves “${pendingDelete.label}” to Trash.` : ''
         }
         confirmLabel="Move to trash"
         busy={deleting}
