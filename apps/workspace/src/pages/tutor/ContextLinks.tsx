@@ -51,7 +51,7 @@ import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../..
 const LINKS_KEY = (contextId: string) => ['contexts', contextId, 'links'] as const;
 
 /**
- * Real messages for the two failures a tutor can actually hit, rather than
+ * Real messages for the failures a tutor can actually hit, rather than
  * "Request failed (HTTP 429)".
  */
 function mintErrorMessage(cause: unknown, name: string | undefined): string {
@@ -59,7 +59,7 @@ function mintErrorMessage(cause: unknown, name: string | undefined): string {
   if (isContinuityRequired(cause)) return CONTINUITY_REQUIRED;
   if (cause instanceof ApiError) {
     if (cause.status === 429) {
-      return `${who} already has ${MAX_LINKS_PER_CONTEXT} active links. Revoke one you no longer need, then make a new one.`;
+      return `${who} already has ${MAX_LINKS_PER_CONTEXT} active access links. Revoke one you no longer need, then make a new one.`;
     }
     if (cause.status === 403) {
       return 'You can run sessions in this space but not change its library, so you cannot create an access link. Ask an editor or the owner of this space.';
