@@ -34,7 +34,7 @@ test('shared facilitators moderate, pass presentation, use a phone remote, recov
     await helper.getByRole('button', { name: 'Join session Better decisions together', exact: true }).click();
     await expect(helper.getByRole('region', { name: 'Facilitators' }).getByText('Alex is presenting')).toBeVisible();
     await expect(helper.getByRole('button', { name: 'Next', exact: true }).first()).toBeDisabled();
-    await helper.getByRole('button', { name: 'Groups', exact: true }).click();
+    await helper.getByRole('tab', { name: 'Groups', exact: true }).click();
     await helper.getByRole('button', { name: 'New group', exact: true }).click();
     await helper.getByLabel('Group name', { exact: true }).fill('Workshop team');
     await helper.getByRole('button', { name: 'Save group', exact: true }).click();

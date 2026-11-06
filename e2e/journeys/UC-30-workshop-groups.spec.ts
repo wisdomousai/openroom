@@ -78,7 +78,7 @@ test('facilitator assigns groups, hands off one shared response and returns to i
   };
   const name1 = await joinPhone(first), name2 = await joinPhone(second);
   await joinPhone(outsider);
-  await page.getByRole('button', { name: 'Groups', exact: true }).click();
+  await page.getByRole('tab', { name: 'Groups', exact: true }).click();
   await page.getByRole('button', { name: 'New group', exact: true }).click();
   await page.getByLabel('Group name', { exact: true }).fill('North');
   await page.getByRole('checkbox', { name: name1, exact: true }).check();
