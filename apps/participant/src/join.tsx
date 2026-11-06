@@ -140,3 +140,57 @@ export function JoinScreen({ initialCode, busy, error, onJoin, onRecover }: Prop
     </main>
   );
 }
+
+/**
+ * A learner who opened their personal link before the tutor pressed start.
+ * Nothing to type or choose: the app retries the join and enters on its own.
+ */
+export function WaitingToStartScreen() {
+  useSessionTheme(null);
+  return (
+    <main className="page">
+      <div className="topbar">
+        <span className="brand">OpenRoom</span>
+      </div>
+      <section className="waiting" role="status" aria-live="polite">
+        <span className="waiting__dot" aria-hidden="true" />
+        <p className="waiting__title">Waiting for your tutor to start</p>
+        <p className="hint">This page joins the session when it starts.</p>
+      </section>
+    </main>
+  );
+}
+
+/** The stored seat was refused for good: its token expired or the session is gone. */
+export function GoneScreen({
+  identityMode,
+  onJoinWithCode,
+}: {
+  identityMode?: string;
+  onJoinWithCode: () => void;
+}) {
+  useSessionTheme(null);
+  const identified = identityMode === 'identified';
+  return (
+    <main className="page">
+      <div className="topbar">
+        <span className="brand">OpenRoom</span>
+      </div>
+      <section className="waiting" role="status" aria-live="polite">
+        <p className="waiting__title">This session is no longer open</p>
+        <p className="hint">
+          {identified
+            ? 'Open the personal link your tutor sent you to come back to the lesson.'
+            : identityMode === undefined
+              ? 'Open the personal link your tutor sent you, or ask your tutor for the join code.'
+              : 'Ask your tutor for the join code.'}
+        </p>
+        {identified ? null : (
+          <button type="button" className="btn btn--primary btn--wide" onClick={onJoinWithCode}>
+            Join with a code
+          </button>
+        )}
+      </section>
+    </main>
+  );
+}

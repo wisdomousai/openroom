@@ -16,9 +16,11 @@ interface Props {
   baseUrl: string;
   session: StoredSession;
   onLeave: () => void;
+  /** The server no longer accepts this seat: the token expired or the session is gone. */
+  onGone: (identityMode: string | undefined) => void;
 }
 
-export function LiveScreen({ baseUrl, session, onLeave }: Props) {
+export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
   const [snapshot, setSnapshot] = useState<ParticipantSnapshot | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [busy, setBusy] = useState(false);
@@ -32,6 +34,11 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
   // The host can switch the session theme mid-session; every snapshot re-applies it.
   useSessionTheme(snapshot?.theme);
   const lastInteractionId = useRef<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const goneRef = useRef(onGone);
+  goneRef.current = onGone;
+  const identityRef = useRef(session.identityMode);
+  identityRef.current = snapshot?.identityMode ?? session.identityMode;
 
   useEffect(() => {
     const client = createSessionClient<ParticipantSnapshot>({
@@ -41,6 +48,7 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
       role: 'participant',
       onChange: setSnapshot,
       onStatus: setStatus,
+      onGone: () => goneRef.current(identityRef.current),
     });
     clientRef.current = client;
     return () => {
@@ -128,6 +136,8 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
   const handle = session.handle ?? snapshot?.yourHandle;
   const participantLabel = handle ?? snapshot?.yourLabel;
   const [noticeSeen, setNoticeSeen] = useState(() => wasNoticeSeen(session.sessionCode));
+  const ended = snapshot?.status === 'ended';
+  const identified = (snapshot?.identityMode ?? session.identityMode) === 'identified';
 
   return (
     <main className="page" data-session>
@@ -138,14 +148,40 @@ export function LiveScreen({ baseUrl, session, onLeave }: Props) {
             <strong>{participantLabel}</strong>
           </span>
         ) : null}
-        <button type="button" className="btn btn--leave" onClick={onLeave}>
-          Leave
-        </button>
+        {/* After the end there is nothing to leave: the page can simply be closed. */}
+        {ended ? null : (
+          <button
+            type="button"
+            className="btn btn--leave"
+            aria-expanded={confirmLeave}
+            onClick={() => setConfirmLeave(true)}
+          >
+            Leave
+          </button>
+        )}
       </div>
+
+      {confirmLeave && !ended ? (
+        <div className="notice" role="alertdialog" aria-labelledby="leave-confirm-text">
+          <p className="notice__text" id="leave-confirm-text">
+            {identified
+              ? 'Leave this session? To come back, open the personal link your tutor sent you.'
+              : 'Leave this session? You will join as a new participant.'}
+          </p>
+          <div className="leave-confirm__actions">
+            <button type="button" className="btn btn--secondary" onClick={onLeave}>
+              Leave session
+            </button>
+            <button type="button" className="btn btn--ghost" autoFocus onClick={() => setConfirmLeave(false)}>
+              Stay
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* The pseudonymous-handle notice promises no name is collected, which is
           not true of a tutoring session: the tutor already knows the learner. */}
-      {snapshot?.identityMode === 'pseudonymous' && handle && !noticeSeen ? (
+      {snapshot?.identityMode === 'pseudonymous' && handle && !noticeSeen && !ended ? (
         <div className="notice" role="status">
           <p className="notice__text">
             Handle: <strong>{handle}</strong>. Use it to rejoin. Answers are deleted 30 minutes

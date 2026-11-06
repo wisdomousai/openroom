@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { joinSession } from '@openroom/sdk';
-import { JoinScreen } from './join';
-import { joinErrorMessage } from './join-error';
+import { GoneScreen, JoinScreen, WaitingToStartScreen } from './join';
+import { isNotStarted, joinErrorMessage } from './join-error';
 import { LiveScreen } from './live/screen';
 import {
   clearSession,
@@ -19,6 +19,10 @@ import {
 
 const BASE_URL = '';
 
+/** First retry of a link arrival that came before the tutor pressed start. */
+const START_RETRY_MS = 5_000;
+const START_RETRY_MAX_MS = 30_000;
+
 export function App() {
   const [session, setSession] = useState<StoredSession | null>(() => {
     const { session: fromUrl } = readQuery();
@@ -27,11 +31,20 @@ export function App() {
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [prefill, setPrefill] = useState('');
+  /** A link arrival the session turned away because the tutor has not started yet. */
+  const [waitingForStart, setWaitingForStart] = useState(false);
+  /** The stored seat was refused; `identityMode` says how to come back. */
+  const [gone, setGone] = useState<{ identityMode?: string } | null>(null);
   const autoJoined = useRef(false);
+  const joiningRef = useRef(false);
 
   const doJoin = useCallback(async (code: string, recoveryHandle?: string) => {
+    if (joiningRef.current) return;
+    joiningRef.current = true;
     setJoining(true);
     setError(null);
+    const contextLink = readContextLink();
+    const rosterInvite = readRosterInvite();
     try {
       const normalizedCode = code.trim().toUpperCase();
       if (recoveryHandle === undefined) {
@@ -39,6 +52,7 @@ export function App() {
         if (existing) {
           rememberSessionInUrl(existing.sessionCode);
           setSession(existing);
+          setWaitingForStart(false);
           return;
         }
       }
@@ -50,8 +64,6 @@ export function App() {
        * storage next to the session token — the session capability that comes back is
        * scoped to one session, the link is scoped to a person’s whole history.
        */
-      const contextLink = readContextLink();
-      const rosterInvite = readRosterInvite();
       const result = await joinSession(BASE_URL, normalizedCode, {
         ...(recoveryHandle === undefined ? {} : { recoveryHandle }),
         ...(contextLink === null ? {} : { contextLink }),
@@ -64,13 +76,24 @@ export function App() {
         token: result.participantToken,
         participantId: result.participantId,
         ...(result.handle === undefined ? {} : { handle: result.handle }),
+        ...(result.identityMode === undefined ? {} : { identityMode: result.identityMode }),
       };
       saveSession(next);
       rememberSessionInUrl(next.sessionCode);
+      setWaitingForStart(false);
       setSession(next);
     } catch (err) {
-      setError(joinErrorMessage(err));
+      // Arriving by link before the tutor starts is not an error: wait, and
+      // the retry below joins once the session is live. The gate itself is
+      // unchanged — the session keeps refusing until then.
+      if (isNotStarted(err) && (contextLink !== null || rosterInvite !== null)) {
+        setWaitingForStart(true);
+      } else {
+        setWaitingForStart(false);
+        setError(joinErrorMessage(err));
+      }
     } finally {
+      joiningRef.current = false;
       setJoining(false);
     }
   }, []);
@@ -97,11 +120,52 @@ export function App() {
     }
   }, [session, doJoin]);
 
+  // Retry a waiting link arrival while the tab is visible, slower each time.
+  useEffect(() => {
+    if (!waitingForStart || session || prefill === '') return;
+    let delay = START_RETRY_MS;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const attempt = () => {
+      if (document.visibilityState === 'visible') void doJoin(prefill);
+    };
+    const schedule = () => {
+      timer = setTimeout(() => {
+        attempt();
+        delay = Math.min(START_RETRY_MAX_MS, Math.round(delay * 1.5));
+        schedule();
+      }, delay);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') attempt();
+    };
+    schedule();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      if (timer !== null) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [waitingForStart, session, prefill, doJoin]);
+
   const leave = useCallback(() => {
     if (session) clearSession(session);
     forgetSessionInUrl();
     setSession(null);
   }, [session]);
+
+  // The server refused the stored seat for good. Forget it, so a reload does
+  // not loop on a dead token, and say how to come back.
+  const seatGone = useCallback((identityMode: string | undefined) => {
+    if (session) clearSession(session);
+    forgetSessionInUrl();
+    setGone(identityMode === undefined ? {} : { identityMode });
+    setSession(null);
+  }, [session]);
+
+  if (!session && waitingForStart) return <WaitingToStartScreen />;
+
+  if (!session && gone) {
+    return <GoneScreen identityMode={gone.identityMode} onJoinWithCode={() => setGone(null)} />;
+  }
 
   if (!session) {
     return (
@@ -115,5 +179,5 @@ export function App() {
     );
   }
 
-  return <LiveScreen baseUrl={BASE_URL} session={session} onLeave={leave} />;
+  return <LiveScreen baseUrl={BASE_URL} session={session} onLeave={leave} onGone={seatGone} />;
 }
