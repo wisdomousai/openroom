@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { Check } from 'lucide-react';
 import type { OpenRoomFileResourceV1, OutlineMedia } from '@openroom/schema';
 import { AudioPlayer } from '@openroom/slides';
 import { isServiceError, useEditorServices } from '../../services';
@@ -62,7 +63,15 @@ export function AudioSection({ media, spaceId, onChange, onEmbedded }: {
       <label className="grid gap-1 text-sm">Recording label<Input placeholder="A short listening clip" maxLength={500} value={label ?? media.alt} onFocus={() => setLabel(media.alt)} onChange={(event) => setLabel(event.currentTarget.value)} onBlur={() => { if (label !== null) onChange({ ...media, alt: label.trim() }); setLabel(null); }} /></label>
       <div data-editor-target="caption"><CommitTextarea ariaLabel="Caption" value={media.caption ?? ''} onCommit={(caption) => onChange({ ...media, caption: caption || undefined })} /></div>
       <div role="group" aria-label="Listening mode" className="flex flex-wrap gap-1">
-        {(['room', 'individual'] as const).map((mode) => <Button key={mode} type="button" size="sm" variant="outline" aria-pressed={settings.mode === mode} onClick={() => onChange({ ...media, listening: { ...settings, mode } })}>{mode === 'room' ? 'Room audio' : 'Individual listening'}</Button>)}
+        {/* The same selected pill as Place: fill, weight and a check mark, never fill alone. */}
+        {(['room', 'individual'] as const).map((mode) => {
+          const active = settings.mode === mode;
+          return <button key={mode} type="button" aria-pressed={active} onClick={() => onChange({ ...media, listening: { ...settings, mode } })}
+            className="inline-flex h-7 items-center gap-1 rounded-full border border-input px-2.5 text-secondary hover:bg-chrome aria-pressed:border-transparent aria-pressed:bg-accent aria-pressed:font-semibold aria-pressed:text-accent-foreground">
+            {active ? <Check className="size-3.5" aria-hidden="true" /> : null}
+            {mode === 'room' ? 'Room audio' : 'Individual listening'}
+          </button>;
+        })}
       </div>
       <p className="text-xs text-muted-foreground">Room audio plays from the tutor's device. Individual listening gives learners their own controls.</p>
       <div className="grid gap-1 text-sm"><label htmlFor={transcriptId}>Transcript</label><textarea id={transcriptId} className="min-h-28 rounded-md border border-input bg-background p-2" maxLength={12000} value={transcript ?? settings.transcript ?? ''}
