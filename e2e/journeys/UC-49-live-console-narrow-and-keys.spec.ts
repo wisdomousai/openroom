@@ -316,3 +316,159 @@ test('when the notes cannot open after a session, the console says so and offers
   await expect(page.getByRole('button', { name: 'Back to library', exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('notes-retry.png') });
 });
+
+test('a focused button keeps Space, Hide results shows its state, and only the slide on screen sets the question controls', async ({ page, browser }, testInfo) => {
+  const session = await createSession({
+    version: 1, meta: { title: 'Keys lesson' }, defaults: { resultVisibility: 'live', identityMode: 'pseudonymous' },
+    interactions: [{ id: 'ready', type: 'choice', prompt: 'Bist du bereit?', options: [{ id: 'yes', label: 'Ja' }, { id: 'no', label: 'Noch nicht' }] }],
+    steps: [
+      { id: 'intro', kind: 'statement', layout: 'text', title: 'Anfang', body: 'Wir beginnen.' },
+      { id: 'ready', kind: 'interaction', interactionId: 'ready' },
+      { id: 'after', kind: 'statement', layout: 'text', title: 'Danach', body: 'Weiter geht es.' },
+    ],
+  });
+  await command(session.sessionCode, session.hostToken, { command: 'session.start' });
+  const person = await join(session.code);
+  await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 'ready' });
+  await command(session.sessionCode, session.hostToken, { command: 'interaction.open', interactionId: 'ready' });
+  await command(session.sessionCode, person.participantToken, { command: 'answer.submit', interactionId: 'ready', answer: { kind: 'choice', optionIds: ['yes'] } });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(hostUrl(session));
+  const mirror = page.locator('.stage-mirror');
+  await expect(mirror.getByText('Bist du bereit?', { exact: true })).toBeVisible();
+
+  // The rail names an untitled question by its prompt.
+  const rail = page.getByRole('group', { name: 'Slides', exact: true });
+  await expect(rail.getByText('Bist du bereit?', { exact: true })).toBeVisible();
+
+  // Hide results is one toggle with a pressed state, a key and a visible state.
+  const toggle = page.getByRole('button', { name: 'Hide results' });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(toggle).toHaveAttribute('aria-keyshortcuts', 'H');
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press('h');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('Results hidden', { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('results-hidden.png') });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+  // A statement after the question carries no question state.
+  const next = page.getByRole('button', { name: 'Next', exact: true }).first();
+  await next.click();
+  await expect(mirror.getByText('Danach', { exact: true })).toBeVisible();
+  await expect(page.getByText('Results shown', { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/question open|results up/)).toHaveCount(0);
+  await expect(toggle).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Close answering', exact: true })).toBeDisabled();
+  await page.screenshot({ path: testInfo.outputPath('statement-after-question.png') });
+
+  // The phone remote names the slide on screen and leaves the question alone.
+  const remote = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await remote.goto(`${new URL(page.url()).origin}/host/#/sessions/${encodeURIComponent(session.sessionCode)}/remote?token=${encodeURIComponent(session.hostToken)}`);
+  await expect(remote.getByText('Danach', { exact: true }).first()).toBeVisible();
+  await expect(remote.getByRole('button', { name: /Hide results/ })).toBeDisabled();
+  await expect(remote.getByText('Results shown', { exact: true })).toHaveCount(0);
+  await remote.screenshot({ path: testInfo.outputPath('remote-statement.png') });
+  await remote.close();
+
+  // Space on a focused Back presses Back; an arrow on it still turns the slide.
+  const back = page.getByRole('button', { name: 'Back', exact: true }).first();
+  await back.click();
+  await expect(mirror.getByText('Bist du bereit?', { exact: true })).toBeVisible();
+  await expect(back).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(mirror.getByText('Anfang', { exact: true })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(mirror.getByText('Bist du bereit?', { exact: true })).toBeVisible();
+  await expect(page.getByText('question open', { exact: false })).toBeVisible();
+
+  // The aside switch is a tab list with one selected tab; the notes stay on every tab.
+  const tabs = page.getByRole('tablist', { name: 'Session aside', exact: true });
+  const sessionTab = tabs.getByRole('tab', { name: 'Session', exact: true });
+  await expect(sessionTab).toHaveAttribute('aria-selected', 'true');
+  await sessionTab.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(tabs.getByRole('tab', { name: /^Q&A/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.getByRole('tab', { name: /^Q&A/ })).toBeFocused();
+  await expect(mirror.getByText('Bist du bereit?', { exact: true })).toBeVisible();
+  await expect(page.getByText('Private notes', { exact: true })).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await expect(sessionTab).toHaveAttribute('aria-selected', 'true');
+
+  // A question inserted live can carry its correct answer, and the ribbon goes back to Home.
+  await page.getByRole('tab', { name: 'Insert', exact: true }).click();
+  await page.getByRole('button', { name: 'Question', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Insert question', exact: true });
+  await dialog.getByLabel('Question', { exact: true }).fill('Welche Farbe hat der Himmel?');
+  await dialog.getByLabel('Option A', { exact: true }).fill('Grün');
+  await dialog.getByLabel('Option B', { exact: true }).fill('Blau');
+  const markB = dialog.getByRole('button', { name: 'Mark correct, option B', exact: true });
+  await markB.click();
+  await expect(markB).toHaveAttribute('aria-pressed', 'true');
+  await page.screenshot({ path: testInfo.outputPath('insert-question-correct.png') });
+  await dialog.getByRole('button', { name: 'Insert on stage', exact: true }).click();
+  await expect(mirror.getByText('Welche Farbe hat der Himmel?', { exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Home', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: 'Call out the correct answer', exact: true })).toBeVisible({ timeout: 15_000 });
+  await page.screenshot({ path: testInfo.outputPath('inserted-question.png') });
+});
+
+test('the console header keeps End session and the Session menu on a phone', async ({ page }, testInfo) => {
+  const session = await createSession({
+    version: 1, meta: { title: 'A rather long lesson title for a narrow header' }, defaults: { identityMode: 'pseudonymous' },
+    steps: [{ id: 'welcome', kind: 'title', title: 'Hallo' }], interactions: [],
+  });
+  await command(session.sessionCode, session.hostToken, { command: 'session.start' });
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(hostUrl(session));
+    const header = page.locator('header').first();
+    const menuButton = page.getByRole('button', { name: 'Session menu', exact: true });
+    await expect(menuButton).toBeVisible();
+    const box = (await menuButton.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(await header.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`header-${width}.png`) });
+    await menuButton.click();
+    const menu = page.getByRole('menu');
+    await expect(menu.getByRole('menuitem', { name: 'End session', exact: true })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: 'Copy join link', exact: true })).toBeVisible();
+    await expect(menu.getByText(/^Keys: /)).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`header-menu-${width}.png`) });
+    if (width === 320) {
+      await menu.getByRole('menuitem', { name: 'Copy join link', exact: true }).click();
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(`code=${session.code}`);
+    } else {
+      await page.keyboard.press('Escape');
+    }
+  }
+});
+
+test('Library from the console menu of a tutoring session opens the student place', async ({ page }, testInfo) => {
+  await signIn(page);
+  const stamp = Date.now();
+  const contextRes = await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: `Lina ${stamp}`, kind: 'person', context: { language: 'de', level: 'A2' } } });
+  expect(contextRes.status()).toBe(201);
+  const { id: contextId, spaceId } = (await contextRes.json()).context as { id: string; spaceId: string };
+  const content = { version: 1, meta: { title: 'Place lesson' }, defaults: { identityMode: 'identified' }, steps: [{ id: 'welcome', kind: 'title', title: 'Willkommen' }], interactions: [] };
+  const created = await page.request.post('/api/decks', { headers: CSRF, data: { title: `Place ${stamp}`, contextId, spaceId, shape: 'tutoring', createSession: true, content } });
+  expect(created.status()).toBe(201);
+  const sessionId = (await created.json()).session.id as string;
+  const launched = await page.request.post(`/api/sessions/${sessionId}/launch`, { headers: CSRF, data: { start: true } });
+  expect(launched.status()).toBe(201);
+  const { sessionCode, hostToken } = await launched.json();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`/host/#/sessions/${encodeURIComponent(sessionCode)}?token=${encodeURIComponent(hostToken)}`);
+  // An identified header names the student once.
+  const header = page.locator('header').first();
+  await expect(header.getByText(`Lina ${stamp}`, { exact: true })).toHaveCount(1);
+  await expect(header.getByText('Place lesson', { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('identified-header.png') });
+  await page.getByRole('button', { name: 'Session menu', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Copy join link', exact: true })).toHaveCount(0);
+  await page.getByRole('menuitem', { name: 'Library', exact: true }).click();
+  await expect.poll(() => page.url()).toContain(`contextId=${contextId}`);
+  await page.screenshot({ path: testInfo.outputPath('library-student-place.png') });
+});
