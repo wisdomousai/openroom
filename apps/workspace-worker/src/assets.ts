@@ -27,6 +27,7 @@ import {
   MEDIA_ASSET_MAX_BYTES,
   isMediaAssetContentType,
   mediaAssetPath,
+  openRoomResourceBytesMatch,
   type MediaAssetSummary,
 } from '@openroom/schema';
 
@@ -49,6 +50,23 @@ interface AssetRow {
   alt: string | null;
   created_at: number;
 }
+
+/**
+ * Types whose first bytes are checked against the declared type. The header is
+ * a claim: a text file sent as `image/png` would otherwise be stored and shown
+ * as a broken picture. Other accepted subtypes have no signature check yet.
+ */
+const SNIFFED_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/avif',
+  'audio/wav',
+  'audio/mpeg',
+  'audio/mp4',
+  'application/pdf',
+]);
 
 /** Long enough that a session never re-fetches; safe because ids never rebind. */
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
@@ -116,6 +134,9 @@ async function uploadAssetRoute(
   if (bytes.byteLength === 0) return json({ error: 'empty-body' }, 400);
   if (bytes.byteLength > MEDIA_ASSET_MAX_BYTES) {
     return json({ error: 'asset-too-large', maxBytes: MEDIA_ASSET_MAX_BYTES }, 413);
+  }
+  if (SNIFFED_TYPES.has(contentType) && !openRoomResourceBytesMatch(bytes, contentType)) {
+    return json({ error: 'unsupported-media-type' }, 415);
   }
 
   const id = crypto.randomUUID();
