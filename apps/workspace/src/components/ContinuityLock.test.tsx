@@ -50,6 +50,13 @@ describe('continuity lock', () => {
     expect(failed).toContain('Could not load the context');
   });
 
+  it('shows a missing item as not available, with the Library and no Retry', () => {
+    const missing = render(<LoadState error={new ApiError(404, 'This item no longer exists or is not shared with you.', 'not-found')} />);
+    expect(missing).toContain('is not available');
+    expect(missing).toContain('>Library<');
+    expect(missing).not.toContain('Retry');
+  });
+
   it('recognises only the continuity-required code', () => {
     expect(isContinuityRequired(new ApiError(403, 'continuity-required'))).toBe(true);
     expect(isContinuityRequired(new ApiError(403, 'forbidden'))).toBe(false);

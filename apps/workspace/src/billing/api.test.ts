@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { planPrice, type BillingPlan } from './api';
+import { responseError } from '../api/client';
+import { billingMessage, planPrice, type BillingPlan } from './api';
 
 describe('plan price display', () => {
   it('uses the currency minor unit for zero, two and three decimal currencies', () => {
@@ -7,5 +8,13 @@ describe('plan price display', () => {
       const plan: BillingPlan = { priceId: 'fixture', name: 'Plan', capabilities: [], currency, amount, interval: 'month', frequency: 3, hasTrial: false };
       expect(planPrice(plan)).toBe(`${new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(expected)} / 3 months`);
     }
+  });
+});
+
+describe('billing messages', () => {
+  it('maps the worker billing code even though the client turns unknown codes into sentences', () => {
+    const error = responseError(409, { ok: false, error: 'billing-subscription-exists' });
+    expect(error.message).not.toBe('billing-subscription-exists');
+    expect(billingMessage(error)).toBe('You already have a subscription. Use Manage billing to review it.');
   });
 });

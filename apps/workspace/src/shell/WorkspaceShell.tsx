@@ -11,7 +11,7 @@ import { ThemeStudio } from '@openroom/ui/theme-studio';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { initials } from '../lib/initials';
-import { groupSpaces } from '../lib/members';
+import { groupSpaces, navigableSpaces } from '../lib/members';
 import { cn } from '@openroom/ui/utils';
 import { to } from '../destinations';
 import { useAuth } from '../useAuth';
@@ -66,13 +66,20 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     queryFn: () => listContexts(),
     enabled: signedIn === true,
   });
+  const trashedContextsQuery = useQuery({
+    queryKey: ['contexts', 'trashed'] as const,
+    queryFn: () => listContexts({ trash: true }),
+    enabled: signedIn === true,
+  });
   const decksQuery = useQuery({
     queryKey: ['decks', 'all'] as const,
     queryFn: () => listDecks(),
     enabled: signedIn === true,
   });
 
-  const spaces = spacesQuery.data ?? [];
+  const allSpaces = spacesQuery.data ?? [];
+  // A trashed student's own space keeps resolving as the current space, but the nav does not list it.
+  const spaces = navigableSpaces(allSpaces, { trashed: trashedContextsQuery.data, live: contextsQuery.data, decks: decksQuery.data });
   const { mine: ownedSpaces, shared: invitedSpaces } = groupSpaces(spaces);
   const personal = ownedSpaces[0] ?? null;
   const contexts = contextsQuery.data ?? [];
@@ -88,7 +95,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     ?? asId(search.sourceSpaceId) ?? asId(search.spaceId)
     ?? contexts.find((context) => context.id === pathContextId)?.spaceId
     ?? sessionQuery.data?.session.spaceId ?? null;
-  const currentSpace = spaces.find((space) => space.id === activeSpaceId) ?? personal;
+  const currentSpace = allSpaces.find((space) => space.id === activeSpaceId) ?? personal;
   const experience = currentSpace?.settings.experience ?? 'classroom';
   const profile = EXPERIENCES[experience];
   const mine = ownedSpaces.filter((space) => space.settings.experience === experience);
@@ -113,6 +120,10 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
   }, [decks]);
 
   const newDeckTo = useMemo(() => {
+    // A student in Trash takes no new decks; the button files into the first own space instead.
+    if (trashedContextsQuery.data?.some((row) => row.id === activeContextId || (row.spaceId === activeSpaceId && row.spaceId.startsWith('sp_ctx_')))) {
+      return personal ? to.deckNew({ spaceId: personal.id }) : to.deckNew();
+    }
     if (activeContextId) {
       const context = contexts.find((row) => row.id === activeContextId);
       return to.deckNew({
@@ -126,7 +137,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     }
     if (currentSpace) return to.deckNew({ spaceId: currentSpace.id });
     return to.deckNew();
-  }, [activeContextId, activeFolderId, activeSpaceId, contexts, currentSpace]);
+  }, [activeContextId, activeFolderId, activeSpaceId, contexts, currentSpace, personal, trashedContextsQuery.data]);
 
   const libraryTo = currentSpace ? to.library({ spaceId: currentSpace.id }) : to.library();
   const libraryPath = pathname === '/space' || (pathname !== '/space/new' && /^\/space\/[^/]+$/.test(pathname));
@@ -135,6 +146,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
   const accountPage = pathname === '/settings' || pathname.startsWith('/settings/');
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const contextById = useMemo(() => new Map([...(trashedContextsQuery.data ?? []), ...contexts].map((context) => [context.id, context])), [contexts, trashedContextsQuery.data]);
   const searchResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return needle ? decks.filter((deck) => deck.title.toLocaleLowerCase().includes(needle)) : [];
@@ -159,18 +171,25 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
             aria-label="Search decks"
             className="h-7 w-[300px] max-w-[40vw] rounded-full bg-card"
           />
-          {searchOpen && query.trim() ? <div className="absolute left-0 top-9 z-50 max-h-80 w-[400px] overflow-auto rounded-md border bg-popover p-1 shadow-lg" aria-label="Search results">
-            {searchResults.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No matching decks</p> : searchResults.map((deck) => <Link
-              key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: deck.folderId, itemId: deck.id })}
-              onClick={() => setSearchOpen(false)} className="block rounded p-2 hover:bg-accent focus:bg-accent">
-              <span className="block text-sm">{deck.title}</span>
-              <span className="block text-xs text-muted-foreground">{spaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
-            </Link>)}
+          {searchOpen && query.trim() ? <div className="absolute left-0 top-9 z-50 max-h-80 w-[400px] overflow-auto rounded-md border border-border bg-popover p-1 shadow-[var(--shadow-overlay)]" aria-label="Search results">
+            {searchResults.length === 0 ? <p className="p-3 text-secondary text-muted-foreground">No decks match</p> : searchResults.map((deck) => {
+              // A student's deck opens in that student's place, as the sidebar link does; a trashed student's place shows Restore.
+              const person = deck.contextId ? contextById.get(deck.contextId) : undefined;
+              return <Link
+                key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: deck.folderId, itemId: deck.id, contextId: person?.id })}
+                onClick={() => { setSearchOpen(false); setQuery(''); }} className="block rounded p-2 hover:bg-accent focus:bg-accent">
+                <span className="block text-secondary">{deck.title}</span>
+                <span className="block text-caption text-muted-foreground">{person ? (person.deletedAt != null ? `${person.displayName} · in Trash` : person.displayName) : allSpaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
+              </Link>;
+            })}
           </div> : null}
         </form>
         <span className="flex-1" />
         {actions}
         <div className={accountPage ? "hidden sm:block" : undefined}><ThemeStudio /></div>
+        <Button asChild variant="subtle" size="sm" className="h-7 px-2.5 font-normal">
+          <a href="/docs/start/" target="_blank" rel="noreferrer">Manual<span className="sr-only"> (opens in a new tab)</span></a>
+        </Button>
         <Button asChild variant="subtle" size="sm" className="h-7 px-2.5 font-normal">
           <Link {...to.settings(currentSpace?.id)}>Settings</Link>
         </Button>
@@ -262,9 +281,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
                   );
                 })}
               </>
-            ) : (
-              <p className="mb-1 mt-4 px-2 text-caption text-muted-foreground">Shared</p>
-            )}
+            ) : null}
 
             <span className="min-h-4 flex-1" />
 

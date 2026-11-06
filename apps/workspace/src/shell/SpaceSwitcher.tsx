@@ -11,7 +11,7 @@ export function SpaceSwitcher({ current, spaces }: { current: MySpace | null; sp
   const navigate = useNavigate();
   return <DropdownMenu><DropdownMenuTrigger asChild>
     <Button variant="subtle" className="h-auto w-full justify-between px-2 py-2 text-left" aria-label="Switch space">
-      <span className="min-w-0"><span className="block text-xs text-muted-foreground">{EXPERIENCES[current?.settings.experience ?? 'classroom'].label}</span>
+      <span className="min-w-0"><span className="block text-caption text-muted-foreground">{EXPERIENCES[current?.settings.experience ?? 'classroom'].label}</span>
         <span className="block truncate font-semibold">{current?.name ?? 'OpenRoom'}</span></span>
       <ChevronDown className="ml-2 size-4 shrink-0" />
     </Button>

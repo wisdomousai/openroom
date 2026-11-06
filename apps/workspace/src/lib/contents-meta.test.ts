@@ -61,9 +61,15 @@ describe('aside lines', () => {
     expect(slidesLine({ slides: 6, askTheClass: 0, homework: false, recap: false, minutes: 16 })).toBe(
       '6 slides · 16 min',
     );
-    expect(homeworkLine({ items: ['a', 'b', 'c', 'd', 'e', 'f'] })).toBe(
-      '6 items · sent when the session ends',
+    expect(homeworkLine({ items: ['a', 'b', 'c', 'd', 'e', 'f'] }, { forStudent: true })).toBe(
+      '6 items · shared when you save Notes',
     );
+    // A deck with no student promises no delivery.
+    expect(homeworkLine({ tasks: [{}, {}] })).toBe('2 tasks');
+    expect(homeworkLine({ body: 'Read page 4.' })).toBe('Written');
+    expect(homeworkLine({ title: 'Reading' }, { forStudent: true })).toBe('Reading · shared when you save Notes');
+    // Blank homework is not written, whoever the deck is for.
+    expect(homeworkLine({ title: ' ', body: '  ' }, { forStudent: true })).toBe('Not written');
     expect(recapLine(undefined)).toBe('Not written');
   });
 });

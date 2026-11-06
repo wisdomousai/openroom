@@ -51,20 +51,21 @@ import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../..
 const LINKS_KEY = (contextId: string) => ['contexts', contextId, 'links'] as const;
 
 /**
- * Real messages for the two failures a tutor can actually hit, rather than
+ * Real messages for the failures a tutor can actually hit, rather than
  * "Request failed (HTTP 429)".
  */
-function mintErrorMessage(cause: unknown): string {
+function mintErrorMessage(cause: unknown, name: string | undefined): string {
+  const who = name ?? 'This student';
   if (isContinuityRequired(cause)) return CONTINUITY_REQUIRED;
   if (cause instanceof ApiError) {
     if (cause.status === 429) {
-      return `This context already has ${MAX_LINKS_PER_CONTEXT} active links. Revoke one you no longer need, then make a new one.`;
+      return `${who} already has ${MAX_LINKS_PER_CONTEXT} active access links. Revoke one you no longer need, then make a new one.`;
     }
     if (cause.status === 403) {
-      return 'You can run sessions in this space but not change its library, so you cannot create a student link. Ask an editor or the owner of this space.';
+      return 'You can run sessions in this space but not change its library, so you cannot create an access link. Ask an editor or the owner of this space.';
     }
     if (cause.status === 409) {
-      return 'This context is in the trash. Restore it before sharing anything.';
+      return `${who} is in Trash. Restore from Trash before creating a link.`;
     }
   }
   return messageOf(cause, 'Could not create the link');
@@ -72,7 +73,7 @@ function mintErrorMessage(cause: unknown): string {
 
 function revokeErrorMessage(cause: unknown): string {
   if (cause instanceof ApiError && cause.status === 403) {
-    return 'You need editor access in this space to revoke a student link.';
+    return 'You need editor access in this space to revoke an access link.';
   }
   return messageOf(cause, 'Could not revoke the link');
 }
@@ -96,7 +97,7 @@ function CopyButton({ label, value }: { label: string; value: string }) {
     >
       {copied ? 'Copied' : label}
     </Button>
-    {failed ? <p role="alert" className="text-xs text-destructive">Select the link above and copy it manually.</p> : null}
+    {failed ? <p role="alert" className="text-caption text-destructive">Select the link above and copy it manually.</p> : null}
     </div>
   );
 }
@@ -135,12 +136,12 @@ export function ContextLinksCard({
   if (isContinuityRequired(linksQuery.error)) return <ContinuityLock />;
   return (
     <Card>
-      <CardHeader><CardTitle>Learner access links</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Access links</CardTitle></CardHeader>
       <CardContent className="flex flex-col gap-4">
         {links === null ? (
-          <p className="text-sm text-muted-foreground" role="status">Loading links…</p>
+          <p className="text-secondary text-muted-foreground" role="status">Loading links…</p>
         ) : links.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No link yet.</p>
+          <p className="text-secondary text-muted-foreground">No access link yet.</p>
         ) : (
           <ul className="divide-y divide-border">
             {links.map((link) => {
@@ -148,11 +149,11 @@ export function ContextLinksCard({
               return (
                 <li key={link.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0">
                   <div className="min-w-0">
-                    <p className="font-medium">{link.displayName}</p>
-                    <p className="text-xs tabular-nums text-muted-foreground">
+                    <p className="text-row-title">{link.displayName}</p>
+                    <p className="text-caption tabular-nums text-muted-foreground">
                       <code>{link.tokenPrefix}…</code>
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-caption text-muted-foreground">
                       Created {formatDate(link.createdAt)}
                       {state === 'revoked'
                         ? ` · revoked ${formatDate(link.revokedAt)}`
@@ -174,13 +175,13 @@ export function ContextLinksCard({
             })}
           </ul>
         )}
-        {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+        {error ? <p className="text-secondary text-destructive" role="alert">{error}</p> : null}
         <div className="flex flex-wrap items-center gap-3">
           {atCap ? (
             <>
               <Button type="button" disabled><Plus /> Create link</Button>
-              <p className="text-xs text-muted-foreground">
-                {MAX_LINKS_PER_CONTEXT} links already work in this context. Revoke one before making another.
+              <p className="text-caption text-muted-foreground">
+                {MAX_LINKS_PER_CONTEXT} access links are active. Revoke one before making another.
               </p>
             </>
           ) : (
@@ -218,7 +219,12 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
   const [learnerChoice, setLearnerChoice] = useState<string | null>(null);
   const learnersQuery = useQuery({ queryKey: ['contexts', contextId, 'learners'], queryFn: () => listContextLearners(contextId) });
   const contextQuery = useQuery({ queryKey: ['contexts', contextId], queryFn: () => getContext(contextId) });
-  const selectedLearner = learnerChoice ?? (contextQuery.data?.kind === 'person' ? 'person' : learnersQuery.data?.length === 0 ? 'new' : '');
+  const person = contextQuery.data?.kind === 'person';
+  /** Learners other than the student themself: only an older or agent-made context has them. */
+  const otherLearners = (learnersQuery.data ?? []).filter((learner) => !person || learner.id !== `person-${contextId}`);
+  /** A 1:1 student is the only learner, so there is nobody to choose. */
+  const onePerson = person && otherLearners.length === 0;
+  const selectedLearner = onePerson ? 'person' : learnerChoice ?? (person ? 'person' : otherLearners.length === 0 ? 'new' : '');
   const ready = contextQuery.isSuccess && learnersQuery.isSuccess;
   const [minted, setMinted] = useState<MintedContextLink | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -237,7 +243,7 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
       await queryClient.invalidateQueries({ queryKey: LINKS_KEY(contextId) });
       await queryClient.invalidateQueries({ queryKey: ['contexts', contextId, 'learners'] });
     } catch (cause) {
-      setError(mintErrorMessage(cause));
+      setError(mintErrorMessage(cause, contextQuery.data?.displayName));
     } finally {
       setBusy(false);
     }
@@ -246,7 +252,7 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
   if (isContinuityRequired(learnersQuery.error)) {
     return (
       <div className="mx-auto flex max-w-xl flex-col gap-6">
-        <PageHeading title="Create a learner link" />
+        <PageHeading title="Create an access link" />
         <ContinuityLock />
         <Button asChild variant="outline" className="w-fit"><Link {...backTo}>Cancel</Link></Button>
       </div>
@@ -264,15 +270,15 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
           description="Shown once. A new link is required after leaving this page."
         />
         <Card>
-          <CardHeader><CardTitle className="text-base"><Link2 /> {minted.displayName}&rsquo;s link</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Link2 className="size-4" aria-hidden="true" /> {minted.displayName}&rsquo;s access link</CardTitle></CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <code className="break-all rounded-md border border-border bg-muted/40 p-3 text-xs">{url}</code>
+            <code className="break-all rounded-md border border-border bg-muted/40 p-3 text-caption">{url}</code>
             <div className="flex flex-wrap gap-2">
               <CopyButton label="Copy link" value={url} />
               <Button asChild variant="outline"><Link {...backTo}>Done</Link></Button>
             </div>
             {minted.expiresAt === null ? null : (
-              <p className="text-xs text-muted-foreground">Works until {formatDate(minted.expiresAt)}.</p>
+              <p className="text-caption text-muted-foreground">Works until {formatDate(minted.expiresAt)}.</p>
             )}
           </CardContent>
         </Card>
@@ -282,20 +288,25 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6">
-      <PageHeading title="Create a learner link" description="Choose the same person when replacing a link. Their writing and practice stay with them." />
+      <PageHeading
+        title="Create an access link"
+        description={onePerson
+          ? `For ${contextQuery.data?.displayName ?? 'this student'}. Their writing and practice stay with them when you create a new link.`
+          : 'Choose the same learner when replacing a link. Their writing and practice stay with them.'}
+      />
       <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         <Card>
           <CardContent className="flex flex-col gap-5 p-6">
-            {!ready ? <p role={contextQuery.isError || learnersQuery.isError ? 'alert' : 'status'} className="text-sm text-muted-foreground">
+            {!ready ? <p role={contextQuery.isError || learnersQuery.isError ? 'alert' : 'status'} className="text-secondary text-muted-foreground">
               {contextQuery.isError || learnersQuery.isError ? 'Could not load learners. Reload this page to try again.' : 'Loading learners…'}
             </p> : null}
-            {ready && ((learnersQuery.data?.length ?? 0) > 0 || contextQuery.data?.kind === 'person') ? <div className="grid gap-2">
+            {ready && !onePerson && otherLearners.length > 0 ? <div className="grid gap-2">
               <Label>Learner</Label>
               <Select value={selectedLearner} onValueChange={setLearnerChoice}>
                 <SelectTrigger aria-label="Learner"><SelectValue placeholder="Choose a learner" /></SelectTrigger>
                 <SelectContent>
-                  {contextQuery.data?.kind === 'person' ? <SelectItem value="person">{contextQuery.data.displayName}</SelectItem> : null}
-                  {learnersQuery.data?.filter((person) => contextQuery.data?.kind !== 'person' || person.id !== `person-${contextId}`).map((person) => <SelectItem key={person.id} value={person.id}>{person.displayName}</SelectItem>)}
+                  {person ? <SelectItem value="person">{contextQuery.data?.displayName}</SelectItem> : null}
+                  {otherLearners.map((learner) => <SelectItem key={learner.id} value={learner.id}>{learner.displayName}</SelectItem>)}
                   <SelectItem value="new">New learner</SelectItem>
                 </SelectContent>
               </Select>
@@ -318,7 +329,7 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
                 </SelectContent>
               </Select>
             </div>
-            {error === CONTINUITY_REQUIRED ? <ContinuityLock /> : error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+            {error === CONTINUITY_REQUIRED ? <ContinuityLock /> : error ? <p className="text-secondary text-destructive" role="alert">{error}</p> : null}
             <div className="flex gap-2">
               <Button type="submit" disabled={busy || !ready || selectedLearner === ''}>{busy ? 'Creating…' : 'Create link'}</Button>
               <Button asChild type="button" variant="outline"><Link {...backTo}>Cancel</Link></Button>

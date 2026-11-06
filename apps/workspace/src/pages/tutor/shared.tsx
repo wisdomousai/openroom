@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/component
 import { Link } from '@tanstack/react-router';
 
 import { to } from '../../destinations';
-import { CONTINUITY_REQUIRED, ContinuityLock } from '../../components/ContinuityLock';
+import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../../components/ContinuityLock';
+import { ApiError } from '../../api/client';
 
 export type Notify = (message: string, tone?: 'info' | 'error') => void;
 
@@ -34,13 +35,36 @@ export function useLoad<T>(
   queryKey: readonly unknown[],
   fn: () => Promise<T>,
   fallback: string,
-): { data: T | null; error: string | null; reload: () => void } {
+): { data: T | null; error: string | null; cause: unknown; reload: () => void } {
   const query = useQuery({ queryKey, queryFn: fn });
   return {
     data: query.data ?? null,
     error: query.error ? messageOf(query.error, fallback) : null,
+    /** The raw failure, for `LoadState` to tell a missing item from a failed load. */
+    cause: query.error ?? null,
     reload: () => { void query.refetch(); },
   };
+}
+
+/** True when the worker says the item is not there (or not shared with this account). */
+export function isMissing(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
+/**
+ * The page for an address whose item is gone or not shared. No Retry: asking
+ * again gets the same answer. The way out is the Library.
+ */
+export function NotAvailable({ what = 'page' }: { what?: string }) {
+  return (
+    <div className="flex flex-col items-start gap-3 p-8" role="alert">
+      <h1 className="text-screen-title">This {what} is not available</h1>
+      <p className="text-secondary text-muted-foreground">
+        It no longer exists, or it is not shared with this account.
+      </p>
+      <Button asChild variant="outline"><Link {...to.library()}>Library</Link></Button>
+    </div>
+  );
 }
 
 export function PageHeading({
@@ -56,9 +80,9 @@ export function PageHeading({
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="font-display text-page-title">{title}</h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 max-w-2xl text-secondary text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {action}
@@ -69,18 +93,26 @@ export function PageHeading({
 export function EmptyCollection({ children }: { children: ReactNode }) {
   return (
     <Card>
-      <CardContent className="p-6 text-sm text-muted-foreground">{children}</CardContent>
+      <CardContent className="p-6 text-secondary text-muted-foreground">{children}</CardContent>
     </Card>
   );
 }
 
-export function LoadState({ error }: { error: string | null }) {
+/**
+ * Loading, locked, missing or failed. `error` is the message or the raw
+ * failure; a raw 404 shows `NotAvailable` instead of a Retry that cannot help.
+ */
+/** `what` names the missing thing on a 404 (“This student is not available”). */
+export function LoadState({ error, what }: { error: unknown; what?: string }) {
   const queryClient = useQueryClient();
-  if (error === CONTINUITY_REQUIRED) return <ContinuityLock />;
-  if (!error) return <p className="text-sm text-muted-foreground" role="status">Loading…</p>;
+  if (error === CONTINUITY_REQUIRED || isContinuityRequired(error)) return <ContinuityLock />;
+  if (error === null || error === undefined || error === '') {
+    return <p className="text-secondary text-muted-foreground" role="status">Loading…</p>;
+  }
+  if (isMissing(error)) return <NotAvailable {...(what ? { what } : {})} />;
   return (
-    <div className="flex flex-col items-start gap-2 text-sm text-destructive" role="alert">
-      <p>{error}</p>
+    <div className="flex flex-col items-start gap-2 text-secondary text-destructive" role="alert">
+      <p>{typeof error === 'string' ? error : messageOf(error, 'Could not load this page.')}</p>
       <Button type="button" variant="outline" size="sm" onClick={() => void queryClient.refetchQueries({ type: 'active' })}>
         Retry
       </Button>
@@ -122,7 +154,7 @@ export function ItemLocation({
 
   if (!spaceId) {
     return (
-      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-secondary text-muted-foreground">
         Not saved in a space yet. Open a space folder and start from there.
         {error ? <p className="mt-1 text-destructive">{error}</p> : null}
       </div>
@@ -134,19 +166,19 @@ export function ItemLocation({
   const path = [spaceName ?? 'Space', ...trail.map((f) => f.name)].join(' › ');
 
   return (
-    <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+    <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-secondary">
       {contextLabel ? (
         <p className="text-muted-foreground">
-          For <span className="font-medium text-foreground">{contextLabel}</span>
+          For <span className="font-semibold text-foreground">{contextLabel}</span>
         </p>
       ) : null}
       <p>
         <span className="text-muted-foreground">Saving in </span>
-        <Link className="font-medium underline-offset-4 hover:underline" {...placeTo}>
+        <Link className="font-semibold underline-offset-4 hover:underline" {...placeTo}>
           {path}
         </Link>
       </p>
-      {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
+      {error ? <p className="mt-1 text-caption text-destructive">{error}</p> : null}
     </div>
   );
 }
@@ -169,7 +201,7 @@ export function TrashList({
         <ul className="divide-y divide-border">
           {rows.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0">
-              <span className="font-medium">{row.label}</span>
+              <span className="text-row-title">{row.label}</span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => onRestore(row.id)}>
                   <ArchiveRestore /> Restore

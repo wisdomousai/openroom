@@ -13,6 +13,7 @@ import {
   linkDeckFile,
   listAllSpaces,
   listContexts,
+  restoreContext,
   trashDeck,
   trashFolder,
   updateDeck,
@@ -20,6 +21,7 @@ import {
   type SpaceTree,
 } from '../api';
 import { ContextLinksCard } from './tutor/ContextLinks';
+import { isMissing, NotAvailable } from './tutor/shared';
 import { sessionStartMessage } from '../components/ContinuityLock';
 import { WorkspaceUpdates } from '../components/WorkspaceUpdates';
 import { SpaceWelcome } from '../components/SpaceWelcome';
@@ -30,6 +32,7 @@ import {
   LibraryList,
   type Crumb,
   type LibraryRow,
+  type LibraryRowActions,
 } from '../components/LibraryList';
 import {
   EmptyInspector,
@@ -133,6 +136,9 @@ export function SpacePage({
     queryFn: () => getContext(currentContextId!),
   });
   const person = personQuery.data ?? null;
+  /** A student in Trash keeps their page, read-only, with Restore as the one action. */
+  const personTrashed = currentContextId !== null && person !== null && person.deletedAt !== null;
+  const [restoring, setRestoring] = useState(false);
 
   const membersQuery = useQuery({
     queryKey: ['spaces', spaceId, 'members'] as const,
@@ -187,7 +193,8 @@ export function SpacePage({
     [goTo],
   );
 
-  const canEdit = space === null || space.role !== 'presenter';
+  const canManage = space === null || space.role !== 'presenter';
+  const canEdit = canManage && !personTrashed;
 
   const allRows = useMemo((): (LibraryRow & { folderId: string | null; contextId: string | null })[] => {
     return decks
@@ -404,6 +411,21 @@ export function SpacePage({
     }
   };
 
+  const restorePerson = async () => {
+    if (!person) return;
+    setRestoring(true);
+    try {
+      await restoreContext(person.id);
+      // Refetches this page's student and tree with every other list.
+      await invalidateManagementData();
+      notify(`Restored ${person.displayName}`);
+    } catch (cause) {
+      notify(cause instanceof Error ? cause.message : 'Could not restore', 'error');
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   const folderActions = canEdit
     ? {
         onCreateFolder: async (parentId: string | null, name: string) => {
@@ -443,6 +465,25 @@ export function SpacePage({
       }
     : undefined;
 
+  const rowActions: LibraryRowActions | undefined = folderActions
+    ? {
+        onStart: (deckId) => {
+          const deck = decks.find((d) => d.id === deckId);
+          if (deck) void startItem({ kind: 'deck', data: deck });
+        },
+        onDuplicate: (row) => {
+          if (row.kind === 'folder') { void folderActions.onCopyFolder(row.id); return; }
+          const deck = decks.find((d) => d.id === row.id);
+          if (deck) void duplicateItem({ kind: 'deck', data: deck });
+        },
+        onTrash: (row) => {
+          if (row.kind === 'folder') folderActions.onTrashFolder(row.id);
+          else setPendingDelete({ kind: 'deck', id: row.id, label: row.name });
+        },
+        onRenameFolder: folderActions.onRenameFolder,
+      }
+    : undefined;
+
   const createTo = useMemo(
     () =>
       spaceId
@@ -470,6 +511,8 @@ export function SpacePage({
   }
 
   const loadError = defaultSpaceQuery.error ?? treeQuery.error;
+  if (isMissing(loadError)) return <NotAvailable what="space" />;
+  if (currentContextId !== null && isMissing(personQuery.error)) return <NotAvailable what="student" />;
   if (loadError) {
     return (
       <div className="flex flex-col items-start gap-2 p-8 text-secondary text-destructive" role="alert">
@@ -523,6 +566,7 @@ export function SpacePage({
   );
 
   const personView = currentContextId !== null && person !== null;
+  const welcome = canEdit && decks.length === 0 && folders.length === 0 && !currentFolderId && !query.trim();
 
   return (
     <>
@@ -547,14 +591,18 @@ export function SpacePage({
         }
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
-          <LiveNow onOpen={onOpenSession} />
+          {/* A student's place has a visible h1 with their name; a space or folder names itself for assistive tech. */}
+          {personView ? null : <h1 className="sr-only">{folderName}</h1>}
+          <LiveNow onOpen={onOpenSession} contextId={currentContextId} />
           <WorkspaceUpdates contextId={currentContextId} />
           {personView && person ? (
-            <div className="flex items-start gap-3.5 px-8 pb-[18px] pt-[26px]">
+            <div className="flex flex-wrap items-start gap-3.5 px-8 pb-[18px] pt-[26px]">
               <PersonBadge name={person.displayName} id={person.id} size="lg" />
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <h1 className="text-page-title">{person.displayName}</h1>
-                {sharedWith ? (
+              <div className="flex min-w-[10rem] flex-1 flex-col gap-0.5">
+                <h1 className="break-words text-page-title">{person.displayName}</h1>
+                {personTrashed ? (
+                  <p className="text-rail font-normal text-muted-foreground">In Trash</p>
+                ) : sharedWith ? (
                   <p className="text-rail font-normal text-muted-foreground">
                     Shared with {sharedWith.name ?? sharedWith.email ?? givenName(spaceName)}
                   </p>
@@ -562,12 +610,23 @@ export function SpacePage({
                   <p className="text-rail font-normal text-muted-foreground">Not shared</p>
                 )}
               </div>
-              {space?.role === 'owner' ? (
-                <Button asChild variant="outline" className="h-8 bg-card"><Link {...to.spaceMembers(spaceId)}>Share</Link></Button>
-              ) : null}
-              {canEdit && createTo ? (
-                <Button asChild className="h-8">
-                  <Link {...createTo}>New deck</Link>
+              <div className="flex shrink-0 items-center gap-2">
+                {/* New deck stays in the deck toolbar below and the sidebar, not a third time here. */}
+                {space?.role === 'owner' && !personTrashed ? (
+                  <Button asChild variant="outline" className="h-8 bg-card"><Link {...to.spaceMembers(spaceId)}>Share</Link></Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {personView && person && personTrashed ? (
+            <div role="status" className="mx-8 mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-xl)] border border-border bg-card px-[18px] py-3">
+              <p className="min-w-0 flex-1 text-secondary">
+                {person.displayName} is in Trash. Their access links do not work until you restore them.
+              </p>
+              {canManage ? (
+                <Button className="h-8" disabled={restoring} onClick={() => void restorePerson()}>
+                  {restoring ? 'Restoring…' : 'Restore'}
                 </Button>
               ) : null}
             </div>
@@ -577,6 +636,7 @@ export function SpacePage({
             <div className="px-8 pb-[22px]">
               <ContextPanel
                 displayName={person.displayName}
+                kind={person.kind}
                 context={person.context}
                 nextNote={person.nextNote}
                 onEdit={canEdit ? () => void navigate(to.studentEdit(person.id)) : undefined}
@@ -591,10 +651,7 @@ export function SpacePage({
             </div>
           ) : null}
 
-          {personView && canEdit && currentContextId ? <details className="mx-8 mb-4 text-sm"><summary className="cursor-pointer">Student access links</summary><ContextLinksCard contextId={currentContextId} /></details> : null}
-          {personView && canEdit && currentContextId ? <div className="mx-8 mb-4"><Button asChild variant="outline"><Link {...to.studentWork(currentContextId)}>Review learner work</Link></Button></div> : null}
-
-          {canEdit && decks.length === 0 && folders.length === 0 && !currentFolderId && !query.trim()
+          {welcome
             ? <SpaceWelcome spaceId={spaceId} contextId={currentContextId} experience={space?.settings?.experience ?? 'classroom'} /> : null}
 
           <LibraryList
@@ -617,7 +674,21 @@ export function SpacePage({
             samplesTo={canEdit && space?.settings?.experience === 'tutoring' ? to.lessonExamples(spaceId, { folderId: currentFolderId, contextId: currentContextId }) : null}
             onDragEnd={() => setDropTarget(null)}
             chrome="browser"
+            /* The welcome card is this place's empty state; the list does not add a second one. */
+            hideEmpty={welcome}
+            searchLabel={currentContextId === null ? 'Search this space' : person ? `Search decks for ${person.displayName}` : 'Search this student’s decks'}
+            /* On a student's place the page scrolls as one, so the panel and links above do not squeeze the decks into a strip. */
+            scroll={personView ? 'page' : 'list'}
+            {...(rowActions ? { rowActions } : {})}
           />
+
+          {/* Below the decks, which are what a tutor opens this page for; open, so a link's state is seen without a click. */}
+          {personView && canEdit && currentContextId ? (
+            <div className="mx-8 mb-6 flex flex-col gap-4">
+              <ContextLinksCard contextId={currentContextId} />
+              <Button asChild variant="outline" className="w-fit"><Link {...to.studentWork(currentContextId)}>Review learner work</Link></Button>
+            </div>
+          ) : null}
         </div>
 
         {inspector}
@@ -630,7 +701,9 @@ export function SpacePage({
         }}
         title={pendingDelete?.kind === 'folder' ? 'Move folder to trash' : 'Move to trash'}
         description={
-          pendingDelete ? `Moves “${pendingDelete.label}” to Trash.` : ''
+          pendingDelete?.kind === 'folder'
+            ? `Moves “${pendingDelete.label}”, the folders inside it and their decks to Trash. Restore brings them back together.`
+            : pendingDelete ? `Moves “${pendingDelete.label}” to Trash.` : ''
         }
         confirmLabel="Move to trash"
         busy={deleting}
@@ -641,5 +714,6 @@ export function SpacePage({
 }
 
 function cnLibrary(_personView: boolean): string {
-  return 'grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:grid-cols-[200px_minmax(0,1fr)_300px]';
+  /* Narrower rail and inspector at lg, so the list keeps room at 1024 px. */
+  return 'grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:grid-cols-[180px_minmax(0,1fr)_248px] xl:grid-cols-[200px_minmax(0,1fr)_300px]';
 }

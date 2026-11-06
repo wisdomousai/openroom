@@ -26,7 +26,7 @@ export const getCheckout = (transactionId: string) => request<CheckoutDetails>(`
 export function billingMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Sign in to the account that started this checkout, then try again.';
-    switch (error.message) {
+    switch (error.code ?? error.message) {
       case 'billing-not-configured': return 'Paid plans are not available yet.';
       case 'billing-sync-busy':
       case 'billing-checkout-busy': return 'Another billing request is in progress. Wait a moment, then try again.';

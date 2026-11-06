@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { learnerShareUrl, qnaShareUrl, remoteShareUrl, to } from './destinations';
 
 describe('destinations', () => {
-  it('names Home and the Library root without a place', () => {
-    expect(to.home()).toEqual({ to: '/' });
+  it('names the Library root without a place', () => {
     expect(to.library()).toEqual({ to: '/space' });
     expect(to.library({ spaceId: null })).toEqual({ to: '/space' });
   });

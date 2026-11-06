@@ -38,7 +38,7 @@ import {
   randomToken,
   readJson,
 } from './control-utils.js';
-import { confirmFolderDeletion, ensureWorkspace, spaceSettings } from './workspace.js';
+import { confirmFolderDeletion, ensureWorkspace, folderKeepsLiveDecks, spaceSettings } from './workspace.js';
 import {
   confirmDeliveryDeletion,
   createDeliveryDeletionIntentRoute,
@@ -361,18 +361,149 @@ export async function deletionConfirmationPage(
   }
   const intent = await intentForToken(env, token);
   if (intent === null || intent.user_id !== user.id || intent.used_at !== null || intent.expires_at <= Date.now()) {
-    return new Response('<!doctype html><title>Confirmation expired</title><main><h1>This confirmation link has expired.</h1></main>', {
-      status: 410,
-      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
-    });
+    return linkNoLongerWorks();
   }
-  const typeLabel =
-    intent.resource_type === 'context' ? 'context and its linked templates and sessions'
-      : intent.resource_type === 'session' ? 'session'
-        : intent.resource_type === 'folder' ? 'folder and its contents'
-          : 'template';
-  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Confirm permanent deletion</title><style>body{font:16px system-ui;max-width:42rem;margin:10vh auto;padding:1.5rem;color:#171717}main{border:1px solid #ddd;border-radius:16px;padding:2rem}button{background:#a11212;color:white;border:0;border-radius:8px;padding:.8rem 1rem;font:inherit}a{margin-left:1rem}</style><main><h1>Permanently delete this ${typeLabel}?</h1><p><strong>${escapeHtml(intent.resource_name)}</strong></p><p>This cannot be undone. Normal deletion remains recoverable; this confirmation is only for the permanent purge.</p><form method="post" action="/confirm-deletion/${encodeURIComponent(token)}"><button type="submit">Permanently delete</button><a href="/host/#/tutor/trash">Cancel</a></form></main></html>`;
-  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY' } });
+  const noun = await deletionNoun(env, intent);
+  const contents = deletionContents(intent.resource_type, noun)
+    .map((line) => `<li>${line}</li>`).join('');
+  const kept = intent.resource_type === 'folder' && await folderKeepsLiveDecks(env, intent.resource_id)
+    ? '<p>Decks in it that are not in Trash are kept and move to the top of the space.</p>'
+    : '';
+  return deletionPage(
+    'Confirm permanent deletion',
+    `<h1>Permanently delete this ${noun}?</h1>
+<p class="name">${escapeHtml(intent.resource_name)}</p>
+<p>This deletes:</p>
+<ul>${contents}</ul>
+${kept}<p>This cannot be undone. Items in Trash can be restored; items deleted here cannot.</p>
+<form class="actions" method="post" action="/confirm-deletion/${encodeURIComponent(token)}"><button class="destructive" type="submit">Permanently delete</button><a class="button" href="${TRASH_HREF}">Cancel</a></form>`,
+  );
+}
+
+const TRASH_HREF = '/host/#/tutor/trash';
+
+function linkNoLongerWorks(): Response {
+  return deletionPage(
+    'This confirmation link no longer works',
+    `<h1>This confirmation link no longer works.</h1>
+<p>It has expired, it was already used, or it belongs to another account. Sign in as the owner of the item, or ask your agent for a new link.</p>
+<p class="actions"><a class="button" href="${TRASH_HREF}">Open Trash</a></p>`,
+    410,
+  );
+}
+
+/** The item was restored or deleted elsewhere after the link was made. */
+function notInTrash(): Response {
+  return deletionPage(
+    'Nothing was deleted',
+    `<h1>Nothing was deleted.</h1>
+<p>This item is no longer in Trash, or this account can no longer change it.</p>
+<p class="actions"><a class="button" href="${TRASH_HREF}">Open Trash</a></p>`,
+    404,
+  );
+}
+
+/** The noun a context goes by, from its kind: a person is a student. */
+const CONTEXT_NOUNS: Record<string, string> = {
+  person: 'student',
+  group: 'group',
+  class: 'class',
+  event: 'event',
+  other: 'context',
+};
+
+async function deletionNoun(env: ControlEnv, intent: IntentRow): Promise<string> {
+  if (intent.resource_type !== 'context') return intent.resource_type;
+  const row = await env.DB.prepare('SELECT kind FROM contexts WHERE id = ?1')
+    .bind(intent.resource_id).first<{ kind: string }>();
+  return CONTEXT_NOUNS[row?.kind ?? 'person'] ?? 'context';
+}
+
+/**
+ * What the purge removes, in the words of TERMINOLOGY.md. Each line matches a
+ * table the confirm route deletes from; Notes of sessions of another deck are
+ * only unlinked from a context, so the context list does not claim them.
+ */
+function deletionContents(type: ResourceType, noun: string): string[] {
+  if (type === 'context') {
+    return [
+      `The ${noun} and their access links`,
+      'Their decks, with those decks’ sessions and Notes',
+      'Their learner work, feedback, practice and audio',
+    ];
+  }
+  if (type === 'folder') {
+    return [
+      'The folder and the folders inside it',
+      'The decks in them that are in Trash, with those decks’ sessions, Notes and learner work',
+    ];
+  }
+  if (type === 'session') return ['The session, its Notes and the learner work handed in for it'];
+  return ['The deck and its saved versions', 'Its sessions, with their Notes and learner work'];
+}
+
+/**
+ * The deletion pages are served by the worker, outside the workspace bundle, so
+ * the product tokens from DESIGN.md are written out here: 14px body, the 8px
+ * card radius and 4px control radius, the destructive red and action blue.
+ */
+const DELETION_PAGE_STYLE = `
+body{margin:0;background:#FAF9F8;color:#242424;font:14px/1.5 'Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif}
+main{max-width:36rem;margin:10vh auto;padding:24px;background:#fff;border:1px solid #E1DFDD;border-radius:8px}
+h1{margin:0 0 12px;font-size:20px;line-height:1.3;font-weight:600}
+p,ul{margin:0 0 12px}ul{padding-left:20px}
+.name{font-weight:600}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+button,.button{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:4px;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+.button{border:1px solid #D2D0CE;background:#fff;color:#0F6CBD}
+.destructive{border:1px solid #A4262C;background:#A4262C;color:#fff}
+.destructive:hover{background:#8E2025}
+:focus-visible{outline:2px solid #0F6CBD;outline-offset:2px}`;
+
+function deletionPage(title: string, body: string, status = 200): Response {
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${title} · OpenRoom</title><style>${DELETION_PAGE_STYLE}</style><main>${body}</main></html>`;
+  return new Response(html, {
+    status,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY' },
+  });
+}
+
+/**
+ * The space made for a student (`sp_ctx_<id>`) goes with them when nothing else
+ * is filed in it: its folders, tags, invites and members, then the space. The
+ * purge itself is the permission: whoever may delete the student and their
+ * decks may delete the empty space that held them. A deck, session, picture or
+ * brand kit still filed there keeps the space. Saved results of its lessons
+ * stay with the tutor who ran them. A space the context was only attached to is
+ * never touched. This is tidying after the purge: if it cannot finish, the
+ * space stays and the purge still stands.
+ */
+async function removeEmptyStudentSpace(env: ControlEnv, contextId: string, spaceId: string): Promise<void> {
+  if (spaceId !== `sp_ctx_${contextId}`) return;
+  const space = await env.DB.prepare(
+    `SELECT (EXISTS (SELECT 1 FROM decks WHERE space_id = s.id)
+             OR EXISTS (SELECT 1 FROM sessions WHERE space_id = s.id)
+             OR EXISTS (SELECT 1 FROM media_assets WHERE space_id = s.id)
+             OR EXISTS (SELECT 1 FROM brand_kits WHERE space_id = s.id)
+             OR EXISTS (SELECT 1 FROM contexts WHERE space_id = s.id)) AS kept
+       FROM spaces s WHERE s.id = ?1`,
+  ).bind(spaceId).first<{ kept: number }>();
+  if (space === null || space.kept) return;
+  try {
+    await env.DB.batch([
+      // Archive access then falls back to the tutor who ran the lesson.
+      env.DB.prepare('UPDATE live_sessions SET space_id = NULL WHERE space_id = ?1').bind(spaceId),
+      env.DB.prepare('DELETE FROM item_tags WHERE space_id = ?1').bind(spaceId),
+      env.DB.prepare('DELETE FROM folders WHERE space_id = ?1').bind(spaceId),
+      env.DB.prepare('DELETE FROM space_invites WHERE space_id = ?1').bind(spaceId),
+      env.DB.prepare('DELETE FROM space_members WHERE space_id = ?1').bind(spaceId),
+      env.DB.prepare('DELETE FROM space_contexts WHERE space_id = ?1').bind(spaceId),
+      env.DB.prepare('DELETE FROM spaces WHERE id = ?1').bind(spaceId),
+    ]);
+  } catch (cause) {
+    // The batch rolled back and the space stays; the workspace nav leaves an empty one out.
+    console.error('student-space-cleanup-failed', spaceId, cause);
+  }
 }
 
 export async function confirmPermanentDeletionRoute(
@@ -380,16 +511,28 @@ export async function confirmPermanentDeletionRoute(
   env: ControlEnv,
   token: string,
 ): Promise<Response> {
+  /*
+   * A browser form posts here, so every answer is a page. The statuses stay
+   * what an API client would expect.
+   */
   const user = await getSession(request, env);
-  if (user === null) return json({ error: 'unauthorized' }, 401);
+  if (user === null) {
+    return deletionPage(
+      'Sign in to confirm',
+      `<h1>Sign in to confirm this deletion.</h1>
+<p>Only the owner, signed in on this browser, can confirm a permanent deletion.</p>
+<p class="actions"><a class="button" href="/api/auth/google?returnTo=${encodeURIComponent(new URL(request.url).pathname)}">Sign in</a></p>`,
+      401,
+    );
+  }
   const intent = await intentForToken(env, token);
   if (intent === null || intent.user_id !== user.id || intent.used_at !== null || intent.expires_at <= Date.now()) {
-    return json({ error: 'confirmation-expired' }, 410);
+    return linkNoLongerWorks();
   }
 
   if (intent.resource_type === 'context') {
     const resource = await contextAccess(env, user.id, intent.resource_id);
-    if (resource === null || resource.deleted_at === null) return json({ error: 'not-found' }, 404);
+    if (resource === null || resource.deleted_at === null) return notInTrash();
     const { results } = await env.DB.prepare('SELECT id FROM decks WHERE context_id = ?1')
       .bind(resource.id).all<{ id: string }>();
     for (const deck of results ?? []) {
@@ -412,19 +555,24 @@ export async function confirmPermanentDeletionRoute(
       env.DB.prepare('DELETE FROM space_contexts WHERE context_id = ?1').bind(resource.id),
       env.DB.prepare('DELETE FROM contexts WHERE id = ?1').bind(resource.id),
     ]);
+    await removeEmptyStudentSpace(env, resource.id, resource.space_id);
   } else if (intent.resource_type === 'folder') {
-    const ok = await confirmFolderDeletion(env, user, intent.resource_id);
-    if (!ok) return json({ error: 'not-found' }, 404);
+    const ok = await confirmFolderDeletion(env, user, intent.resource_id, purgeDeck);
+    if (!ok) return notInTrash();
   } else {
     const ok = await confirmDeliveryDeletion(env, user.id, intent.resource_type, intent.resource_id);
-    if (!ok) return json({ error: 'not-found' }, 404);
+    if (!ok) return notInTrash();
   }
 
   await env.DB.prepare('UPDATE deletion_intents SET used_at = ?1 WHERE token_hash = ?2')
     .bind(Date.now(), intent.token_hash).run();
-  return new Response('<!doctype html><title>Deleted</title><main><h1>Permanently deleted.</h1><p>This item cannot be restored.</p><a href="/host/#/tutor/trash">Return to trash</a></main>', {
-    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
-  });
+  return deletionPage(
+    'Permanently deleted',
+    `<h1>Permanently deleted.</h1>
+<p class="name">${escapeHtml(intent.resource_name)}</p>
+<p>This cannot be restored.</p>
+<p class="actions"><a class="button" href="${TRASH_HREF}">Return to Trash</a></p>`,
+  );
 }
 
 /**

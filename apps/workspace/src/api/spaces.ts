@@ -71,7 +71,11 @@ export interface SpaceTreeRecord {
 }
 
 export interface SpaceTree {
-  space: { id: string; name: string; role: SpaceRole; settings?: SpaceSettings };
+  space: {
+    id: string; name: string; role: SpaceRole; settings?: SpaceSettings;
+    /** The student whose own space this is; null for a space of decks. */
+    context?: { id: string; displayName: string } | null;
+  };
   folders: FolderSummary[];
   /** Folder-scoped decks (content items). */
   decks?: SpaceTreeDeck[];

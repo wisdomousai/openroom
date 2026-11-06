@@ -95,7 +95,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
     }
   };
 
-  if (!trashQuery.data) return <LoadState error={trashQuery.error ? messageOf(trashQuery.error, 'Could not load trash') : null} />;
+  if (!trashQuery.data) return <LoadState error={trashQuery.error ?? null} />;
   const { contexts, decks, sessions, folders, records } = trashQuery.data;
   const empty = contexts.length === 0 && decks.length === 0 && sessions.length === 0
     && folders.length === 0;

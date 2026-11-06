@@ -37,14 +37,19 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await page.getByRole('link', { name: 'Add student or group', exact: true }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Enter a name.');
+  // The message sits on the field and the field takes focus.
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await expect(page.getByLabel('Name', { exact: true })).toHaveAttribute('aria-invalid', 'true');
   await page.getByLabel('Name', { exact: true }).fill('Camille First Lesson');
   await page.getByRole('button', { name: 'B1', exact: true }).click();
   await page.getByLabel('Goal', { exact: true }).fill('Explain a travel problem in French.');
   await audit(page, testInfo, '02-student-setup');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Camille First Lesson', exact: true })).toBeVisible();
-  await page.getByText('Student access links', { exact: true }).click();
+  // The access-link card is open on the student's place; a 1:1 student has no learner to choose.
   await page.getByRole('link', { name: 'Create link', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Create an access link' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Learner', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Create link', exact: true }).click();
   const learnerUrl = await page.locator('code').filter({ hasText: '#/learn?token=' }).innerText();
   await page.getByRole('link', { name: 'Done', exact: true }).click();
@@ -52,7 +57,7 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await page.getByRole('group', { name: 'Lesson language' }).getByRole('button', { name: 'Français', exact: true }).click();
   await page.getByRole('group', { name: 'Lesson level' }).getByRole('button', { name: 'B1', exact: true }).click();
   await audit(page, testInfo, '03-sample-lesson');
-  await page.getByRole('button', { name: 'Open Le train est parti', exact: true }).click();
+  await page.getByRole('button', { name: 'Open lesson: Le train est parti', exact: true }).click();
   const editorSlides = page.getByRole('list', { name: 'Slides', exact: true }).getByRole('button');
   await expect(editorSlides).toHaveCount(12);
   for (let index = 0; index < 12; index++) {
@@ -218,7 +223,7 @@ test('all eight language samples fit the editor and revealed live results', asyn
   const outlines = ['french', 'german'].flatMap((language) => ['a1', 'a2', 'b1', 'b2'].map((level) => loadExampleSession(`tutoring/${language}-${level}`) as Outline));
   for (const [sample, title] of titles.entries()) {
     const outline = outlines.find((outline) => outline.meta.title === title)!;
-    await page.getByRole('button', { name: `Open ${title}`, exact: true }).click();
+    await page.getByRole('button', { name: `Open lesson: ${title}`, exact: true }).click();
     const slides = page.getByRole('list', { name: 'Slides', exact: true }).getByRole('button');
     await expect(slides.first()).toBeVisible();
     const count = await slides.count();

@@ -315,6 +315,26 @@ describe('folder-scoped decks and sessions', () => {
     expect(stageBody.outline.currentStep).not.toHaveProperty('tutorNotes');
   });
 
+  it('names the student and deck of each live lesson on /api/my/sessions', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie);
+    const { sessionId, deckId } = await createDeckWithSession(cookie, contextId);
+    const launch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
+      method: 'POST',
+      body: JSON.stringify({ start: true }),
+    });
+    const { sessionCode } = await launch.json() as { sessionCode: string };
+    const listed = await asBrowser(cookie, '/api/my/sessions');
+    const { sessions } = await listed.json() as {
+      sessions: { code: string; deckId: string | null; contextId: string | null; contextName: string | null }[];
+    };
+    expect(sessions.find((row) => row.code === sessionCode)).toMatchObject({
+      deckId,
+      contextId,
+      contextName: 'Camille',
+    });
+  });
+
   it('stores a compact session record and rejects writes on trashed sessions', async () => {
     const { cookie } = await seedSession();
     const { sessionId } = await createDeckWithSession(cookie, await createContext(cookie));
@@ -372,8 +392,24 @@ describe('folder-scoped decks and sessions', () => {
     const anonymousConfirm = await worker.fetch(new Request(intentBody.confirmationUrl, { method: 'POST' }), env as never);
     expect(anonymousConfirm.status).toBe(401);
 
+    // The page names a person as a student and says what goes with them.
+    const page = await (await asBrowser(cookie, new URL(intentBody.confirmationUrl).pathname)).text();
+    expect(page).toContain('Permanently delete this student?');
+    expect(page).toContain('access links');
+    expect(page).toContain('learner work');
+    expect(page).not.toMatch(/template|context and/);
+    const stranger = await seedSession();
+    const wrongAccount = await asBrowser(stranger.cookie, new URL(intentBody.confirmationUrl).pathname);
+    expect(wrongAccount.status).toBe(410);
+    expect(await wrongAccount.text()).toContain('ask your agent for a new link');
+
     const confirmed = await asBrowser(cookie, new URL(intentBody.confirmationUrl).pathname, { method: 'POST' });
     expect(confirmed.status).toBe(200);
+    // A second submit of the same form gets a page, not a JSON slug.
+    const again = await asBrowser(cookie, new URL(intentBody.confirmationUrl).pathname, { method: 'POST' });
+    expect(again.status).toBe(410);
+    expect(again.headers.get('content-type')).toContain('text/html');
+    expect(await again.text()).toContain('This confirmation link no longer works.');
 
     const missing = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`);
     expect(missing.status).toBe(404);
@@ -590,6 +626,41 @@ describe('control plane hardening', () => {
     const sessionAfter = await asBrowser(cookie, `/api/sessions/${sessionB}`);
     expect(sessionAfter.status).toBe(200);
     expect((await sessionAfter.json() as { session: { contextId: string | null } }).session.contextId).toBeNull();
+  });
+
+  it('context purge removes the student space when nothing else is filed in it', async () => {
+    const { cookie } = await seedSession();
+    const purge = async (contextId: string) => {
+      await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'DELETE' });
+      const intent = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/permanent-deletion`, { method: 'POST' });
+      const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
+      expect((await asBrowser(cookie, new URL(confirmationUrl).pathname, { method: 'POST' })).status).toBe(200);
+    };
+    const listed = async () => ((await (await asBrowser(cookie, '/api/my/spaces')).json()) as { spaces: { id: string }[] }).spaces.map((space) => space.id);
+
+    // Only folders and the student's decks: the space goes too.
+    const emptied = await createContext(cookie);
+    const emptiedSpace = `sp_ctx_${emptied}`;
+    expect((await asBrowser(cookie, `/api/my/spaces/${emptiedSpace}/folders`, { method: 'POST', body: JSON.stringify({ name: 'Week 1' }) })).status).toBe(201);
+    expect((await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Theirs', outline: SAMPLE_CONTENT, contextId: emptied }) })).status).toBe(201);
+    // A lesson run there: its saved results must stay reachable once the space is gone.
+    await env.DB.prepare("INSERT INTO live_sessions (code, user_id, title, created_at, ended, space_id) VALUES ('LIVE01', NULL, 'Lesson', 0, 1, ?1)")
+      .bind(emptiedSpace).run();
+    await purge(emptied);
+    expect(await listed()).not.toContain(emptiedSpace);
+    expect((await asBrowser(cookie, `/api/my/spaces/${emptiedSpace}`)).status).toBe(404);
+    const live = await env.DB.prepare("SELECT space_id FROM live_sessions WHERE code = 'LIVE01'").first<{ space_id: string | null }>();
+    expect(live?.space_id).toBeNull();
+
+    // A deck filed there without the student keeps the space and the deck.
+    const kept = await createContext(cookie);
+    const keptSpace = `sp_ctx_${kept}`;
+    const loose = await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Loose', outline: SAMPLE_CONTENT, spaceId: keptSpace }) });
+    expect(loose.status).toBe(201);
+    const looseId = (await loose.json() as { deck: { id: string } }).deck.id;
+    await purge(kept);
+    expect(await listed()).toContain(keptSpace);
+    expect((await asBrowser(cookie, `/api/decks/${looseId}`)).status).toBe(200);
   });
 
   it('PAT cannot confirm a permanent purge', async () => {

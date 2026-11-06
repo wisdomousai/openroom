@@ -28,8 +28,6 @@ import type { LibraryPlace } from '@openroom/editor';
 const opt = (value: string | null | undefined): string | undefined => value ?? undefined;
 
 export const to = {
-  home: () => ({ to: '/' as const }),
-
   /** The Library. Root when no space is known; otherwise space + folder + selected item + person. */
   library: (place?: LibraryPlace) =>
     place?.spaceId

@@ -184,17 +184,93 @@ describe('workspace hierarchy', () => {
       body: JSON.stringify({ title: 'Filed template', spaceId, folderId: folder.id, contextId }),
     })).json()) as { deck: { id: string } };
 
+    // A deck the tutor trashed on its own before the folder stays in Trash after the folder's restore.
+    const alreadyTrashed = (await (await asUser(cookie, '/api/decks', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'Trashed first', spaceId, folderId: folder.id, contextId }),
+    })).json()) as { deck: { id: string } };
+    expect((await asUser(cookie, `/api/decks/${alreadyTrashed.deck.id}`, { method: 'DELETE' })).status).toBe(200);
+
     const trashFolder = await asUser(cookie, `/api/my/folders/${folder.id}/trash`, { method: 'POST' });
     expect(trashFolder.status).toBe(200);
-    const hiddenTree = (await (await asUser(cookie, `/api/my/spaces/${spaceId}`)).json()) as { folders: { id: string }[] };
+    type Tree = { folders: { id: string }[]; decks: { id: string }[] };
+    const hiddenTree = (await (await asUser(cookie, `/api/my/spaces/${spaceId}`)).json()) as Tree;
     expect(hiddenTree.folders.map((row) => row.id)).not.toContain(folder.id);
+    // The deck goes to Trash with its folder and keeps its place for Restore.
+    expect(hiddenTree.decks.map((row) => row.id)).not.toContain(deck.deck.id);
+    const trashedDecks = (await (await asUser(cookie, `/api/decks?trash=1&spaceId=${spaceId}`)).json()) as { decks: { id: string }[] };
+    expect(trashedDecks.decks.map((row) => row.id)).toContain(deck.deck.id);
     const filed = await env.DB.prepare('SELECT folder_id FROM decks WHERE id = ?1').bind(deck.deck.id).first<{ folder_id: string | null }>();
     expect(filed?.folder_id).toBe(folder.id);
     const trashedFolders = (await (await asUser(cookie, '/api/my/folders/trash')).json()) as { folders: { id: string }[] };
     expect(trashedFolders.folders.map((row) => row.id)).toContain(folder.id);
     expect((await asUser(cookie, `/api/my/folders/${folder.id}/restore`, { method: 'POST' })).status).toBe(200);
-    const shownTree = (await (await asUser(cookie, `/api/my/spaces/${spaceId}`)).json()) as { folders: { id: string }[] };
+    const shownTree = (await (await asUser(cookie, `/api/my/spaces/${spaceId}`)).json()) as Tree;
     expect(shownTree.folders.map((row) => row.id)).toContain(folder.id);
+    expect(shownTree.decks.map((row) => row.id)).toContain(deck.deck.id);
+    expect(shownTree.decks.map((row) => row.id)).not.toContain(alreadyTrashed.deck.id);
+  });
+
+  it('shows a live deck filed under a trashed folder at the space root', async () => {
+    const { cookie } = await seedSession();
+    const { contextId, spaceId } = await createSmokeContext((path, init) => asUser(cookie, path, init ?? {}));
+    const folder = (await (await asUser(cookie, `/api/my/spaces/${spaceId}/folders`, {
+      method: 'POST', body: JSON.stringify({ name: 'Phrases' }),
+    })).json()) as { id: string };
+    const deck = (await (await asUser(cookie, '/api/decks', {
+      method: 'POST', body: JSON.stringify({ title: 'Stranded', spaceId, folderId: folder.id, contextId }),
+    })).json()) as { deck: { id: string } };
+    await asUser(cookie, `/api/my/folders/${folder.id}/trash`, { method: 'POST' });
+    // Restored on its own while its folder is still in Trash.
+    await asUser(cookie, `/api/decks/${deck.deck.id}/restore`, { method: 'POST' });
+    const tree = (await (await asUser(cookie, `/api/my/spaces/${spaceId}`)).json()) as { decks: { id: string; folderId: string | null }[] };
+    expect(tree.decks.find((row) => row.id === deck.deck.id)).toMatchObject({ folderId: null });
+    const root = (await (await asUser(cookie, `/api/my/spaces/${spaceId}?folderId=root`)).json()) as { decks: { id: string }[] };
+    expect(root.decks.map((row) => row.id)).toContain(deck.deck.id);
+    const inside = (await (await asUser(cookie, `/api/my/spaces/${spaceId}?folderId=${folder.id}`)).json()) as { decks: { id: string }[] };
+    expect(inside.decks.map((row) => row.id)).not.toContain(deck.deck.id);
+    // Restoring the folder puts the deck back inside it.
+    await asUser(cookie, `/api/my/folders/${folder.id}/restore`, { method: 'POST' });
+    const back = (await (await asUser(cookie, `/api/my/spaces/${spaceId}`)).json()) as { decks: { id: string; folderId: string | null }[] };
+    expect(back.decks.find((row) => row.id === deck.deck.id)?.folderId).toBe(folder.id);
+  });
+
+  it('purges a trashed folder together with its decks', async () => {
+    const { cookie } = await seedSession();
+    const { contextId, spaceId } = await createSmokeContext((path, init) => asUser(cookie, path, init ?? {}));
+    const folder = (await (await asUser(cookie, `/api/my/spaces/${spaceId}/folders`, {
+      method: 'POST', body: JSON.stringify({ name: 'Phrases' }),
+    })).json()) as { id: string };
+    const child = (await (await asUser(cookie, `/api/my/spaces/${spaceId}/folders`, {
+      method: 'POST', body: JSON.stringify({ name: 'Verbs', parentId: folder.id }),
+    })).json()) as { id: string };
+    const deck = (await (await asUser(cookie, '/api/decks', {
+      method: 'POST', body: JSON.stringify({ title: 'Nested', spaceId, folderId: child.id, contextId }),
+    })).json()) as { deck: { id: string } };
+    const kept = (await (await asUser(cookie, '/api/decks', {
+      method: 'POST', body: JSON.stringify({ title: 'Restored alone', spaceId, folderId: folder.id, contextId }),
+    })).json()) as { deck: { id: string } };
+    // The subfolder went to Trash first, so its deck carries an older marker than the parent's.
+    await asUser(cookie, `/api/my/folders/${child.id}/trash`, { method: 'POST' });
+    await env.DB.prepare('UPDATE folders SET deleted_at = deleted_at - 60000 WHERE id = ?1').bind(child.id).run();
+    await env.DB.prepare('UPDATE decks SET deleted_at = deleted_at - 60000 WHERE id = ?1').bind(deck.deck.id).run();
+    await asUser(cookie, `/api/my/folders/${folder.id}/trash`, { method: 'POST' });
+    // Restored on its own while the folder is in Trash: the purge must not take it.
+    expect((await asUser(cookie, `/api/decks/${kept.deck.id}/restore`, { method: 'POST' })).status).toBe(200);
+    const intent = await asUser(cookie, `/api/my/folders/${folder.id}/permanent-deletion`, { method: 'POST' });
+    expect(intent.status).toBe(202);
+    const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
+    const page = await asUser(cookie, new URL(confirmationUrl).pathname, { method: 'GET' });
+    const text = await page.text();
+    expect(text).toContain('The decks in them that are in Trash');
+    expect(text).toContain('Decks in it that are not in Trash are kept and move to the top of the space.');
+    expect((await asUser(cookie, new URL(confirmationUrl).pathname, { method: 'POST' })).status).toBe(200);
+    const gone = await env.DB.prepare('SELECT id FROM decks WHERE id = ?1').bind(deck.deck.id).first();
+    expect(gone).toBeNull();
+    const survivor = await env.DB.prepare('SELECT folder_id, deleted_at FROM decks WHERE id = ?1').bind(kept.deck.id).first();
+    expect(survivor).toEqual({ folder_id: null, deleted_at: null });
+    const folders = await env.DB.prepare('SELECT id FROM folders WHERE id IN (?1, ?2)').bind(folder.id, child.id).all();
+    expect(folders.results).toHaveLength(0);
   });
 
   it('lists decks and sessions in a folder tree', async () => {
@@ -238,7 +314,10 @@ describe('workspace hierarchy', () => {
     const body = (await tree.json()) as {
       decks: { id: string; title: string; contents?: { slides: number; askTheClass: number; homework: boolean } }[];
       sessions: { id: string; deckId: string }[];
+      space: { context: { id: string; displayName: string } | null };
     };
+    // A student's own space names its student, for its settings page.
+    expect(body.space.context).toEqual({ id: contextId, displayName: 'Test context' });
     const listed = body.decks.find((d) => d.id === created.deck.id);
     expect(listed).toBeTruthy();
     expect(listed?.contents).toEqual({

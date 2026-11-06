@@ -92,18 +92,18 @@ function AgentAccessCard({ signedIn }: { signedIn: boolean }) {
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Connect an agent (MCP)</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-section">Connect an agent (MCP)</CardTitle></CardHeader>
       <CardContent className="flex flex-col gap-4">
         {signedIn ? (
           <div className="flex flex-col gap-3 rounded border border-border p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">Personal API tokens</p>
-                <p className="text-xs text-muted-foreground">The secret is shown once when you create a token.</p>
+                <p className="text-row-title">Personal API tokens</p>
+                <p className="text-caption text-muted-foreground">A token acts as your account in every space you belong to, until you revoke it here. The secret is shown once when you create it.</p>
               </div>
               <Button asChild size="sm"><Link {...to.settingsTokenNew()}>Create token</Link></Button>
             </div>
-            {tokens === null ? <p className="text-xs text-muted-foreground">Loading tokens…</p> : (
+            {tokens === null ? <p className="text-caption text-muted-foreground">Loading tokens…</p> : (
               <div className="flex flex-col gap-3">
                 <CollectionToolbar value={query} onChange={setQuery} placeholder="Search tokens…" />
                 <CollectionMeta count={visibleTokens.length} noun="token" />
@@ -111,21 +111,21 @@ function AgentAccessCard({ signedIn }: { signedIn: boolean }) {
                   caption="Personal API tokens"
                   rows={visibleTokens}
                   columns={[
-                    { key: 'name', header: 'Token', accessor: (token) => token.name, cell: (token) => <div><p className="font-medium">{token.name}</p><p className="text-xs text-muted-foreground"><code>{token.prefix}…</code> · created {formatWhen(token.createdAt)}</p></div> },
-                    { key: 'last-used', header: 'Last used', accessor: (token) => token.lastUsedAt ?? 0, className: 'w-[12rem]', cell: (token) => <span className="text-sm text-muted-foreground">{token.lastUsedAt ? formatWhen(token.lastUsedAt) : 'Never'}</span> },
+                    { key: 'name', header: 'Token', accessor: (token) => token.name, cell: (token) => <div><p className="font-semibold">{token.name}</p><p className="text-caption text-muted-foreground"><code>{token.prefix}…</code> · created {formatWhen(token.createdAt)}</p></div> },
+                    { key: 'last-used', header: 'Last used', accessor: (token) => token.lastUsedAt ?? 0, className: 'w-[12rem]', cell: (token) => <span className="text-secondary text-muted-foreground">{token.lastUsedAt ? formatWhen(token.lastUsedAt) : 'Never'}</span> },
                     { key: 'actions', header: '', className: 'w-14 text-right', cell: (token) => <RowActions label={`Actions for ${token.name}`}><DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setPendingRevoke(token)}>Revoke token</DropdownMenuItem></RowActions> },
                   ]}
                   empty={query ? 'No tokens match this search.' : 'No active tokens yet.'}
                 />
               </div>
             )}
-            {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
+            {error ? <p className="text-caption font-semibold text-destructive">{error}</p> : null}
           </div>
-        ) : <p className="text-xs text-muted-foreground">Sign in above to create a personal API token for agents and scripts.</p>}
+        ) : <p className="text-caption text-muted-foreground">Sign in above to create a personal API token for agents and scripts.</p>}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2"><span className="text-sm">Claude Code</span><CopyButton label="Copy command" value={claudeCodeCmd} disabled={!signedIn} /></div>
-          <div className="flex items-center justify-between gap-2"><span className="text-sm">Claude.ai / Desktop <span className="text-xs text-muted-foreground">(custom connector: URL + header)</span></span><span className="flex gap-2"><CopyButton label="Copy URL" value={mcpUrl} /><CopyButton label="Copy header" value={authHeader} disabled={!signedIn} /></span></div>
-          <div className="flex items-center justify-between gap-2"><span className="text-sm">ChatGPT web <span className="text-xs text-muted-foreground">(OAuth: paste URL, approve while signed in)</span></span><CopyButton label="Copy URL" value={mcpUrl} /></div>
+          <div className="flex items-center justify-between gap-2"><span className="text-secondary">Claude Code</span><CopyButton label="Copy command" value={claudeCodeCmd} disabled={!signedIn} /></div>
+          <div className="flex items-center justify-between gap-2"><span className="text-secondary">Claude.ai / Desktop <span className="text-caption text-muted-foreground">(custom connector: URL + header)</span></span><span className="flex gap-2"><CopyButton label="Copy URL" value={mcpUrl} /><CopyButton label="Copy header" value={authHeader} disabled={!signedIn} /></span></div>
+          <div className="flex items-center justify-between gap-2"><span className="text-secondary">ChatGPT web <span className="text-caption text-muted-foreground">(OAuth: paste URL, approve while signed in)</span></span><CopyButton label="Copy URL" value={mcpUrl} /></div>
         </div>
       </CardContent>
       <ConfirmActionDialog
@@ -144,7 +144,8 @@ function AgentAccessCard({ signedIn }: { signedIn: boolean }) {
 export function ApiTokenNewPage() {
   const [minted, setMinted] = useState<MintedApiToken | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const mcpUrl = `${window.location.origin}/api/mcp`;
+  const origin = window.location.origin;
+  const mcpUrl = `${origin}/api/mcp`;
   const form = useForm({
     defaultValues: { name: '' },
     onSubmit: async ({ value }) => {
@@ -163,14 +164,22 @@ export function ApiTokenNewPage() {
       <PageHeading title="Create API token" description="Create a personal token for an agent, connector, or script. The secret is shown once." />
       {minted ? (
         <Card>
-          <CardHeader><CardTitle className="text-base">Token</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-section">Token</CardTitle></CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <p className="text-sm text-muted-foreground">This secret will not be shown again.</p>
-            <code className="break-all rounded border border-border bg-muted/40 p-3 text-xs">{minted.token}</code>
+            <p className="text-secondary text-muted-foreground">This secret will not be shown again. It acts as your account in every space you belong to, until you revoke it in Settings.</p>
+            <code className="break-all rounded border border-border bg-muted/40 p-3 text-caption">{minted.token}</code>
             <div className="flex flex-wrap gap-2">
               <CopyButton label="Copy token" value={minted.token} />
               <CopyButton label="Copy Claude command" value={`claude mcp add --transport http openroom ${mcpUrl} --header "Authorization: Bearer ${minted.token}"`} />
               <CopyButton label="Copy header" value={`Authorization: Bearer ${minted.token}`} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-secondary">For the openroom CLI, pass the server address and the token:</p>
+              <code className="break-all rounded border border-border bg-muted/40 p-3 text-caption">--url {origin} --token {minted.token}</code>
+              <span className="flex flex-wrap gap-2">
+                <CopyButton label="Copy CLI options" value={`--url ${origin} --token ${minted.token}`} />
+                <CopyButton label="Copy server address" value={origin} />
+              </span>
             </div>
             <Button asChild className="w-fit" variant="outline"><Link {...to.settings()}>Settings</Link></Button>
           </CardContent>
@@ -184,11 +193,11 @@ export function ApiTokenNewPage() {
                   <div className="flex flex-col gap-2">
                     <Label htmlFor={field.name}>Label</Label>
                     <Input id={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} placeholder="Claude / agent" aria-invalid={field.state.meta.errors.length > 0} />
-                    {field.state.meta.errors[0] ? <p className="text-xs text-destructive">{String(field.state.meta.errors[0])}</p> : null}
+                    {field.state.meta.errors[0] ? <p className="text-caption text-destructive">{String(field.state.meta.errors[0])}</p> : null}
                   </div>
                 )}
               </form.Field>
-              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              {error ? <p className="text-secondary text-destructive">{error}</p> : null}
               <form.Subscribe selector={(state) => [state.canSubmit && state.values.name.trim() !== '', state.isSubmitting] as const}>
                 {([canSubmit, isSubmitting]) => <div className="flex gap-2"><Button type="submit" disabled={!canSubmit || isSubmitting}>{isSubmitting ? 'Creating…' : 'Create token'}</Button><Button asChild type="button" variant="outline"><Link {...to.settings()}>Cancel</Link></Button></div>}
               </form.Subscribe>
@@ -211,27 +220,24 @@ export function SettingsPage({ session }: Props) {
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="font-display text-page-title">Settings</h1>
       </div>
 
       <AccountPanel session={session} />
 
-      <Card><CardHeader><CardTitle className="text-base">Billing</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm text-muted-foreground">Choose a plan or manage your subscription, payment details and invoices.</p><Button asChild variant="outline"><Link {...to.billing()}>Open billing</Link></Button></CardContent></Card>
+      <Card><CardHeader><CardTitle className="text-section">Billing</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-secondary text-muted-foreground">Choose a plan or manage your subscription, payment details and invoices.</p><Button asChild variant="outline"><Link {...to.billing()}>Open billing</Link></Button></CardContent></Card>
       <AgentAccessCard signedIn={signedIn} />
       <ConnectedApps signedIn={signedIn} />
       {relayBridge === null ? null : <LiveServerCard bridge={relayBridge} />}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Quick links</CardTitle>
+          <CardTitle className="text-section">Quick links</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-1 text-sm">
+        <CardContent className="flex flex-col gap-1 text-secondary">
           <a className="underline" href="/docs/" target="_blank" rel="noreferrer">
             Documentation
           </a>
-          <Link className="underline" {...to.home()}>
-            Home
-          </Link>
           <Link className="underline" {...to.library()}>
             Library
           </Link>

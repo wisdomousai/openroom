@@ -17,6 +17,31 @@ export function groupSpaces(spaces: MySpace[]): GroupedSpaces {
   return { mine, shared };
 }
 
+/**
+ * Spaces the nav lists. A student's own space (`sp_ctx_…`) is left out while
+ * that student is in Trash (the trashed place is reached through Trash), and
+ * when no student and no deck is left in it. A space whose student was purged
+ * with decks still filed in it is listed like any other. Lists not loaded yet
+ * hide nothing.
+ */
+export function navigableSpaces(
+  spaces: MySpace[],
+  known: {
+    trashed?: readonly { spaceId: string }[] | undefined;
+    live?: readonly { spaceId: string }[] | undefined;
+    decks?: readonly { spaceId: string }[] | undefined;
+  },
+): MySpace[] {
+  const trashed = new Set((known.trashed ?? []).map((context) => context.spaceId));
+  const live = known.live && known.decks ? new Set(known.live.map((context) => context.spaceId)) : null;
+  const filed = known.decks ? new Set(known.decks.map((deck) => deck.spaceId)) : null;
+  return spaces.filter((space) => {
+    if (!space.id.startsWith('sp_ctx_')) return true;
+    if (trashed.has(space.id)) return false;
+    return live === null || filed === null || live.has(space.id) || filed.has(space.id);
+  });
+}
+
 /** The space whose browser the pathname is on, or null at `/space`. */
 export function activeSpaceId(pathname: string): string | null {
   const match = /^\/space\/([^/]+)/.exec(pathname);

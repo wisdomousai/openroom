@@ -16,6 +16,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@openroom/ui/components/context-menu';
+import { openContextMenuFromKey, uniqueName } from '../lib/context-menu-key';
 
 /** The folder verbs the rail can perform. Omitted for a read-only role. */
 export interface FolderActions {
@@ -65,8 +66,10 @@ export interface TreeRailProps {
  *    items live. There is no second destination and no synthetic node.
  *
  * Folder verbs (rename · copy · trash · new inside a node) stay on the row's
- * context menu. **New folder** is also a visible button: creating a folder in
- * the place you are standing must not require a right-click.
+ * context menu, which Shift+F10 opens from the keyboard. **New folder** is also
+ * a visible button: creating a folder in the place you are standing must not
+ * require a right-click. F2 renames the focused folder, and focus comes back to
+ * the folder's row after a rename or a create.
  */
 export function TreeRail({
   spaceName,
@@ -97,9 +100,37 @@ export function TreeRail({
   const [creatingIn, setCreatingIn] = useState<string | null | undefined>(undefined);
   const editRef = useRef<HTMLInputElement>(null);
 
+  /*
+   * Radix holds focus inside an open menu and hands it back to the row when
+   * the menu closes. When the menu's Rename (or New folder inside) has just
+   * opened a name field, the field takes focus then instead.
+   */
+  const keepEditFocus = (event: Event) => {
+    const field = editRef.current;
+    if (!field) return;
+    event.preventDefault();
+    field.focus();
+    field.select();
+  };
+  /** The row buttons, by folder id ('root' for the space row), for returning focus. */
+  const rowButtons = useRef(new Map<string, HTMLButtonElement>());
+  /** The row to focus once it is on screen: by id, or by name under a parent for a folder just created. */
+  const [focusTarget, setFocusTarget] = useState<{ id: string } | { parentId: string | null; name: string } | null>(null);
+
   useEffect(() => {
     if (renamingId || creatingIn !== undefined) editRef.current?.select();
   }, [renamingId, creatingIn]);
+
+  useEffect(() => {
+    if (focusTarget === null || renamingId !== null || creatingIn !== undefined) return;
+    const id = 'id' in focusTarget
+      ? focusTarget.id
+      : folders.find((f) => (f.parentId ?? null) === focusTarget.parentId && f.name === focusTarget.name)?.id;
+    const button = id === undefined ? undefined : rowButtons.current.get(id);
+    if (!button) return;
+    button.focus();
+    setFocusTarget(null);
+  }, [creatingIn, focusTarget, folders, renamingId]);
 
   const isOpen = (id: string): boolean => forcedOpen.has(id) || !collapsed.has(id);
 
@@ -121,7 +152,7 @@ export function TreeRail({
   const startCreate = (parentId: string | null) => {
     setRenamingId(null);
     setCreatingIn(parentId);
-    setDraft('New folder');
+    setDraft(uniqueName('New folder', folders.filter((f) => (f.parentId ?? null) === parentId).map((f) => f.name)));
   };
 
   const commitEdit = () => {
@@ -129,6 +160,7 @@ export function TreeRail({
     if (renamingId !== null) {
       const id = renamingId;
       setRenamingId(null);
+      setFocusTarget({ id });
       const folder = folders.find((f) => f.id === id);
       if (name && folder && folder.name !== name) void folderActions?.onRenameFolder(id, name);
       return;
@@ -136,11 +168,17 @@ export function TreeRail({
     if (creatingIn !== undefined) {
       const parentId = creatingIn;
       setCreatingIn(undefined);
-      if (name) void folderActions?.onCreateFolder(parentId, name);
+      if (name) {
+        setFocusTarget({ parentId, name });
+        void folderActions?.onCreateFolder(parentId, name);
+      } else {
+        setFocusTarget({ id: parentId ?? 'root' });
+      }
     }
   };
 
   const cancelEdit = () => {
+    setFocusTarget({ id: renamingId ?? creatingIn ?? 'root' });
     setRenamingId(null);
     setCreatingIn(undefined);
   };
@@ -207,6 +245,10 @@ export function TreeRail({
         )}
         <button
           type="button"
+          ref={(element) => {
+            if (element) rowButtons.current.set(id ?? 'root', element);
+            else rowButtons.current.delete(id ?? 'root');
+          }}
           className={cn(
             'min-w-0 flex-1 truncate py-1 pr-2 text-left text-secondary',
             active ? 'font-semibold text-foreground' : 'text-muted-foreground',
@@ -233,9 +275,12 @@ export function TreeRail({
         ) : folderActions ? (
           <ContextMenu>
             <ContextMenuTrigger asChild>
-              <div>{row(folder.id, folder.name, depth, children.length > 0, open)}</div>
+              <div onKeyDown={(event) => {
+                if (openContextMenuFromKey(event)) return;
+                if (event.key === 'F2') { event.preventDefault(); startRename(folder); }
+              }}>{row(folder.id, folder.name, depth, children.length > 0, open)}</div>
             </ContextMenuTrigger>
-            <ContextMenuContent>
+            <ContextMenuContent onCloseAutoFocus={keepEditFocus}>
               <ContextMenuItem onSelect={() => onNavigate(folder.id)}>Open</ContextMenuItem>
               <ContextMenuItem onSelect={() => startCreate(folder.id)}>
                 New folder inside
@@ -286,9 +331,9 @@ export function TreeRail({
             {folderActions ? (
               <ContextMenu>
                 <ContextMenuTrigger asChild>
-                  <div>{row(null, spaceName, 0, tree.length > 0, true)}</div>
+                  <div onKeyDown={(event) => { openContextMenuFromKey(event); }}>{row(null, spaceName, 0, tree.length > 0, true)}</div>
                 </ContextMenuTrigger>
-                <ContextMenuContent>
+                <ContextMenuContent onCloseAutoFocus={keepEditFocus}>
                   <ContextMenuItem onSelect={() => onNavigate(null)}>Open</ContextMenuItem>
                   <ContextMenuItem onSelect={() => startCreate(null)}>
                     New folder inside
