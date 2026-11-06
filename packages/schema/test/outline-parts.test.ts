@@ -4,6 +4,7 @@ import {
   ErrorCodes,
   LAYOUTS_FOR_KIND,
   partKeysForStep,
+  outlineSchema,
   partValue,
   resolveRevealOrder,
   validateOutline,
@@ -188,6 +189,51 @@ describe('partKeysForStep — derived from the step, not authored', () => {
     expect(partKeysForStep(fillTheGapsStep, [fillTheGaps])).toEqual(['header', 'gap-0', 'gap-1']);
     const matchStep: OutlineStep = { id: 'b', kind: 'interaction', interactionId: 'pair-words' };
     expect(partKeysForStep(matchStep, [pairs])).toEqual(['header', 'option-0', 'option-1']);
+  });
+});
+
+describe('part keys and the schema pattern', () => {
+  // The JSON Schema checks reveal and afterKey entries against one pattern;
+  // partKeysForStep is what the editor and the validator derive. A key the
+  // derivation produces but the pattern refuses cannot be saved at all.
+  const pattern = new RegExp(
+    ((outlineSchema['$defs'] as Record<string, { pattern: string }>)['partKey'])!.pattern,
+  );
+  const picture = { type: 'image', url: 'https://example.test/quai.png', alt: 'A platform' } as const;
+  const box = { x: 10, y: 10, w: 40, h: 20 };
+  const everyKind: OutlineStep[] = [
+    { id: 'title', kind: 'title', title: 'T', body: 'B', media: picture, elements: [{ id: 'note-1', type: 'text', text: 'N', box }] },
+    { id: 'statement', kind: 'statement', title: 'T', stat: '45', body: 'B', media: picture },
+    { id: 'cards', kind: 'cards', title: 'T', items: [{ text: 'x' }, { text: 'y' }], media: picture },
+    { id: 'steps', kind: 'steps', title: 'T', items: ['x', 'y'], media: picture },
+    term,
+    { id: 'activity', kind: 'activity', title: 'T', instructions: ['x'], materials: ['m'], media: picture },
+    { id: 'timer', kind: 'timer', title: 'T', body: 'B', seconds: 60 },
+    { id: 'media', kind: 'media', title: 'T', media: picture },
+    { id: 'debrief', kind: 'debrief', title: 'T', prompts: ['x', 'y'], media: picture },
+    { id: 'break', kind: 'break', title: 'T', body: 'B' },
+    { id: 'join', kind: 'join' },
+    { id: 'blank', kind: 'blank', title: 'T', elements: [{ id: 'el-2', type: 'html', html: '<p>x</p>', box }] },
+    { id: 'choice', kind: 'interaction', interactionId: 'past-tense', media: picture },
+    { id: 'gaps', kind: 'interaction', interactionId: 'gap-avoir' },
+    { id: 'match', kind: 'interaction', interactionId: 'pair-words' },
+  ];
+
+  it('covers every step kind', () => {
+    expect(new Set(everyKind.map((step) => step.kind)).size).toBe(Object.keys(LAYOUTS_FOR_KIND).length);
+  });
+
+  it.each(everyKind.map((step) => [step.id, step] as const))('every key of a %s step matches the partKey pattern', (_id, step) => {
+    const keys = partKeysForStep(step, [choice, fillTheGaps, pairs]);
+    for (const key of keys) expect(key).toMatch(pattern);
+  });
+
+  it('accepts a reveal over fill-the-gaps blanks', () => {
+    const result = validateOutline({
+      ...outlineWith([{ id: 'gaps', kind: 'interaction', interactionId: 'gap-avoir', reveal: [['header'], ['gap-0'], ['gap-1']] }]),
+      interactions: [fillTheGaps],
+    });
+    expect(result.ok).toBe(true);
   });
 });
 

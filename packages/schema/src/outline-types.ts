@@ -424,11 +424,16 @@ export interface OutlineMedia {
   focal?: OutlineMediaFocal;
   /** Frame the player / picture keeps. Optional; surfaces resolve a default for video. */
   aspect?: OutlineMediaAspect;
-  /** Which slot the picture occupies. Default follows the step layout. */
+  /**
+   * Where the picture sits. Split honours left and right (top and bottom draw
+   * as right); title, text and grid honour top and bottom and draw left or
+   * right as split; fill fills only on the media layout.
+   */
   place?: OutlineMediaPlace;
   /**
-   * How much of the slide the picture takes, 20–100.
-   * Width for left/right, height for top/bottom. Ignored when `place` is `fill`.
+   * 20–100. On split, the picture column's share of the slide width; on title,
+   * text and grid, the most height the picture takes. Ignored when `place` is
+   * `fill` and on the media and activity layouts.
    */
   size?: number;
 }
