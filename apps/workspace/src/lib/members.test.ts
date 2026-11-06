@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupSpaces, inviteEmailError, spaceRowOwnsAccent, roleAtLeast } from './members';
+import { groupSpaces, inviteEmailError, navigableSpaces, spaceRowOwnsAccent, roleAtLeast } from './members';
 import type { MySpace } from '../api';
 
 function space(overrides: Partial<MySpace>): MySpace {
@@ -74,5 +74,29 @@ describe('inviteEmailError', () => {
   });
   it('rejects self-invites case-insensitively', () => {
     expect(inviteEmailError('Me@School.ch', 'me@school.ch')).not.toBeNull();
+  });
+});
+
+describe('navigableSpaces', () => {
+  const personal = space({ id: 'sp_home' });
+  const live = space({ id: 'sp_ctx_live' });
+  const trashed = space({ id: 'sp_ctx_trashed' });
+  const purgedEmpty = space({ id: 'sp_ctx_gone' });
+  const purgedWithDeck = space({ id: 'sp_ctx_kept' });
+  const all = [personal, live, trashed, purgedEmpty, purgedWithDeck];
+  const ids = (spaces: MySpace[]) => spaces.map((s) => s.id);
+
+  it('leaves out a trashed student space and an empty one with no student', () => {
+    const shown = navigableSpaces(all, {
+      trashed: [{ spaceId: 'sp_ctx_trashed' }],
+      live: [{ spaceId: 'sp_ctx_live' }],
+      decks: [{ spaceId: 'sp_ctx_trashed' }, { spaceId: 'sp_ctx_kept' }],
+    });
+    expect(ids(shown)).toEqual(['sp_home', 'sp_ctx_live', 'sp_ctx_kept']);
+  });
+
+  it('hides only what it knows about while lists are loading', () => {
+    expect(ids(navigableSpaces(all, {}))).toEqual(ids(all));
+    expect(ids(navigableSpaces(all, { trashed: [{ spaceId: 'sp_ctx_trashed' }], live: [] }))).toEqual(ids(all).filter((id) => id !== 'sp_ctx_trashed'));
   });
 });

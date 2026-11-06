@@ -79,7 +79,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
 
   const allSpaces = spacesQuery.data ?? [];
   // A trashed student's own space keeps resolving as the current space, but the nav does not list it.
-  const spaces = navigableSpaces(allSpaces, trashedContextsQuery.data);
+  const spaces = navigableSpaces(allSpaces, { trashed: trashedContextsQuery.data, live: contextsQuery.data, decks: decksQuery.data });
   const { mine: ownedSpaces, shared: invitedSpaces } = groupSpaces(spaces);
   const personal = ownedSpaces[0] ?? null;
   const contexts = contextsQuery.data ?? [];
@@ -121,7 +121,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
 
   const newDeckTo = useMemo(() => {
     // A student in Trash takes no new decks; the button files into the first own space instead.
-    if (activeContextId && trashedContextsQuery.data?.some((row) => row.id === activeContextId)) {
+    if (trashedContextsQuery.data?.some((row) => row.id === activeContextId || (row.spaceId === activeSpaceId && row.spaceId.startsWith('sp_ctx_')))) {
       return personal ? to.deckNew({ spaceId: personal.id }) : to.deckNew();
     }
     if (activeContextId) {
@@ -195,7 +195,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
 
       <div className="flex min-h-0 flex-1">
         <aside className={cn("min-h-0 w-[244px] shrink-0 flex-col border-r border-border bg-chrome", accountPage ? "hidden md:flex" : "flex")}>
-          <div className="px-2 pt-2"><SpaceSwitcher current={currentSpace} spaces={currentSpace && !spaces.includes(currentSpace) ? [...spaces, currentSpace] : spaces} /></div>
+          <div className="px-2 pt-2"><SpaceSwitcher current={currentSpace} spaces={spaces} /></div>
           <div className="px-3 pb-2 pt-3">
             <Button asChild className="h-[34px] w-full">
               <Link {...newDeckTo}>New deck</Link>
