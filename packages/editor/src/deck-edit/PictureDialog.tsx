@@ -19,6 +19,19 @@ import { isServiceError, useEditorServices, type StockHit } from '../services';
 type PictureTab = 'computer' | 'stock' | 'space' | 'upload' | 'link';
 
 /**
+ * A stock or linked picture is an address, not a file in the space, so Save a
+ * copy cannot pack it. Said where the picture is chosen, not only when the copy
+ * fails.
+ */
+export const ONLINE_PICTURE_NOTE =
+  'This picture stays online. Upload it into this space before you use Save a copy.';
+
+/** A failure worth retrying as it is: offline, busy or a server fault. */
+function retriable(error: unknown): boolean {
+  return isServiceError(error) && (error.status === 0 || error.status === 429 || error.status >= 500);
+}
+
+/**
  * Choose a picture — a dialog, because a search box and a photo grid do not
  * fit the task pane (Pane-or-Dialog Rule).
  */
@@ -146,6 +159,11 @@ export function PictureDialog({
           ) : (
             <LinkPane onPick={(media) => setPending(media)} />
           )}
+          {tab === 'stock' || tab === 'link' ? (
+            <p className="pt-3 text-caption text-muted-foreground" data-picture-online-note>
+              {ONLINE_PICTURE_NOTE}
+            </p>
+          ) : null}
         </div>
         <DialogFooter>
           <label className="mr-auto flex min-w-0 items-center gap-2 text-secondary">
@@ -183,7 +201,8 @@ function StockGrid({
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<StockHit[]>([]);
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, setProblem] = useState<{ text: string; retry: boolean } | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const q = query.trim();
@@ -197,12 +216,15 @@ function StockGrid({
         })
         .catch((error: unknown) => {
           setHits([]);
-          setProblem(isServiceError(error) ? error.message : 'Pixabay could not be reached.');
+          setProblem({
+            text: isServiceError(error) ? error.message : 'Stock photos could not be loaded. Try again.',
+            retry: !isServiceError(error) || retriable(error),
+          });
         })
         .finally(() => setBusy(false));
     }, q.length === 0 ? 0 : 250);
     return () => window.clearTimeout(timer);
-  }, [query]);
+  }, [query, attempt]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -214,7 +236,7 @@ function StockGrid({
         aria-label="Search stock photos"
       />
       {problem === null ? null : (
-        <p className="text-caption text-destructive" role="alert">{problem}</p>
+        <Problem text={problem.text} onRetry={problem.retry ? () => setAttempt((n) => n + 1) : undefined} />
       )}
       <div className="grid grid-cols-4 gap-3">
         {hits.map((hit) => {
@@ -292,86 +314,229 @@ function SpaceGrid({
   );
 }
 
+function Problem({ text, onRetry }: { text: string; onRetry?: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2" role="alert">
+      <p className="text-caption text-destructive">{text}</p>
+      {onRetry === undefined ? null : (
+        <Button type="button" size="sm" variant="outline" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
+    </div>
+  );
+}
+
+const NOT_A_PICTURE = 'This file is not a picture that can be shown. Choose a PNG, JPEG, GIF, WebP or AVIF file.';
+
+/**
+ * Upload one picture into the space. Insert waits until the uploaded file has
+ * loaded as a picture, so a file that only claims to be an image never reaches
+ * the slide.
+ */
 function UploadPane({
   spaceId,
   onPick,
 }: {
   spaceId: string | null;
-  onPick: (media: OutlineMedia) => void;
+  onPick: (media: OutlineMedia | null) => void;
 }) {
   const { assets } = useEditorServices();
   const fileInput = useRef<HTMLInputElement | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  const lastFile = useRef<File | null>(null);
+  const [problem, setProblem] = useState<{ text: string; retry: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
-  const upload = async (files: FileList | null) => {
-    const file = files?.[0];
+  const [dragging, setDragging] = useState(false);
+  const [uploaded, setUploaded] = useState<{ media: OutlineMedia; name: string; shown: boolean } | null>(null);
+  const upload = async (file: File | undefined) => {
     if (file === undefined) return;
     if (spaceId === null) {
-      setProblem('No space to upload into.');
+      setProblem({ text: 'No space to upload into.', retry: false });
       return;
     }
+    if (file.type !== '' && !file.type.startsWith('image/')) {
+      setProblem({ text: NOT_A_PICTURE, retry: false });
+      return;
+    }
+    lastFile.current = file;
     setBusy(true);
+    setProblem(null);
+    setUploaded(null);
+    onPick(null);
     try {
       const asset = await assets.upload(spaceId, file);
-      if (asset.kind === 'pdf') throw new Error('Choose an image, video, or audio file.');
-      onPick({
-        type: asset.kind,
-        ...(asset.kind === 'audio' ? { listening: { mode: 'room' as const } } : {}),
-        assetId: asset.id,
-        url: assets.url(asset.id),
-        alt: asset.alt ?? asset.name,
+      if (asset.kind !== 'image') {
+        setProblem({ text: NOT_A_PICTURE, retry: false });
+        return;
+      }
+      setUploaded({
+        media: { type: 'image', assetId: asset.id, url: assets.url(asset.id), alt: asset.alt ?? asset.name },
+        name: file.name,
+        shown: false,
       });
-      setProblem(null);
     } catch (error) {
-      setProblem(isServiceError(error) ? error.message : 'The upload did not finish.');
+      setProblem({
+        text: isServiceError(error) ? error.message : 'The upload did not finish. Try again.',
+        retry: !isServiceError(error) || retriable(error),
+      });
     } finally {
       setBusy(false);
     }
   };
+  const choose = () => fileInput.current?.click();
   return (
     <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => fileInput.current?.click()}
-        className="rounded-lg border border-dashed border-input px-4 py-8 text-secondary text-muted-foreground hover:bg-background"
-      >
-        {busy ? 'Working…' : 'Drop or click to upload. Max 20 MB.'}
-      </button>
+      {uploaded === null ? (
+        <button
+          type="button"
+          onClick={choose}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            void upload(event.dataTransfer.files[0]);
+          }}
+          className={cn(
+            'rounded-lg border border-dashed border-input px-4 py-8 text-secondary text-muted-foreground hover:bg-background',
+            dragging && 'border-primary bg-background',
+          )}
+        >
+          {busy ? 'Uploading…' : 'Drop a picture here or click to choose one. Max 20 MB.'}
+        </button>
+      ) : (
+        <div className="flex items-center gap-3 rounded-lg border border-border p-3" data-upload-picked>
+          <img
+            src={uploaded.media.url}
+            alt=""
+            className="size-16 shrink-0 rounded-md bg-muted object-cover"
+            onLoad={() => {
+              setUploaded((current) => (current === null ? null : { ...current, shown: true }));
+              onPick(uploaded.media);
+            }}
+            onError={() => {
+              setUploaded(null);
+              onPick(null);
+              setProblem({ text: NOT_A_PICTURE, retry: false });
+            }}
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-secondary">{uploaded.name}</span>
+            <span className="text-caption text-muted-foreground">
+              {uploaded.shown ? 'Uploaded to this space.' : 'Checking the picture…'}
+            </span>
+          </div>
+          <Button type="button" size="sm" variant="outline" onClick={choose}>
+            Replace
+          </Button>
+        </div>
+      )}
       <input
         ref={fileInput}
         type="file"
         accept="image/*"
         className="sr-only"
+        aria-label="Picture file"
         onChange={(event) => {
-          void upload(event.currentTarget.files);
+          void upload(event.currentTarget.files?.[0]);
           event.currentTarget.value = '';
         }}
       />
-      {problem === null ? null : <p className="text-caption text-destructive">{problem}</p>}
+      {problem === null ? null : (
+        <Problem
+          text={problem.text}
+          onRetry={problem.retry && lastFile.current !== null ? () => void upload(lastFile.current ?? undefined) : undefined}
+        />
+      )}
     </div>
   );
 }
 
-function LinkPane({ onPick }: { onPick: (media: OutlineMedia) => void }) {
+/** Why an address cannot be used as a picture, or null when it can. */
+export function pictureAddressProblem(text: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    return 'Enter a full address that starts with https://.';
+  }
+  if (url.protocol !== 'https:') return 'Enter an address that starts with https://.';
+  if (text.length > 2000) return 'This address is too long.';
+  return null;
+}
+
+/**
+ * A picture from an address. The address is previewed before Insert, so a
+ * page or a broken link never reaches the slide. The alt text starts empty;
+ * the picture pane asks for it.
+ */
+function LinkPane({ onPick }: { onPick: (media: OutlineMedia | null) => void }) {
   const [value, setValue] = useState('');
+  const [candidate, setCandidate] = useState<string | null>(null);
+  const [state, setState] = useState<'loading' | 'shown' | 'broken'>('loading');
+  const [problem, setProblem] = useState<string | null>(null);
+  const use = () => {
+    const url = value.trim();
+    if (url === '') return;
+    const refusal = pictureAddressProblem(url);
+    onPick(null);
+    if (refusal !== null) {
+      setCandidate(null);
+      setProblem(refusal);
+      return;
+    }
+    setProblem(null);
+    setState('loading');
+    setCandidate(url);
+  };
   return (
-    <div className="flex gap-2">
-      <Input
-        value={value}
-        placeholder="https://…"
-        aria-label="Picture address"
-        onChange={(event) => setValue(event.currentTarget.value)}
-      />
-      <Button
-        type="button"
-        onClick={() => {
-          const url = value.trim();
-          if (url === '') return;
-          onPick({ type: 'image', url, alt: 'Picture from a link' });
+    <div className="flex flex-col gap-3">
+      <form
+        className="flex gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          use();
         }}
       >
-        Use
-      </Button>
+        <Input
+          value={value}
+          placeholder="https://…"
+          aria-label="Picture address"
+          inputMode="url"
+          onChange={(event) => setValue(event.currentTarget.value)}
+        />
+        <Button type="submit">Use</Button>
+      </form>
+      {problem === null ? null : <Problem text={problem} />}
+      {candidate === null ? null : (
+        <div className="flex items-center gap-3" data-link-preview={state}>
+          <img
+            key={candidate}
+            src={candidate}
+            alt=""
+            referrerPolicy="no-referrer"
+            className={cn('size-24 shrink-0 rounded-md bg-muted object-cover', state === 'broken' && 'hidden')}
+            onLoad={() => {
+              setState('shown');
+              onPick({ type: 'image', url: candidate, alt: '' });
+            }}
+            onError={() => {
+              setState('broken');
+              onPick(null);
+            }}
+          />
+          {state === 'loading' ? (
+            <p className="text-caption text-muted-foreground">Loading the picture…</p>
+          ) : state === 'broken' ? (
+            <Problem text="This address does not return a picture. Check it and try again." />
+          ) : (
+            <p className="text-caption text-muted-foreground">Insert puts this picture on the slide.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
