@@ -21,6 +21,8 @@ Acceptance:
 - Questions with no answer key invite self-reflection rather than marking an
   opinion incorrect.
 - Saving advances to the next exercise and progress persists after reload.
+- By keyboard, Check moves focus to the result line, a grade moves it to the
+  Practice heading of the next exercise, and the last grade to the done line.
 - No horizontal overflow at the tested viewport.
 - Unit tests cover Unicode composition, German spelling alternatives, incomplete
   responses, invalid IDs, duplicate tasks and malformed published interactions.

@@ -57,6 +57,16 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
   const upload = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   const activeRef = useRef(active); activeRef.current = active;
+  /*
+   * Record, Stop and Send each replace or disable the pressed button, so focus
+   * moves on: to Stop once recording runs, to Send once the take is ready
+   * (Record if it could not be prepared), and to Response sent after sending.
+   */
+  const focusAfter = useRef<'stop' | 'send' | 'sent' | null>(null);
+  const recordButton = useRef<HTMLButtonElement>(null);
+  const stopButton = useRef<HTMLButtonElement>(null);
+  const sendButton = useRef<HTMLButtonElement>(null);
+  const sentStatus = useRef<HTMLParagraphElement>(null);
   const stop = (reason: RecordingStopReason | 'learner') => {
     if (recorder.current?.state === 'recording') { stopReason.current ??= reason; recorder.current.stop(); }
     stream.current?.getTracks().forEach((track) => track.stop());
@@ -74,6 +84,15 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
     const url = URL.createObjectURL(audio); setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [audio]);
+  useEffect(() => {
+    const want = focusAfter.current;
+    // Wait while the recorder stops, the take is prepared or sent, or its preview is not drawn yet.
+    if (!want || preparing || uploading || (audio && !preview) || (want === 'send' && recording)) return;
+    focusAfter.current = null;
+    if (want === 'stop' && recording) stopButton.current?.focus();
+    else if (want === 'sent' && sent && !audio) sentStatus.current?.focus();
+    else (preview ? sendButton : recordButton).current?.focus();
+  }, [recording, preparing, uploading, audio, preview, sent]);
   useEffect(() => {
     if (!recording) return;
     const start = performance.now();
@@ -99,7 +118,7 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
     } finally { if (mounted.current) setPreparing(false); }
   };
   const record = async () => {
-    setError(null); setCutShort(null); setPreparing(true);
+    focusAfter.current = 'stop'; setError(null); setCutShort(null); setPreparing(true);
     try {
       const input = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!mounted.current || !activeRef.current) { input.getTracks().forEach((track) => track.stop()); return; }
@@ -113,6 +132,7 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
       };
       media.onerror = () => { failed = true; stop('learner'); setError('recordingStopped'); };
       media.onstop = () => {
+        if (document.activeElement === stopButton.current) focusAfter.current = 'send';
         input.getTracks().forEach((track) => track.stop()); recorder.current = null;
         const reason = stopReason.current ?? 'device'; stopReason.current = null;
         if (!mounted.current) return;
@@ -127,7 +147,7 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
   };
   const send = async () => {
     if (!audio) return;
-    setUploading(true); setError(null);
+    focusAfter.current = 'sent'; setUploading(true); setError(null);
     const controller = new AbortController(); upload.current = controller;
     let timedOut = false;
     const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, voiceUploadTimeoutMs(audio.size));
@@ -145,16 +165,16 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
     <h3 className="font-semibold">{task.title ?? copy.voiceResponse}</h3>
     <p className="whitespace-pre-wrap text-base">{task.prompt}</p>
     {task.guidance ? <p className="whitespace-pre-wrap text-sm text-muted-foreground">{task.guidance}</p> : null}
-    {sent ? <div className="grid gap-2 rounded-lg border border-border p-3"><p className="text-sm font-medium" role="status">{copy.responseSent}</p><PrivateAudio key={sent.submissionId} {...sent} token={token} onChanged={() => queryClient.invalidateQueries({ queryKey: ['learner'] })} /></div> : null}
+    {sent ? <div className="grid gap-2 rounded-lg border border-border p-3"><p ref={sentStatus} tabIndex={-1} className="text-sm font-medium outline-none" role="status">{copy.responseSent}</p><PrivateAudio key={sent.submissionId} {...sent} token={token} onChanged={() => queryClient.invalidateQueries({ queryKey: ['learner'] })} /></div> : null}
     <div className="flex flex-wrap items-center gap-2">
-      {recording ? <><Button type="button" className="min-h-11" onClick={() => stop('learner')}>{copy.stopRecording}</Button><span role="timer" aria-label={copy.recordingTime} className="font-mono">{audioTime(seconds * 1000)} / 5:00</span></> : canRecord ? <Button type="button" variant="outline" className="min-h-11" disabled={busy} onClick={() => void record()}>{audio ? copy.recordAgain : sent ? copy.recordAnother : copy.recordResponse}</Button> : null}
+      {recording ? <><Button ref={stopButton} type="button" className="min-h-11" onClick={() => stop('learner')}>{copy.stopRecording}</Button><span role="timer" aria-label={copy.recordingTime} className="font-mono">{audioTime(seconds * 1000)} / 5:00</span></> : canRecord ? <Button ref={recordButton} type="button" variant="outline" className="min-h-11" disabled={busy} onClick={() => void record()}>{audio ? copy.recordAgain : sent ? copy.recordAnother : copy.recordResponse}</Button> : null}
       <label className={`relative inline-flex min-h-11 items-center rounded-md border border-input px-4 text-sm font-medium focus-within:ring-2 focus-within:ring-ring ${busy ? 'opacity-50' : 'cursor-pointer hover:bg-accent'}`}>
         {copy.chooseFile}<input type="file" accept="audio/*" aria-label={copy.chooseFile} disabled={busy} className="absolute inset-0 w-full cursor-pointer opacity-0" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void prepare(file); }} />
       </label>
     </div>
     {preparing ? <p role="status" className="text-sm">{copy.preparing}</p> : null}
     {preview && cutShort ? <p role="status" className="text-sm">{copy.recordingCutShort(audioTime(cutShort.durationMs), cutShort.reason)}</p> : null}
-    {preview ? <div className="grid min-w-0 gap-3"><audio src={preview} controls aria-label={copy.preview} className="h-12 w-full min-w-0" /><div className="flex flex-wrap items-center gap-3"><Button type="button" className="min-h-11" disabled={busy} onClick={() => void send()}>{copy.sendResponse}</Button><a href={preview} download="my-response.wav" className="inline-flex min-h-11 items-center text-sm underline">{copy.download}</a></div></div> : null}
+    {preview ? <div className="grid min-w-0 gap-3"><audio src={preview} controls aria-label={copy.preview} className="h-12 w-full min-w-0" /><div className="flex flex-wrap items-center gap-3"><Button ref={sendButton} type="button" className="min-h-11" disabled={busy} onClick={() => void send()}>{copy.sendResponse}</Button><a href={preview} download="my-response.wav" className="inline-flex min-h-11 items-center text-sm underline">{copy.download}</a></div></div> : null}
     {uploading ? <div className="grid gap-1"><div className="flex items-baseline justify-between gap-3"><span role="status"><label htmlFor={`voice-progress-${task.id}`} className="text-sm">{copy.sending}</label></span><span role="timer" aria-label={copy.sendingTime} className="font-mono text-sm tabular-nums">{audioTime(sendSeconds * 1000)}</span></div><progress id={`voice-progress-${task.id}`} className="w-full" /></div> : null}
     {error ? <p role="alert" className="text-sm text-destructive">{copy[error]}</p> : null}
     <p className="text-xs leading-relaxed text-muted-foreground">{copy.voicePrivacy}</p>

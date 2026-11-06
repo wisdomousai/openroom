@@ -20,7 +20,7 @@
  *    tutor for nothing.
  */
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import {
   ApiError,
@@ -251,24 +251,35 @@ function PracticePile({
   const { copy } = useLearnerLanguage();
   const [finished, setFinished] = useState<Set<string>>(() => new Set());
   const [current, setCurrent] = useState<LearnerPracticeItem | undefined>(items[0]);
+  // The card on screen: the one in progress, or the next unfinished one while it is picked.
+  const shown = current ?? items.find((item) => !finished.has(item.itemId));
   useEffect(() => {
-    if (!current) setCurrent(items.find((item) => !finished.has(item.itemId)));
-  }, [current, items, finished]);
-  if (current === undefined) return <p className="text-muted-foreground">{copy.practiceDone}</p>;
+    if (!current && shown) setCurrent(shown);
+  }, [current, shown]);
+  // After a grade or skip the card leaves the page; focus moves to the next card or the done line.
+  const advanced = useRef(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const done = useRef<HTMLParagraphElement>(null);
+  const shownId = shown?.itemId;
+  useEffect(() => {
+    if (!advanced.current) return;
+    advanced.current = false;
+    (shownId ? heading : done).current?.focus();
+  }, [shownId]);
+  if (shown === undefined) return <p ref={done} tabIndex={-1} className="text-muted-foreground outline-none">{copy.practiceDone}</p>;
+  const finish = () => { advanced.current = true; setFinished((previous) => new Set([...previous, shown.itemId])); setCurrent(undefined); onDone(); };
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold">{copy.practice}</h2>
+      <h2 ref={heading} tabIndex={-1} className="text-sm font-semibold outline-none">{copy.practice}</h2>
       <PracticeCard
-        key={current.itemId}
-        item={current}
+        key={shown.itemId}
+        item={shown}
         onGrade={async (grade, answer, assignmentRevision, attemptId) => {
-          await gradeLearnerPractice(token, { itemId: current.itemId, grade, answer, assignmentRevision, attemptId });
-          setFinished((previous) => new Set([...previous, current.itemId]));
-          setCurrent(undefined);
-          onDone();
+          await gradeLearnerPractice(token, { itemId: shown.itemId, grade, answer, assignmentRevision, attemptId });
+          finish();
         }}
-        onRefresh={async () => (await fetchLearnerPractice(token, current.itemId))[0]}
-        onSkip={() => { setFinished((previous) => new Set([...previous, current.itemId])); setCurrent(undefined); onDone(); }}
+        onRefresh={async () => (await fetchLearnerPractice(token, shown.itemId))[0]}
+        onSkip={finish}
       />
     </section>
   );
@@ -376,9 +387,10 @@ function WritingTask({
       <h3 className="text-sm font-semibold">{task.title ?? copy.writing}</h3>
       <p className="text-sm">{task.prompt}</p>
       {task.guidance ? <p className="text-sm text-muted-foreground">{task.guidance}</p> : null}
+      {/* Read-only and aria-disabled rather than disabled while saving, so keyboard focus stays on the field or on Save. */}
       <Textarea
         rows={6}
-        disabled={save.isPending}
+        readOnly={save.isPending}
         value={body}
         onChange={(event) => { setBody(event.currentTarget.value); setSubmissionId(crypto.randomUUID()); save.reset(); }}
         className="min-h-28 text-base"
@@ -386,12 +398,14 @@ function WritingTask({
       />
       <Button
         type="button"
-        className="min-h-11 w-fit"
-        disabled={token === null || save.isPending || !body.trim() || save.isSuccess}
-        onClick={() => save.mutate()}
+        className="min-h-11 w-fit aria-disabled:pointer-events-none aria-disabled:opacity-50"
+        disabled={token === null || !body.trim()}
+        aria-disabled={save.isPending || save.isSuccess || undefined}
+        onClick={() => { if (!save.isPending && !save.isSuccess) save.mutate(); }}
       >
         {save.isSuccess ? copy.saved : save.isPending ? copy.saving : copy.save}
       </Button>
+      <span role="status" className="sr-only">{save.isSuccess ? copy.saved : ''}</span>
       {save.isError ? <p role="alert" className="text-sm text-destructive">{save.error instanceof ApiError && save.error.status === 409 ? copy.writingChanged : copy.writingError}</p> : null}
     </div>
   );

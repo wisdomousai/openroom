@@ -117,7 +117,15 @@ test('voice response upload, private timed feedback, learner deletion and microp
   // The served Permissions-Policy must let this page use its own microphone;
   // the synthetic getUserMedia above would otherwise hide a blocking header.
   expect(await mic.evaluate(() => (document as Document & { featurePolicy: { allowsFeature(feature: string): boolean } }).featurePolicy.allowsFeature('microphone'))).toBe(true);
-  await mic.getByRole('button', { name: 'Record response', exact: true }).click();
+  // By keyboard, focus follows each step: Record to Stop, Stop to Send.
+  await mic.getByRole('button', { name: 'Record response', exact: true }).focus();
+  await mic.keyboard.press('Enter');
+  await expect(mic.getByRole('button', { name: 'Stop recording', exact: true })).toBeFocused();
+  await expect(mic.getByRole('timer')).not.toHaveText('0:00 / 5:00');
+  await mic.keyboard.press('Enter');
+  await expect(mic.getByRole('button', { name: 'Send response', exact: true })).toBeFocused();
+  await expect(mic.getByText(/^Recording stopped at/)).toHaveCount(0);
+  await mic.getByRole('button', { name: 'Record again', exact: true }).click();
   await expect(mic.getByRole('timer')).not.toHaveText('0:00 / 5:00');
   await mic.getByRole('tab', { name: 'Practice', exact: true }).click();
   await expect.poll(() => mic.evaluate(() => (window as unknown as { microphoneTrack: MediaStreamTrack }).microphoneTrack.readyState)).toBe('ended');
@@ -125,8 +133,9 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await expect(mic.getByRole('status').filter({ hasText: /^Recording stopped at \d:\d\d because you left the Lesson tab\. Listen to it, then send it or record again\.$/ })).toBeVisible();
   await expect(mic.getByRole('button', { name: 'Send response', exact: true })).toBeEnabled();
   await mic.screenshot({ path: testInfo.outputPath('voice-stopped-on-tab-change-phone.png'), fullPage: true });
-  await mic.getByRole('button', { name: 'Send response', exact: true }).click();
-  await expect(mic.getByText('Response sent', { exact: true })).toBeVisible();
+  await mic.getByRole('button', { name: 'Send response', exact: true }).focus();
+  await mic.keyboard.press('Enter');
+  await expect(mic.getByText('Response sent', { exact: true })).toBeFocused();
   await expect(mic.getByText(/^Recording stopped at/)).toHaveCount(0);
   await mic.close();
 });
