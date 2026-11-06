@@ -38,7 +38,7 @@ import {
   randomToken,
   readJson,
 } from './control-utils.js';
-import { confirmFolderDeletion, ensureWorkspace, spaceSettings } from './workspace.js';
+import { confirmFolderDeletion, ensureWorkspace, folderKeepsLiveDecks, spaceSettings } from './workspace.js';
 import {
   confirmDeliveryDeletion,
   createDeliveryDeletionIntentRoute,
@@ -366,13 +366,16 @@ export async function deletionConfirmationPage(
   const noun = await deletionNoun(env, intent);
   const contents = deletionContents(intent.resource_type, noun)
     .map((line) => `<li>${line}</li>`).join('');
+  const kept = intent.resource_type === 'folder' && await folderKeepsLiveDecks(env, intent.resource_id)
+    ? '<p>Decks in it that are not in Trash are kept and move to the top of the space.</p>'
+    : '';
   return deletionPage(
     'Confirm permanent deletion',
     `<h1>Permanently delete this ${noun}?</h1>
 <p class="name">${escapeHtml(intent.resource_name)}</p>
 <p>This deletes:</p>
 <ul>${contents}</ul>
-<p>This cannot be undone. Items in Trash can be restored; items deleted here cannot.</p>
+${kept}<p>This cannot be undone. Items in Trash can be restored; items deleted here cannot.</p>
 <form class="actions" method="post" action="/confirm-deletion/${encodeURIComponent(token)}"><button class="destructive" type="submit">Permanently delete</button><a class="button" href="${TRASH_HREF}">Cancel</a></form>`,
   );
 }
@@ -394,7 +397,7 @@ function notInTrash(): Response {
   return deletionPage(
     'Nothing was deleted',
     `<h1>Nothing was deleted.</h1>
-<p>This item is no longer in Trash. It was restored or deleted elsewhere.</p>
+<p>This item is no longer in Trash, or this account can no longer change it.</p>
 <p class="actions"><a class="button" href="${TRASH_HREF}">Open Trash</a></p>`,
     404,
   );
@@ -432,7 +435,7 @@ function deletionContents(type: ResourceType, noun: string): string[] {
   if (type === 'folder') {
     return [
       'The folder and the folders inside it',
-      'The decks in them, with those decks’ sessions, Notes and learner work',
+      'The decks in them that are in Trash, with those decks’ sessions, Notes and learner work',
     ];
   }
   if (type === 'session') return ['The session, its Notes and the learner work handed in for it'];
@@ -479,7 +482,8 @@ export async function confirmPermanentDeletionRoute(
     return deletionPage(
       'Sign in to confirm',
       `<h1>Sign in to confirm this deletion.</h1>
-<p>Only the owner, signed in on this browser, can confirm a permanent deletion. Open the link again after signing in.</p>`,
+<p>Only the owner, signed in on this browser, can confirm a permanent deletion.</p>
+<p class="actions"><a class="button" href="/api/auth/google?returnTo=${encodeURIComponent(new URL(request.url).pathname)}">Sign in</a></p>`,
       401,
     );
   }

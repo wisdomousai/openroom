@@ -280,7 +280,7 @@ export async function getSpaceRoute(
   if (folderFilter === 'root' || folderFilter === '') {
     deckQuery += ` AND (${SHOWN_FOLDER('d')} IS NULL OR d.folder_id = '')`;
   } else if (folderFilter !== null) {
-    deckQuery += ' AND d.folder_id = ?2';
+    deckQuery += ` AND ${SHOWN_FOLDER('d')} = ?2`;
     deckBinds.push(folderFilter);
   }
   deckQuery += ' ORDER BY d.updated_at DESC LIMIT 200';
@@ -306,7 +306,7 @@ export async function getSpaceRoute(
   if (folderFilter === 'root' || folderFilter === '') {
     sessionQuery += ` AND (${SHOWN_FOLDER('sessions')} IS NULL OR folder_id = '')`;
   } else if (folderFilter !== null) {
-    sessionQuery += ' AND folder_id = ?2';
+    sessionQuery += ` AND ${SHOWN_FOLDER('sessions')} = ?2`;
     sessionBinds.push(folderFilter);
   }
   sessionQuery += ' ORDER BY updated_at DESC LIMIT 200';
@@ -342,7 +342,7 @@ export async function getSpaceRoute(
   if (folderFilter === 'root' || folderFilter === '') {
     recordQuery += ` AND (${SHOWN_FOLDER('r')} IS NULL OR r.folder_id = '')`;
   } else if (folderFilter !== null) {
-    recordQuery += ' AND r.folder_id = ?2';
+    recordQuery += ` AND ${SHOWN_FOLDER('r')} = ?2`;
     recordBinds.push(folderFilter);
   }
   recordQuery += ' ORDER BY rr.updated_at DESC LIMIT 200';
@@ -741,17 +741,30 @@ export async function createFolderDeletionIntentRoute(
 
 /**
  * The permanent purge of a trashed folder: the folder, every folder below it,
- * and the decks that went to Trash with it (their `deleted_at` is the folder's
- * marker), each deck with its sessions, Notes and learner work (`purgeDeck`).
+ * and every deck in them that is in Trash, each deck with its sessions, Notes
+ * and learner work (`purgeDeck`). That covers the decks that went with the
+ * folder, with a subfolder trashed before it, or on their own.
  *
- * Anything else filed here outlives the folder and goes back to the space
- * root: a deck restored on its own since, a deck trashed separately (it stays
- * in Trash), a deck in a folder trashed before decks went along, and a session
- * whose deck lives elsewhere (out of Trash if the folder put it there).
+ * A live deck filed here (restored on its own since, or in a folder trashed
+ * before decks went along) outlives the folder and goes to the space root, as
+ * does a session whose deck lives elsewhere (out of Trash if the folder put it
+ * there). The confirmation page says so (`folderKeepsLiveDecks`).
  *
  * `purgeDeck` is passed in so this module does not import the delivery layer,
  * which imports this one.
  */
+/** Whether a trashed folder's purge would keep a live deck (it moves to the space root). */
+export async function folderKeepsLiveDecks(env: ControlEnv, folderId: string): Promise<boolean> {
+  const folder = await env.DB.prepare('SELECT space_id FROM folders WHERE id = ?1').bind(folderId).first<{ space_id: string }>();
+  if (folder === null) return false;
+  const subtreeIds = await collectFolderSubtree(env, folder.space_id, folderId);
+  const placeholders = subtreeIds.map((_, i) => `?${i + 1}`).join(', ');
+  const row = await env.DB.prepare(
+    `SELECT 1 AS kept FROM decks WHERE folder_id IN (${placeholders}) AND deleted_at IS NULL LIMIT 1`,
+  ).bind(...subtreeIds).first<{ kept: number }>();
+  return row !== null;
+}
+
 export async function confirmFolderDeletion(
   env: ControlEnv,
   user: SessionUser,
@@ -764,8 +777,8 @@ export async function confirmFolderDeletion(
   const placeholders = subtreeIds.map((_, i) => `?${i + 1}`).join(', ');
   const marker = subtreeIds.length + 1;
   const { results: decks } = await env.DB.prepare(
-    `SELECT id FROM decks WHERE folder_id IN (${placeholders}) AND deleted_at = ?${marker}`,
-  ).bind(...subtreeIds, access.folder.deleted_at).all<{ id: string }>();
+    `SELECT id FROM decks WHERE folder_id IN (${placeholders}) AND deleted_at IS NOT NULL`,
+  ).bind(...subtreeIds).all<{ id: string }>();
   for (const deck of decks ?? []) await purgeDeck(env, deck.id);
   await env.DB.batch([
     env.DB.prepare(`UPDATE decks SET folder_id = NULL WHERE folder_id IN (${placeholders})`).bind(...subtreeIds),

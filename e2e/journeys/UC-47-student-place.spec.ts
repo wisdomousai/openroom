@@ -133,7 +133,7 @@ test('a student place: addresses, menus, rename, folder trash and purge', async 
   const { confirmationUrl } = await json<{ confirmationUrl: string }>(
     api.post(`/api/my/folders/${folder.id}/permanent-deletion`, { headers: CSRF }), 202);
   await page.goto(new URL(confirmationUrl).pathname);
-  await expect(page.getByText('The decks in them, with those decks’ sessions, Notes and learner work')).toBeVisible();
+  await expect(page.getByText('The decks in them that are in Trash, with those decks’ sessions, Notes and learner work')).toBeVisible();
   await page.getByRole('button', { name: /Permanently delete/ }).click();
   await expect(page.getByText('Permanently deleted.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Return to Trash' })).toBeVisible();

@@ -227,6 +227,8 @@ describe('workspace hierarchy', () => {
     expect(tree.decks.find((row) => row.id === deck.deck.id)).toMatchObject({ folderId: null });
     const root = (await (await asUser(cookie, `/api/my/spaces/${spaceId}?folderId=root`)).json()) as { decks: { id: string }[] };
     expect(root.decks.map((row) => row.id)).toContain(deck.deck.id);
+    const inside = (await (await asUser(cookie, `/api/my/spaces/${spaceId}?folderId=${folder.id}`)).json()) as { decks: { id: string }[] };
+    expect(inside.decks.map((row) => row.id)).not.toContain(deck.deck.id);
     // Restoring the folder puts the deck back inside it.
     await asUser(cookie, `/api/my/folders/${folder.id}/restore`, { method: 'POST' });
     const back = (await (await asUser(cookie, `/api/my/spaces/${spaceId}`)).json()) as { decks: { id: string; folderId: string | null }[] };
@@ -248,6 +250,10 @@ describe('workspace hierarchy', () => {
     const kept = (await (await asUser(cookie, '/api/decks', {
       method: 'POST', body: JSON.stringify({ title: 'Restored alone', spaceId, folderId: folder.id, contextId }),
     })).json()) as { deck: { id: string } };
+    // The subfolder went to Trash first, so its deck carries an older marker than the parent's.
+    await asUser(cookie, `/api/my/folders/${child.id}/trash`, { method: 'POST' });
+    await env.DB.prepare('UPDATE folders SET deleted_at = deleted_at - 60000 WHERE id = ?1').bind(child.id).run();
+    await env.DB.prepare('UPDATE decks SET deleted_at = deleted_at - 60000 WHERE id = ?1').bind(deck.deck.id).run();
     await asUser(cookie, `/api/my/folders/${folder.id}/trash`, { method: 'POST' });
     // Restored on its own while the folder is in Trash: the purge must not take it.
     expect((await asUser(cookie, `/api/decks/${kept.deck.id}/restore`, { method: 'POST' })).status).toBe(200);
@@ -255,7 +261,9 @@ describe('workspace hierarchy', () => {
     expect(intent.status).toBe(202);
     const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
     const page = await asUser(cookie, new URL(confirmationUrl).pathname, { method: 'GET' });
-    expect(await page.text()).toContain('The decks in them');
+    const text = await page.text();
+    expect(text).toContain('The decks in them that are in Trash');
+    expect(text).toContain('Decks in it that are not in Trash are kept and move to the top of the space.');
     expect((await asUser(cookie, new URL(confirmationUrl).pathname, { method: 'POST' })).status).toBe(200);
     const gone = await env.DB.prepare('SELECT id FROM decks WHERE id = ?1').bind(deck.deck.id).first();
     expect(gone).toBeNull();
