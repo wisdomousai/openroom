@@ -16,6 +16,18 @@
   X-Frame-Options: DENY
   Permissions-Policy: geolocation=(), microphone=(), camera=()
 
+# The workspace app under /host/ hosts the learner page (#/learn), where a
+# student records a voice response, so it may use its own microphone. A second
+# Permissions-Policy line would be joined to the /* value with a comma, so the
+# broader value is detached first. Camera and geolocation stay disabled.
+/host
+  ! Permissions-Policy
+  Permissions-Policy: geolocation=(), microphone=(self), camera=()
+
+/host/*
+  ! Permissions-Policy
+  Permissions-Policy: geolocation=(), microphone=(self), camera=()
+
 # Agent Skills Discovery (RFC v0.2.0) — JSON index + SKILL.md artifacts.
 /.well-known/agent-skills/index.json
   Content-Type: application/json; charset=utf-8
