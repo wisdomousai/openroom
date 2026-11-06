@@ -144,13 +144,13 @@ function region(name: 'lede' | 'support', when: boolean, children: ReactNode): R
   return <div className={`outline-step__region outline-step__region--${name}`}>{children}</div>;
 }
 /**
- * Row size of a question's answers, from the authored count: seven or more
- * answers take compact rows, ten or more dense ones. Hidden answers still
+ * Row size of a question's answers, from the authored count: six to eight
+ * answers take compact rows, nine or more dense ones. Hidden answers still
  * count, so a reveal does not resize the rows already shown.
  */
 function optionTier(count: number): 'compact' | 'dense' | undefined {
-  if (count >= 10) return 'dense';
-  if (count >= 7) return 'compact';
+  if (count >= 9) return 'dense';
+  if (count >= 6) return 'compact';
   return undefined;
 }
 

@@ -1128,23 +1128,26 @@
   counter-reset: slide-option;
 }
 
-/* More answers take smaller rows. The tier comes from the authored count, so
-   revealing answers one by one never resizes the ones already shown. */
+/* More answers take tighter rows: compact keeps the type size and drops the
+   space around it, dense also uses smaller type. The tier comes from the
+   authored count, so revealing answers one by one never resizes the ones
+   already shown. */
 .slide-surface .outline-step--layout-poll .outline-step__options[data-option-tier='compact'] {
-  --poll-option-size: 2.1cqw;
-  gap: 0.6cqw;
+  --poll-option-pad: 0.12;
+  gap: 0.35cqw;
 }
 
 .slide-surface .outline-step--layout-poll .outline-step__options[data-option-tier='dense'] {
-  --poll-option-size: 1.8cqw;
-  gap: 0.45cqw;
+  --poll-option-size: 2cqw;
+  --poll-option-pad: 0.12;
+  gap: 0.3cqw;
 }
 
 .slide-surface .outline-step--layout-poll .outline-step__options li {
   display: flex;
   align-items: center;
   gap: calc(var(--poll-option-size) * 0.44);
-  padding: calc(var(--poll-option-size) * 0.38) calc(var(--poll-option-size) * 0.5);
+  padding: calc(var(--poll-option-size) * var(--poll-option-pad, 0.38)) calc(var(--poll-option-size) * 0.5);
   font-size: var(--poll-option-size);
   font-weight: 600;
   counter-increment: slide-option;
