@@ -42,14 +42,28 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await expect(learner.getByLabel('Voice response', { exact: true })).toHaveJSProperty('duration', 4);
   await page.goto(`/host/#/space/${context.spaceId}?contextId=${context.id}`);
   await page.getByRole('link', { name: 'Review learner work', exact: true }).click();
+  await expect(page.getByRole('link', { name: /Léa.*Voice response · 0:04.*Review response/s })).toBeVisible();
   await page.getByRole('link', { name: /Léa.*Review response/s }).click();
   await expect(page.getByRole('heading', { name: 'Léa’s voice response', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Listen · 0:04', exact: true }).click();
   const tutorAudio = page.getByLabel('Voice response', { exact: true });
   await expect(tutorAudio).toHaveJSProperty('duration', 4);
-  await tutorAudio.evaluate((element: HTMLAudioElement) => { element.currentTime = 1.5; element.dispatchEvent(new Event('timeupdate')); });
+  // Comments sort by their time in the recording, whatever order they are added in.
+  await tutorAudio.evaluate((element: HTMLAudioElement) => { element.pause(); element.currentTime = 3.2; element.dispatchEvent(new Event('timeupdate')); });
+  await page.getByRole('button', { name: 'Comment at 0:03', exact: true }).click();
+  await expect(page.getByLabel('Feedback at this point', { exact: true })).toBeFocused();
+  await page.getByLabel('Feedback at this point', { exact: true }).fill('Bonne intonation.');
+  await tutorAudio.evaluate((element: HTMLAudioElement) => { element.pause(); element.currentTime = 1.5; element.dispatchEvent(new Event('timeupdate')); });
   await page.getByRole('button', { name: 'Comment at 0:01', exact: true }).click();
-  await page.getByLabel('Feedback at this point', { exact: true }).fill('Faites la liaison ici.');
+  const comments = page.getByRole('group', { name: /^At \d:\d\d$/ });
+  await expect(comments).toHaveCount(2);
+  await expect(comments.nth(0)).toHaveAccessibleName('At 0:01');
+  await expect(comments.nth(1)).toHaveAccessibleName('At 0:03');
+  await expect(comments.nth(0).getByLabel('Feedback at this point', { exact: true })).toBeFocused();
+  await comments.nth(0).getByLabel('Feedback at this point', { exact: true }).fill('Faites la liaison ici.');
+  await comments.nth(1).getByRole('button', { name: 'Listen at 0:03', exact: true }).click();
+  await expect.poll(() => tutorAudio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThanOrEqual(3);
+  await tutorAudio.evaluate((element: HTMLAudioElement) => element.pause());
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible();
   await learner.getByRole('tab', { name: 'Feedback', exact: true }).click();
@@ -59,6 +73,7 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await learner.getByRole('tab', { name: 'Lesson', exact: true }).click();
   await learner.getByRole('tab', { name: 'Feedback', exact: true }).click();
   await expect(learner.getByText('Faites la liaison ici.', { exact: true })).toBeVisible();
+  await expect(learner.getByRole('button', { name: /^Listen at / })).toHaveText(['0:01', '0:03']);
   await learner.getByRole('button', { name: 'Listen at 0:01', exact: true }).click();
   await expect(learner.getByRole('tabpanel', { name: 'Feedback' }).getByLabel('Voice response', { exact: true })).toHaveJSProperty('duration', 4);
   await expect(learner.locator('body')).toHaveJSProperty('scrollWidth', 390);
@@ -99,13 +114,18 @@ test('voice response upload, private timed feedback, learner deletion and microp
     };
   });
   await mic.goto(`/host/#/learn?token=${noor}`);
+  // The served Permissions-Policy must let this page use its own microphone;
+  // the synthetic getUserMedia above would otherwise hide a blocking header.
+  expect(await mic.evaluate(() => (document as Document & { featurePolicy: { allowsFeature(feature: string): boolean } }).featurePolicy.allowsFeature('microphone'))).toBe(true);
   await mic.getByRole('button', { name: 'Record response', exact: true }).click();
   await expect(mic.getByRole('timer')).not.toHaveText('0:00 / 5:00');
   await mic.getByRole('tab', { name: 'Practice', exact: true }).click();
   await expect.poll(() => mic.evaluate(() => (window as unknown as { microphoneTrack: MediaStreamTrack }).microphoneTrack.readyState)).toBe('ended');
   await mic.getByRole('tab', { name: 'Lesson', exact: true }).click();
+  await expect(mic.getByRole('status').filter({ hasText: /^Recording stopped at \d:\d\d because you left the Lesson tab\. Listen to it, then send it or record again\.$/ })).toBeVisible();
   await expect(mic.getByRole('button', { name: 'Send response', exact: true })).toBeEnabled();
   await mic.getByRole('button', { name: 'Send response', exact: true }).click();
   await expect(mic.getByText('Response sent', { exact: true })).toBeVisible();
+  await expect(mic.getByText(/^Recording stopped at/)).toHaveCount(0);
   await mic.close();
 });

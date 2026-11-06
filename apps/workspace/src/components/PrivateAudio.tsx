@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import type { AudioComment } from '@openroom/schema';
 import { ApiError, baseUrl, CSRF_HEADERS } from '../api/client';
 import { Button } from '@openroom/ui/components/button';
@@ -11,10 +11,19 @@ export function audioTime(atMs: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
+/** Lets a caller play the recording from a point, for example a comment's time. */
+export interface PrivateAudioHandle { listenAt: (atMs: number) => void }
+
+/** Comments read in the order of the recording, whatever order they were added in. */
+export function byTime<T extends Pick<AudioComment, 'atMs'>>(comments: readonly T[]): T[] {
+  return [...comments].sort((a, b) => a.atMs - b.atMs);
+}
+
 /** Audio is fetched with the proper credential; the player only receives a temporary blob URL. */
-export function PrivateAudio({ submissionId, available, durationMs, recoverable = false, token, contextId, comments = [], onPosition, onChanged }: {
+export function PrivateAudio({ submissionId, available, durationMs, recoverable = false, token, contextId, comments = [], onPosition, onChanged, handle }: {
   submissionId: string; available: boolean; durationMs: number; recoverable?: boolean; token?: string; contextId?: string;
   comments?: AudioComment[]; onPosition?: (atMs: number) => void; onChanged?: () => void | Promise<unknown>;
+  handle?: Ref<PrivateAudioHandle>;
 }) {
   const { copy, locale } = useLearnerLanguage();
   const [source, setSource] = useState<string | null>(null);
@@ -68,13 +77,14 @@ export function PrivateAudio({ submissionId, available, durationMs, recoverable 
     finally { setBusy(false); }
   };
   const playable = available && !removed;
+  useImperativeHandle(handle, () => ({ listenAt: (atMs: number) => { if (playable && !busy) void listen(atMs); } }));
   return <div className="grid min-w-0 gap-3">
     {playable ? <>
       {source ? <audio ref={player} src={source} controls aria-label={copy.voiceResponse} className="h-12 w-full min-w-0" onTimeUpdate={() => onPosition?.(Math.min(durationMs, Math.round((player.current?.currentTime ?? 0) * 1000)))} onLoadedMetadata={() => { if (seek.current !== null && player.current) { player.current.currentTime = seek.current / 1000; void player.current.play().catch(() => {}); seek.current = null; } }} /> : <Button type="button" variant="outline" className="min-h-11 w-fit" disabled={busy} onClick={() => void listen()}>{busy ? copy.loadingRecording : copy.listen(audioTime(durationMs))}</Button>}
       <Button type="button" variant="ghost" className="min-h-11 w-fit text-muted-foreground" disabled={busy} onClick={() => setConfirm(true)}>{copy.removeRecording}</Button>
     </> : <p className="text-sm text-muted-foreground">{copy.removedFeedbackRemains}</p>}
     {recoverable || removed ? <Button type="button" variant="outline" className="min-h-11 w-fit" disabled={busy} onClick={() => void restore()}>{copy.restoreRecording}</Button> : null}
-    {comments.map((note, index) => <div key={index} className="flex items-start gap-3 rounded-lg bg-muted/50 p-3">
+    {byTime(comments).map((note, index) => <div key={index} className="flex items-start gap-3 rounded-lg bg-muted/50 p-3">
       {playable ? <Button type="button" variant="outline" className="min-h-11 shrink-0" disabled={busy} onClick={() => void listen(note.atMs)} aria-label={copy.listenAt(audioTime(note.atMs))}>{audioTime(note.atMs)}</Button> : <span className="font-mono text-sm">{audioTime(note.atMs)}</span>}
       <p className="whitespace-pre-wrap text-base leading-relaxed">{note.comment}</p>
     </div>)}
