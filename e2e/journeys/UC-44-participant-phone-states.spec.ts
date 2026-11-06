@@ -112,6 +112,58 @@ const REACH = {
   ],
 };
 
+const FOUR = [
+  'Au bout de la rue, à gauche après la boulangerie',
+  'Derrière la mairie, en face du parc',
+  'À côté de la poste, près du pont',
+  'Tout droit, puis la deuxième rue à droite',
+];
+
+const QUESTIONS = [
+  'Est-ce que le train pour Lyon part du quai numéro trois ce soir ?',
+  'Faut-il composter le billet avant de monter dans le train ?',
+  'Où peut-on acheter un billet quand le guichet est fermé ?',
+];
+
+const SHORT = {
+  version: 1,
+  meta: { title: 'Short phone', subject: 'French', level: 'A2' },
+  qna: { enabled: true },
+  steps: [
+    { id: 'word', kind: 'term', term: 'la gare', meaning: 'the railway station' },
+    {
+      id: 'talk',
+      kind: 'blank',
+      elements: [
+        { id: 'head', type: 'text', role: 'heading', text: 'À la gare', box: { x: 6, y: 8, w: 88, h: 14 } },
+        { id: 'line', type: 'text', text: 'Demandez le prochain train pour Lyon.', box: { x: 6, y: 30, w: 88, h: 20 } },
+      ],
+    },
+    { id: 'phrases', kind: 'steps', title: 'Phrases utiles', items: PHRASES },
+    {
+      id: 'listen',
+      kind: 'media',
+      title: 'Écoutez',
+      media: { type: 'audio', url: '/api/assets/missing-recording', alt: '', listening: { mode: 'individual' } },
+    },
+    { id: 's-text', kind: 'interaction', interactionId: 'q-text' },
+    { id: 's-four', kind: 'interaction', interactionId: 'q-four' },
+  ],
+  interactions: [
+    { id: 'q-text', type: 'text', prompt: 'Où êtes-vous allé ce matin ?', match: { locale: 'fr' } },
+    { id: 'q-four', type: 'choice', prompt: 'Où est la gare ?', options: FOUR.map((label, index) => ({ id: `f${index + 1}`, label })) },
+  ],
+};
+
+async function fontSize(target: ReturnType<Page['locator']>): Promise<number> {
+  return target.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+}
+
+async function minSide(target: ReturnType<Page['locator']>): Promise<number> {
+  const box = (await target.boundingBox())!;
+  return Math.min(box.width, box.height);
+}
+
 /**
  * Scroll the way a thumb does, with the wheel at the middle of the screen, until
  * the target sits inside the viewport. A programmatic scroll would also move an
@@ -356,6 +408,99 @@ test.describe('UC-44 participant phone states', () => {
     await firstOption.click();
     await expect(phone.getByText('Answer received', { exact: true })).toBeVisible();
     await expect(unsent).toHaveCount(0);
+    await context.close();
+  });
+
+  test('a short or sideways phone reaches Join, Reading, the Q&A list and every option at 44 px', async ({ browser }, testInfo) => {
+    const session = await createSession(SHORT);
+    await command(session.sessionCode, session.hostToken, { command: 'session.start' });
+
+    const context = await browser.newContext(PHONE);
+    const phone = await context.newPage();
+    await phone.setViewportSize({ width: 390, height: 340 });
+    await phone.goto(participantUrl(session.code));
+    const join = phone.getByRole('button', { name: 'Join', exact: true });
+    await join.waitFor({ state: 'visible', timeout: 20_000 });
+    expect(await reachByScrolling(phone, join)).toBe(true);
+    await join.click();
+
+    // Every control around the slide clears the 44 px target.
+    const dismiss = phone.getByRole('button', { name: 'Dismiss', exact: true });
+    const reading = phone.getByRole('button', { name: 'Reading', exact: true });
+    await expect(reading).toBeVisible({ timeout: 20_000 });
+    for (const control of [
+      dismiss,
+      phone.getByRole('button', { name: 'Leave', exact: true }),
+      phone.getByRole('tab', { name: 'Now', exact: true }),
+      phone.getByRole('tab', { name: /^Q&A/ }),
+      phone.getByRole('button', { name: 'Slide', exact: true }),
+      reading,
+    ]) {
+      expect(await minSide(control)).toBeGreaterThanOrEqual(44);
+    }
+    await dismiss.click();
+
+    // Reading keeps the headword above the meaning, and a heading element above its text.
+    await reading.click();
+    const plate = phone.locator('.learner-slide__plate');
+    expect(await fontSize(plate.getByText('la gare', { exact: true }))).toBeGreaterThan(
+      await fontSize(plate.getByText('the railway station', { exact: true })),
+    );
+    await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 'talk' });
+    const heading = plate.getByRole('heading', { name: 'À la gare', exact: true });
+    await expect(heading).toBeVisible();
+    expect(await fontSize(heading)).toBeGreaterThan(
+      await fontSize(plate.getByText('Demandez le prochain train pour Lyon.', { exact: true })),
+    );
+
+    // The last Reading line is reachable on the short window.
+    await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 'phrases' });
+    expect(await reachByScrolling(phone, phone.getByText(PHRASES.at(-1)!, { exact: true }))).toBe(true);
+    await phone.screenshot({ path: testInfo.outputPath('reading-last-line-390x340.png') });
+
+    // A recording without a label is called Listening, never a file name or nothing.
+    await scrollToTop(phone);
+    await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 'listen' });
+    await expect(plate.locator('.listening-block__title')).toHaveText('Listening');
+    await expect(phone.getByRole('region', { name: 'Your player', exact: true }).locator('audio')).toHaveAttribute('aria-label', 'Listening');
+
+    // Free text on the short window: the field sits on screen under the tabs without a scroll.
+    await command(session.sessionCode, session.hostToken, { command: 'outline.goto', stepId: 's-text' });
+    await openStep(session, 'q-text');
+    await scrollToTop(phone);
+    const answer = phone.getByRole('textbox', { name: 'Answer', exact: true });
+    await expect(answer).toBeVisible();
+    const field = (await answer.boundingBox())!;
+    expect(field.y + field.height).toBeLessThanOrEqual(340);
+    await phone.screenshot({ path: testInfo.outputPath('text-field-390x340.png') });
+
+    // The Q&A list scrolls to its last question, short and sideways.
+    await phone.getByRole('tab', { name: /^Q&A/ }).click();
+    for (const question of QUESTIONS) {
+      await phone.getByLabel('Ask a question').fill(question);
+      const ask = phone.getByRole('button', { name: 'Send question', exact: true });
+      expect(await reachByScrolling(phone, ask)).toBe(true);
+      await ask.click();
+      await expect(phone.locator('.qna__item--own', { hasText: question })).toHaveCount(1);
+    }
+    for (const size of [{ width: 390, height: 340 }, { width: 844, height: 390 }]) {
+      await scrollToTop(phone);
+      await phone.setViewportSize(size);
+      const last = phone.locator('.qna__item').last();
+      expect(await reachByScrolling(phone, last)).toBe(true);
+      await phone.screenshot({ path: testInfo.outputPath(`qna-${size.width}x${size.height}.png`) });
+    }
+
+    // Four options on a 320x568 phone: the last one is reachable and sends.
+    await phone.getByRole('tab', { name: 'Now', exact: true }).click();
+    await scrollToTop(phone);
+    await phone.setViewportSize({ width: 320, height: 568 });
+    await openStep(session, 'q-four');
+    const lastOption = phone.getByRole('radio', { name: FOUR.at(-1)!, exact: true });
+    expect(await reachByScrolling(phone, lastOption)).toBe(true);
+    await phone.screenshot({ path: testInfo.outputPath('choice-4-320x568.png') });
+    await lastOption.click();
+    await expect(phone.getByText('Answer received', { exact: true })).toBeVisible();
     await context.close();
   });
 
