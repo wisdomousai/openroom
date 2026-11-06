@@ -57,7 +57,7 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await page.getByRole('group', { name: 'Lesson language' }).getByRole('button', { name: 'Français', exact: true }).click();
   await page.getByRole('group', { name: 'Lesson level' }).getByRole('button', { name: 'B1', exact: true }).click();
   await audit(page, testInfo, '03-sample-lesson');
-  await page.getByRole('button', { name: 'Open Le train est parti', exact: true }).click();
+  await page.getByRole('button', { name: 'Open lesson: Le train est parti', exact: true }).click();
   const editorSlides = page.getByRole('list', { name: 'Slides', exact: true }).getByRole('button');
   await expect(editorSlides).toHaveCount(12);
   for (let index = 0; index < 12; index++) {
@@ -223,7 +223,7 @@ test('all eight language samples fit the editor and revealed live results', asyn
   const outlines = ['french', 'german'].flatMap((language) => ['a1', 'a2', 'b1', 'b2'].map((level) => loadExampleSession(`tutoring/${language}-${level}`) as Outline));
   for (const [sample, title] of titles.entries()) {
     const outline = outlines.find((outline) => outline.meta.title === title)!;
-    await page.getByRole('button', { name: `Open ${title}`, exact: true }).click();
+    await page.getByRole('button', { name: `Open lesson: ${title}`, exact: true }).click();
     const slides = page.getByRole('list', { name: 'Slides', exact: true }).getByRole('button');
     await expect(slides.first()).toBeVisible();
     const count = await slides.count();

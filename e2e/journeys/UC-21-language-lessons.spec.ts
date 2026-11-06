@@ -24,11 +24,13 @@ for (const sample of [
   await expect(page.getByRole('article')).toHaveCount(4);
   await page.getByRole('group', { name: 'Lesson level' }).getByRole('button', { name: sample.level, exact: true }).click();
   await expect(page.getByRole('article')).toHaveCount(1);
+  // The filter result is announced, not only drawn.
+  await expect(page.getByRole('status').filter({ hasText: 'One lesson' })).toBeVisible();
   await page.getByText('Lesson aims', { exact: true }).click();
   const preview = await page.getByRole('article').locator('.slide-surface').boundingBox();
   expect(preview!.height).toBeGreaterThan(100);
   await page.screenshot({ path: testInfo.outputPath('sample-lesson-gallery.png') });
-  await page.getByRole('button', { name: `Open ${sample.title}`, exact: true }).click();
+  await page.getByRole('button', { name: `Open lesson: ${sample.title}`, exact: true }).click();
   await expect(page).toHaveURL(/#\/decks\/[^/]+\/edit$/);
   const deckId = /decks\/([^/]+)\/edit/.exec(page.url())![1]!;
   const { deck, content } = await (await page.request.get(`/api/decks/${deckId}`)).json();
