@@ -305,6 +305,48 @@ describe('optional picture on a content slide', () => {
   });
 });
 
+describe('a picture placed beside the words on a stacked layout', () => {
+  it('draws the statement as split, with the picture in the side region', () => {
+    const html = renderToStaticMarkup(
+      <StepLayout
+        step={{
+          id: 's',
+          kind: 'statement',
+          title: 'Most trips fail at the gate',
+          body: 'Explain why.',
+          media: { type: 'image', url: 'https://example.test/gate.jpg', alt: 'A gate', place: 'right', size: 50 },
+        }}
+      />,
+    );
+    expect(html).toContain('outline-step--layout-split');
+    expect(html).toContain('data-picture-place="right"');
+    expect(html).toMatch(/outline-step__region--support"><img[^>]*data-part="image"/);
+  });
+});
+
+describe('sizes that come from the authored count', () => {
+  it('keeps the answer row size while a reveal hides answers', () => {
+    const options = Array.from({ length: 7 }, (_, index) => ({ id: `o${String(index)}`, label: `Answer ${String(index)}` }));
+    const html = renderToStaticMarkup(
+      <StepLayout
+        step={STEPS.interaction}
+        options={options}
+        renderInteraction
+        hiddenParts={new Set(['option-4', 'option-5', 'option-6'])}
+      />,
+    );
+    expect(html).toContain('data-option-tier="compact"');
+    expect(renderToStaticMarkup(<StepLayout step={STEPS.interaction} options={OPTIONS} renderInteraction />)).not.toContain(
+      'data-option-tier',
+    );
+  });
+
+  it('keeps the grid rows while a reveal hides cells', () => {
+    const html = renderToStaticMarkup(<StepLayout step={STEPS.steps} hiddenParts={new Set(['cell-2', 'cell-3'])} />);
+    expect(html).toContain('class="outline-step__sequence" data-item-count="4"');
+  });
+});
+
 describe('join slide', () => {
   it('draws a sample QR when the session has not started', () => {
     const html = render('join');

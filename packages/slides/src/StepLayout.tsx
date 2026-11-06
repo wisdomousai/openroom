@@ -314,7 +314,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
               {picturePart()}
             </>,
           )}
-          {region('support', split, <div className="outline-step__cards">
+          {region('support', split, <div className="outline-step__cards" data-item-count={step.items.length}>
             {step.items.map((item, index) =>
               show(`cell-${String(index)}`) ? (
                 <article
@@ -349,7 +349,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
               {picturePart()}
             </>,
           )}
-          {region('support', split, <ol className="outline-step__sequence">
+          {region('support', split, <ol className="outline-step__sequence" data-item-count={step.items.length}>
             {step.items.map((item, index) =>
               show(`cell-${String(index)}`) ? (
                 <li key={`${String(index)}-${item}`} {...part.hostAttrs(`cell-${String(index)}`)}>

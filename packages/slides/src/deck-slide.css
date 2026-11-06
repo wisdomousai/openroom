@@ -909,6 +909,34 @@
   overflow: hidden;
 }
 
+/* One to three cards or steps: rows as tall as their content, from the top,
+   rather than boxes stretched over the slide and mostly empty. The count is
+   the authored one, so a reveal does not change the rows. */
+.slide-surface .outline-step--layout-grid
+  :is(.outline-step__cards, .outline-step__sequence):is([data-item-count='1'], [data-item-count='2'], [data-item-count='3']) {
+  grid-auto-rows: minmax(0, max-content);
+  align-content: start;
+}
+
+/* A step number is never taller than its cell: in a full grid the badge
+   shrinks with the row instead of being cut by the cell border. */
+.slide-surface .outline-step--layout-grid .outline-step__sequence li {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.slide-surface .outline-step--layout-grid .outline-step__sequence li > span:not([data-slide-decoration]) {
+  box-sizing: border-box;
+  justify-self: start;
+  width: auto;
+  min-width: max-content;
+  height: calc(1.8em / 0.85);
+  max-height: 100%;
+  padding: 0 0.15em;
+  font-size: 0.85em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /* The em dash / question mark leader is a list marker; inside a bordered cell
    the border already separates the items, so the leader is noise. */
 .slide-surface .outline-step--layout-grid .outline-step__bullets li::before {
