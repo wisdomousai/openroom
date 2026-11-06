@@ -82,6 +82,13 @@ export interface LibraryListProps {
   chrome?: 'browser' | 'folder';
   heading?: string;
   rowActions?: LibraryRowActions;
+  /** Leave out the empty-folder line when the page already shows its own empty state. */
+  hideEmpty?: boolean;
+  /**
+   * `list` — the rows scroll inside the column (a space's Library).
+   * `page` — the rows take their full height and the column scrolls.
+   */
+  scroll?: 'list' | 'page';
 }
 
 /**
@@ -105,6 +112,8 @@ export function LibraryList({
   chrome = 'browser',
   heading = 'Decks',
   rowActions,
+  hideEmpty = false,
+  scroll = 'list',
 }: LibraryListProps) {
   const [view, setView] = useState<'list' | 'tiles'>('list');
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -322,7 +331,7 @@ export function LibraryList({
   );
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className={cn('flex min-w-0 flex-col', scroll === 'list' ? 'min-h-0 flex-1' : 'shrink-0')}>
       {chrome === 'browser' ? (
         <div className="flex flex-col gap-3 px-8 pb-2.5 pt-6">
           <div className="flex flex-col gap-3">
@@ -406,9 +415,9 @@ export function LibraryList({
         </div>
       )}
 
-      <div className={cn('min-h-0 flex-1 overflow-auto', chrome === 'folder' ? 'px-8 pb-6' : 'px-8 pb-6')}>
+      <div className={cn('px-8 pb-6', scroll === 'list' && 'min-h-0 flex-1 overflow-auto')}>
         {rows.length === 0 ? (
-          empty
+          hideEmpty ? null : empty
         ) : view === 'tiles' && chrome === 'folder' ? (
           tiles
         ) : (

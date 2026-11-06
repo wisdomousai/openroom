@@ -19,7 +19,7 @@ export function SpaceWelcome({ spaceId, contextId, experience }: { spaceId: stri
       await navigate(to.deckEditor(deck.id));
     },
   });
-  return <section aria-labelledby="space-welcome-heading" className="mx-5 mb-5 mt-4 rounded-[var(--radius-xl)] border border-border bg-card p-5">
+  return <section aria-labelledby="space-welcome-heading" className="mx-8 mb-5 mt-4 rounded-[var(--radius-xl)] border border-border bg-card p-5">
     <h2 id="space-welcome-heading" className="text-section">Sample deck</h2>
     <p className="mt-2 max-w-md text-secondary text-muted-foreground">{profile.starterTitle}. A short deck with an audience question, an activity and a recap.</p>
     <div className="mt-4 flex flex-wrap items-center gap-3">
