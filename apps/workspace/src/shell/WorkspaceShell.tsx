@@ -170,18 +170,25 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
             aria-label="Search decks"
             className="h-7 w-[300px] max-w-[40vw] rounded-full bg-card"
           />
-          {searchOpen && query.trim() ? <div className="absolute left-0 top-9 z-50 max-h-80 w-[400px] overflow-auto rounded-md border bg-popover p-1 shadow-lg" aria-label="Search results">
-            {searchResults.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No matching decks</p> : searchResults.map((deck) => <Link
-              key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: deck.folderId, itemId: deck.id })}
-              onClick={() => setSearchOpen(false)} className="block rounded p-2 hover:bg-accent focus:bg-accent">
-              <span className="block text-sm">{deck.title}</span>
-              <span className="block text-xs text-muted-foreground">{allSpaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
-            </Link>)}
+          {searchOpen && query.trim() ? <div className="absolute left-0 top-9 z-50 max-h-80 w-[400px] overflow-auto rounded-md border border-border bg-popover p-1 shadow-[var(--shadow-overlay)]" aria-label="Search results">
+            {searchResults.length === 0 ? <p className="p-3 text-secondary text-muted-foreground">No decks match</p> : searchResults.map((deck) => {
+              // A student's deck opens in that student's place, as the sidebar link does.
+              const person = deck.contextId ? contexts.find((context) => context.id === deck.contextId) : undefined;
+              return <Link
+                key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: deck.folderId, itemId: deck.id, contextId: person?.id })}
+                onClick={() => { setSearchOpen(false); setQuery(''); }} className="block rounded p-2 hover:bg-accent focus:bg-accent">
+                <span className="block text-secondary">{deck.title}</span>
+                <span className="block text-caption text-muted-foreground">{person?.displayName ?? allSpaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
+              </Link>;
+            })}
           </div> : null}
         </form>
         <span className="flex-1" />
         {actions}
         <div className={accountPage ? "hidden sm:block" : undefined}><ThemeStudio /></div>
+        <Button asChild variant="subtle" size="sm" className="h-7 px-2.5 font-normal">
+          <a href="/docs/start/" target="_blank" rel="noreferrer">Manual<span className="sr-only"> (opens in a new tab)</span></a>
+        </Button>
         <Button asChild variant="subtle" size="sm" className="h-7 px-2.5 font-normal">
           <Link {...to.settings(currentSpace?.id)}>Settings</Link>
         </Button>
@@ -273,9 +280,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
                   );
                 })}
               </>
-            ) : (
-              <p className="mb-1 mt-4 px-2 text-caption text-muted-foreground">Shared</p>
-            )}
+            ) : null}
 
             <span className="min-h-4 flex-1" />
 
