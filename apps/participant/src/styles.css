@@ -411,8 +411,8 @@ a {
 
 .btn--gotit {
   align-self: flex-start;
-  min-height: 36px;
-  height: 36px;
+  min-height: var(--tap);
+  height: var(--tap);
   padding: 0 14px;
   border: 1px solid var(--input);
   border-radius: var(--radius-xl, 8px);
@@ -902,8 +902,8 @@ a {
 }
 
 .viewtabs__tab {
-  min-height: 38px;
-  height: 38px;
+  min-height: var(--tap);
+  height: var(--tap);
   padding: 0 0.6rem;
   border: 0;
   border-radius: var(--radius-lg, 6px);
@@ -921,6 +921,26 @@ a {
   background: var(--card);
   color: var(--foreground);
   font-weight: 600;
+}
+
+/*
+ * A short window (a phone with its keyboard up, or held sideways): the top gap
+ * shrinks to the safe area and the chrome above the question tightens, so the
+ * prompt and the field fit above the keyboard. Type sizes stay as they are.
+ */
+@media (max-height: 520px) {
+  .page {
+    padding-top: max(12px, env(safe-area-inset-top));
+    gap: 0.6rem;
+  }
+
+  .viewtabs {
+    margin-bottom: 8px;
+  }
+
+  .textarea {
+    min-height: 4.5rem;
+  }
 }
 
 /* ====================================================================== */
@@ -1384,7 +1404,7 @@ a {
   container-type: size; gap: 0.5rem;
 }
 .learner-slide__view { display: flex; justify-content: center; gap: 0.25rem; }
-.learner-slide__view button { font: inherit; padding: 0.45rem 0.9rem; border: 1px solid var(--border); border-radius: 0.5rem; color: var(--foreground); background: var(--background); }
+.learner-slide__view button { font: inherit; min-height: var(--tap); padding: 0.45rem 0.9rem; border: 1px solid var(--border); border-radius: 0.5rem; color: var(--foreground); background: var(--background); }
 .learner-slide__view button[aria-pressed='true'] { background: var(--foreground); color: var(--background); }
 .learner-slide__plate {
   position: relative; align-self: center;
@@ -1410,6 +1430,9 @@ a {
 .learner-slide[data-reading='true'] .slide-surface .outline-step h2 { font-size: 1.15rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step p,
 .learner-slide[data-reading='true'] .slide-surface .outline-step li { font-size: 1rem; line-height: 1.55; max-width: none; }
+/* The headword and the stat are paragraphs too; they keep their lead over the body text. */
+.learner-slide[data-reading='true'] .slide-surface .outline-step p.outline-step__term,
+.learner-slide[data-reading='true'] .slide-surface .outline-step p.outline-step__stat { font-size: 1.75rem; line-height: 1.2; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__region { padding: 0; border: 0; overflow: visible; gap: 1rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__cards,
 .learner-slide[data-reading='true'] .slide-surface .outline-step__sequence,
@@ -1418,6 +1441,7 @@ a {
 .learner-slide[data-reading='true'] .slide-surface .outline-step__sequence li { padding: 1rem; overflow: visible; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__elements { position: relative; display: grid; gap: 1rem; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__element { position: relative; inset: auto !important; width: 100% !important; height: auto !important; font-size: 1rem !important; min-height: 1em; overflow: visible; }
+.learner-slide[data-reading='true'] .slide-surface .outline-step__element.outline-step__element--heading { font-size: 1.4rem !important; line-height: 1.25; }
 .learner-slide[data-reading='true'] .slide-surface .outline-step__element--iframe,
 .learner-slide[data-reading='true'] .slide-surface .outline-step__element--pdf { height: 24rem !important; }
 .learner-slide[data-reading='true'] .slide-surface__footer { position: relative; display: block; left: auto; bottom: auto; padding: 0 1.25rem 1rem; font-size: 0.8rem; }
@@ -1478,7 +1502,7 @@ a {
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
   border-radius: 14px 14px 0 0;
-  box-shadow: 0 -8px 30px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-overlay);
   font-size: 0.9rem;
 }
 
@@ -1686,8 +1710,6 @@ a {
   color: var(--muted-foreground);
   font-size: 0.8em;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .learner-lookup .dict-scroll,
@@ -1833,7 +1855,7 @@ a {
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
   border-radius: 14px 14px 0 0;
-  box-shadow: 0 -8px 30px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-overlay);
 }
 
 @media (min-width: 640px) {
@@ -1846,7 +1868,7 @@ a {
     transform: translate(-50%, -50%);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl, 8px);
-    box-shadow: 0 16px 40px rgb(0 0 0 / 22%);
+    box-shadow: var(--shadow-overlay);
   }
 }
 
