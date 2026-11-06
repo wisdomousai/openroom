@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLearnerLanguage } from '../../lib/learner-language';
 import { ArrowDown, ArrowUp, Check, RotateCcw } from 'lucide-react';
 import { assessHomework, initialHomeworkAnswer, type HomeworkPracticeAnswer } from '@openroom/schema';
@@ -26,9 +26,17 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
   const [attemptId, setAttemptId] = useState(() => crypto.randomUUID());
   const [attemptGrade, setAttemptGrade] = useState<'again' | 'good' | null>(null);
   const assessment = assessHomework(interaction, answer);
+  // Check replaces itself with the result, and a grade disables its buttons, so focus moves to the result line.
+  const result = useRef<HTMLParagraphElement>(null);
+  const focusResult = useRef(false);
+  useEffect(() => {
+    if (!focusResult.current) return;
+    focusResult.current = false;
+    result.current?.focus();
+  }, [revealed, busy]);
   const update = (next: HomeworkPracticeAnswer) => { setAnswer(next); setError(null); setSaved(false); setAttemptId(crypto.randomUUID()); setAttemptGrade(null); };
   const record = async (grade: 'again' | 'good') => {
-    setBusy(true); setError(null); setAttemptGrade(grade);
+    focusResult.current = true; setBusy(true); setError(null); setAttemptGrade(grade);
     try { await onGrade(grade, answer, snapshot.assignmentRevision, attemptId); setSaved(true); }
     catch (cause) { setError(cause instanceof ApiError && (cause.status === 409 || cause.status === 404) ? 'changed' : 'save'); }
     finally { setBusy(false); }
@@ -94,8 +102,8 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
         })}
       </ol> : null}
     </fieldset>
-    {!revealed ? <Button className="min-h-11 w-fit" disabled={!assessment.complete} onClick={() => setRevealed(true)}>{copy.check}</Button> : <div className="grid gap-3" aria-live="polite">
-      <p className="text-base font-semibold">{assessment.result === 'correct' ? copy.correct : assessment.result === 'incorrect' ? copy.compare : copy.selfCheck}</p>
+    {!revealed ? <Button className="min-h-11 w-fit" disabled={!assessment.complete} onClick={() => { focusResult.current = true; setRevealed(true); }}>{copy.check}</Button> : <div className="grid gap-3" aria-live="polite">
+      <p ref={result} tabIndex={-1} className="text-base font-semibold outline-none">{assessment.result === 'correct' ? copy.correct : assessment.result === 'incorrect' ? copy.compare : copy.selfCheck}</p>
       {assessment.answers.length > 0 ? <div className="rounded-lg bg-muted/60 p-3"><p className="mb-1 text-sm font-medium">{assessment.result === 'incorrect' ? copy.acceptedAnswers : copy.answer}</p><ul className="grid gap-1 text-base">{assessment.answers.map((line, index) => <li key={index}>{line}</li>)}</ul></div> : <p className="text-sm text-muted-foreground">{copy.noSingleAnswer}</p>}
       <div className="flex flex-wrap gap-2">
         {assessment.result !== 'incorrect' ? <Button className="min-h-11" disabled={busy || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'again'} onClick={() => void record('good')}>{saved ? copy.saved : assessment.result === 'self-check' ? copy.confident : copy.good}</Button> : null}

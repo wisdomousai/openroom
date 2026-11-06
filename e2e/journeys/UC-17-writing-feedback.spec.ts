@@ -26,8 +26,11 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   await learner.getByRole('tab', { name: 'Practice', exact: true }).click();
   await learner.getByRole('tab', { name: 'Lesson', exact: true }).click();
   await expect(writing).toHaveValue('Je suis allé à Berlin. Le train était confortable.');
-  await learner.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+  // Saving by keyboard keeps focus on the button and announces Saved.
+  await learner.getByRole('button', { name: 'Save', exact: true }).focus();
+  await learner.keyboard.press('Enter');
+  await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeFocused();
+  await expect(learner.getByRole('status').filter({ hasText: /^Saved$/ })).toHaveCount(1);
 
   await page.goto(`/host/#/space/${context.spaceId}?contextId=${context.id}`);
   await page.getByRole('link', { name: 'Review learner work', exact: true }).click();
@@ -35,7 +38,16 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   await expect(page.getByRole('heading', { name: 'Léa’s writing', exact: true })).toBeVisible();
   await page.getByLabel('Feedback', { exact: true }).fill('Votre récit est clair. Attention à l’accord du participe passé.');
   await page.getByRole('button', { name: 'Add correction', exact: true }).click();
-  await page.getByLabel('Their words', { exact: true }).fill('allé');
+  const theirWords = page.getByLabel('Their words', { exact: true });
+  await expect(theirWords).toBeFocused();
+  await theirWords.fill('allé à Paris');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(theirWords).toHaveAttribute('aria-invalid', 'true');
+  await expect(theirWords).toHaveAccessibleDescription('These words are not in the response. Copy them exactly as the learner wrote them.');
+  await expect(theirWords).toBeFocused();
+  await expect(page.getByRole('alert').filter({ hasText: 'Fix the marked fields, then save again.' })).toBeVisible();
+  await theirWords.fill('allé');
+  await expect(theirWords).not.toHaveAttribute('aria-invalid');
   await page.getByLabel('Suggested wording', { exact: true }).fill('allée');
   await page.getByLabel('Why', { exact: true }).fill('Avec être, le participe passé s’accorde avec le sujet.');
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
@@ -46,15 +58,24 @@ test('tutor drafts stay private; published corrections stay attached to the orig
 
   await page.getByRole('button', { name: 'Share feedback', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Feedback shared with Léa.' })).toBeVisible();
+  const shared = page.getByRole('region', { name: 'What Léa can see' });
+  await expect(shared).toContainText('Votre récit est clair. Attention à l’accord du participe passé.');
   await learner.getByRole('tab', { name: 'Lesson', exact: true }).click();
   await learner.getByRole('tab', { name: 'Feedback', exact: true }).click();
   await expect(learner.getByText('Votre récit est clair. Attention à l’accord du participe passé.')).toBeVisible();
   await expect(learner.getByText('Avec être, le participe passé s’accorde avec le sujet.')).toBeVisible();
   await learner.screenshot({ path: testInfo.outputPath('learner-feedback-phone.png'), fullPage: true });
   await page.screenshot({ path: testInfo.outputPath('tutor-writing-review.png'), fullPage: true });
+  await page.getByLabel('Feedback', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Remove correction', exact: true }).click();
+  const shareUpdated = page.getByRole('button', { name: 'Share updated feedback', exact: true });
+  await expect(shareUpdated).toBeDisabled();
+  await expect(shareUpdated).toHaveAccessibleDescription('Write feedback or add a correction to share. Léa still sees the shared feedback below.');
   await page.getByLabel('Feedback', { exact: true }).fill('PRIVATE DRAFT REVISION');
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible();
+  await expect(shared).toContainText('Votre récit est clair. Attention à l’accord du participe passé.');
+  await expect(shared).not.toContainText('PRIVATE DRAFT REVISION');
   await learner.reload();
   await learner.getByRole('tab', { name: 'Feedback', exact: true }).click();
   await expect(learner.getByText('PRIVATE DRAFT REVISION')).toHaveCount(0);
@@ -64,7 +85,17 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   await writing.fill('Je suis allée à Berlin. Le train était confortable.');
   await learner.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+  // Leaving with unsaved feedback asks first; Cancel keeps the text, Discard changes leaves.
+  await page.getByLabel('Feedback', { exact: true }).fill('UNSAVED REVISION');
   await page.getByRole('link', { name: 'Back to learner work', exact: true }).click();
+  const leave = page.getByRole('alertdialog', { name: 'Leave without saving?', exact: true });
+  await expect(leave).toHaveAccessibleDescription('Your changes to the feedback for Léa are not saved.');
+  await page.screenshot({ path: testInfo.outputPath('tutor-leave-unsaved.png') });
+  await leave.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByLabel('Feedback', { exact: true })).toHaveValue('UNSAVED REVISION');
+  await page.getByRole('link', { name: 'Back to learner work', exact: true }).click();
+  await leave.getByRole('button', { name: 'Discard changes', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'French conversation — Learner work', exact: true })).toBeVisible();
   await page.getByRole('link', { name: /Léa.*Review response/s }).click();
   await expect(page.getByLabel('Feedback', { exact: true })).toHaveValue('');
   await page.getByText('Other responses to this task', { exact: true }).click();

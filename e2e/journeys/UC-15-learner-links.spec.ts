@@ -31,7 +31,7 @@ test('group learners keep private work across link replacement and same-tab swit
 
   async function createLink(name: string, existing = false) {
     await page.goto(`/host/#/tutor/contexts/${contextId}/links/new`);
-    await expect(page.getByRole('heading', { name: 'Create a learner link' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Create an access link' })).toBeVisible();
     const choice = page.getByRole('combobox', { name: 'Learner', exact: true });
     if (existing || name === 'Noor') {
       await choice.click();
@@ -77,7 +77,7 @@ test('group learners keep private work across link replacement and same-tab swit
 
   const replacement = await createLink('Léa', true);
   expect(replacement.learnerId).toBe(lea.learnerId);
-  await page.getByText('Student access links', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Access links', exact: true })).toBeVisible();
   const oldLink = page.getByRole('listitem').filter({ hasText: lea.tokenPrefix });
   await oldLink.getByRole('button', { name: 'Revoke', exact: true }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Revoke link', exact: true }).click();
@@ -93,5 +93,30 @@ test('group learners keep private work across link replacement and same-tab swit
   expect(await learner.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await learner.screenshot({ path: testInfo.outputPath('learner-private-work.png'), fullPage: true });
   await page.screenshot({ path: testInfo.outputPath('group-learner-links.png'), fullPage: true });
+
+  // Only a refused link reads as dead. A network failure or outage offers Try again, and a rate limit says to wait.
+  await learner.route('**/api/learner/me', (route) => route.abort());
+  await learner.reload();
+  await expect(learner.getByRole('heading', { name: 'Your page could not be loaded', exact: true })).toBeVisible();
+  await expect(learner.getByText('Check your connection and try again. Your link still works.', { exact: true })).toBeVisible();
+  await learner.screenshot({ path: testInfo.outputPath('learner-load-failed-phone.png'), fullPage: true });
+  await learner.unroute('**/api/learner/me');
+  await learner.getByRole('button', { name: 'Try again', exact: true }).click();
+  await expect(learner.getByRole('heading', { name: 'Léa', exact: true })).toBeVisible();
+  await learner.route('**/api/learner/sessions', (route) => route.fulfill({ status: 500, json: { error: 'internal' } }));
+  await learner.reload();
+  const lesson = learner.getByRole('tabpanel', { name: 'Lesson' });
+  await expect(lesson.getByRole('alert')).toHaveText('Your lesson could not be loaded. Check your connection and try again.');
+  await learner.unroute('**/api/learner/sessions');
+  await lesson.getByRole('button', { name: 'Try again', exact: true }).click();
+  await expect(writing).toHaveValue('Je suis allée à Zürich. J’ai visité le musée. C’était très beau.');
+  await learner.route('**/api/learner/feedback', (route) => route.fulfill({ status: 429, json: { error: 'rate-limited' } }));
+  await learner.getByRole('tab', { name: 'Feedback', exact: true }).click();
+  await expect(learner.getByRole('tabpanel', { name: 'Feedback' }).getByRole('alert')).toHaveText('Too many attempts from your connection. Wait a minute, then reload this page.');
+  await learner.unroute('**/api/learner/feedback');
+  // A link revoked while the page is open turns the page into the dead-link page on its next request.
+  await learner.route('**/api/learner/sessions', (route) => route.fulfill({ status: 401, json: { error: 'unauthorized' } }));
+  await learner.reload();
+  await expect(learner.getByRole('heading', { name: 'This link no longer works', exact: true })).toBeVisible();
   await learner.close();
 });

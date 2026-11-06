@@ -1,9 +1,17 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { acceptInvite, getHomeSummary, myInvites } from '../api';
+import { acceptInvite, getHomeSummary, myInvites, type HomeNeedsRecord } from '../api';
 import { invalidateManagementData } from '../query-client';
 import { to } from '../destinations';
 import { Button } from '@openroom/ui/components/button';
+
+/**
+ * The prompt is timeless: it names the person and the deck, never when the
+ * session happened or how often the deck was taught (AGENTS.md No-Ledger rule).
+ */
+export function writeNotesLabel(row: Pick<HomeNeedsRecord, 'contextName' | 'title'>): string {
+  return row.contextName ? `Write the notes for ${row.contextName}’s session, ${row.title}` : `Write the notes for ${row.title}`;
+}
 
 /** Invitations and unfinished Notes remain reachable from the Library. */
 export function WorkspaceUpdates({ contextId }: { contextId: string | null }) {
@@ -17,12 +25,12 @@ export function WorkspaceUpdates({ contextId }: { contextId: string | null }) {
   } });
   const notes = (home.data?.needsRecord ?? []).filter((row) => !contextId || row.contextId === contextId);
   if (!invites.data?.length && !notes.length) return null;
-  return <section aria-label="Invitations and Notes" className="flex flex-col gap-2 border-b px-8 py-3 text-sm">
+  return <section aria-label="Invitations and Notes" className="flex flex-col gap-2 border-b px-8 py-3 text-secondary">
     {invites.data?.map((invite) => <div key={invite.id} className="flex items-center justify-between gap-3">
       <span>{invite.inviterName ?? 'A workspace owner'} invited you to {invite.spaceName}</span>
       <Button size="sm" variant="outline" disabled={accept.isPending} onClick={() => accept.mutate(invite.id)}>Accept invitation</Button>
     </div>)}
     {accept.error ? <p role="alert" className="text-destructive">{accept.error.message}</p> : null}
-    {notes.slice(0, 3).map((row) => <Link key={row.sessionId} {...to.sessionNotes(row.sessionId)} className="underline underline-offset-4">Write Notes for {row.title}</Link>)}
+    {notes.map((row) => <Link key={row.sessionId} {...to.sessionNotes(row.sessionId)} className="w-fit underline underline-offset-4">{writeNotesLabel(row)}</Link>)}
   </section>;
 }

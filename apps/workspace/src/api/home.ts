@@ -14,6 +14,8 @@ export interface HomeNeedsRecord {
   sessionId: string;
   title: string;
   contextId: string | null;
+  /** The person or group the session was taught to; the prompt names them. */
+  contextName: string | null;
   spaceId: string;
   deliveredAt: number;
 }

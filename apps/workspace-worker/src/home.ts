@@ -51,12 +51,14 @@ export async function homeRoute(request: Request, env: ControlEnv): Promise<Resp
     `SELECT r.id            AS id,
             r.title         AS title,
             r.context_id    AS context_id,
+            c.display_name  AS context_name,
             r.space_id      AS space_id,
             sp.owner_user_id AS owner_user_id,
             MAX(ro.created_at) AS delivered_at
        FROM sessions r
        JOIN live_sessions ro ON ro.session_id = r.id
        JOIN spaces sp ON sp.id = r.space_id
+       LEFT JOIN contexts c ON c.id = r.context_id AND c.deleted_at IS NULL
       WHERE r.deleted_at IS NULL
         AND NOT EXISTS (SELECT 1 FROM session_records rr WHERE rr.session_id = r.id)
         AND EXISTS (SELECT 1 FROM space_members sm
@@ -71,6 +73,7 @@ export async function homeRoute(request: Request, env: ControlEnv): Promise<Resp
       id: string;
       title: string;
       context_id: string | null;
+      context_name: string | null;
       space_id: string;
       owner_user_id: string;
       delivered_at: number;
@@ -88,6 +91,7 @@ export async function homeRoute(request: Request, env: ControlEnv): Promise<Resp
       sessionId: row.id,
       title: row.title,
       contextId: row.context_id,
+      contextName: row.context_name,
       spaceId: row.space_id,
       deliveredAt: row.delivered_at,
     })),

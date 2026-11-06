@@ -35,9 +35,14 @@ test('phone homework handles every practice format, accents and self-reflection'
   const practice = learner.locator('section').filter({ has: learner.getByRole('heading', { name: 'Practice', exact: true }) });
   await practice.getByRole('button', { name: 'Zürich', exact: true }).click();
   await practice.getByRole('button', { name: 'Genève', exact: true }).click();
-  await practice.getByRole('button', { name: 'Check', exact: true }).click();
-  await expect(practice.getByText('Correct.', { exact: true })).toBeVisible();
-  await practice.getByRole('button', { name: 'Good', exact: true }).click();
+  // Check and a grade replace the pressed button; focus moves to the result, then to the next card.
+  await practice.getByRole('button', { name: 'Check', exact: true }).focus();
+  await learner.keyboard.press('Enter');
+  await expect(practice.getByText('Correct.', { exact: true })).toBeFocused();
+  await practice.getByRole('button', { name: 'Good', exact: true }).focus();
+  await learner.keyboard.press('Enter');
+  await expect(practice.getByRole('heading', { name: 'Practice', exact: true })).toBeFocused();
+  await expect(practice.getByText('La saison après le printemps ?', { exact: true })).toBeVisible();
 
   await practice.getByRole('textbox', { name: 'Your answer', exact: true }).fill('ete');
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
@@ -73,6 +78,7 @@ test('phone homework handles every practice format, accents and self-reflection'
   await learner.screenshot({ path: testInfo.outputPath('homework-reflection.png'), fullPage: true });
   await practice.getByRole('button', { name: 'Confident', exact: true }).click();
   await expect(practice).toHaveCount(0);
+  await expect(learner.getByText('Your practice is done for now. Return later to practise again.', { exact: true })).toBeFocused();
   await learner.reload();
   await expect(learner.getByRole('heading', { name: 'Camille', exact: true })).toBeVisible();
   await learner.getByRole('tab', { name: 'Practice', exact: true }).click();

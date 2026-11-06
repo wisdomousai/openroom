@@ -19,6 +19,15 @@ and deliberately shares comments tied to positions in that response.
 - Only the submitting learner and context editors can read, trash or restore audio.
   Draft feedback remains private; published comments reach only that learner.
 - Comments are bounded by the recording duration and seek to the selected moment.
+  They sort by time for the tutor and the learner, each has Listen at, and the
+  tutor's player stays in view beside a long comment list.
+- A recording that ends without the learner's Stop (page hidden, Lesson tab
+  left, five-minute limit, microphone ended) shows a status line with the reason
+  and the length kept.
+- By keyboard, Record moves focus to Stop recording, Stop to Send response, and
+  Send to the Response sent line.
+- The served Permissions-Policy allows the microphone on `/host/`, where the
+  learner page lives; camera and geolocation stay off.
 - Up to ten retained recordings per learner/task, including recoverable trash. Cleanup frees space.
 - Trash denies playback and allows restoration for seven days, within the 90-day
   retention limit. Cleanup permanently removes bytes after either deadline.
