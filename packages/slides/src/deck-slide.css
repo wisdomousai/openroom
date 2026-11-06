@@ -1154,6 +1154,23 @@
   gap: 0.3cqw;
 }
 
+/* The same tiers on the split and text layouts a question can also take. */
+.slide-surface .outline-step:not(.outline-step--layout-poll) .outline-step__options[data-option-tier] {
+  gap: 0.3em;
+}
+
+.slide-surface .outline-step:not(.outline-step--layout-poll) .outline-step__options[data-option-tier] li:not(.slide-canvas__add-option) {
+  padding-block: 0.2em;
+}
+
+.slide-surface .outline-step:not(.outline-step--layout-poll) .outline-step__options[data-option-tier='dense'] {
+  gap: 0.25em;
+}
+
+.slide-surface .outline-step:not(.outline-step--layout-poll) .outline-step__options[data-option-tier='dense'] li {
+  font-size: 0.8em;
+}
+
 .slide-surface .outline-step--layout-poll .outline-step__options li {
   display: flex;
   align-items: center;
