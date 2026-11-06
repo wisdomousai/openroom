@@ -16,14 +16,14 @@ fixture signs into the disposable local Worker, creates a space, uploads a
 synthetic image and saves one 16:9 deck through the API. Opening slides uses the
 real editor. Showing them on a 1920 × 1080 stage uses the real presenter.
 
-The deck has eight slides:
+The deck has eighteen slides:
 
-- A statement with a heading and a 480-character body. The heading starts at the
+- A statement with a heading and a 600-character body. The heading starts at the
   top margin in the editor, not above it. On the stage its box matches the editor box
   within 0.2% of the slide width.
-- A statement whose picture is placed right. It draws as a split slide in the
-  editor and on the stage, with the picture right of the body. The editor reports
-  no overflow.
+- A statement with the number 2,500,000 and a picture placed right. It draws as
+  a split slide in the editor and on the stage, with the picture right of the
+  body. The editor reports no overflow.
 - Six steps with a picture placed at the bottom at 30% height. The picture
   starts below the last step and ends inside the slide. The editor reports no
   overflow.
@@ -37,13 +37,35 @@ The deck has eight slides:
   the last answer ends above the bottom margin.
 - A fill-the-gaps question with a 24-word bank. The bank draws as chips that wrap
   and is less than 25% of the slide width tall.
+- Three cards on a split slide with a tall picture and no place. The picture is
+  right of the cards, takes 42% of the content width and fits between the top
+  and bottom margins. The heading starts at the top margin. On the stage the
+  picture has the same box.
+- Three steps on a split slide with a picture placed left at 30%. The picture is
+  left of the steps and takes 30% of the content width.
+- An activity with six instructions, no materials and no picture. The
+  instructions take more than 80% of the slide width and the editor reports no
+  overflow.
+- A picture with a 1000-character caption. The caption stops at three lines and
+  the picture stays more than 17% of the slide width tall.
+- A term on a split slide, "la boulangerie". The term is one line.
+- Four cards revealed one at a time. On the stage the first card keeps its box
+  at every reveal.
+- Three steps on a split slide revealed one at a time. On the stage the heading
+  and the first step do not move.
+- An activity on a split slide with a picture, a long German heading and four
+  long instructions. The heading starts at the top margin.
+- An activity with twelve materials. The "Materials" label starts at the top
+  margin.
+- Six cards on a slide whose master has a 3% margin and a footer that wraps to
+  two lines. On the stage every card ends above the footer.
 
 Screenshots of the editor and stage slides are kept in the test output folder
 for visual review.
 
 ## Boundaries
 
-The journey checks one aspect ratio and one design. UC-40 compares the full
-composition across displays and aspect ratios, and UC-41 checks the overflow
-notices. Fit for text longer than the slide is not tested here: the end of such
+The journey checks one aspect ratio and one design. Only the footer slide uses
+a second master. UC-40 compares the full composition across displays and aspect
+ratios, and UC-41 checks the overflow notices. Fit for text longer than the slide is not tested here: the end of such
 text is still cut, and the editor reports it.
