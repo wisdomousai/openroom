@@ -171,13 +171,17 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify 
   const [kind, setKind] = useState<'person' | 'group'>('person');
   const spacesQuery = useQuery({ queryKey: ['spaces', 'all'] as const, queryFn: listAllSpaces });
   /*
-   * The suggestion is taken once, from the first answer: a later refetch must
-   * not replace a pair the tutor has already chosen. The fields wait for it.
+   * The suggestion is taken once, from the first fresh answer (not a cached
+   * one being refetched): a later refetch must not replace a pair the tutor
+   * has already chosen. The fields wait for it; if the list cannot load they
+   * open empty.
    */
   const [suggested, setSuggested] = useState<SpaceLanguages | null | undefined>(undefined);
   useEffect(() => {
-    if (suggested === undefined && spacesQuery.data) setSuggested(suggestedLanguages(spacesQuery.data, sourceSpaceId));
-  }, [sourceSpaceId, spacesQuery.data, suggested]);
+    if (suggested !== undefined || spacesQuery.isFetching) return;
+    if (spacesQuery.data) setSuggested(suggestedLanguages(spacesQuery.data, sourceSpaceId));
+    else if (spacesQuery.isError) setSuggested(null);
+  }, [sourceSpaceId, spacesQuery.data, spacesQuery.isError, spacesQuery.isFetching, suggested]);
   const pair = useLanguagePair(suggested ?? null);
   return (
     <ContextForm
@@ -185,7 +189,7 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-row-title">Dictionary languages</legend>
           <p className="text-secondary text-muted-foreground">Optional. Word lookup in these lessons uses this pair.</p>
-          <LanguagePairFields pair={pair} idPrefix="new-context" disabled={spacesQuery.isPending} />
+          <LanguagePairFields pair={pair} idPrefix="new-context" disabled={suggested === undefined} />
         </fieldset>
       }
       heading={experience === 'classroom' ? 'Add class' : 'Add student or group'}
@@ -202,12 +206,13 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify 
           experience,
         });
         /*
-         * The pair lives on the new space. A complete pair is saved; a pair the
-         * tutor cleared is cleared; an untouched empty one leaves whatever the
-         * worker copied at creation. The student exists by now, so a failure
-         * here is reported on their place rather than inviting a second Save.
+         * The pair lives on the new space, and what the form showed is what it
+         * gets: a complete pair, or none. Only if the form was saved before its
+         * fields opened does the pair the worker copied at creation stay. The
+         * student exists by now, so a failure here is reported on their place
+         * rather than inviting a second Save.
          */
-        const languages = pair.complete ? { taught: pair.taught, native: pair.native } : pair.changed ? null : undefined;
+        const languages = pair.complete ? { taught: pair.taught, native: pair.native } : suggested === undefined ? undefined : null;
         if (languages !== undefined) {
           try {
             await setSpaceLanguages(created.spaceId, languages);
