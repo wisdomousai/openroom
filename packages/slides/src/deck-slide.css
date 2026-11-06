@@ -24,7 +24,9 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* Every centred stack on a slide is `safe`: content taller than its box
+     starts at the top, so the heading stays and only the tail is clipped. */
+  justify-content: safe center;
   gap: 2cqw;
   padding: 5cqw;
   overflow: hidden;
@@ -680,7 +682,7 @@
 
 /* --- title: one centred stack, heading dominant ----------------------- */
 .slide-surface .outline-step--layout-title {
-  justify-content: center;
+  justify-content: safe center;
   gap: 1.25cqw;
   padding: 4.4cqw 4.7cqw;
 }
@@ -762,7 +764,7 @@
 .slide-surface .outline-step--layout-split .outline-step__region--support {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
   gap: 1.25cqw;
   min-width: 0;
   padding: 3.75cqw;
@@ -793,7 +795,7 @@
   padding: 0;
   background: var(--background);
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
 }
 
 .slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support > img,
@@ -898,7 +900,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   background: var(--background);
 }
 
@@ -1027,7 +1029,7 @@
 
 /* --- poll: question, then the answers as lettered rows ---------------- */
 .slide-surface .outline-step--layout-poll {
-  justify-content: center;
+  justify-content: safe center;
   gap: 1.7cqw;
   padding: 3.4cqw 4.4cqw;
 }
@@ -1096,7 +1098,7 @@
 .slide-surface .outline-step--layout-activity .outline-step__region--support {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: safe flex-end;
   min-width: 0;
   padding: 3.1cqw 3.4cqw;
   border-left: 1px solid var(--border);
@@ -1127,7 +1129,7 @@
   .outline-step__region--support:has(.outline-step__media-placeholder) {
   padding: 0;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
 }
 
 .slide-surface .outline-step--layout-activity .outline-step__region--support > img,
@@ -1192,7 +1194,7 @@
 /* --- timer: the clock, centred, and what it is for -------------------- */
 .slide-surface .outline-step--layout-timer {
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   gap: 1.6cqw;
   padding: 4.4cqw;
   text-align: center;
@@ -1213,7 +1215,7 @@
 /* --- join: the QR is the slide ---------------------------------------- */
 .slide-surface .outline-step--layout-join {
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   gap: 2.4cqw;
   padding: 4.4cqw;
   text-align: center;
