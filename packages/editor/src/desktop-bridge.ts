@@ -13,6 +13,8 @@ export interface DesktopDocumentSnapshot {
   displayName: string;
   source: string | null;
   recoverySource: string | null;
+  /** The window opened from a recovery copy an earlier run left; false once saved. */
+  recovered?: boolean;
   deviceId: string;
   deviceName: string;
   onlineOrigin: string;
@@ -33,6 +35,12 @@ export interface DesktopPresentationState {
 }
 
 export type DesktopPresentationCommand = 'next' | 'previous' | 'close';
+
+/**
+ * File menu items the main process hands to the file window, and the Save of
+ * the close prompt (which closes the window once the file is written).
+ */
+export type DesktopMenuCommand = 'save' | 'save-as' | 'present' | 'save-and-close';
 
 export type DesktopAgentHostId = 'claude' | 'codex' | 'byok';
 
@@ -198,6 +206,13 @@ export interface OpenRoomDesktopBridge {
   saveDocumentAs(source: string): Promise<DesktopDocumentSnapshot | null>;
   saveRecovery(fileId: string, source: string): Promise<void>;
   clearRecovery(fileId: string): Promise<void>;
+  /** Unsaved changes in this window: the close prompt and the macOS edited dot follow it. */
+  setEdited(edited: boolean): void;
+  /** Close this window without the unsaved-changes prompt. */
+  closeWindow(): Promise<void>;
+  onMenuCommand(listener: (command: DesktopMenuCommand) => void): () => void;
+  /** A desktop sign-in finished, from any window. */
+  onSignedIn(listener: () => void): () => void;
   openFile(): Promise<void>;
   newFile(): Promise<void>;
   pickImage(): Promise<{ resourceId: string; resource: OpenRoomFileResourceV1 } | null>;

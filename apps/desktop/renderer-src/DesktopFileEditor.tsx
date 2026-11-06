@@ -4,16 +4,21 @@ import {
   DeckEditor,
   DeckEditorTopBar,
   desktopBridge,
+  EditorServicesProvider,
   LiveServerDialog,
   liveServerBridge,
   Presenter,
   questionReadinessMessage,
   renameDeck,
+  useEditorServices,
   type DesktopDocumentChanged,
+  type DesktopMenuCommand,
+  type EditorLinkProps,
+  type EditorServices,
   type PresentationPosition,
   type StoredSession,
 } from '@openroom/editor';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   editableOutlineForOpenRoomFile,
   outlineResourceIds,
@@ -29,6 +34,7 @@ import {
   type Outline,
 } from '@openroom/schema';
 import { stringify } from 'yaml';
+import { PanelRight } from 'lucide-react';
 
 
 import {
@@ -48,6 +54,7 @@ import { Button } from '@openroom/ui/components/button';
 import { DesktopLinkDialog } from './DesktopLinkDialog';
 import { RelayLiveServices } from './relay-live';
 import { OFFLINE_LIVE_MESSAGE, desktopLiveRoute, type DesktopLiveRoute } from './desktop-live';
+import { storeAgentPaneOpen, storedAgentPaneOpen } from './agent-pane-open';
 
 
 function newFile(): OpenRoomFileV1 {
@@ -62,6 +69,34 @@ function newFile(): OpenRoomFileV1 {
 
 function problem(errors: { path: string; message: string }[]): string {
   return errors.slice(0, 3).map((error) => `${error.path}: ${error.message}`).join('\n');
+}
+
+/**
+ * A file with no online copy has no folder to go back to, so the bar's Back
+ * arrow (a Library link) is left out for it.
+ */
+function WithoutLibraryLink({ children }: { children: ReactNode }) {
+  const base = useEditorServices();
+  const services = useMemo<EditorServices>(() => {
+    const BaseLink = base.navigation.Link;
+    const Link = (props: EditorLinkProps) => (props.to.kind === 'library' ? null : <BaseLink {...props} />);
+    return { ...base, navigation: { ...base.navigation, Link } };
+  }, [base]);
+  return <EditorServicesProvider services={services}>{children}</EditorServicesProvider>;
+}
+
+/** A line under the deck bar, in the bar's own type and colour, with its actions. */
+function BarNote({ children, actions }: { children: ReactNode; actions: Array<{ label: string; onClick: () => void }> }) {
+  return (
+    <p role="status" className="flex flex-wrap items-baseline gap-x-3 border-t border-border bg-chrome px-3 py-1.5 text-caption text-muted-foreground">
+      <span>{children}</span>
+      {actions.map((action) => (
+        <button key={action.label} type="button" className="text-primary underline-offset-2 hover:underline" onClick={action.onClick}>
+          {action.label}
+        </button>
+      ))}
+    </p>
+  );
 }
 
 export function DesktopFileEditor() {
@@ -85,6 +120,9 @@ export function DesktopFileEditor() {
   const [relayOrigin, setRelayOrigin] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'local' | 'checking' | 'synced' | 'offline' | 'conflict'>('local');
   const [syncConflict, setSyncConflict] = useState<{ outline: Outline; version: number; hash: string } | null>(null);
+  /** Opened from a recovery copy an earlier run left; a note says so until dismissed or saved. */
+  const [recovered, setRecovered] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(() => storedAgentPaneOpen() ?? false);
   const recoveryTimer = useRef<number | null>(null);
   const syncing = useRef(false);
   const etag = useRef('');
@@ -109,7 +147,7 @@ export function DesktopFileEditor() {
       setDisplayName(snapshot.displayName);
       setDevice({ id: snapshot.deviceId, name: snapshot.deviceName, origin: snapshot.onlineOrigin });
       setSyncStatus(parsed.file.remote === undefined ? 'local' : 'checking');
-      if (snapshot.recoverySource !== null) setError('Recovered changes that had not been saved to the file.');
+      setRecovered(snapshot.recovered === true);
     }).catch((cause: unknown) => {
       setError(cause instanceof Error ? cause.message : 'Could not open this file');
     });
@@ -121,9 +159,28 @@ export function DesktopFileEditor() {
     void desktopLiveRoute(signedIn, relayBridge).then(setLiveRoute);
   }, [relayBridge, signedIn]);
   useEffect(() => { refreshLiveRoute(); }, [refreshLiveRoute]);
+  // A sign-in finishes in the browser and another window; this window reads the route again.
+  useEffect(() => {
+    if (bridge === null) return;
+    window.addEventListener('focus', refreshLiveRoute);
+    const off = bridge.onSignedIn(refreshLiveRoute);
+    return () => { window.removeEventListener('focus', refreshLiveRoute); off(); };
+  }, [bridge, refreshLiveRoute]);
+
+  // Until the tutor chooses, the Agent pane opens only when an agent host is signed in.
+  useEffect(() => {
+    if (bridge === null || storedAgentPaneOpen() !== null) return;
+    void bridge.listAgentHosts().then((hosts) => {
+      if (hosts.some((host) => host.signedIn)) setAgentOpen(true);
+    }).catch(() => undefined);
+  }, [bridge]);
+  const showAgent = (open: boolean) => { setAgentOpen(open); storeAgentPaneOpen(open); };
 
   const validation = useMemo(() => (source === '' ? null : parseOutline(source, 'yaml')), [source]);
   const dirty = source !== savedSource || path === null;
+  /** Changes not in the file on disk: the close prompt and the macOS edited dot follow this. */
+  const edited = source !== savedSource;
+  useEffect(() => { bridge?.setEdited(edited); }, [bridge, edited]);
 
   const serialized = useCallback((incrementRevision: boolean): string | null => {
     if (file === null || validation?.ok !== true) return null;
@@ -135,7 +192,7 @@ export function DesktopFileEditor() {
   }, [file, validation]);
 
   useEffect(() => {
-    if (bridge === null || file === null || !dirty) return;
+    if (bridge === null || file === null || !edited) return;
     if (recoveryTimer.current !== null) window.clearTimeout(recoveryTimer.current);
     recoveryTimer.current = window.setTimeout(() => {
       const text = serialized(false);
@@ -144,33 +201,51 @@ export function DesktopFileEditor() {
     return () => {
       if (recoveryTimer.current !== null) window.clearTimeout(recoveryTimer.current);
     };
-  }, [bridge, dirty, file, serialized]);
+  }, [bridge, edited, file, serialized]);
 
-  const save = async (as = false) => {
-    if (bridge === null || file === null) return;
+  /** True once the file is written; false when the outline needs repair, Save As was cancelled or the write failed. */
+  const save = async (as = false): Promise<boolean> => {
+    if (bridge === null || file === null) return false;
     const text = serialized(true);
     if (text === null) {
       setError('Repair the outline before saving.');
-      return;
+      return false;
     }
     setSaving(true);
     setError(null);
     try {
       const snapshot = as ? await bridge.saveDocumentAs(text) : await bridge.saveDocument(text);
-      if (snapshot === null) return;
+      if (snapshot === null) return false;
       const parsed = parseOpenRoomFile(text);
       if (!parsed.ok) throw new Error(problem(parsed.errors));
       setFile(parsed.file);
       setSavedSource(source);
       setPath(snapshot.path);
       setDisplayName(snapshot.displayName);
+      setRecovered(false);
       await bridge.clearRecovery(parsed.file.fileId);
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save this file');
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  // File menu items and the close prompt's Save reach the window here.
+  const menuCommand = useRef<(command: DesktopMenuCommand) => void>(() => undefined);
+  menuCommand.current = (command) => {
+    if (command === 'present') {
+      if (validation?.ok === true && presentFrom === null) { setStartImmediately(false); setPresentFrom(0); }
+      return;
+    }
+    if (saving) return;
+    void save(command === 'save-as').then((saved) => {
+      if (saved && command === 'save-and-close') void bridge?.closeWindow();
+    });
+  };
+  useEffect(() => bridge?.onMenuCommand((command) => menuCommand.current(command)), [bridge]);
 
   const writeLinkedFile = useCallback(async (next: OpenRoomFileV1, outline: Outline) => {
     if (bridge === null) return;
@@ -434,18 +509,42 @@ export function DesktopFileEditor() {
     return <main className="flex min-h-svh items-center justify-center bg-background p-6 text-muted-foreground">{error ?? 'Opening file…'}</main>;
   }
 
+  const readiness = validation?.ok ? questionReadinessMessage(validation.outline) : null;
+  const topBar = (
+    <DeckEditorTopBar
+      title={validation?.ok ? validation.outline.meta.title : displayName}
+      onRename={(name) => { if (validation?.ok) setSource(stringify(renameDeck(validation.outline, name), { lineWidth: 100 })); }}
+      folderName={null} libraryTo={{ kind: 'library' }} shareTo={null}
+      status={{ state: saving ? 'saving' : dirty ? 'dirty' : 'saved', label: saving ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved', retrying: false, savedAt: null }}
+      fileStatus={<>
+        <span className="text-caption text-muted-foreground">{file.remote ? syncStatus === 'synced' ? 'Synced' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'checking' ? 'Syncing…' : 'Offline' : 'Local file'}</span>
+        <Button size="sm" variant="subtle" aria-pressed={agentOpen} className={agentOpen ? 'bg-background' : undefined} onClick={() => showAgent(!agentOpen)}>
+          <PanelRight aria-hidden="true" />
+          Agent
+        </Button>
+      </>}
+      onPresent={() => { setStartImmediately(false); setPresentFrom(0); }} canPresent={validation?.ok === true}
+      onStart={() => { setStartImmediately(true); setPresentFrom(0); }} canStart={validation?.ok === true && liveRoute?.kind !== 'offline'} starting={starting} error={error}
+      startIssue={readiness}
+    />
+  );
+
   return (
     <div className="flex h-svh min-h-0 min-w-0 flex-col bg-background">
-      <DeckEditorTopBar
-        title={validation?.ok ? validation.outline.meta.title : displayName}
-        onRename={(name) => { if (validation?.ok) setSource(stringify(renameDeck(validation.outline, name), { lineWidth: 100 })); }}
-        folderName={null} libraryTo={{ kind: 'library' }} shareTo={null}
-        status={{ state: saving ? 'saving' : dirty ? 'dirty' : 'saved', label: saving ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved', retrying: false, savedAt: null }}
-        fileStatus={<span className="text-caption text-muted-foreground">{file.remote ? syncStatus === 'synced' ? 'Synced' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'checking' ? 'Syncing…' : 'Offline' : 'Local file'}</span>}
-        onPresent={() => { setStartImmediately(false); setPresentFrom(0); }} canPresent={validation?.ok === true}
-        onStart={() => { setStartImmediately(true); setPresentFrom(0); }} canStart={validation?.ok === true && liveRoute?.kind !== 'offline'} starting={starting} error={error}
-        startIssue={validation?.ok ? questionReadinessMessage(validation.outline) ?? (liveRoute?.kind === 'offline' ? OFFLINE_LIVE_MESSAGE : null) : null}
-      />
+      {file.remote ? topBar : <WithoutLibraryLink>{topBar}</WithoutLibraryLink>}
+      {validation?.ok === true && readiness === null && liveRoute?.kind === 'offline' ? (
+        <BarNote actions={[
+          ...(bridge === null ? [] : [{ label: 'Sign in', onClick: () => void bridge.openSignIn() }]),
+          ...(relayBridge === null ? [] : [{ label: 'Live server…', onClick: () => setShowLiveServer(true) }]),
+        ]}>
+          {OFFLINE_LIVE_MESSAGE}
+        </BarNote>
+      ) : null}
+      {recovered ? (
+        <BarNote actions={[{ label: 'Dismiss', onClick: () => setRecovered(false) }]}>
+          Recovered changes that had not been saved to the file.
+        </BarNote>
+      ) : null}
         {syncConflict === null ? null : (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-destructive/5 px-5 py-2" role="alert">
             <p className="text-xs"><span className="font-semibold">This file and the online copy changed in the same place.</span> Both are preserved in online version history until you choose.</p>
@@ -495,7 +594,7 @@ export function DesktopFileEditor() {
             }}
           />
         </div>
-        <AgentPane onBeforeRun={flushForAgent} />
+        {agentOpen ? <AgentPane onBeforeRun={flushForAgent} onClose={() => showAgent(false)} /> : null}
       </div>
       {presentFrom === null || validation?.ok !== true ? null : (
         <RelayLiveServices origin={relayOrigin}>
