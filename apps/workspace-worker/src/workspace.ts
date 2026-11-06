@@ -739,6 +739,18 @@ export async function createFolderDeletionIntentRoute(
   }, 202);
 }
 
+/** Whether a trashed folder's purge would keep a live deck (it moves to the space root). */
+export async function folderKeepsLiveDecks(env: ControlEnv, folderId: string): Promise<boolean> {
+  const folder = await env.DB.prepare('SELECT space_id FROM folders WHERE id = ?1').bind(folderId).first<{ space_id: string }>();
+  if (folder === null) return false;
+  const subtreeIds = await collectFolderSubtree(env, folder.space_id, folderId);
+  const placeholders = subtreeIds.map((_, i) => `?${i + 1}`).join(', ');
+  const row = await env.DB.prepare(
+    `SELECT 1 AS kept FROM decks WHERE folder_id IN (${placeholders}) AND deleted_at IS NULL LIMIT 1`,
+  ).bind(...subtreeIds).first<{ kept: number }>();
+  return row !== null;
+}
+
 /**
  * The permanent purge of a trashed folder: the folder, every folder below it,
  * and every deck in them that is in Trash, each deck with its sessions, Notes
@@ -753,18 +765,6 @@ export async function createFolderDeletionIntentRoute(
  * `purgeDeck` is passed in so this module does not import the delivery layer,
  * which imports this one.
  */
-/** Whether a trashed folder's purge would keep a live deck (it moves to the space root). */
-export async function folderKeepsLiveDecks(env: ControlEnv, folderId: string): Promise<boolean> {
-  const folder = await env.DB.prepare('SELECT space_id FROM folders WHERE id = ?1').bind(folderId).first<{ space_id: string }>();
-  if (folder === null) return false;
-  const subtreeIds = await collectFolderSubtree(env, folder.space_id, folderId);
-  const placeholders = subtreeIds.map((_, i) => `?${i + 1}`).join(', ');
-  const row = await env.DB.prepare(
-    `SELECT 1 AS kept FROM decks WHERE folder_id IN (${placeholders}) AND deleted_at IS NULL LIMIT 1`,
-  ).bind(...subtreeIds).first<{ kept: number }>();
-  return row !== null;
-}
-
 export async function confirmFolderDeletion(
   env: ControlEnv,
   user: SessionUser,

@@ -54,17 +54,18 @@ const LINKS_KEY = (contextId: string) => ['contexts', contextId, 'links'] as con
  * Real messages for the two failures a tutor can actually hit, rather than
  * "Request failed (HTTP 429)".
  */
-function mintErrorMessage(cause: unknown): string {
+function mintErrorMessage(cause: unknown, name: string | undefined): string {
+  const who = name ?? 'This student';
   if (isContinuityRequired(cause)) return CONTINUITY_REQUIRED;
   if (cause instanceof ApiError) {
     if (cause.status === 429) {
-      return `This context already has ${MAX_LINKS_PER_CONTEXT} active links. Revoke one you no longer need, then make a new one.`;
+      return `${who} already has ${MAX_LINKS_PER_CONTEXT} active links. Revoke one you no longer need, then make a new one.`;
     }
     if (cause.status === 403) {
       return 'You can run sessions in this space but not change its library, so you cannot create an access link. Ask an editor or the owner of this space.';
     }
     if (cause.status === 409) {
-      return 'This context is in the trash. Restore it before sharing anything.';
+      return `${who} is in Trash. Restore from Trash before creating a link.`;
     }
   }
   return messageOf(cause, 'Could not create the link');
@@ -180,7 +181,7 @@ export function ContextLinksCard({
             <>
               <Button type="button" disabled><Plus /> Create link</Button>
               <p className="text-caption text-muted-foreground">
-                {MAX_LINKS_PER_CONTEXT} links already work in this context. Revoke one before making another.
+                {MAX_LINKS_PER_CONTEXT} access links are active. Revoke one before making another.
               </p>
             </>
           ) : (
@@ -242,7 +243,7 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
       await queryClient.invalidateQueries({ queryKey: LINKS_KEY(contextId) });
       await queryClient.invalidateQueries({ queryKey: ['contexts', contextId, 'learners'] });
     } catch (cause) {
-      setError(mintErrorMessage(cause));
+      setError(mintErrorMessage(cause, contextQuery.data?.displayName));
     } finally {
       setBusy(false);
     }
