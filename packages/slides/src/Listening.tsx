@@ -1,8 +1,16 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { SlideMedia } from './slide-types';
 
-/** Only an individual learner gets a player inside the shared slide renderer. */
+/**
+ * Who holds the player. A learner gets their own player and an error they can
+ * act on; everyone else is the tutor side, who can pick another recording.
+ */
 export const ListeningAudience = createContext<'audience' | 'participant'>('audience');
+
+const LOAD_ERROR = {
+  audience: 'This audio could not be loaded. Check the connection or choose another recording.',
+  participant: 'This audio could not be loaded. Check your connection, then tap Retry loading.',
+} as const;
 
 /** What a recording is called until the tutor gives it a label. */
 const UNTITLED = 'Listening';
@@ -15,13 +23,15 @@ function titleOf(label: string | undefined): string {
 export function AudioPlayer({
   src,
   label,
-  loadError = 'This audio could not be loaded. Check the connection or choose another recording.',
+  loadError,
 }: {
   src: string;
   label: string;
-  /** What a failed load says; the default is written for the tutor, who can pick another file. */
+  /** What a failed load says; the default follows ListeningAudience. */
   loadError?: string;
 }) {
+  const audience = useContext(ListeningAudience);
+  const failedToLoad = loadError ?? LOAD_ERROR[audience];
   const audio = useRef<HTMLAudioElement>(null);
   const [speed, setSpeed] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +58,7 @@ export function AudioPlayer({
     <audio ref={audio} src={src} controls preload="metadata" aria-label={titleOf(label)}
       onRateChange={(event) => setSpeed(event.currentTarget.playbackRate)}
       onPlay={() => setError(null)}
-      onError={() => setError(loadError)} />
+      onError={() => setError(failedToLoad)} />
     <div className="listening-player__controls">
       <button type="button" onClick={() => void replay()}>Replay</button>
       <div role="group" aria-label="Playback speed">

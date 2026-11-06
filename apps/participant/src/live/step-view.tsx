@@ -3,6 +3,7 @@ import { deckAspectRatio } from '@openroom/schema';
 import {
   AudioPlayer,
   ClockPill,
+  ListeningAudience,
   MeaningCard,
   StepLayout,
   type SlideStep,
@@ -132,12 +133,10 @@ export function StepView({
     {/* Outside the slide box, so the letterboxed plate makes room for it. */}
     {player ? (
       <section className="learner-listening" aria-label="Your player">
-        <AudioPlayer
-          key={`${step.id}:${player.url}`}
-          src={player.url!}
-          label={player.alt}
-          loadError="This audio could not be loaded. Check your connection, then tap Retry loading."
-        />
+        {/* Only this player is the learner's: the slide above stays the shared view. */}
+        <ListeningAudience.Provider value="participant">
+          <AudioPlayer key={`${step.id}:${player.url}`} src={player.url!} label={player.alt} />
+        </ListeningAudience.Provider>
       </section>
     ) : null}
     </>

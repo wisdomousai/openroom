@@ -99,6 +99,7 @@
   --radius-lg: 6px;
   --radius-xl: 8px;
   --shadow-page: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 20px rgba(0, 0, 0, 0.1);
+  --shadow-overlay: 0 8px 32px rgba(0, 0, 0, 0.26);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -120,6 +121,7 @@
     --border: #454e5e;
     --input: #5c6675;
     --ring: #7fa9ff;
+    --shadow-overlay: 0 8px 32px rgba(0, 0, 0, 0.48);
   }
 }
 
@@ -1503,7 +1505,7 @@ a {
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
   border-radius: 14px 14px 0 0;
-  box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
+  box-shadow: var(--shadow-overlay);
   font-size: 0.9rem;
 }
 
@@ -1569,7 +1571,7 @@ a {
   color: var(--card-foreground);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl, 8px);
-  box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
+  box-shadow: var(--shadow-overlay);
   font-size: clamp(0.8rem, 2vw, 1.1rem);
   line-height: 1.35;
 }
@@ -1856,7 +1858,7 @@ a {
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
   border-radius: 14px 14px 0 0;
-  box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
+  box-shadow: var(--shadow-overlay);
 }
 
 @media (min-width: 640px) {
@@ -1869,7 +1871,7 @@ a {
     transform: translate(-50%, -50%);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl, 8px);
-    box-shadow: var(--shadow-overlay, 0 8px 32px rgb(0 0 0 / 26%));
+    box-shadow: var(--shadow-overlay);
   }
 }
 
