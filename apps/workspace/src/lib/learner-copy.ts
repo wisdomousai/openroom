@@ -1,6 +1,8 @@
 import { VOICE_RETENTION_DAYS } from '@openroom/schema';
 
 export type LearnerLocale = 'en' | 'fr' | 'de';
+/** Why a recording ended without the learner pressing Stop. */
+export type RecordingStopReason = 'hidden' | 'tab' | 'limit' | 'device';
 export const learnerLanguageNames: Record<LearnerLocale, string> = { en: 'English', fr: 'Français', de: 'Deutsch' };
 
 const en = {
@@ -40,6 +42,13 @@ const en = {
   recordingLimit: 'You have ten retained recordings for this task. Trashed audio is cleared after seven days. Keep your download and ask your tutor about the next task.',
   voiceChanged: 'The task has changed. Download your recording before reloading to see the revised task.',
   voiceSendError: 'Your recording could not be sent. Keep this page open and try again.',
+  voiceSendTimeout: 'Sending took too long on this connection. Your recording is still here. Try again on a faster connection such as Wi-Fi, or record a shorter response.',
+  recordingCutShort: (time: string, reason: RecordingStopReason) => `Recording stopped at ${time} ${{
+    hidden: 'because the page was hidden',
+    tab: 'because you left the Lesson tab',
+    limit: 'because you reached the five-minute limit',
+    device: 'because the microphone stopped',
+  }[reason]}. Listen to it, then send it or record again.`,
   voiceResponse: 'Voice response', responseSent: 'Response sent', stopRecording: 'Stop recording', recordingTime: 'Recording time',
   recordAgain: 'Record again', recordAnother: 'Record another response', recordResponse: 'Record response', chooseFile: 'Choose audio file',
   preparing: 'Preparing your recording…', preview: 'Preview your response', sendResponse: 'Send response', download: 'Download recording', sending: 'Sending recording…',
@@ -94,6 +103,13 @@ const fr: LearnerCopy = {
   recordingLimit: 'Vous avez dix enregistrements conservés pour cette consigne. Les audios dans la corbeille sont effacés après sept jours. Gardez votre copie téléchargée et contactez votre professeur pour la suite.',
   voiceChanged: 'La consigne a changé. Téléchargez votre enregistrement avant de recharger la page pour consulter la nouvelle consigne.',
   voiceSendError: 'Votre enregistrement n’a pas pu être envoyé. Gardez cette page ouverte et réessayez.',
+  voiceSendTimeout: 'L’envoi a pris trop de temps avec cette connexion. Votre enregistrement est toujours là. Réessayez avec une connexion plus rapide, par exemple en Wi-Fi, ou enregistrez une réponse plus courte.',
+  recordingCutShort: (time, reason) => `L’enregistrement s’est arrêté à ${time} ${{
+    hidden: 'car la page a été masquée',
+    tab: 'car vous avez quitté l’onglet Cours',
+    limit: 'car vous avez atteint la limite de cinq minutes',
+    device: 'car le microphone s’est arrêté',
+  }[reason]}. Écoutez-le, puis envoyez-le ou enregistrez à nouveau.`,
   voiceResponse: 'Réponse orale', responseSent: 'Réponse envoyée', stopRecording: 'Arrêter l’enregistrement', recordingTime: 'Durée de l’enregistrement',
   recordAgain: 'Recommencer', recordAnother: 'Enregistrer une autre réponse', recordResponse: 'Enregistrer une réponse', chooseFile: 'Choisir un fichier audio',
   preparing: 'Préparation de votre enregistrement…', preview: 'Écouter votre réponse', sendResponse: 'Envoyer la réponse', download: 'Télécharger l’enregistrement', sending: 'Envoi de l’enregistrement…',
@@ -145,6 +161,13 @@ const de: LearnerCopy = {
   recordingLimit: 'Für diese Aufgabe sind zehn Aufnahmen gespeichert. Aufnahmen im Papierkorb werden nach sieben Tagen gelöscht. Behalte deine heruntergeladene Kopie und frage deine Lehrperson nach der nächsten Aufgabe.',
   voiceChanged: 'Die Aufgabe wurde geändert. Lade deine Aufnahme herunter, bevor du die Seite neu lädst, um die neue Aufgabe zu sehen.',
   voiceSendError: 'Deine Aufnahme konnte nicht gesendet werden. Lass diese Seite offen und versuche es erneut.',
+  voiceSendTimeout: 'Das Senden hat mit dieser Verbindung zu lange gedauert. Deine Aufnahme ist noch da. Versuche es mit einer schnelleren Verbindung, zum Beispiel WLAN, oder nimm eine kürzere Antwort auf.',
+  recordingCutShort: (time, reason) => `Die Aufnahme wurde bei ${time} beendet, ${{
+    hidden: 'weil die Seite ausgeblendet wurde',
+    tab: 'weil du den Tab Lektion verlassen hast',
+    limit: 'weil du die Grenze von fünf Minuten erreicht hast',
+    device: 'weil das Mikrofon nicht mehr verfügbar war',
+  }[reason]}. Hör sie dir an und sende sie oder nimm erneut auf.`,
   voiceResponse: 'Mündliche Antwort', responseSent: 'Antwort gesendet', stopRecording: 'Aufnahme beenden', recordingTime: 'Aufnahmedauer',
   recordAgain: 'Neu aufnehmen', recordAnother: 'Weitere Antwort aufnehmen', recordResponse: 'Antwort aufnehmen', chooseFile: 'Audiodatei wählen',
   preparing: 'Deine Aufnahme wird vorbereitet…', preview: 'Deine Antwort anhören', sendResponse: 'Antwort senden', download: 'Aufnahme herunterladen', sending: 'Aufnahme wird gesendet…',
