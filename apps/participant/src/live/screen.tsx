@@ -103,9 +103,17 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
   }, [status]);
 
   function fail(code: string, message: string): void {
-    connectionError.current = code === 'E_NETWORK';
-    setError(friendlyError(code, message));
+    // The connection may already be back by the time the failed call returns.
+    const stillOffline = clientRef.current?.getStatus() === 'offline';
+    connectionError.current = code === 'E_NETWORK' && stillOffline;
+    setError(code === 'E_NETWORK' && !stillOffline ? 'Not sent. Try again.' : friendlyError(code, message));
   }
+
+  // The page scrolls now: bring a new error into view from wherever the learner tapped.
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error !== null) errorRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [error]);
 
   function chooseView(next: ContentView): void {
     setContentView(next);
@@ -262,7 +270,7 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
             <span aria-hidden="true">⏸</span> Paused
           </p>
         ) : null}
-        {error ? <p className="banner banner--error">{error}</p> : null}
+        {error ? <p ref={errorRef} className="banner banner--error">{error}</p> : null}
       </div>
 
       {!snapshot ? (

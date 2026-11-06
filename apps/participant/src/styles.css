@@ -1365,6 +1365,11 @@ a {
   max-width: none;
 }
 
+.page[data-session] .page__body > .learner-slide {
+  /* A short landscape window scrolls the region rather than shrinking the slide away. */
+  min-height: 12rem;
+}
+
 .page[data-session] .option,
 .page[data-session] .hint {
   font-size: 1.15rem;

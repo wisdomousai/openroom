@@ -298,6 +298,13 @@ test.describe('UC-44 participant phone states', () => {
     expect(await reachByScrolling(phone, failed)).toBe(true);
     await phone.screenshot({ path: testInfo.outputPath('listening-player-390.png') });
 
+    // Landscape: the slide keeps its size and the region scrolls to the player.
+    await scrollToTop(phone);
+    await phone.setViewportSize({ width: 844, height: 390 });
+    expect((await phone.locator('.learner-slide__plate').boundingBox())!.height).toBeGreaterThan(100);
+    expect(await reachByScrolling(phone, failed)).toBe(true);
+    await phone.screenshot({ path: testInfo.outputPath('listening-player-844x390.png') });
+
     // A short window (keyboard open): Send, then Change answer, are reachable by finger.
     await scrollToTop(phone);
     await phone.setViewportSize({ width: 390, height: 340 });
@@ -341,7 +348,7 @@ test.describe('UC-44 participant phone states', () => {
     const firstOption = phone.getByRole('radio', { name: CHOICES[0]!, exact: true });
     await firstOption.click();
     const unsent = phone.getByText('Your answer was not sent. Try again.', { exact: true });
-    await expect(unsent).toBeVisible();
+    await expect(unsent).toBeInViewport();
     await expect(phone.getByText(/Offline — reconnecting/)).toBeVisible();
     await context.setOffline(false);
     await expect(phone.getByText(/Offline|Reconnecting/)).toHaveCount(0, { timeout: 15_000 });
