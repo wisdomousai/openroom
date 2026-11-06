@@ -361,7 +361,7 @@ describe('createSessionClient', () => {
     expect(fetches).toBe(after);
   });
 
-  it('reports a rejected token once through onGone and stops polling and the socket', async () => {
+  it('reports a token rejected twice in a row through onGone and stops polling and the socket', async () => {
     for (const rejected of [401, 403, 404, 410]) {
       let fetches = 0;
       const fetchFake: FetchLike = async () => {
@@ -381,6 +381,9 @@ describe('createSessionClient', () => {
         onGone: (status) => gone.push(status),
       });
       await flush();
+      expect(gone).toEqual([]);
+      await vi.advanceTimersByTimeAsync(2000);
+      await flush();
       expect(gone).toEqual([rejected]);
       expect(statuses).not.toContain('offline');
       expect(FakeSocket.last?.closed).toBe(true);
@@ -388,6 +391,32 @@ describe('createSessionClient', () => {
       await vi.advanceTimersByTimeAsync(60_000);
       expect(fetches).toBe(after);
     }
+  });
+
+  it('does not give up a seat over one stray 404', async () => {
+    let fetches = 0;
+    const fetchFake: FetchLike = async () => {
+      fetches++;
+      return fetches === 1 ? jsonRes(404, { error: 'session-not-found' }) : jsonRes(200, snap(5));
+    };
+    const gone: number[] = [];
+    const changes: number[] = [];
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: null,
+      onChange: (s) => changes.push(s.revision),
+      onGone: (status) => gone.push(status),
+    });
+    await flush();
+    await vi.advanceTimersByTimeAsync(2000);
+    await flush();
+    expect(gone).toEqual([]);
+    expect(changes).toEqual([5]);
+    client.close();
   });
 
   it('keeps a 5xx as offline and polls on, with or without onGone', async () => {
