@@ -253,7 +253,10 @@ const RECORD_HOMEWORK_KINDS = 'reading, writing, voice or quiz';
  * which keeps its own record-arrays-too-large answer.
  */
 function recordHomeworkProblem(input: unknown): { index?: number; message: string } | null {
-  if (!Array.isArray(input) || input.length > HOMEWORK_TASK_MAX) return null;
+  if (!Array.isArray(input)) {
+    return { message: `homework must be an array of tasks: a string (reading material) or a task object with kind ${RECORD_HOMEWORK_KINDS}` };
+  }
+  if (input.length > HOMEWORK_TASK_MAX) return null;
   for (const [index, item] of input.entries()) {
     if (compileRecordHomework([item]) !== null) continue;
     const at = `homework[${String(index)}]`;
@@ -319,8 +322,8 @@ export async function sessionRecordRoute(
   if (session.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
-  const existing = await env.DB.prepare('SELECT id, created_at, outcomes_json, notes, next_note, homework_json, homework_audience_json, homework_revision, artifacts_json FROM session_records WHERE session_id = ?1')
-    .bind(sessionId).first<{ id: string; created_at: number; outcomes_json: string; notes: string | null; next_note: string | null; homework_json: string; homework_audience_json: string; homework_revision: number; artifacts_json: string }>();
+  const existing = await env.DB.prepare('SELECT id, created_at, session_code, deck_version, outcomes_json, notes, next_note, homework_json, homework_audience_json, homework_revision, artifacts_json FROM session_records WHERE session_id = ?1')
+    .bind(sessionId).first<{ id: string; created_at: number; session_code: string | null; deck_version: number; outcomes_json: string; notes: string | null; next_note: string | null; homework_json: string; homework_audience_json: string; homework_revision: number; artifacts_json: string }>();
   // A field the body leaves out keeps its stored value; an explicit '' or []
   // clears it. Several writers share one record (the tutor's Notes in the
   // browser, an agent adding homework later), so a partial body must never
@@ -350,7 +353,7 @@ export async function sessionRecordRoute(
   }
   const deckVersion = typeof body.deckVersion === 'number' && Number.isInteger(body.deckVersion)
     ? body.deckVersion
-    : session.deck_version;
+    : existing?.deck_version ?? session.deck_version;
   const deck = await env.DB.prepare('SELECT current_version FROM decks WHERE id = ?1')
     .bind(session.deck_id)
     .first<{ current_version: number }>();
@@ -363,7 +366,9 @@ export async function sessionRecordRoute(
   ) {
     return json({ error: 'invalid-deck-version' }, 422);
   }
-  const sessionCode = typeof body.sessionCode === 'string' ? body.sessionCode.slice(0, 64) : null;
+  const sessionCode = provided('sessionCode')
+    ? typeof body.sessionCode === 'string' ? body.sessionCode.slice(0, 64) : null
+    : existing?.session_code ?? null;
   const now = Date.now();
   const taskIds = homework.map((task) => task.id);
   const storedAudience = parseJson(existing?.homework_audience_json ?? '{}', null);
@@ -380,16 +385,21 @@ export async function sessionRecordRoute(
   if (changedHomework && body.homeworkRevision !== existing.homework_revision) return json({ error: 'homework-revision-conflict' }, 409);
   const homeworkRevision = existing === null ? 1 : existing.homework_revision + (changedHomework ? 1 : 0);
   const storedNextNote = nextNote ?? existing?.next_note ?? '';
+  // An existing row takes only the columns this body names, so two writers
+  // saving different fields at once never put back each other's old values.
+  // Homework columns are always written, guarded by homework_revision.
+  const updated = [
+    ['sessionCode', 'session_code'], ['deckVersion', 'deck_version'], ['outcomes', 'outcomes_json'],
+    ['notes', 'notes'], ['nextNote', 'next_note'], ['artifacts', 'artifacts_json'],
+  ].filter(([key]) => provided(key as string)).map(([, column]) => `${column as string} = excluded.${column as string}`);
   const saved = await env.DB.prepare(
     `INSERT INTO session_records
        (id, session_id, context_id, session_code, deck_version, outcomes_json, notes, next_note, homework_json, artifacts_json, created_at, updated_at, homework_revision, homework_audience_json)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?15)
      ON CONFLICT(session_id) DO UPDATE SET
-       context_id = excluded.context_id, session_code = excluded.session_code,
-       deck_version = excluded.deck_version, outcomes_json = excluded.outcomes_json,
-       notes = excluded.notes, next_note = excluded.next_note, homework_json = excluded.homework_json,
-       artifacts_json = excluded.artifacts_json, updated_at = excluded.updated_at,
-       homework_revision = excluded.homework_revision, homework_audience_json = excluded.homework_audience_json
+       ${[...updated, 'context_id = excluded.context_id', 'homework_json = excluded.homework_json',
+         'updated_at = excluded.updated_at', 'homework_revision = excluded.homework_revision',
+         'homework_audience_json = excluded.homework_audience_json'].join(', ')}
      WHERE session_records.homework_revision = ?14`,
   ).bind(
     existing?.id ?? randomId(), sessionId, session.context_id, sessionCode, deckVersion,

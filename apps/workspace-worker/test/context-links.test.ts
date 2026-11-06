@@ -1038,12 +1038,12 @@ describe('session record writes', () => {
     const put = (body: Record<string, unknown>) => asBrowser(cookie, path, { method: 'PUT', body: JSON.stringify(body) });
     const read = async () => ((await (await asBrowser(cookie, path)).json()) as { record: Record<string, unknown> }).record;
 
-    expect((await put({ outcomes: ['passé composé'], notes: 'Private tutor note', nextNote: 'Start with avoir', artifacts: ['board.png'], homework: ['Read page 4'] })).status).toBe(200);
+    expect((await put({ sessionCode: 'ABC123', outcomes: ['passé composé'], notes: 'Private tutor note', nextNote: 'Start with avoir', artifacts: ['board.png'], homework: ['Read page 4'] })).status).toBe(200);
     // An agent adds homework later and sends nothing else.
     const writing = { id: 'write', kind: 'writing', prompt: 'Write 3 sentences about last weekend' };
     expect((await put({ homeworkRevision: 1, homework: [writing] })).status).toBe(200);
     expect(await read()).toMatchObject({
-      outcomes: ['passé composé'], notes: 'Private tutor note', nextNote: 'Start with avoir', artifacts: ['board.png'],
+      sessionCode: 'ABC123', outcomes: ['passé composé'], notes: 'Private tutor note', nextNote: 'Start with avoir', artifacts: ['board.png'],
       homework: [writing], homeworkRevision: 2,
     });
     // A Notes-only write keeps the homework without needing its revision.
@@ -1063,6 +1063,7 @@ describe('session record writes', () => {
     expect(essay.status).toBe(422);
     expect(await essay.json()).toEqual({ error: 'invalid-homework', index: 1, message: 'homework[1].kind must be reading, writing, voice or quiz' });
     expect(await (await put([{ kind: 'writing', prompt: '' }])).json()).toMatchObject({ error: 'invalid-homework', index: 0 });
+    expect(await (await put('Read page 4')).json()).toMatchObject({ error: 'invalid-homework', message: expect.stringContaining('must be an array') });
     // Size stays its own answer.
     expect(await (await put(Array.from({ length: 51 }, () => 'Read'))).json()).toEqual({ error: 'record-arrays-too-large' });
   });
