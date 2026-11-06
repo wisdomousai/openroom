@@ -468,6 +468,33 @@ function deletionPage(title: string, body: string, status = 200): Response {
   });
 }
 
+/**
+ * The space made for a student (`sp_ctx_<id>`) goes with them when nothing else
+ * is filed in it: its folders, tags, invites and members, then the space. A deck,
+ * session, picture or brand kit still filed there keeps the space, and the
+ * workspace nav leaves it out once its student is gone. A space the context was
+ * only attached to is never touched.
+ */
+async function removeEmptyStudentSpace(env: ControlEnv, contextId: string, spaceId: string): Promise<void> {
+  if (spaceId !== `sp_ctx_${contextId}`) return;
+  const kept = await env.DB.prepare(
+    `SELECT EXISTS (SELECT 1 FROM decks WHERE space_id = ?1)
+         OR EXISTS (SELECT 1 FROM sessions WHERE space_id = ?1)
+         OR EXISTS (SELECT 1 FROM media_assets WHERE space_id = ?1)
+         OR EXISTS (SELECT 1 FROM brand_kits WHERE space_id = ?1)
+         OR EXISTS (SELECT 1 FROM contexts WHERE space_id = ?1) AS kept`,
+  ).bind(spaceId).first<{ kept: number }>();
+  if (kept?.kept) return;
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM item_tags WHERE space_id = ?1').bind(spaceId),
+    env.DB.prepare('DELETE FROM folders WHERE space_id = ?1').bind(spaceId),
+    env.DB.prepare('DELETE FROM space_invites WHERE space_id = ?1').bind(spaceId),
+    env.DB.prepare('DELETE FROM space_members WHERE space_id = ?1').bind(spaceId),
+    env.DB.prepare('DELETE FROM space_contexts WHERE space_id = ?1').bind(spaceId),
+    env.DB.prepare('DELETE FROM spaces WHERE id = ?1').bind(spaceId),
+  ]);
+}
+
 export async function confirmPermanentDeletionRoute(
   request: Request,
   env: ControlEnv,
@@ -517,6 +544,7 @@ export async function confirmPermanentDeletionRoute(
       env.DB.prepare('DELETE FROM space_contexts WHERE context_id = ?1').bind(resource.id),
       env.DB.prepare('DELETE FROM contexts WHERE id = ?1').bind(resource.id),
     ]);
+    await removeEmptyStudentSpace(env, resource.id, resource.space_id);
   } else if (intent.resource_type === 'folder') {
     const ok = await confirmFolderDeletion(env, user, intent.resource_id, purgeDeck);
     if (!ok) return notInTrash();

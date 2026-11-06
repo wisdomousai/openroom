@@ -628,6 +628,36 @@ describe('control plane hardening', () => {
     expect((await sessionAfter.json() as { session: { contextId: string | null } }).session.contextId).toBeNull();
   });
 
+  it('context purge removes the student space when nothing else is filed in it', async () => {
+    const { cookie } = await seedSession();
+    const purge = async (contextId: string) => {
+      await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'DELETE' });
+      const intent = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/permanent-deletion`, { method: 'POST' });
+      const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
+      expect((await asBrowser(cookie, new URL(confirmationUrl).pathname, { method: 'POST' })).status).toBe(200);
+    };
+    const listed = async () => ((await (await asBrowser(cookie, '/api/my/spaces')).json()) as { spaces: { id: string }[] }).spaces.map((space) => space.id);
+
+    // Only folders and the student's decks: the space goes too.
+    const emptied = await createContext(cookie);
+    const emptiedSpace = `sp_ctx_${emptied}`;
+    expect((await asBrowser(cookie, `/api/my/spaces/${emptiedSpace}/folders`, { method: 'POST', body: JSON.stringify({ name: 'Week 1' }) })).status).toBe(201);
+    expect((await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Theirs', outline: SAMPLE_CONTENT, contextId: emptied }) })).status).toBe(201);
+    await purge(emptied);
+    expect(await listed()).not.toContain(emptiedSpace);
+    expect((await asBrowser(cookie, `/api/my/spaces/${emptiedSpace}`)).status).toBe(404);
+
+    // A deck filed there without the student keeps the space and the deck.
+    const kept = await createContext(cookie);
+    const keptSpace = `sp_ctx_${kept}`;
+    const loose = await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Loose', outline: SAMPLE_CONTENT, spaceId: keptSpace }) });
+    expect(loose.status).toBe(201);
+    const looseId = (await loose.json() as { deck: { id: string } }).deck.id;
+    await purge(kept);
+    expect(await listed()).toContain(keptSpace);
+    expect((await asBrowser(cookie, `/api/decks/${looseId}`)).status).toBe(200);
+  });
+
   it('PAT cannot confirm a permanent purge', async () => {
     const { cookie } = await seedSession();
     const contextId = await createContext(cookie);
