@@ -1058,15 +1058,27 @@
   max-width: 100%;
 }
 
+/* A long title or caption gives way before the picture does. The caption
+   stops at three lines and the title bar at 30% of the slide's content box,
+   so the picture always keeps most of the slide. */
 .slide-surface .outline-step--layout-media .outline-step__caption {
   flex: none;
-  padding: 0.8cqw 2.5cqw;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  /* Margins, not padding: the clamped lines would show in the padding. */
+  margin: 0.8cqw 2.5cqw;
   font-size: 2.2cqw;
 }
 
 .slide-surface .outline-step--layout-media .outline-step__region--lede {
   order: 2;
   flex: none;
+  max-height: 30%;
+  /* Clipped top and bottom only: a reveal badge left of the title stays. */
+  overflow-y: clip;
   padding: 1.4cqw 2.5cqw;
   border-top: 1px solid var(--border);
   background: var(--card);
