@@ -843,6 +843,19 @@
   line-height: 1.55;
 }
 
+/* A split column is too narrow for the full-width headword sizes. The term
+   takes the split heading size and a number half as much again, so neither
+   breaks between letters and the number still leads the statement. */
+.slide-surface .outline-step--layout-split :is(.outline-step__term, .outline-step__stat) {
+  font-size: 4.4cqw;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-split .outline-step__stat {
+  font-size: 6.6cqw;
+}
+
 /* A list on split starts at the top of its column, and so does the heading
    beside it: revealing the next item never moves the items already shown. */
 .slide-surface .outline-step--layout-split > .outline-step__region:has(> :is(.outline-step__cards, .outline-step__sequence, .outline-step__bullets)),
