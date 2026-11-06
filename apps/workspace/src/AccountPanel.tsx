@@ -58,15 +58,15 @@ function DemoSignInForm({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="demo-username">Username</Label>
               <Input id="demo-username" autoComplete="username" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} aria-invalid={field.state.meta.errors.length > 0} />
-              {field.state.meta.errors[0] ? <p className="text-xs text-destructive">{String(field.state.meta.errors[0])}</p> : null}
+              {field.state.meta.errors[0] ? <p className="text-caption text-destructive">{String(field.state.meta.errors[0])}</p> : null}
             </div>
           </>
         )}
       </form.Field>
       <form.Field name="password" validators={{ onChange: ({ value }) => value === '' ? 'Enter a password.' : undefined }}>
-        {(field) => <div className="flex flex-col gap-1.5"><Label htmlFor="demo-password">Password</Label><Input id="demo-password" type="password" autoComplete="current-password" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} aria-invalid={field.state.meta.errors.length > 0} />{field.state.meta.errors[0] ? <p className="text-xs text-destructive">{String(field.state.meta.errors[0])}</p> : null}</div>}
+        {(field) => <div className="flex flex-col gap-1.5"><Label htmlFor="demo-password">Password</Label><Input id="demo-password" type="password" autoComplete="current-password" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} aria-invalid={field.state.meta.errors.length > 0} />{field.state.meta.errors[0] ? <p className="text-caption text-destructive">{String(field.state.meta.errors[0])}</p> : null}</div>}
       </form.Field>
-      {error ? <p className="text-xs text-destructive" role="alert">{error}</p> : <p className="text-xs text-muted-foreground">Dev only: password for every demo account is <code className="rounded bg-muted px-1 py-0.5 text-foreground">demo</code>.</p>}
+      {error ? <p className="text-caption text-destructive" role="alert">{error}</p> : <p className="text-caption text-muted-foreground">Dev only: password for every demo account is <code className="rounded bg-muted px-1 py-0.5 text-foreground">demo</code>.</p>}
       <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting] as const}>{([canSubmit, isSubmitting]) => <Button type="submit" disabled={!canSubmit || isSubmitting} className="w-fit">{isSubmitting ? 'Signing in…' : 'Sign in'}</Button>}</form.Subscribe>
     </form>
   );
@@ -94,7 +94,7 @@ export function AccountPanel({ session }: { session: AuthSession }) {
     return (
       <Card>
         <CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">Checking your account…</p>
+          <p className="text-caption text-muted-foreground">Checking your account…</p>
         </CardContent>
       </Card>
     );
@@ -106,7 +106,7 @@ export function AccountPanel({ session }: { session: AuthSession }) {
       return (
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Checking your account…</p>
+            <p className="text-caption text-muted-foreground">Checking your account…</p>
           </CardContent>
         </Card>
       );
@@ -120,7 +120,7 @@ export function AccountPanel({ session }: { session: AuthSession }) {
             <CardTitle>Account</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               Sign-in is not configured on this deployment. Ask the deployment operator to enable
               a sign-in method.
             </p>
@@ -138,7 +138,7 @@ export function AccountPanel({ session }: { session: AuthSession }) {
           <CardTitle>Sign in</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             {showDemo
               ? showGoogle ? 'Choose a sign-in method.' : 'Sign in with a demo account.'
               : showGoogle ? 'Sign in with Google.' : 'Demo sign-in is not enabled.'}
@@ -147,7 +147,7 @@ export function AccountPanel({ session }: { session: AuthSession }) {
           {showDemo ? <DemoSignInForm accounts={accounts} session={session} /> : null}
 
           {devLoginOnly && !showDemo ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               Local Desktop uses demo accounts. Set <code className="rounded bg-muted px-1 py-0.5">DEMO_AUTH=1</code> in{' '}
               <code className="rounded bg-muted px-1 py-0.5">apps/workspace-worker/.dev.vars</code> and restart.
             </p>
@@ -156,7 +156,7 @@ export function AccountPanel({ session }: { session: AuthSession }) {
           {showGoogle ? (
             <div className={showDemo ? 'flex flex-col gap-2 border-t border-border pt-3' : ''}>
               {showDemo ? (
-                <p className="text-xs text-muted-foreground">Or use Google on this deployment:</p>
+                <p className="text-caption text-muted-foreground">Or use Google on this deployment:</p>
               ) : null}
               {desktopBridge() !== null ? (
                 <Button
@@ -185,8 +185,8 @@ export function AccountPanel({ session }: { session: AuthSession }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div>
-          <div className="text-sm font-medium">{session.user.name ?? session.user.email}</div>
-          <div className="text-xs text-muted-foreground">{session.user.email}</div>
+          <div className="text-row-title">{session.user.name ?? session.user.email}</div>
+          <div className="text-caption text-muted-foreground">{session.user.email}</div>
         </div>
         <Button variant="outline" size="sm" className="w-fit" onClick={() => void signOut()} disabled={busy}>
           {busy ? 'Signing out…' : 'Sign out'}
