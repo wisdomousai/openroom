@@ -180,6 +180,43 @@ describe('resolveEntry', () => {
     expect(seen).toHaveLength(2);
   });
 
+  it('finds a sentence-initial word under its lower-case form', async () => {
+    // Upstream files `je` under j/je/je; J/Je/Je is a 404.
+    const word = unique('Je');
+    const lower = word.toLowerCase();
+    const { fetch: impl, seen } = upstream({
+      [wordPath('dictionary/French', lower)]: jsonl({
+        word: lower,
+        pos: 'pron',
+        lang_code: 'fr',
+        forms: [],
+        senses: [{ glosses: ['I'] }],
+      }),
+    });
+    const result = await resolveEntry({ word, lang: 'fr', meaningLang: 'en' }, impl);
+    expect(result.meaning).toBe('I');
+    expect(result.entry?.word).toBe(word);
+    expect(result.entry?.lemma).toBe(lower);
+    expect(seen).toEqual([wordPath('dictionary/French', word), wordPath('dictionary/French', lower)]);
+  });
+
+  it('keeps a capitalised word that upstream files capitalised, with one request', async () => {
+    // German nouns are filed as written: H/Ha/Haus.
+    const word = unique('Haus');
+    const { fetch: impl, seen } = upstream({
+      [wordPath('dictionary/German', word)]: jsonl({
+        word,
+        pos: 'noun',
+        lang_code: 'de',
+        forms: [{ form: 'Häuser', tags: ['plural'] }],
+        senses: [{ glosses: ['house'] }],
+      }),
+    });
+    const result = await resolveEntry({ word, lang: 'de' }, impl);
+    expect(result.entry?.lemma).toBe(word);
+    expect(seen).toEqual([wordPath('dictionary/German', word)]);
+  });
+
   it('reports an unmapped taught language instead of guessing a URL', async () => {
     const { fetch: impl, seen } = upstream({});
     const result = await resolveEntry({ word: unique('szo'), lang: 'hu' }, impl);

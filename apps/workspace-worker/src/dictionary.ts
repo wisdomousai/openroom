@@ -280,8 +280,20 @@ export async function resolveEntry(
   const cached = entryCache.get(cacheKey);
   if (cached !== undefined && now < cached.until) return cached.value;
 
-  const url = wordPath(`dictionary/${root}`, word);
-  const rows = await fetchRows(url, fetchImpl);
+  let found = word;
+  let url = wordPath(`dictionary/${root}`, word);
+  let rows = await fetchRows(url, fetchImpl);
+  /*
+   * Upstream paths are case-sensitive, and a sentence-initial `Je` is filed as
+   * `je`. Verbatim goes first because German nouns are filed capitalised
+   * (`Haus`); the lower-case form is asked once, only after that misses.
+   */
+  const lower = word.toLocaleLowerCase(lang);
+  if ((rows === null || rows.length === 0) && lower !== word) {
+    found = lower;
+    url = wordPath(`dictionary/${root}`, lower);
+    rows = await fetchRows(url, fetchImpl);
+  }
 
   let entry: DictionaryEntry | null = null;
   if (rows !== null && rows.length > 0) {
@@ -289,16 +301,16 @@ export async function resolveEntry(
     if (row !== null) {
       const hasForms = Array.isArray(row.forms) && row.forms.length > 0;
       const lemma = hasForms ? null : lemmaTarget(row);
-      if (lemma !== null && lemma !== word && isLookupWord(lemma)) {
+      if (lemma !== null && lemma !== found && isLookupWord(lemma)) {
         const lemmaUrl = wordPath(`dictionary/${root}`, lemma);
         const lemmaRows = await fetchRows(lemmaUrl, fetchImpl);
         const lemmaRow = lemmaRows === null ? null : bestRow(lemmaRows, lang);
         entry =
           lemmaRow === null
-            ? toEntry(row, { word, lemma: word, lang, url })
-            : toEntry(lemmaRow, { word, lemma, lang, url: lemmaUrl, resolvedFrom: word });
+            ? toEntry(row, { word, lemma: found, lang, url })
+            : toEntry(lemmaRow, { word, lemma, lang, url: lemmaUrl, resolvedFrom: found });
       } else {
-        entry = toEntry(row, { word, lemma: word, lang, url });
+        entry = toEntry(row, { word, lemma: found, lang, url });
       }
     }
   }
