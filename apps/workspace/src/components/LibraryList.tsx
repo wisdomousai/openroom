@@ -110,6 +110,19 @@ export function LibraryList({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const editRef = useRef<HTMLInputElement>(null);
+
+  /*
+   * Radix holds focus inside an open menu and hands it back to the row when
+   * the menu closes. When the menu's Rename (or New folder inside) has just
+   * opened a name field, the field takes focus then instead.
+   */
+  const keepEditFocus = (event: Event) => {
+    const field = editRef.current;
+    if (!field) return;
+    event.preventDefault();
+    field.focus();
+    field.select();
+  };
   const rowElements = useRef(new Map<string, HTMLLIElement>());
   /** The folder row to focus again once its rename has closed. */
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -160,7 +173,7 @@ export function LibraryList({
     return (
       <ContextMenu key={row.id}>
         <ContextMenuTrigger asChild>{element}</ContextMenuTrigger>
-        <ContextMenuContent>
+        <ContextMenuContent onCloseAutoFocus={keepEditFocus}>
           <ContextMenuItem onSelect={() => onOpen(row.id)}>Open</ContextMenuItem>
           {folder
             ? (inline ? <ContextMenuItem onSelect={() => startRename(row)}>Rename</ContextMenuItem> : null)

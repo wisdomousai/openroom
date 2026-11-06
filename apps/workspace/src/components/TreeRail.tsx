@@ -99,6 +99,19 @@ export function TreeRail({
   /** Where an inline "new folder" row is being typed. `undefined` = nowhere. */
   const [creatingIn, setCreatingIn] = useState<string | null | undefined>(undefined);
   const editRef = useRef<HTMLInputElement>(null);
+
+  /*
+   * Radix holds focus inside an open menu and hands it back to the row when
+   * the menu closes. When the menu's Rename (or New folder inside) has just
+   * opened a name field, the field takes focus then instead.
+   */
+  const keepEditFocus = (event: Event) => {
+    const field = editRef.current;
+    if (!field) return;
+    event.preventDefault();
+    field.focus();
+    field.select();
+  };
   /** The row buttons, by folder id ('root' for the space row), for returning focus. */
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   /** The row to focus once it is on screen: by id, or by name under a parent for a folder just created. */
@@ -267,7 +280,7 @@ export function TreeRail({
                 if (event.key === 'F2') { event.preventDefault(); startRename(folder); }
               }}>{row(folder.id, folder.name, depth, children.length > 0, open)}</div>
             </ContextMenuTrigger>
-            <ContextMenuContent>
+            <ContextMenuContent onCloseAutoFocus={keepEditFocus}>
               <ContextMenuItem onSelect={() => onNavigate(folder.id)}>Open</ContextMenuItem>
               <ContextMenuItem onSelect={() => startCreate(folder.id)}>
                 New folder inside
@@ -320,7 +333,7 @@ export function TreeRail({
                 <ContextMenuTrigger asChild>
                   <div onKeyDown={(event) => { openContextMenuFromKey(event); }}>{row(null, spaceName, 0, tree.length > 0, true)}</div>
                 </ContextMenuTrigger>
-                <ContextMenuContent>
+                <ContextMenuContent onCloseAutoFocus={keepEditFocus}>
                   <ContextMenuItem onSelect={() => onNavigate(null)}>Open</ContextMenuItem>
                   <ContextMenuItem onSelect={() => startCreate(null)}>
                     New folder inside
