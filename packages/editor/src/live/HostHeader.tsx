@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  CircleStop,
   Copy,
   Download,
   ExternalLink,
@@ -149,17 +150,39 @@ export function HostHeader({
       ) : (
         <span className="text-title-bar">{learnerName ?? 'Session'}</span>
       )}
-      {sessionTitle ? <span className="text-secondary text-muted-foreground">{sessionTitle}</span> : null}
+      {/*
+        Below 560 px the title, the counts, Freeze and End session give way so
+        the Session menu stays on screen; the menu carries Freeze and End session.
+      */}
+      {sessionTitle ? (
+        <span className="min-w-0 truncate text-secondary text-muted-foreground max-[559px]:hidden">{sessionTitle}</span>
+      ) : null}
       <span className="flex-1" />
-      <span className="text-secondary tabular-nums text-muted-foreground" aria-live="polite">
+      <span className="shrink-0 text-secondary tabular-nums text-muted-foreground max-[559px]:hidden" aria-live="polite">
         <strong className="font-semibold text-foreground">{joined}</strong> joined ·{' '}
         <strong className="font-semibold text-foreground">{answered}</strong> {groupAnswers ? (answered === 1 ? 'group answer' : 'group answers') : 'answered'}
       </span>
       <SessionFullNotice joined={joined} limit={participantLimit} canManagePlan={canManagePlan} />
-      <Button type="button" variant="subtle" size="sm" disabled={ended || !canPresent} onClick={onToggleFreeze}>
+      <Button
+        type="button"
+        variant="subtle"
+        size="sm"
+        className="max-[559px]:hidden"
+        aria-keyshortcuts="F"
+        disabled={ended || !canPresent}
+        onClick={onToggleFreeze}
+      >
         {frozen ? 'Unfreeze' : 'Freeze'}
+        <kbd aria-hidden="true" className="font-sans text-caption text-muted-foreground">F</kbd>
       </Button>
-      <Button type="button" variant="outline" size="sm" disabled={ended || !canPresent} onClick={onEndSession}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="max-[559px]:hidden"
+        disabled={ended || !canPresent}
+        onClick={onEndSession}
+      >
         End session
       </Button>
       <DropdownMenu>
@@ -170,6 +193,12 @@ export function HostHeader({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>{showCode ? `Session ${code}` : sessionTitle || 'Session'}</DropdownMenuLabel>
+          {showCode ? (
+            <DropdownMenuItem onSelect={onCopyJoin}>
+              <Copy aria-hidden="true" />
+              Copy join link
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem asChild>
             <a href={joinUrl} target="_blank" rel="noreferrer">
               <ExternalLink aria-hidden="true" />
@@ -248,6 +277,15 @@ export function HostHeader({
           <DropdownMenuItem disabled={ended || !canPresent} onSelect={onToggleFreeze}>
             <Snowflake aria-hidden="true" />
             {frozen ? 'Unfreeze' : 'Freeze'}
+            <kbd aria-hidden="true" className="ml-auto font-sans text-caption text-muted-foreground">F</kbd>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="min-[560px]:hidden"
+            disabled={ended || !canPresent}
+            onSelect={onEndSession}
+          >
+            <CircleStop aria-hidden="true" />
+            End session
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {workspacePages ? (
@@ -285,6 +323,12 @@ export function HostHeader({
               </DropdownMenuItem>
             </>
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="max-w-64 text-caption font-normal text-muted-foreground">
+            {onReturnToDeck
+              ? 'Keys: Space or → next · ← back · H hide results · F freeze · Esc deck'
+              : 'Keys: Space next step · ← → slides · H hide results · F freeze'}
+          </DropdownMenuLabel>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
