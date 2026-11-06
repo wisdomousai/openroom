@@ -843,6 +843,15 @@
   line-height: 1.55;
 }
 
+/* A list on split starts at the top of its column, and so does the heading
+   beside it: revealing the next item never moves the items already shown. */
+.slide-surface .outline-step--layout-split > .outline-step__region:has(> :is(.outline-step__cards, .outline-step__sequence, .outline-step__bullets)),
+.slide-surface
+  .outline-step--layout-split:not(.outline-step--has-picture):has(> .outline-step__region--support > :is(.outline-step__cards, .outline-step__sequence, .outline-step__bullets))
+  > .outline-step__region--lede {
+  justify-content: flex-start;
+}
+
 /* A picture in the supporting column fills that side edge to edge. */
 .slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support,
 .slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support {
@@ -859,6 +868,10 @@
 .slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support > video,
 .slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support > .outline-step__media-placeholder {
   flex: 1 1 auto;
+  /* The box is the column, whatever the picture's own shape: a tall picture
+     is cropped to the column rather than drawn narrower than it. */
+  width: 100%;
+  min-height: 0;
   height: 100%;
   border: 0;
   object-fit: cover;
@@ -905,11 +918,14 @@
 .slide-surface .outline-step--layout-grid .outline-step__cards,
 .slide-surface .outline-step--layout-grid .outline-step__sequence,
 .slide-surface .outline-step--layout-grid .outline-step__bullets {
+  --grid-gap: 1.1cqw;
   flex: 1 1 auto;
   min-height: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
-  gap: 1.1cqw;
+  /* Every row is its final height from the start: `--grid-rows` comes from
+     the authored count, so revealing a cell never resizes the cells shown. */
+  grid-auto-rows: calc((100% - (var(--grid-rows, 1) - 1) * var(--grid-gap)) / var(--grid-rows, 1));
+  gap: var(--grid-gap);
 }
 
 .slide-surface .outline-step--layout-grid .outline-step__cards article,

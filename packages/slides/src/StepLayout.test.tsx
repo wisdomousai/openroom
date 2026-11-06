@@ -324,6 +324,40 @@ describe('a picture placed beside the words on a stacked layout', () => {
   });
 });
 
+describe('a picture on a split slide', () => {
+  const picture = { type: 'image' as const, url: 'https://example.test/p.jpg', alt: 'A picture', place: 'left' as const, size: 30 };
+  /** The markup of each region, split at the supporting region's opening tag. */
+  const regions = (html: string): { lede: string; support: string } => {
+    const [lede = '', support = ''] = html.split('outline-step__region--support');
+    return { lede, support };
+  };
+
+  it('sits in the supporting region for every kind, so place and size are the picture\'s', () => {
+    for (const kind of KINDS) {
+      if (!LAYOUTS_FOR_KIND[kind].includes('split') || kind === 'interaction') continue;
+      const html = renderToStaticMarkup(<StepLayout step={{ ...STEPS[kind], layout: 'split', media: picture } as SlideStep} />);
+      const { lede, support } = regions(html);
+      expect([kind, support.includes('data-part="image"'), lede.includes('data-part="image"')]).toEqual([kind, true, false]);
+      expect([kind, html.includes('data-picture-place="left"'), html.includes('--picture-size:30%')]).toEqual([kind, true, true]);
+    }
+  });
+
+  it('moves a list under its heading when the picture takes the side', () => {
+    for (const kind of ['cards', 'steps', 'debrief'] as const) {
+      const html = renderToStaticMarkup(<StepLayout step={{ ...STEPS[kind], layout: 'split', media: picture } as SlideStep} />);
+      const { lede, support } = regions(html);
+      expect([kind, lede.includes('data-part="header"'), lede.includes('data-part="cell-0"'), support.includes('data-part="cell-0"')]).toEqual([
+        kind,
+        true,
+        true,
+        false,
+      ]);
+      // Without a picture the list keeps the side to itself.
+      expect([kind, regions(render(kind, 'split')).support.includes('data-part="cell-0"')]).toEqual([kind, true]);
+    }
+  });
+});
+
 describe('sizes that come from the authored count', () => {
   it('keeps the answer row size while a reveal hides answers', () => {
     const options = Array.from({ length: 7 }, (_, index) => ({ id: `o${String(index)}`, label: `Answer ${String(index)}` }));
@@ -343,9 +377,11 @@ describe('sizes that come from the authored count', () => {
 
   it('keeps the grid rows while a reveal hides cells', () => {
     const html = renderToStaticMarkup(<StepLayout step={STEPS.steps} hiddenParts={new Set(['cell-2', 'cell-3'])} />);
-    expect(html).toContain('class="outline-step__sequence" data-item-count="4"');
+    expect(html).toContain('class="outline-step__sequence" data-item-count="4" style="--grid-rows:2"');
+    const cards = renderToStaticMarkup(<StepLayout step={STEPS.cards} hiddenParts={new Set(['cell-1', 'cell-2', 'cell-3'])} />);
+    expect(cards).toContain('style="--grid-rows:2"');
     const debrief = renderToStaticMarkup(<StepLayout step={STEPS.debrief} hiddenParts={new Set(['cell-1'])} />);
-    expect(debrief).toContain('outline-step__bullets--questions" data-item-count="2"');
+    expect(debrief).toContain('outline-step__bullets--questions" data-item-count="2" style="--grid-rows:1"');
   });
 });
 
