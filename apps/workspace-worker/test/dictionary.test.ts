@@ -217,6 +217,14 @@ describe('resolveEntry', () => {
     expect(seen).toEqual([wordPath('dictionary/German', word)]);
   });
 
+  it('asks no second spelling when upstream fails rather than misses', async () => {
+    const word = unique('Essen');
+    const { fetch: impl, seen } = upstream({ [wordPath('dictionary/German', word)]: 503 });
+    const result = await resolveEntry({ word, lang: 'de' }, impl);
+    expect(result.entry).toBeNull();
+    expect(seen).toEqual([wordPath('dictionary/German', word)]);
+  });
+
   it('reports an unmapped taught language instead of guessing a URL', async () => {
     const { fetch: impl, seen } = upstream({});
     const result = await resolveEntry({ word: unique('szo'), lang: 'hu' }, impl);

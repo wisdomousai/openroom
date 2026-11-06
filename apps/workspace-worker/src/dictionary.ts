@@ -109,20 +109,29 @@ function parseJsonl(text: string): UpstreamRow[] {
   return rows;
 }
 
-async function fetchRows(
+/**
+ * `missing` means upstream has no file under this spelling (a 404). A timeout,
+ * a 5xx or a network error is not a miss: it says nothing about the word.
+ */
+async function fetchRowsOrMissing(
   url: string,
   fetchImpl: typeof fetch,
-): Promise<UpstreamRow[] | null> {
+): Promise<{ rows: UpstreamRow[] | null; missing: boolean }> {
   try {
     const response = await fetchImpl(url, {
       headers: { accept: 'application/json', 'user-agent': USER_AGENT },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!response.ok) return null;
-    return parseJsonl(await response.text());
+    if (!response.ok) return { rows: null, missing: response.status === 404 };
+    const rows = parseJsonl(await response.text());
+    return { rows, missing: rows.length === 0 };
   } catch {
-    return null;
+    return { rows: null, missing: false };
   }
+}
+
+async function fetchRows(url: string, fetchImpl: typeof fetch): Promise<UpstreamRow[] | null> {
+  return (await fetchRowsOrMissing(url, fetchImpl)).rows;
 }
 
 function textList(value: unknown, max: number): string[] {
@@ -282,14 +291,16 @@ export async function resolveEntry(
 
   let found = word;
   let url = wordPath(`dictionary/${root}`, word);
-  let rows = await fetchRows(url, fetchImpl);
+  const verbatim = await fetchRowsOrMissing(url, fetchImpl);
+  let rows = verbatim.rows;
   /*
    * Upstream paths are case-sensitive, and a sentence-initial `Je` is filed as
    * `je`. Verbatim goes first because German nouns are filed capitalised
-   * (`Haus`); the lower-case form is asked once, only after that misses.
+   * (`Haus`); the lower-case form is asked once, only after a real miss — a
+   * slow or failing upstream gets no second request.
    */
   const lower = word.toLocaleLowerCase(lang);
-  if ((rows === null || rows.length === 0) && lower !== word) {
+  if (verbatim.missing && lower !== word) {
     found = lower;
     url = wordPath(`dictionary/${root}`, lower);
     rows = await fetchRows(url, fetchImpl);
@@ -319,7 +330,7 @@ export async function resolveEntry(
   let unsupported: LookupResult['unsupported'];
   if (meaningLang !== undefined) {
     if (nativeNeedsEdition(lang, meaningLang)) {
-      const result = await fetchMeaning(entry?.lemma ?? word, lang, meaningLang, fetchImpl);
+      const result = await fetchMeaning(entry?.lemma ?? found, lang, meaningLang, fetchImpl);
       meaning = result.meaning;
       if (result.unsupported) unsupported = 'meaning-language';
     } else {
