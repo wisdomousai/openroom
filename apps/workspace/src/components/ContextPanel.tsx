@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 import type { LinkTarget } from '../destinations';
-import type { SpaceSettings } from '@openroom/schema';
+import type { ContextKind, SpaceSettings } from '@openroom/schema';
 
 import { contextChips, contextIsEmpty, fieldsFromContext } from '../lib/context-fields';
 import { givenName } from '../lib/initials';
@@ -9,6 +10,8 @@ import { cn } from '@openroom/ui/utils';
 
 interface Props {
   displayName: string;
+  /** A person is called by their given name; a group or class by its whole name. */
+  kind: ContextKind;
   context: Record<string, unknown>;
   nextNote?: string;
   onEdit?: () => void;
@@ -24,6 +27,7 @@ interface Props {
  */
 export function ContextPanel({
   displayName,
+  kind,
   context,
   nextNote,
   onEdit,
@@ -33,16 +37,11 @@ export function ContextPanel({
   const fields = fieldsFromContext(context);
   const chips = contextChips(fields);
   const empty = contextIsEmpty(fields);
-  const who = givenName(displayName);
+  const who = kind === 'person' ? givenName(displayName) : displayName;
 
   return (
     <section className="overflow-hidden rounded-[var(--radius-xl)] border border-border bg-card">
-      {nextNote !== undefined && nextNote.trim() !== '' ? (
-        <div className="border-b border-hairline px-[18px] py-3">
-          <p className="text-caption text-muted-foreground">Next session</p>
-          <p className="text-secondary leading-relaxed text-pretty">{nextNote.trim()}</p>
-        </div>
-      ) : null}
+      {nextNote !== undefined && nextNote.trim() !== '' ? <NextNote note={nextNote.trim()} /> : null}
       <div className="flex items-center gap-2.5 px-[18px] pb-2.5 pt-3.5">
         <h2 className="text-section">{who}</h2>
         <span className="flex-1" />
@@ -69,7 +68,7 @@ export function ContextPanel({
                 <span
                   key={chip.label}
                   className={cn(
-                    'inline-flex h-[26px] items-center rounded-full px-2.5 text-rail font-normal',
+                    'inline-flex min-h-[26px] max-w-full items-center rounded-full px-2.5 py-0.5 text-rail font-normal',
                     chip.emphasis
                       ? 'bg-accent font-semibold text-accent-foreground'
                       : 'bg-chrome text-[color:color-mix(in_oklab,var(--foreground)_72%,var(--muted-foreground))]',
@@ -113,5 +112,50 @@ export function ContextPanel({
         ) : null}
       </div>
     </section>
+  );
+}
+
+/**
+ * The note from the last Notes, kept to two lines so a long one does not push
+ * the decks off the screen. The whole note is one press away.
+ */
+function NextNote({ note }: { note: string }) {
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+  const text = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const element = text.current;
+    if (!element || open) return;
+    const measure = () => setLong(element.scrollHeight > element.clientHeight + 1);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [note, open]);
+
+  return (
+    <div className="border-b border-hairline px-[18px] py-3">
+      <p className="text-caption text-muted-foreground">Next session</p>
+      <p
+        ref={text}
+        id="next-session-note"
+        className={cn('whitespace-pre-line text-secondary leading-relaxed text-pretty', !open && 'line-clamp-2')}
+      >
+        {note}
+      </p>
+      {long || open ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls="next-session-note"
+          className="mt-1 text-caption font-semibold text-primary hover:underline"
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? 'Show less' : 'Show all'}
+        </button>
+      ) : null}
+    </div>
   );
 }
