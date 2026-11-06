@@ -27,7 +27,7 @@ test('tutor publishes shared and individual tasks without exposing other learner
   const notesUrl = `/host/#/sessions/${session.id}/record`;
   await page.goto(notesUrl);
   await page.getByLabel('Tutor notes', { exact: true }).fill('PRIVATE TUTOR OBSERVATION');
-  await page.getByLabel('Next step', { exact: true }).fill('PRIVATE NEXT LESSON');
+  await page.getByLabel('Next session', { exact: true }).fill('PRIVATE NEXT LESSON');
   await page.getByLabel('Outcomes (one per line)', { exact: true }).fill('Nous avons préparé un voyage.');
   for (const [title, learner] of [['Écrire', 'Léa'], ['Parler', 'Noor'], ['Pratiquer', 'Léa']]) {
     const task = page.getByRole('group', { name: `${title} assignment`, exact: true });
