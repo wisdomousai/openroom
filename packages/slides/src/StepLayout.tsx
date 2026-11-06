@@ -143,6 +143,17 @@ function region(name: 'lede' | 'support', when: boolean, children: ReactNode): R
   if (!when) return children;
   return <div className={`outline-step__region outline-step__region--${name}`}>{children}</div>;
 }
+/**
+ * Row size of a question's answers, from the authored count: seven or more
+ * answers take compact rows, ten or more dense ones. Hidden answers still
+ * count, so a reveal does not resize the rows already shown.
+ */
+function optionTier(count: number): 'compact' | 'dense' | undefined {
+  if (count >= 10) return 'dense';
+  if (count >= 7) return 'compact';
+  return undefined;
+}
+
 export function StepLayout(props: StepLayoutProps): ReactNode {
   const content = StepContent(props);
   return content === null ? null : <SlideSurface design={props.design} fit={props.fit} overlay={props.overlay}>{content}</SlideSurface>;
@@ -677,7 +688,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
           {region(
             'support',
             split,
-            <ul className="outline-step__options">
+            <ul className="outline-step__options" data-option-tier={optionTier(options?.length ?? 0)}>
               {(options ?? []).map((option, index) =>
                 show(`option-${String(index)}`) ? (
                   <li key={option.id} {...part.attrs(`option-${String(index)}`)}>

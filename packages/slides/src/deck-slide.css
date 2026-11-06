@@ -1047,16 +1047,29 @@
 }
 
 .slide-surface .outline-step--layout-poll .outline-step__options {
+  --poll-option-size: 2.5cqw;
   gap: 0.8cqw;
   counter-reset: slide-option;
+}
+
+/* More answers take smaller rows. The tier comes from the authored count, so
+   revealing answers one by one never resizes the ones already shown. */
+.slide-surface .outline-step--layout-poll .outline-step__options[data-option-tier='compact'] {
+  --poll-option-size: 2.1cqw;
+  gap: 0.6cqw;
+}
+
+.slide-surface .outline-step--layout-poll .outline-step__options[data-option-tier='dense'] {
+  --poll-option-size: 1.8cqw;
+  gap: 0.45cqw;
 }
 
 .slide-surface .outline-step--layout-poll .outline-step__options li {
   display: flex;
   align-items: center;
-  gap: 1.1cqw;
-  padding: 0.95cqw 1.25cqw;
-  font-size: 2.5cqw;
+  gap: calc(var(--poll-option-size) * 0.44);
+  padding: calc(var(--poll-option-size) * 0.38) calc(var(--poll-option-size) * 0.5);
+  font-size: var(--poll-option-size);
   font-weight: 600;
   counter-increment: slide-option;
 }
@@ -1068,14 +1081,32 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 2.8cqw;
-  height: 2.8cqw;
+  width: calc(var(--poll-option-size) * 1.12);
+  height: calc(var(--poll-option-size) * 1.12);
   border: 1px solid var(--primary);
   border-radius: var(--radius);
   color: var(--primary);
-  font-size: 1.8cqw;
+  font-size: calc(var(--poll-option-size) * 0.72);
   line-height: 1;
   font-weight: 600;
+}
+
+/* A fill-the-gaps word bank: the words as chips that wrap, as on the wall. */
+.slide-surface .outline-step__word-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6cqw;
+  padding: 0;
+  list-style: none;
+}
+
+.slide-surface .outline-step__word-bank li {
+  padding: 0.25em 0.8em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 2cqw;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 /* --- activity: what they do, beside what has to be on the table ------- */
