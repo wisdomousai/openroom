@@ -139,6 +139,7 @@ export function DesignState(props: PropertiesPanelProps & { step: OutlineStep })
           onEditIframe={props.onEditIframe}
           onEditPdf={props.onEditPdf}
           onOpenPicture={(elementId) => props.onOpenPicture({ kind: 'element', elementId })}
+          onElementPicture={props.onElementPicture}
         />
       ) : null}
 

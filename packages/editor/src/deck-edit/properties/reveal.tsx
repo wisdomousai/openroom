@@ -55,8 +55,14 @@ export function RevealControls({
               <div className="flex items-center gap-2">
                 <span className="text-caption text-muted-foreground tabular-nums">Step {index + 1}</span>
                 {index + 1 < groups.length ? (
-                  <Button type="button" size="sm" variant="subtle" onClick={() => onReveal(mergeNext(groups, index))}>
-                    merge next
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="subtle"
+                    aria-label={`Merge step ${String(index + 1)} with step ${String(index + 2)}`}
+                    onClick={() => onReveal(mergeNext(groups, index))}
+                  >
+                    Merge with next
                   </Button>
                 ) : null}
               </div>
@@ -70,15 +76,36 @@ export function RevealControls({
                     {partLabel(step, key)}
                   </button>
                   {group.length > 1 ? (
-                    <Button type="button" size="sm" variant="subtle" onClick={() => onReveal(splitPart(groups, key))}>
-                      ⇥
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="subtle"
+                      aria-label={`Show ${partLabel(step, key)} as its own step`}
+                      title="Show as its own step"
+                      onClick={() => onReveal(splitPart(groups, key))}
+                    >
+                      <span aria-hidden="true">⇥</span>
                     </Button>
                   ) : null}
-                  <Button type="button" size="sm" variant="subtle" onClick={() => onReveal(movePart(groups, key, -1))}>
-                    ▲
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="subtle"
+                    aria-label={`Move ${partLabel(step, key)} earlier`}
+                    title="Move earlier"
+                    onClick={() => onReveal(movePart(groups, key, -1))}
+                  >
+                    <span aria-hidden="true">▲</span>
                   </Button>
-                  <Button type="button" size="sm" variant="subtle" onClick={() => onReveal(movePart(groups, key, 1))}>
-                    ▼
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="subtle"
+                    aria-label={`Move ${partLabel(step, key)} later`}
+                    title="Move later"
+                    onClick={() => onReveal(movePart(groups, key, 1))}
+                  >
+                    <span aria-hidden="true">▼</span>
                   </Button>
                 </div>
               ))}

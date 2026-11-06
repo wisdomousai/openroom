@@ -397,6 +397,105 @@ export function duplicateStep(outline: Outline, stepId: string): { outline: Outl
   return { outline: { ...outline, interactions, steps: flatten(blocks) }, stepId: id };
 }
 
+/** Kinds whose list can be split across two slides at an item. */
+export const SPLITTABLE_KINDS = ['steps', 'cards', 'activity', 'debrief'] as const;
+
+/** The item part `cell-N` as its index, or null for any other part. */
+function cellIndex(key: string): number | null {
+  if (!key.startsWith('cell-')) return null;
+  const index = Number(key.slice('cell-'.length));
+  return Number.isInteger(index) && index >= 0 ? index : null;
+}
+
+/** Keep the item parts on one side of `index`, renumbered from 0 when they move. */
+function revealSide(reveal: OutlineStep['reveal'], index: number, side: 'before' | 'after', drop: Set<string>) {
+  if (reveal === undefined || reveal === 'together') return reveal;
+  const groups = reveal
+    .map((group) =>
+      group.flatMap((key) => {
+        if (drop.has(key)) return [];
+        const cell = cellIndex(key);
+        if (cell === null) return [key];
+        if (side === 'before') return cell < index ? [key] : [];
+        return cell >= index ? [`cell-${String(cell - index)}`] : [];
+      }),
+    )
+    .filter((group) => group.length > 0);
+  return groups.length <= 1 ? 'together' : groups;
+}
+
+/**
+ * Split a list slide in two at item `index`: items before it stay, the item
+ * and everything after it move to a new slide right after this one, under
+ * the same heading. Tutor notes, materials, timing and breakouts on the items
+ * that stay remain on the first slide; a breakout on a moved item follows it.
+ *
+ * `stepId` is the new slide, or '' when the step cannot be split there (not a
+ * list kind, or `index` leaves one side empty).
+ */
+export function splitStepAt(
+  outline: Outline,
+  stepId: string,
+  index: number,
+): { outline: Outline; stepId: string } {
+  const none = { outline, stepId: '' };
+  const step = outline.steps.find((item) => item.id === stepId);
+  if (step === undefined || step.breakoutOf !== undefined) return none;
+  const length =
+    step.kind === 'steps' || step.kind === 'cards'
+      ? step.items.length
+      : step.kind === 'activity'
+        ? step.instructions.length
+        : step.kind === 'debrief'
+          ? step.prompts.length
+          : 0;
+  if (!Number.isInteger(index) || index < 1 || index >= length) return none;
+
+  const duplicated = duplicateStep(outline, stepId);
+  const copyId = duplicated.stepId;
+  const keep = <T,>(rows: T[] | undefined, side: 'before' | 'after') =>
+    rows === undefined ? undefined : side === 'before' ? rows.slice(0, index) : rows.slice(index);
+  const cut = (source: OutlineStep, side: 'before' | 'after'): OutlineStep => {
+    const next = structuredClone(source);
+    const drop = new Set<string>();
+    if (next.kind === 'steps') {
+      next.items = keep(next.items, side)!;
+      if (next.itemsSpans !== undefined) next.itemsSpans = keep(next.itemsSpans, side)!;
+    } else if (next.kind === 'cards') {
+      next.items = keep(next.items, side)!;
+    } else if (next.kind === 'activity') {
+      next.instructions = keep(next.instructions, side)!;
+      if (next.instructionsSpans !== undefined) next.instructionsSpans = keep(next.instructionsSpans, side)!;
+      if (side === 'after') {
+        delete next.materials;
+        delete next.materialsSpans;
+        delete next.durationSec;
+        drop.add('materials');
+      }
+    } else if (next.kind === 'debrief') {
+      next.prompts = keep(next.prompts, side)!;
+      if (next.promptsSpans !== undefined) next.promptsSpans = keep(next.promptsSpans, side)!;
+    }
+    if (side === 'after') delete next.tutorNotes;
+    const reveal = revealSide(next.reveal, index, side, drop);
+    if (reveal === undefined) delete next.reveal;
+    else next.reveal = reveal;
+    return next;
+  };
+
+  const steps = duplicated.outline.steps.map((item) => {
+    if (item.id === stepId) return cut(item, 'before');
+    if (item.id === copyId) return cut(item, 'after');
+    // A breakout on a moved item hangs off the new slide, renumbered.
+    const at = item.breakoutOf?.stepId === stepId ? cellIndex(item.breakoutOf.afterKey) : null;
+    if (at === null || at < index) return item;
+    return { ...item, breakoutOf: { ...item.breakoutOf!, stepId: copyId, afterKey: `cell-${String(at - index)}` } };
+  });
+  const next = { ...duplicated.outline, steps: flatten(orderedBlocks({ ...duplicated.outline, steps })) };
+  const valid = keepValid(outline, next);
+  return valid === outline ? none : { outline: valid, stepId: copyId };
+}
+
 /** Remove a block, its breakouts, and any interaction only it used. */
 export function removeStep(outline: Outline, stepId: string): Outline {
   const step = outline.steps.find((item) => item.id === stepId);

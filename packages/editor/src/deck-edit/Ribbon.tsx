@@ -268,7 +268,7 @@ export function Ribbon(props: RibbonProps) {
       className="flex shrink-0 flex-col"
     >
       <div className="flex h-8 items-end gap-0.5 bg-chrome px-3">
-        <TabsList variant="ribbon">
+        <TabsList variant="ribbon" aria-label="Ribbon">
           <TabsTrigger value="file">File</TabsTrigger>
           <TabsTrigger value="home">Home</TabsTrigger>
           <TabsTrigger value="slide">Slide</TabsTrigger>

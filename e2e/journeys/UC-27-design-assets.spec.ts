@@ -22,7 +22,7 @@ test('uploaded branding survives reload, portable download and live delivery', a
   expect(created.status()).toBe(201);
   const { deck } = await created.json();
   await page.goto(`/host/#/decks/${deck.id}/edit`);
-  await page.getByRole('button', { name: 'Theme', exact: true }).click();
+  await page.getByRole('tab', { name: 'Theme', exact: true }).click();
   await page.getByRole('button', { name: 'business', exact: true }).click();
   await page.getByLabel('Logo description', { exact: true }).fill('OpenRoom School');
   await page.getByLabel('Logo image file', { exact: true }).setInputFiles({ name: 'school.png', mimeType: 'image/png', buffer: logo });

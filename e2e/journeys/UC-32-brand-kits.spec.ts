@@ -56,7 +56,7 @@ test('creates a branded master, applies a kit to a deck and keeps that copy afte
     expect(created.status()).toBe(201);
     const { deck } = await created.json();
     await page.goto(`/host/#/decks/${deck.id}/edit`);
-    await page.getByRole('button', { name: 'Theme', exact: true }).click();
+    await page.getByRole('tab', { name: 'Theme', exact: true }).click();
     await page.getByRole('combobox', { name: 'Choose brand kit', exact: true }).click();
     await page.getByRole('option', { name: 'Northstar workshops', exact: true }).click();
     await page.getByRole('button', { name: 'Apply to all slides', exact: true }).click();

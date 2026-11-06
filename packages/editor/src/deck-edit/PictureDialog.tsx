@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@openroom/ui/components/dialog';
 import { Input } from '@openroom/ui/components/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
 import { cn } from '@openroom/ui/utils';
 import { isServiceError, useEditorServices, type StockHit } from '../services';
 
@@ -32,6 +33,9 @@ function retriable(error: unknown): boolean {
 }
 
 /**
+ * A still picture starts with empty alt text: a file name or a search tag
+ * does not say what the picture shows. The Picture pane asks for it.
+ *
  * Choose a picture — a dialog, because a search box and a photo grid do not
  * fit the task pane (Pane-or-Dialog Rule).
  */
@@ -47,17 +51,20 @@ export function PictureDialog({
   spaceId: string | null;
   selectedUrl?: string;
   onOpenChange: (open: boolean) => void;
-  onInsert: (media: OutlineMedia, credit: boolean) => void;
+  /** False when the picture had nowhere to go; the dialog then stays open and says so. */
+  onInsert: (media: OutlineMedia, credit: boolean) => boolean;
   onEmbedded?: (resourceId: string, resource: OpenRoomFileResourceV1) => void;
 }) {
   const { desktop: bridge, assets } = useEditorServices();
   const [tab, setTab] = useState<PictureTab>(bridge === null ? 'stock' : 'computer');
   const [pending, setPending] = useState<OutlineMedia | null>(null);
   const [credit, setCredit] = useState(true);
+  const [refused, setRefused] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setPending(null);
+      setRefused(false);
       setTab(bridge === null ? 'stock' : 'computer');
     }
   }, [bridge, open]);
@@ -74,101 +81,114 @@ export function PictureDialog({
             Search, upload, or paste a link. Insert puts it on this slide.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex gap-0.5 px-6 pb-3.5">
-          {(
-            [
-              ...(bridge === null ? [] : [{ id: 'computer', label: 'This computer' }] as const),
-              { id: 'stock', label: 'Stock photos' },
-              { id: 'space', label: 'This space' },
-              { id: 'upload', label: 'Upload' },
-              { id: 'link', label: 'From a link' },
-            ] as const
-          ).map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => setTab(entry.id)}
-              className={cn(
-                'inline-flex h-8 items-center rounded-md px-3.5 text-secondary',
-                tab === entry.id
-                  ? 'bg-accent font-semibold text-accent-foreground'
-                  : 'hover:bg-chrome',
-              )}
+        <Tabs
+          value={tab}
+          onValueChange={(next) => setTab(next as PictureTab)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="px-5 pb-2.5">
+            <TabsList
+              aria-label="Where the picture comes from"
+              className="flex h-auto w-full justify-start gap-0.5 overflow-x-auto bg-transparent p-1"
             >
-              {entry.label}
-            </button>
-          ))}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">
-          {tab === 'computer' && bridge !== null ? (
-            <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-border p-6 text-center">
-              <div className="flex flex-col items-center gap-3">
-                <p className="text-secondary">The picture is copied into this deck and travels with the .openroom file.</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    void bridge.pickImage().then((embedded) => {
-                      if (embedded === null) return;
-                      onEmbedded?.(embedded.resourceId, embedded.resource);
-                      setPending({
-                        type: 'image',
-                        url: `https://local.openroom.invalid/${encodeURIComponent(embedded.resourceId)}`,
-                        alt: embedded.resource.name,
-                      });
-                      setCredit(false);
-                    });
-                  }}
+              {(
+                [
+                  ...(bridge === null ? [] : [{ id: 'computer', label: 'This computer' }] as const),
+                  { id: 'stock', label: 'Stock photos' },
+                  { id: 'space', label: 'This space' },
+                  { id: 'upload', label: 'Upload' },
+                  { id: 'link', label: 'From a link' },
+                ] as const
+              ).map((entry) => (
+                <TabsTrigger
+                  key={entry.id}
+                  value={entry.id}
+                  className="h-8 shrink-0 px-3.5 hover:bg-chrome data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
                 >
-                  Choose picture…
-                </Button>
+                  {entry.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+          <TabsContent value={tab} className="mt-0 min-h-0 flex-1 overflow-y-auto px-6 pb-5">
+            {tab === 'computer' && bridge !== null ? (
+              <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-border p-6 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-secondary">The picture is copied into this deck and travels with the .openroom file.</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      void bridge.pickImage().then((embedded) => {
+                        if (embedded === null) return;
+                        onEmbedded?.(embedded.resourceId, embedded.resource);
+                        setPending({
+                          type: 'image',
+                          url: `https://local.openroom.invalid/${encodeURIComponent(embedded.resourceId)}`,
+                          alt: '',
+                        });
+                        setCredit(false);
+                      });
+                    }}
+                  >
+                    Choose picture…
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : tab === 'stock' ? (
-            <StockGrid
-              selectedUrl={pending?.url ?? selectedUrl}
-              onPick={(hit) => {
-                setPending({
-                  type: 'image',
-                  url: hit.imageUrl,
-                  alt: hit.tags.split(',')[0]?.trim() || 'Photo from Pixabay',
-                  caption: `Photo by ${hit.user} on Pixabay`,
-                });
-              }}
-            />
-          ) : tab === 'space' ? (
-            <SpaceGrid
-              spaceId={spaceId}
-              selectedUrl={pending?.url ?? selectedUrl}
-              onPick={(asset) => {
-                if (asset.kind === 'pdf') return;
-                setPending({
-                  type: asset.kind,
-                  ...(asset.kind === 'audio' ? { listening: { mode: 'room' as const } } : {}),
-                  assetId: asset.id,
-                  url: assets.url(asset.id),
-                  alt: asset.alt ?? asset.name,
-                });
-              }}
-            />
-          ) : tab === 'upload' ? (
-            <UploadPane
-              spaceId={spaceId}
-              onPick={(media) => setPending(media)}
-            />
-          ) : (
-            <LinkPane onPick={(media) => setPending(media)} />
-          )}
-          {tab === 'stock' || tab === 'link' ? (
-            <p className="pt-3 text-caption text-muted-foreground" data-picture-online-note>
-              {ONLINE_PICTURE_NOTE}
-            </p>
-          ) : null}
-        </div>
-        <DialogFooter>
+            ) : tab === 'stock' ? (
+              <StockGrid
+                selectedUrl={pending?.url ?? selectedUrl}
+                onPick={(hit) => {
+                  setPending({
+                    type: 'image',
+                    url: hit.imageUrl,
+                    alt: '',
+                    caption: `Photo by ${hit.user} on Pixabay`,
+                  });
+                }}
+              />
+            ) : tab === 'space' ? (
+              <SpaceGrid
+                spaceId={spaceId}
+                selectedUrl={pending?.url ?? selectedUrl}
+                onPick={(asset) => {
+                  if (asset.kind === 'pdf') return;
+                  setPending({
+                    type: asset.kind,
+                    ...(asset.kind === 'audio' ? { listening: { mode: 'room' as const } } : {}),
+                    assetId: asset.id,
+                    url: assets.url(asset.id),
+                    // A recording or a video is named by its label; a still picture's alt starts empty.
+                    alt: asset.alt ?? (asset.kind === 'image' ? '' : asset.name),
+                  });
+                }}
+              />
+            ) : tab === 'upload' ? (
+              <UploadPane
+                spaceId={spaceId}
+                onPick={(media) => setPending(media)}
+              />
+            ) : (
+              <LinkPane onPick={(media) => setPending(media)} />
+            )}
+            {tab === 'stock' || tab === 'link' ? (
+              <p className="pt-3 text-caption text-muted-foreground" data-picture-online-note>
+                {ONLINE_PICTURE_NOTE}
+              </p>
+            ) : null}
+          </TabsContent>
+        </Tabs>
+        {refused ? (
+          <div className="px-6 pb-3">
+            <Problem text={NO_PLACE_FOR_PICTURE} />
+          </div>
+        ) : null}
+        <DialogFooter flush>
           <label className="mr-auto flex min-w-0 items-center gap-2 text-secondary">
             <Checkbox checked={credit} onCheckedChange={(next) => setCredit(next === true)} />
-            Credit the photographer on the slide
+            <span className="truncate" title="Credit the photographer on the slide">
+              Credit the photographer on the slide
+            </span>
           </label>
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             Cancel
@@ -178,7 +198,10 @@ export function PictureDialog({
             disabled={pending === null}
             onClick={() => {
               if (pending === null) return;
-              onInsert(pending, credit);
+              if (!onInsert(pending, credit)) {
+                setRefused(true);
+                return;
+              }
               onOpenChange(false);
             }}
           >
@@ -327,6 +350,9 @@ function Problem({ text, onRetry }: { text: string; onRetry?: () => void }) {
   );
 }
 
+const NO_PLACE_FOR_PICTURE =
+  'This slide has no place for the picture. Cancel, select a picture frame or a picture slide, and try again.';
+
 const NOT_A_PICTURE = 'This file is not a picture that can be shown. Choose a PNG, JPEG, GIF, WebP or AVIF file.';
 
 /**
@@ -370,7 +396,7 @@ function UploadPane({
         return;
       }
       setUploaded({
-        media: { type: 'image', assetId: asset.id, url: assets.url(asset.id), alt: asset.alt ?? asset.name },
+        media: { type: 'image', assetId: asset.id, url: assets.url(asset.id), alt: asset.alt ?? '' },
         name: file.name,
         shown: false,
       });

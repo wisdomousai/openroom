@@ -65,7 +65,6 @@ export function PictureSection({
   const layout = step.layout ?? LAYOUTS_FOR_KIND[step.kind][0] ?? 'text';
   const place = resolveMediaPlace(media, layout);
   const size = resolveMediaSize(media, place);
-  const focal = media.focal ?? 'center';
   return (
     <Section title="Picture" target="image">
       <div className="flex items-center gap-2.5">
@@ -153,6 +152,45 @@ export function PictureSection({
           </div>
         </div>
       )}
+      <PictureDetails
+        detailsKey={step.id}
+        alt={media.alt}
+        onAlt={(next) => onPartText('image', next)}
+        focal={media.focal}
+        onFocal={onMediaFocal}
+        caption={onMediaChange ? (media.caption ?? '') : undefined}
+        onCaption={onMediaChange ? (caption) => onMediaChange({ ...media, caption: caption || undefined }) : undefined}
+      />
+    </Section>
+  );
+}
+
+/**
+ * Crop focus, alt text and caption of one picture. Shared by the wired
+ * Picture section and a picture object on a freeform slide, so both offer the
+ * same labelled fields. Caption is shown only where the slide draws one.
+ */
+export function PictureDetails({
+  detailsKey,
+  alt,
+  onAlt,
+  focal,
+  onFocal,
+  caption,
+  onCaption,
+}: {
+  /** Resets the drafts when the picture changes. */
+  detailsKey: string;
+  alt: string;
+  onAlt: (alt: string) => void;
+  focal: OutlineMediaFocal | undefined;
+  onFocal: (focal: OutlineMediaFocal | undefined) => void;
+  caption?: string;
+  onCaption?: (caption: string) => void;
+}) {
+  const current = focal ?? 'center';
+  return (
+    <>
       <div className="flex flex-col gap-1.5">
         <p className="text-caption text-muted-foreground">Crop</p>
         <div
@@ -161,7 +199,7 @@ export function PictureSection({
           aria-label="Crop focus"
         >
           {FOCAL_POINTS.map((point) => {
-            const active = point === focal;
+            const active = point === current;
             return (
               <button
                 key={point}
@@ -169,7 +207,7 @@ export function PictureSection({
                 title={point.replace('-', ' ')}
                 aria-label={point.replace('-', ' ')}
                 aria-pressed={active}
-                onClick={() => onMediaFocal(point === 'center' ? undefined : point)}
+                onClick={() => onFocal(point === 'center' ? undefined : point)}
                 className={cn(
                   'size-5 rounded-[3px]',
                   active ? 'bg-primary' : 'bg-chrome hover:bg-input',
@@ -179,18 +217,29 @@ export function PictureSection({
           })}
         </div>
       </div>
-      <CommitTextarea
-        key={`${step.id}-image-alt`}
-        ariaLabel="Alt text"
-        value={media.alt}
-        onCommit={(next) => onPartText('image', next)}
-      />
-      {onMediaChange ? <div data-editor-target="caption"><CommitTextarea
-        key={`${step.id}-caption`}
-        ariaLabel="Caption"
-        value={media.caption ?? ''}
-        onCommit={(caption) => onMediaChange({ ...media, caption: caption || undefined })}
-      /></div> : null}
-    </Section>
+      <div className="flex flex-col gap-1.5" data-picture-alt>
+        <p className="text-caption text-muted-foreground">Alt text</p>
+        <CommitTextarea
+          key={`${detailsKey}-alt`}
+          ariaLabel="Alt text"
+          value={alt}
+          onCommit={onAlt}
+        />
+        <p className="text-caption text-muted-foreground">
+          Say what the picture shows, for students who use a screen reader.
+        </p>
+      </div>
+      {onCaption === undefined ? null : (
+        <div className="flex flex-col gap-1.5" data-editor-target="caption">
+          <p className="text-caption text-muted-foreground">Caption</p>
+          <CommitTextarea
+            key={`${detailsKey}-caption`}
+            ariaLabel="Caption"
+            value={caption ?? ''}
+            onCommit={onCaption}
+          />
+        </div>
+      )}
+    </>
   );
 }

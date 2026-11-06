@@ -17,10 +17,17 @@
  *    so every offset is shifted by the leading whitespace the DOM still holds.
  */
 
+/**
+ * Editor chrome drawn inside a part carries `data-slide-decoration=""`. The
+ * slide root carries the same attribute with the master decoration as its
+ * value (`none`, `rule`, `corner`), so only the empty value marks chrome.
+ */
+export const EDITOR_CHROME = '[data-slide-decoration=""]';
+
 function textWalker(root: HTMLElement): TreeWalker {
   return document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode: (node) =>
-      (node.parentElement?.closest('[data-slide-decoration]') ?? null) === null
+      (node.parentElement?.closest(EDITOR_CHROME) ?? null) === null
         ? NodeFilter.FILTER_ACCEPT
         : NodeFilter.FILTER_REJECT,
   });

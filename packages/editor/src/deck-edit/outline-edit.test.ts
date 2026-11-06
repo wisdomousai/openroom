@@ -84,6 +84,7 @@ import {
   setPartText,
   setReveal,
   splitForPairWork,
+  splitStepAt,
   addHomeworkQuiz,
   addHomeworkReading,
   removeHomeworkTask,
@@ -393,6 +394,43 @@ describe('duplicate, remove and move', () => {
 
     const edited = setPartText(result.outline, result.stepId, 'option-0', 'Changed');
     expect(optionsFor(edited, stepOf(edited, 'check'))[0]?.label).toBe("J'ai raté le train.");
+  });
+
+  it('splits a list slide at an item: later items, their reveal and their breakout move to a new slide after it', () => {
+    const outline = base();
+    outline.steps[2] = {
+      ...(outline.steps[2] as Extract<OutlineStep, { kind: 'activity' }>),
+      instructions: ['Form groups of four', 'Plan for two minutes', 'Build', 'Measure'],
+      reveal: [['header'], ['cell-0', 'cell-1'], ['cell-2'], ['cell-3', 'materials']],
+      tutorNotes: 'Watch the clock.',
+    };
+    outline.steps.push({ id: 'why', kind: 'statement', body: 'Why measure?', breakoutOf: { stepId: 'tower', afterKey: 'cell-3' } });
+    const result = splitStepAt(outline, 'tower', 2);
+    expectValid(result.outline);
+    const first = stepOf(result.outline, 'tower');
+    const second = stepOf(result.outline, result.stepId);
+    expect(result.outline.steps.map((step) => step.id).slice(2, 4)).toEqual(['tower', result.stepId]);
+    expect(first).toMatchObject({
+      instructions: ['Form groups of four', 'Plan for two minutes'],
+      materials: ['Spaghetti', 'Tape'],
+      durationSec: 600,
+      tutorNotes: 'Watch the clock.',
+      reveal: [['header'], ['cell-0', 'cell-1'], ['materials']],
+    });
+    expect(second).toMatchObject({ title: 'Build the tallest tower', instructions: ['Build', 'Measure'] });
+    expect(second).not.toHaveProperty('materials');
+    expect(second).not.toHaveProperty('tutorNotes');
+    expect(second.reveal).toEqual([['header'], ['cell-0'], ['cell-1']]);
+    expect(stepOf(result.outline, 'why').breakoutOf).toEqual({ stepId: result.stepId, afterKey: 'cell-1' });
+    for (const step of [first, second]) {
+      expect((step.reveal as string[][]).flat().every((key) => partKeysForStep(step).includes(key))).toBe(true);
+    }
+  });
+
+  it('does not split a slide at its first item or past its end', () => {
+    expect(splitStepAt(base(), 'boxes', 0).stepId).toBe('');
+    expect(splitStepAt(base(), 'boxes', 2).stepId).toBe('');
+    expect(splitStepAt(base(), 'welcome', 1).stepId).toBe('');
   });
 
   it('splits a cards block into pair-work lanes', () => {

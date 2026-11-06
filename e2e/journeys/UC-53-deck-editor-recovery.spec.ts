@@ -60,7 +60,7 @@ test('History opens an older version and then the latest again, and asks before 
   await open(page, deck.id);
   const frame = page.locator('.slide-canvas__frame');
   await expect(frame).toContainText('Second version');
-  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await page.getByRole('tab', { name: 'History', exact: true }).click();
   await expect(versionRow(page, 2)).toContainText('latest · open');
   await expect(versionRow(page, 2).getByRole('button', { name: 'Restore' })).toHaveCount(0);
 
@@ -75,10 +75,10 @@ test('History opens an older version and then the latest again, and asks before 
   await expect(versionRow(page, 2)).toContainText('latest · open');
 
   // Unsaved work makes Restore ask first.
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await page.getByRole('tab', { name: 'Notes', exact: true }).click();
   await page.getByRole('textbox', { name: /^Notes for / }).fill('Ask about the weekend first.');
   await expect(page.getByText('Saved with the deck. Students never see these notes.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await page.getByRole('tab', { name: 'History', exact: true }).click();
   await versionRow(page, 1).getByRole('button', { name: 'Restore', exact: true }).click();
   const confirm = page.getByRole('group', { name: 'Restore v1' });
   await expect(confirm).toContainText('Replace the open draft with v1? Your unsaved edits are not kept.');
@@ -93,7 +93,7 @@ test('a tab whose deck was stamped elsewhere offers the conflict choice and re-b
   await open(page, deck.id);
   // Another tab stamps a version.
   await stamp(page, deck.id, titled('Stamped elsewhere'), 1);
-  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await page.getByRole('tab', { name: 'Notes', exact: true }).click();
   await page.getByRole('textbox', { name: /^Notes for / }).fill('An edit on the stale base.');
   const banner = page.getByRole('alert').filter({ hasText: 'This deck was changed somewhere else since you opened it.' });
   await expect(banner).toBeVisible();
@@ -158,7 +158,7 @@ test('the picture dialog checks a link and an upload before Insert', async ({ pa
   await page.getByRole('button', { name: 'Picture', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Choose a picture' });
   const insert = dialog.getByRole('button', { name: 'Insert', exact: true });
-  await dialog.getByRole('button', { name: 'From a link', exact: true }).click();
+  await dialog.getByRole('tab', { name: 'From a link', exact: true }).click();
   const address = dialog.getByLabel('Picture address');
 
   await address.fill('hello world');
@@ -180,7 +180,7 @@ test('the picture dialog checks a link and an upload before Insert', async ({ pa
   );
   await page.screenshot({ path: testInfo.outputPath('picture-link-preview.png') });
 
-  await dialog.getByRole('button', { name: 'Upload', exact: true }).click();
+  await dialog.getByRole('tab', { name: 'Upload', exact: true }).click();
   const file = dialog.getByLabel('Picture file');
   await file.setInputFiles({ name: 'notes.png', mimeType: 'image/png', buffer: Buffer.from('these are notes, not a picture') });
   await expect(dialog.getByRole('alert')).toContainText('This file type cannot be uploaded here.');
@@ -197,12 +197,6 @@ test('the picture dialog checks a link and an upload before Insert', async ({ pa
 });
 
 async function lookUp(page: Page, word: string) {
-  // The slide root carries a design attribute the editor also reads as its
-  // chrome marker, which hides every word from the lookup (editor-media-01,
-  // fixed separately). Clear it so this journey tests the panel, not the menu.
-  await page.locator('.slide-canvas__frame .slide-surface').evaluateAll((roots) => {
-    for (const root of roots) root.removeAttribute('data-slide-decoration');
-  });
   const box = await page.locator('.slide-canvas__frame').evaluate((frame, target) => {
     const walker = document.createTreeWalker(frame, NodeFilter.SHOW_TEXT);
     const seen: string[] = [];
@@ -250,7 +244,7 @@ test('the dictionary offers the language pair, says when it is offline and stays
   await expect(failure.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('dictionary-offline.png') });
 
-  await page.getByRole('button', { name: 'Theme', exact: true }).click();
+  await page.getByRole('tab', { name: 'Theme', exact: true }).click();
   await expect(failure).toHaveCount(0);
 });
 

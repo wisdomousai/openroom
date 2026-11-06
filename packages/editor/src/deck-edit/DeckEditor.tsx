@@ -58,6 +58,8 @@ import {
   optionsFor,
   orderedBlocks,
   removeElement,
+  setElementPictureDetails,
+  splitStepAt,
   removeListItem,
   removeMedia,
   removeStep,
@@ -325,10 +327,21 @@ export function DeckEditor({
     apply(result.outline);
     selectStep(result.stepId);
     if (kind === 'image' || kind === 'media' || kind === 'media-full') {
-      setPartKey('image');
-      // A picture slide is its picture: the dialog fills the wired slot the
-      // insert just made, never a freeform object on top of it.
-      setPictureTarget({ kind: 'media' });
+      // Image + text is a freeform slide with an empty picture frame: the
+      // dialog fills that frame. A wired picture slide is its picture: the
+      // dialog fills the wired slot the insert just made, never a freeform
+      // object on top of it.
+      const inserted = result.outline.steps.find((item) => item.id === result.stepId);
+      const frame = inserted === undefined
+        ? undefined
+        : stepElements(inserted).find((item) => item.type === 'image');
+      if (frame !== undefined) {
+        setPartKey(`el-${frame.id}`);
+        setPictureTarget({ kind: 'element', elementId: frame.id });
+      } else {
+        setPartKey('image');
+        setPictureTarget({ kind: 'media' });
+      }
       setOpenDialog('picture');
     }
   };
@@ -676,6 +689,12 @@ export function DeckEditor({
             overflowFocus={overflowFocus}
             onOverflowSelect={(issue) => focusOverflow(issue.target, issue.partKey)}
             onOverflowLayout={() => focusOverflow('layout')}
+            onOverflowSplit={(index) => {
+              if (step === null) return;
+              const result = splitStepAt(outline, step.id, index);
+              if (result.stepId === '') return;
+              apply(result.outline);
+            }}
             onResetTemplate={() => { if (step) apply(resetTemplateFormatting(outline, step.id)); }}
             onApplyBrandKit={(design) => apply(applyBrandKit(outline, design))}
           onDeckDesign={(design) => apply(setDeckDesign(outline, design))}
@@ -755,6 +774,10 @@ export function DeckEditor({
             onMediaSize={(size) => {
               if (step === null) return;
               apply(setMediaSize(outline, step.id, size));
+            }}
+            onElementPicture={(elementId, details) => {
+              if (step === null) return;
+              apply(setElementPictureDetails(outline, step.id, elementId, details));
             }}
             onRemoveElement={(elementId) => {
               if (step === null) return;
@@ -856,13 +879,14 @@ export function DeckEditor({
         }}
         onEmbedded={onEmbeddedResource}
         onInsert={(media, credit) => {
-          if (outline === null || step === null) return;
+          if (outline === null || step === null) return false;
           const next = credit ? media : { ...media };
           if (!credit) delete next.caption;
           const result = applyPictureTarget(outline, step.id, pictureTarget, next);
-          if (result.partKey === null) return;
+          if (result.partKey === null) return false;
           apply(result.outline);
           setPartKey(result.partKey);
+          return true;
         }}
       />
       <HtmlElementDialog

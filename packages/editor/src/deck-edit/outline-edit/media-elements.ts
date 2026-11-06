@@ -331,7 +331,7 @@ export function setElementMarkdown(
     const next: OutlineHtmlElement = { ...item, html: renderMarkdownToHtml(markdown), markdown };
     return next;
   });
-  return keepValid(outline, writeElements(outline, stepId, [...elements]));
+  return writeElements(outline, stepId, [...elements]);
 }
 
 /** Add a sandboxed web page that fills the slide canvas by default. */
@@ -525,6 +525,32 @@ export function setElementImage(
 }
 
 /**
+ * Retype a picture object's alt text or move its crop focus. The picture
+ * itself stays. `focal: undefined` crops from the centre again; a key that is
+ * absent from `details` is left as it is.
+ */
+export function setElementPictureDetails(
+  outline: Outline,
+  stepId: string,
+  elementId: string,
+  details: { alt?: string; focal?: OutlineMediaFocal | undefined },
+): Outline {
+  const step = outline.steps.find((item) => item.id === stepId);
+  if (step === undefined) return outline;
+  const elements = stepElements(step).map((item) => {
+    if (item.id !== elementId || item.type !== 'image') return item;
+    const next: OutlineImageElement = { ...item };
+    if (details.alt !== undefined) next.alt = details.alt.trim() === '' ? '' : details.alt;
+    if ('focal' in details) {
+      if (details.focal === undefined || details.focal === 'center') delete next.focal;
+      else next.focal = details.focal;
+    }
+    return next;
+  });
+  return writeElements(outline, stepId, [...elements]);
+}
+
+/**
  * What a picture chosen in the picture dialog is for.
  *
  * The gesture that opened the dialog decides, not the selection that happens
@@ -604,7 +630,7 @@ export function setElementIframe(
   const elements = stepElements(step).map((item) =>
     item.id === elementId && item.type === 'iframe' ? { ...item, url, title } : item,
   );
-  return keepValid(outline, writeElements(outline, stepId, [...elements]));
+  return writeElements(outline, stepId, [...elements]);
 }
 
 export function setElementPdf(
@@ -621,7 +647,7 @@ export function setElementPdf(
     const { url: _url, assetId: _assetId, resourceId: _resourceId, ...rest } = item;
     return { ...rest, ...(typeof source === 'string' ? { url: source } : source), title };
   });
-  return keepValid(outline, writeElements(outline, stepId, [...elements]));
+  return writeElements(outline, stepId, [...elements]);
 }
 
 export function removeElement(outline: Outline, stepId: string, elementId: string): Outline {

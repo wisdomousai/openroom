@@ -17,7 +17,7 @@ test('theme, aspect ratio and master background survive save and live presentati
   expect(created.status()).toBe(201);
   const deckId = (await created.json()).deck.id;
   await page.goto(`/host/#/decks/${deckId}/edit`);
-  await page.getByRole('button', { name: 'Theme', exact: true }).click();
+  await page.getByRole('tab', { name: 'Theme', exact: true }).click();
   await page.getByRole('button', { name: 'business', exact: true }).click();
   await page.getByRole('button', { name: '16:10', exact: true }).click();
   await page.getByRole('textbox', { name: 'Footer', exact: true }).fill('Team workshop');
