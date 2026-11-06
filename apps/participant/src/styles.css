@@ -218,11 +218,13 @@ a {
   flex-direction: column;
   gap: 1rem;
   background: var(--card);
-  /* Definite height so the slide plate can letterbox with container queries. */
-  height: 100dvh;
+  /* At least one screen tall, and the document scrolls when the column is
+     taller: Send, results and long Reading must stay reachable by finger.
+     Only the >=640px session block below fixes the height, for the letterbox. */
   min-height: 100dvh;
   box-sizing: border-box;
-  overflow: hidden;
+  /* Vertical scroll only: a wide table or long token never pans the page sideways. */
+  overflow-x: clip;
 }
 
 .topbar {
@@ -1355,7 +1357,10 @@ a {
   flex-direction: column;
   gap: 0.75rem;
   min-height: 0;
-  overflow: hidden;
+  /* The slide plate letterboxes inside this box; a question, its Send and the
+     results scroll here when a landscape phone or short window is too low. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   /* Full width: the slide owns the measure, not a phone column. */
   max-width: none;
 }
@@ -1413,6 +1418,22 @@ a {
 .learner-slide[data-reading='true'] .slide-surface__footer { position: relative; display: block; left: auto; bottom: auto; padding: 0 1.25rem 1rem; font-size: 0.8rem; }
 .learner-slide[data-reading='true'] .slide-surface__logo { display: none; }
 
+/* The learner's own listening player, under the slide at phone size. */
+.learner-listening {
+  flex: none;
+  align-self: center;
+  width: 100%;
+  max-width: 34rem;
+}
+.learner-listening .listening-player {
+  font: inherit;
+  font-size: 1rem;
+}
+.learner-listening .listening-player button {
+  min-height: var(--tap);
+  min-width: var(--tap);
+}
+
 .learner-ink {
   position: absolute;
   inset: 0;
@@ -1445,9 +1466,9 @@ a {
   right: 0;
   bottom: 0;
   z-index: 40;
-  max-height: 62vh;
+  max-height: 62dvh;
   overflow: auto;
-  padding: 0.9rem 1rem 1.4rem;
+  padding: 0 1rem 1.4rem;
   background: var(--card);
   color: var(--card-foreground);
   border-top: 1px solid var(--border);
@@ -1456,15 +1477,23 @@ a {
   font-size: 0.9rem;
 }
 
+/* The word and Close stay in view while a long forms table scrolls under them. */
 .learner-lookup__bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.5rem;
+  padding: 0.5rem 0 0.25rem;
+  background: var(--card);
 }
 
 .learner-lookup__bar button {
+  min-width: var(--tap);
+  min-height: var(--tap);
   padding: 0.25rem 0.6rem;
   background: none;
   border: 1px solid var(--border);
