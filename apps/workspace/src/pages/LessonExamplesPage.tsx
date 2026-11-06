@@ -48,7 +48,7 @@ export default function LessonExamplesPage({ spaceId, folderId, contextId }: { s
           <p lang={outline.meta.locale} className="text-secondary leading-relaxed text-muted-foreground">{outline.meta.description}</p>
           <p className="text-secondary text-muted-foreground">{outline.steps.filter((step) => !step.breakoutOf).length} slides · questions · writing and voice homework</p>
           <details className="text-secondary"><summary className="cursor-pointer font-semibold">Lesson aims</summary><ul lang={outline.meta.locale} className="mt-2 list-disc space-y-1 pl-5">{outline.meta.objectives?.map((objective) => <li key={objective}>{objective}</li>)}</ul></details>
-          <Button className="mt-auto self-start" aria-label={`Open lesson: ${outline.meta.title}`} disabled={!canEdit || !validFolder || open.isPending} onClick={() => open.mutate(id)}>{open.isPending && open.variables === id ? 'Opening…' : 'Open lesson'}</Button>
+          <Button className="mt-auto self-start" aria-label={`${open.isPending && open.variables === id ? 'Opening' : 'Open lesson'}: ${outline.meta.title}`} disabled={!canEdit || !validFolder || open.isPending} onClick={() => open.mutate(id)}>{open.isPending && open.variables === id ? 'Opening…' : 'Open lesson'}</Button>
         </div>
       </article>)}
     </div>
