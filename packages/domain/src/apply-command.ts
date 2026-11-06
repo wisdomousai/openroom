@@ -29,6 +29,62 @@ import { applyWriteCommands } from './apply/writes.js';
 
 export { isPeerInstruction } from './apply/helpers.js';
 
+/**
+ * Every command name, so an unknown one can be answered with the list. The
+ * record type makes a missing or misspelt name a type error.
+ */
+const COMMAND_NAMES = Object.keys({
+  'answer.submit': true,
+  'group.remove': true,
+  'group.set': true,
+  'interaction.close': true,
+  'interaction.hideResults': true,
+  'interaction.open': true,
+  'interaction.reveal': true,
+  'interaction.revote': true,
+  'interaction.showResults': true,
+  'interaction.undoRevote': true,
+  'listening.set': true,
+  'mark.clear': true,
+  'mark.remove': true,
+  'mark.set': true,
+  'meaning.clear': true,
+  'meaning.publish': true,
+  'outline.goto': true,
+  'outline.insert': true,
+  'outline.next': true,
+  'outline.previous': true,
+  'outline.replace': true,
+  'outline.reveal': true,
+  'presentation.handoff': true,
+  'presentation.recover': true,
+  'qna.ask': true,
+  'qna.hide': true,
+  'qna.stage': true,
+  'qna.unhide': true,
+  'qna.upvote': true,
+  'qna.vote': true,
+  'session.advance': true,
+  'session.display': true,
+  'session.end': true,
+  'session.freeze': true,
+  'session.start': true,
+  'session.theme': true,
+  'session.unfreeze': true,
+  'text.hide': true,
+  'text.unhide': true,
+  'timer.adjust': true,
+  'timer.pause': true,
+  'timer.reset': true,
+  'timer.start': true,
+} satisfies Record<Command['command'], true>);
+
+function unknownCommand(command: Command): string {
+  const name = (command as { command?: unknown }).command;
+  const named = typeof name === 'string' ? `"${name}"` : JSON.stringify(command);
+  return `unknown command ${named} (commands: ${COMMAND_NAMES.join(', ')})`;
+}
+
 const PARTICIPANT_COMMANDS: ReadonlySet<Command['command']> = new Set([
   'answer.submit',
   'qna.vote',
@@ -93,6 +149,6 @@ export function applyCommand(
     applyWriteCommands(state, command, actor, now) ??
     applyTextCommands(state, command, actor, now) ??
     applyQnaCommands(state, command, actor, now) ??
-    fail('E_INVALID_TRANSITION', `unknown command: ${JSON.stringify(command)}`)
+    fail('E_INVALID_TRANSITION', unknownCommand(command))
   );
 }

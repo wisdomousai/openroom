@@ -129,6 +129,14 @@ export function applyNavigateCommands(
       const delta = command.command === 'outline.next' ? 1 : -1;
       let index = outline.currentStepIndex + delta;
       while (outline.content.steps[index]?.breakoutOf !== undefined) index += delta;
+      if (outline.content.steps[index] === undefined) {
+        return fail(
+          'E_UNKNOWN_OUTLINE_STEP',
+          delta > 0
+            ? 'already at the last slide, shown in full; end the session with session.end'
+            : 'already at the first slide',
+        );
+      }
       const navigated = navigateOutline(state, index, now);
       if (!navigated.ok) return navigated;
       if (delta < 0) navigated.state.outline!.shownGroups = resolveRevealOrder(outline.content.steps[index]!, outline.content.interactions).length;
