@@ -19,6 +19,7 @@ export {
   type WebSocketCtor,
   type SessionClient,
   type SessionClientOptions,
+  type WakeReason,
 } from './client.js';
 export {
   createTagsClient,

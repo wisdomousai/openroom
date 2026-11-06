@@ -475,7 +475,7 @@ describe('createSessionClient after a lost connection', () => {
       if (init?.method !== 'POST') fetches++;
       return jsonRes(200, snap(1));
     };
-    let wake: ((online: boolean) => void) | null = null;
+    let wake: ((reason: 'online' | 'visible') => void) | null = null;
     const client = createSessionClient<ParticipantSnapshot>({
       baseUrl: 'https://api.test',
       sessionCode: 'r',
@@ -502,9 +502,15 @@ describe('createSessionClient after a lost connection', () => {
 
     down = false;
     const before = fetches;
-    wake!(true);
+    const stale = FakeSocket.last!;
+    wake!('online');
     await flush();
     expect(fetches).toBe(before + 1);
+    // The network changed under the socket: it is replaced, not trusted.
+    expect(stale.closed).toBe(true);
+    expect(FakeSocket.last).not.toBe(stale);
+    FakeSocket.last?.open();
+    await flush();
     expect(client.getStatus()).toBe('live');
 
     client.close();

@@ -67,11 +67,12 @@ export interface SessionClientOptions<S extends Snapshot = Snapshot> {
   isHidden?: () => boolean;
   /**
    * Calls `wake` when the device may have its connection back, and returns an
-   * unsubscribe: `online` true for the network coming back, false for the page
-   * turning visible. Defaults to the window `online` event and the document's
-   * visibilitychange; outside a browser it does nothing.
+   * unsubscribe: 'online' when the network comes back, 'visible' when the page
+   * returns after long enough hidden that a socket may have died. Defaults to
+   * the window `online` event and the document's visibilitychange; outside a
+   * browser it does nothing.
    */
-  subscribeWake?: (wake: (online: boolean) => void) => () => void;
+  subscribeWake?: (wake: (reason: WakeReason) => void) => () => void;
   /** Poll intervals in ms (active / idle / hidden). */
   pollIntervals?: { active?: number; idle?: number; hidden?: number };
 }
@@ -107,6 +108,8 @@ const GONE_STATUSES = new Set([401, 403, 404, 410]);
  * so two reads inside one stray 404 do not drop a seat.
  */
 const GONE_RECHECK_MS = 1500;
+/** A state read that has not answered by then is treated as a lost network. */
+const FETCH_TIMEOUT_MS = 10_000;
 
 function defaultOrigin(): string {
   const loc = (globalThis as { location?: { origin?: string } }).location;
@@ -125,19 +128,28 @@ function wsUrlFrom(httpBase: string, path: string): string {
   return `${base}${path}`;
 }
 
+export type WakeReason = 'online' | 'visible';
+
 interface EventSourceLike {
   addEventListener?: (type: string, listener: () => void) => void;
   removeEventListener?: (type: string, listener: () => void) => void;
 }
 
 /** A phone coming back from sleep or a dead zone, in a browser. */
-function browserWake(wake: (online: boolean) => void): () => void {
+function browserWake(wake: (reason: WakeReason) => void): () => void {
   const win = globalThis as EventSourceLike & { document?: EventSourceLike & { hidden?: boolean } };
   const doc = win.document;
   if (typeof win.addEventListener !== 'function' || doc === undefined) return () => {};
-  const onOnline = (): void => wake(true);
+  const onOnline = (): void => wake('online');
+  let hiddenAt: number | null = null;
   const onVisible = (): void => {
-    if (doc.hidden !== true) wake(false);
+    if (doc.hidden === true) {
+      hiddenAt = Date.now();
+      return;
+    }
+    // A quick tab switch keeps a healthy socket; a sleep may have killed it.
+    if (hiddenAt !== null && Date.now() - hiddenAt >= WS_KEEPALIVE_MS) wake('visible');
+    hiddenAt = null;
   };
   win.addEventListener('online', onOnline);
   doc.addEventListener?.('visibilitychange', onVisible);
@@ -217,6 +229,10 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
   function setStatus(next: ConnectionStatus): void {
     if (status === next) return;
     status = next;
+    if (next !== 'offline' && recoveryTimer !== null) {
+      clearTimeout(recoveryTimer);
+      recoveryTimer = null;
+    }
     try {
       options.onStatus?.(next);
     } catch {
@@ -240,6 +256,9 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       return;
     }
     fetching = true;
+    // A read hung on a dead network must not block every later recovery.
+    const abort = typeof AbortController === 'function' ? new AbortController() : null;
+    const abortTimer = abort ? setTimeout(() => abort.abort(), FETCH_TIMEOUT_MS) : null;
     try {
       const q =
         `?role=${encodeURIComponent(options.role)}` +
@@ -247,11 +266,12 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       const res = await doFetch(`${base}${statePath}${q}`, {
         method: 'GET',
         headers: { authorization: `Bearer ${options.token}`, accept: 'application/json' },
+        ...(abort ? { signal: abort.signal } : {}),
       });
       if (closed) return;
       if (res.status === 304) {
         goneSince = null;
-        if (status === 'offline') setStatus(polling ? 'polling' : 'live');
+        if (status === 'offline') setStatus(polling ? 'polling' : ws ? 'live' : 'connecting');
         return;
       }
       if (!res.ok) {
@@ -291,6 +311,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       goneSince = null;
       if (!closed) setStatus('offline');
     } finally {
+      if (abortTimer !== null) clearTimeout(abortTimer);
       fetching = false;
       if (refetchQueued && !closed) {
         refetchQueued = false;
@@ -308,23 +329,38 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
     recoveryTimer = setTimeout(() => {
       recoveryTimer = null;
       void fetchSnapshot();
-    }, intervals.idle);
+    }, isHidden() ? intervals.hidden : intervals.idle);
   }
 
   /**
    * The device says it may be back: ask now instead of at the next timer. Only
-   * the network coming back skips the socket backoff; a tab switch does not.
+   * the network coming back skips the socket backoff and replaces the socket,
+   * which a network change can leave open but dead.
    */
-  function wake(online: boolean): void {
+  function wake(reason: WakeReason): void {
     if (closed) return;
     void fetchSnapshot();
-    if (online && WSCtor && ws === null) {
-      if (wsRetryTimer !== null) {
-        clearTimeout(wsRetryTimer);
-        wsRetryTimer = null;
-      }
-      connectWs();
+    if (reason !== 'online' || !WSCtor) return;
+    if (wsRetryTimer !== null) {
+      clearTimeout(wsRetryTimer);
+      wsRetryTimer = null;
     }
+    if (ws !== null) {
+      const stale = ws;
+      ws = null;
+      stopKeepalive();
+      stale.onopen = null;
+      stale.onclose = null;
+      stale.onerror = null;
+      stale.onmessage = null;
+      try {
+        stale.close();
+      } catch {
+        /* ignore */
+      }
+    }
+    wsFailures = 0;
+    connectWs();
   }
 
   /* ----------------------------------------------------------- polling */
