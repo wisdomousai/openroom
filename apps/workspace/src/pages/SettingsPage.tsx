@@ -99,7 +99,7 @@ function AgentAccessCard({ signedIn }: { signedIn: boolean }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-row-title">Personal API tokens</p>
-                <p className="text-caption text-muted-foreground">A token acts as your account: it can read and change your decks, students and sessions until you revoke it here. The secret is shown once when you create it.</p>
+                <p className="text-caption text-muted-foreground">A token acts as your account in every space you belong to, until you revoke it here. The secret is shown once when you create it.</p>
               </div>
               <Button asChild size="sm"><Link {...to.settingsTokenNew()}>Create token</Link></Button>
             </div>
@@ -166,7 +166,7 @@ export function ApiTokenNewPage() {
         <Card>
           <CardHeader><CardTitle className="text-section">Token</CardTitle></CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <p className="text-secondary text-muted-foreground">This secret will not be shown again. It acts as your account until you revoke it in Settings.</p>
+            <p className="text-secondary text-muted-foreground">This secret will not be shown again. It acts as your account in every space you belong to, until you revoke it in Settings.</p>
             <code className="break-all rounded border border-border bg-muted/40 p-3 text-caption">{minted.token}</code>
             <div className="flex flex-wrap gap-2">
               <CopyButton label="Copy token" value={minted.token} />
