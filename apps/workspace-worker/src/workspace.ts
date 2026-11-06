@@ -373,12 +373,17 @@ export async function getSpaceRoute(
    * to learn it. An unset pair is an absent key, not a null — a space that is
    * not a language-tutoring space carries no language state at all.
    */
-  const settings = await spaceSettings(env, spaceId);
-  // A student's own space names its student, so settings can say whose they are.
-  const owner = await env.DB.prepare(
-    `SELECT c.id AS id, c.display_name AS display_name FROM space_contexts sc
-       JOIN contexts c ON c.id = sc.context_id WHERE sc.space_id = ?1`,
-  ).bind(spaceId).first<{ id: string; display_name: string }>();
+  /*
+   * A student's own space names its student, so settings can say whose they
+   * are. A student in Trash still owns the space, so the name stays.
+   */
+  const [settings, owner] = await Promise.all([
+    spaceSettings(env, spaceId),
+    env.DB.prepare(
+      `SELECT c.id AS id, c.display_name AS display_name FROM space_contexts sc
+         JOIN contexts c ON c.id = sc.context_id WHERE sc.space_id = ?1`,
+    ).bind(spaceId).first<{ id: string; display_name: string }>(),
+  ]);
 
   return json({
     space: {

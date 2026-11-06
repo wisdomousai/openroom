@@ -361,13 +361,7 @@ export async function deletionConfirmationPage(
   }
   const intent = await intentForToken(env, token);
   if (intent === null || intent.user_id !== user.id || intent.used_at !== null || intent.expires_at <= Date.now()) {
-    return deletionPage(
-      'This confirmation link no longer works',
-      `<h1>This confirmation link no longer works.</h1>
-<p>It has expired, it was already used, or it belongs to another account. Sign in as the owner of the item, or ask your agent for a new link.</p>
-<p class="actions"><a class="button" href="${TRASH_HREF}">Open Trash</a></p>`,
-      410,
-    );
+    return linkNoLongerWorks();
   }
   const noun = await deletionNoun(env, intent);
   const contents = deletionContents(intent.resource_type, noun)
@@ -384,6 +378,27 @@ export async function deletionConfirmationPage(
 }
 
 const TRASH_HREF = '/host/#/tutor/trash';
+
+function linkNoLongerWorks(): Response {
+  return deletionPage(
+    'This confirmation link no longer works',
+    `<h1>This confirmation link no longer works.</h1>
+<p>It has expired, it was already used, or it belongs to another account. Sign in as the owner of the item, or ask your agent for a new link.</p>
+<p class="actions"><a class="button" href="${TRASH_HREF}">Open Trash</a></p>`,
+    410,
+  );
+}
+
+/** The item was restored or deleted elsewhere after the link was made. */
+function notInTrash(): Response {
+  return deletionPage(
+    'Nothing was deleted',
+    `<h1>Nothing was deleted.</h1>
+<p>This item is no longer in Trash. It was restored or deleted elsewhere.</p>
+<p class="actions"><a class="button" href="${TRASH_HREF}">Open Trash</a></p>`,
+    404,
+  );
+}
 
 /** The noun a context goes by, from its kind: a person is a student. */
 const CONTEXT_NOUNS: Record<string, string> = {
@@ -455,16 +470,27 @@ export async function confirmPermanentDeletionRoute(
   env: ControlEnv,
   token: string,
 ): Promise<Response> {
+  /*
+   * A browser form posts here, so every answer is a page. The statuses stay
+   * what an API client would expect.
+   */
   const user = await getSession(request, env);
-  if (user === null) return json({ error: 'unauthorized' }, 401);
+  if (user === null) {
+    return deletionPage(
+      'Sign in to confirm',
+      `<h1>Sign in to confirm this deletion.</h1>
+<p>Only the owner, signed in on this browser, can confirm a permanent deletion. Open the link again after signing in.</p>`,
+      401,
+    );
+  }
   const intent = await intentForToken(env, token);
   if (intent === null || intent.user_id !== user.id || intent.used_at !== null || intent.expires_at <= Date.now()) {
-    return json({ error: 'confirmation-expired' }, 410);
+    return linkNoLongerWorks();
   }
 
   if (intent.resource_type === 'context') {
     const resource = await contextAccess(env, user.id, intent.resource_id);
-    if (resource === null || resource.deleted_at === null) return json({ error: 'not-found' }, 404);
+    if (resource === null || resource.deleted_at === null) return notInTrash();
     const { results } = await env.DB.prepare('SELECT id FROM decks WHERE context_id = ?1')
       .bind(resource.id).all<{ id: string }>();
     for (const deck of results ?? []) {
@@ -489,10 +515,10 @@ export async function confirmPermanentDeletionRoute(
     ]);
   } else if (intent.resource_type === 'folder') {
     const ok = await confirmFolderDeletion(env, user, intent.resource_id, purgeDeck);
-    if (!ok) return json({ error: 'not-found' }, 404);
+    if (!ok) return notInTrash();
   } else {
     const ok = await confirmDeliveryDeletion(env, user.id, intent.resource_type, intent.resource_id);
-    if (!ok) return json({ error: 'not-found' }, 404);
+    if (!ok) return notInTrash();
   }
 
   await env.DB.prepare('UPDATE deletion_intents SET used_at = ?1 WHERE token_hash = ?2')

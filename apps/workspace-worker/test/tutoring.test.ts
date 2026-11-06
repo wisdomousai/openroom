@@ -405,6 +405,11 @@ describe('folder-scoped decks and sessions', () => {
 
     const confirmed = await asBrowser(cookie, new URL(intentBody.confirmationUrl).pathname, { method: 'POST' });
     expect(confirmed.status).toBe(200);
+    // A second submit of the same form gets a page, not a JSON slug.
+    const again = await asBrowser(cookie, new URL(intentBody.confirmationUrl).pathname, { method: 'POST' });
+    expect(again.status).toBe(410);
+    expect(again.headers.get('content-type')).toContain('text/html');
+    expect(await again.text()).toContain('This confirmation link no longer works.');
 
     const missing = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`);
     expect(missing.status).toBe(404);
