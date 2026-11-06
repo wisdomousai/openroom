@@ -215,11 +215,13 @@ export async function spaceSettings(env: ControlEnv, spaceId: string): Promise<S
 }
 
 /**
- * A row filed in a folder that is in Trash is not in the space: the tree, its
- * counts and Library search leave it out, whatever its own `deleted_at` says.
+ * Where a live row shows in the tree. A row still filed in a folder that is in
+ * Trash (restored on its own, or in a folder trashed before its decks went
+ * along) shows at the space root, so it stays reachable; restoring the folder
+ * puts it back inside. Trashing a folder moves its own rows to Trash with it.
  */
-const OUTSIDE_TRASHED_FOLDER = (table: string) =>
-  `(${table}.folder_id IS NULL OR NOT EXISTS (SELECT 1 FROM folders tf WHERE tf.id = ${table}.folder_id AND tf.deleted_at IS NOT NULL))`;
+const SHOWN_FOLDER = (table: string) =>
+  `(CASE WHEN EXISTS (SELECT 1 FROM folders tf WHERE tf.id = ${table}.folder_id AND tf.deleted_at IS NOT NULL) THEN NULL ELSE ${table}.folder_id END)`;
 
 /**
  * GET /api/my/spaces/:id
@@ -269,14 +271,14 @@ export async function getSpaceRoute(
   // Folder-scoped decks (content) and sessions (when/who/launch).
   let deckQuery = `
     SELECT d.id AS id, d.title AS title, d.shape AS shape, d.current_version AS current_version,
-           d.folder_id AS folder_id, d.context_id AS context_id, d.updated_at AS updated_at,
+           ${SHOWN_FOLDER('d')} AS folder_id, d.context_id AS context_id, d.updated_at AS updated_at,
            v.content_json AS content_json
       FROM decks d
       LEFT JOIN deck_versions v ON v.deck_id = d.id AND v.version = d.current_version
-     WHERE d.space_id = ?1 AND d.deleted_at IS NULL AND ${OUTSIDE_TRASHED_FOLDER("d")}`;
+     WHERE d.space_id = ?1 AND d.deleted_at IS NULL`;
   const deckBinds: (string | number)[] = [spaceId];
   if (folderFilter === 'root' || folderFilter === '') {
-    deckQuery += ' AND (d.folder_id IS NULL OR d.folder_id = \'\')';
+    deckQuery += ` AND (${SHOWN_FOLDER('d')} IS NULL OR d.folder_id = '')`;
   } else if (folderFilter !== null) {
     deckQuery += ' AND d.folder_id = ?2';
     deckBinds.push(folderFilter);
@@ -296,13 +298,13 @@ export async function getSpaceRoute(
     }>();
 
   let sessionQuery = `
-    SELECT id, title, shape, status, deck_id, deck_version, folder_id, context_id,
+    SELECT id, title, shape, status, deck_id, deck_version, ${SHOWN_FOLDER('sessions')} AS folder_id, context_id,
            updated_at
       FROM sessions
-     WHERE space_id = ?1 AND deleted_at IS NULL AND ${OUTSIDE_TRASHED_FOLDER("sessions")}`;
+     WHERE space_id = ?1 AND deleted_at IS NULL`;
   const sessionBinds: (string | number)[] = [spaceId];
   if (folderFilter === 'root' || folderFilter === '') {
-    sessionQuery += ' AND (folder_id IS NULL OR folder_id = \'\')';
+    sessionQuery += ` AND (${SHOWN_FOLDER('sessions')} IS NULL OR folder_id = '')`;
   } else if (folderFilter !== null) {
     sessionQuery += ' AND folder_id = ?2';
     sessionBinds.push(folderFilter);
@@ -332,13 +334,13 @@ export async function getSpaceRoute(
   let recordQuery = `
     SELECT rr.id AS id, rr.session_id AS session_id, rr.context_id AS context_id,
            rr.deck_version AS deck_version, rr.created_at AS created_at,
-           rr.updated_at AS updated_at, r.title AS session_title, r.folder_id AS folder_id
+           rr.updated_at AS updated_at, r.title AS session_title, ${SHOWN_FOLDER('r')} AS folder_id
       FROM session_records rr
       JOIN sessions r ON r.id = rr.session_id
-     WHERE r.space_id = ?1 AND r.deleted_at IS NULL AND ${OUTSIDE_TRASHED_FOLDER("r")}`;
+     WHERE r.space_id = ?1 AND r.deleted_at IS NULL`;
   const recordBinds: (string | number)[] = [spaceId];
   if (folderFilter === 'root' || folderFilter === '') {
-    recordQuery += ' AND (r.folder_id IS NULL OR r.folder_id = \'\')';
+    recordQuery += ` AND (${SHOWN_FOLDER('r')} IS NULL OR r.folder_id = '')`;
   } else if (folderFilter !== null) {
     recordQuery += ' AND r.folder_id = ?2';
     recordBinds.push(folderFilter);
@@ -734,10 +736,13 @@ export async function createFolderDeletionIntentRoute(
 
 /**
  * The permanent purge of a trashed folder: the folder, every folder below it,
- * and every deck filed in them, each deck with its sessions, Notes and learner
- * work (`purgeDeck`). A session filed here whose deck lives elsewhere outlives
- * the folder: it goes back to the space root, out of Trash if the folder put it
- * there, because its deck still exists.
+ * and the decks that went to Trash with it (their `deleted_at` is the folder's
+ * marker), each deck with its sessions, Notes and learner work (`purgeDeck`).
+ *
+ * Anything else filed here outlives the folder and goes back to the space
+ * root: a deck restored on its own since, a deck trashed separately (it stays
+ * in Trash), a deck in a folder trashed before decks went along, and a session
+ * whose deck lives elsewhere (out of Trash if the folder put it there).
  *
  * `purgeDeck` is passed in so this module does not import the delivery layer,
  * which imports this one.
@@ -752,11 +757,13 @@ export async function confirmFolderDeletion(
   if (access === null || access.folder.deleted_at === null) return false;
   const subtreeIds = await collectFolderSubtree(env, access.folder.space_id, folderId);
   const placeholders = subtreeIds.map((_, i) => `?${i + 1}`).join(', ');
-  const { results: decks } = await env.DB.prepare(`SELECT id FROM decks WHERE folder_id IN (${placeholders})`)
-    .bind(...subtreeIds).all<{ id: string }>();
-  for (const deck of decks ?? []) await purgeDeck(env, deck.id);
   const marker = subtreeIds.length + 1;
+  const { results: decks } = await env.DB.prepare(
+    `SELECT id FROM decks WHERE folder_id IN (${placeholders}) AND deleted_at = ?${marker}`,
+  ).bind(...subtreeIds, access.folder.deleted_at).all<{ id: string }>();
+  for (const deck of decks ?? []) await purgeDeck(env, deck.id);
   await env.DB.batch([
+    env.DB.prepare(`UPDATE decks SET folder_id = NULL WHERE folder_id IN (${placeholders})`).bind(...subtreeIds),
     env.DB.prepare(
       `UPDATE sessions SET folder_id = NULL,
               deleted_at = CASE WHEN deleted_at = ?${marker} THEN NULL ELSE deleted_at END
