@@ -351,7 +351,7 @@ async function deckStart(
     reporter.line(`join  ${live.joinUrl}`);
   } else if (live.contextId !== undefined) {
     // An identified session admits nobody by code alone.
-    reporter.line(`join  needs the student's link: openroom api POST /api/tutoring/contexts/${live.contextId}/links --body '{"sessionCode":"${live.sessionCode}"}' answers its joinUrl`);
+    reporter.line(`join  needs the student's link: openroom api POST /api/tutoring/contexts/${live.contextId}/links --body '{"sessionCode":"${live.sessionCode}"}' answers its joinUrl (for a class, add "learnerId" or "displayName" for each student)`);
   }
   if (live.stageUrl !== undefined) reporter.line(`stage ${live.stageUrl}`);
   reporter.line(`state ${statePath}`);
