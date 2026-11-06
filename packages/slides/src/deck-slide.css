@@ -24,7 +24,11 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  /* Every centred stack on a slide is `safe`: content taller than its box
+     starts at the top, so the heading stays and only the tail is clipped.
+     The plain value before it is for browsers without `safe`. */
   justify-content: center;
+  justify-content: safe center;
   gap: 2cqw;
   padding: 5cqw;
   overflow: hidden;
@@ -61,9 +65,14 @@
   object-fit: cover;
 }
 
+/* Paint containment makes the host the containing block of everything in the
+   fragment, `position: fixed` included, so nothing paints outside the box. It
+   sits on the host rather than the element, so the editor's reveal badge on
+   the element can still draw outside the box. */
 .slide-surface .outline-step__html-host {
   width: 100%;
   height: 100%;
+  contain: paint;
 }
 
 /*
@@ -681,6 +690,7 @@
 /* --- title: one centred stack, heading dominant ----------------------- */
 .slide-surface .outline-step--layout-title {
   justify-content: center;
+  justify-content: safe center;
   gap: 1.25cqw;
   padding: 4.4cqw 4.7cqw;
 }
@@ -758,11 +768,61 @@
   order: -1;
 }
 
+/*
+ * A picture on a stacked layout (title, text, grid) sits in the flow with the
+ * words. It is at most its size tall and gives way first when the slide is
+ * full: it takes only the height the words leave, so no text is pushed off
+ * the slide. `left` and `right` never get here; such a step is drawn as split.
+ */
+.slide-surface
+  .outline-step--has-picture:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > [data-part='image'] {
+  flex: 0 1000 auto;
+  min-height: 0;
+  max-height: var(--picture-size, 42%);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* An aspect frame has no content width of its own: its height sets its width,
+   so the ratio holds while the picture gives way. */
+.slide-surface
+  .outline-step--has-picture:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > .outline-step__media-frame {
+  height: var(--picture-size, 42%);
+}
+
+/* A credited photo keeps the whole picture when it gives way. */
+.slide-surface
+  .outline-step--has-picture:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > .outline-step__media-photo
+  > img {
+  height: 100%;
+  object-fit: contain;
+}
+
+/* `bottom`, the default on these layouts, is under everything else: below a
+   list or a grid of cards, not between it and the heading. The caption moves
+   with its picture for both `bottom` and `top`. */
+.slide-surface
+  .outline-step--has-picture[data-picture-place='bottom']:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > :is([data-part='image'], .outline-step__caption) {
+  order: 1;
+}
+
+.slide-surface
+  .outline-step--has-picture[data-picture-place='top']:is(.outline-step--layout-title, .outline-step--layout-text, .outline-step--layout-grid):not(.outline-step--media)
+  > .outline-step__caption {
+  order: -1;
+}
+
 .slide-surface .outline-step--layout-split .outline-step__region--lede,
 .slide-surface .outline-step--layout-split .outline-step__region--support {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  justify-content: safe center;
   gap: 1.25cqw;
   min-width: 0;
   padding: 3.75cqw;
@@ -787,6 +847,34 @@
   line-height: 1.55;
 }
 
+/* A split column is too narrow for the full-width headword sizes. The term
+   takes the split heading size and a number half as much again, so neither
+   breaks between letters and the number still leads the statement. */
+.slide-surface .outline-step--layout-split :is(.outline-step__term, .outline-step__stat) {
+  font-size: 4.4cqw;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.slide-surface .outline-step--layout-split .outline-step__stat {
+  font-size: 6.6cqw;
+}
+
+/* A list on split starts at the top of its column, and so does the heading
+   beside it: revealing the next item never moves the items already shown. */
+.slide-surface .outline-step--layout-split > .outline-step__region:has(> :is(.outline-step__cards, .outline-step__sequence, .outline-step__bullets)),
+.slide-surface
+  .outline-step--layout-split:not(.outline-step--has-picture):has(> .outline-step__region--support > :is(.outline-step__cards, .outline-step__sequence, .outline-step__bullets))
+  > .outline-step__region--lede {
+  justify-content: flex-start;
+}
+
+/* A split or activity step with nothing authored for its second column has
+   no second column: the words take the whole width. */
+.slide-surface .outline-step:is(.outline-step--layout-split, .outline-step--layout-activity):not(:has(> .outline-step__region--support)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* A picture in the supporting column fills that side edge to edge. */
 .slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support,
 .slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support {
@@ -794,6 +882,7 @@
   background: var(--background);
   align-items: center;
   justify-content: center;
+  justify-content: safe center;
 }
 
 .slide-surface .outline-step--has-picture.outline-step--layout-split .outline-step__region--support > img,
@@ -803,6 +892,10 @@
 .slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support > video,
 .slide-surface .outline-step--media.outline-step--layout-split .outline-step__region--support > .outline-step__media-placeholder {
   flex: 1 1 auto;
+  /* The box is the column, whatever the picture's own shape: a tall picture
+     is cropped to the column rather than drawn narrower than it. */
+  width: 100%;
+  min-height: 0;
   height: 100%;
   border: 0;
   object-fit: cover;
@@ -849,11 +942,14 @@
 .slide-surface .outline-step--layout-grid .outline-step__cards,
 .slide-surface .outline-step--layout-grid .outline-step__sequence,
 .slide-surface .outline-step--layout-grid .outline-step__bullets {
+  --grid-gap: 1.1cqw;
   flex: 1 1 auto;
   min-height: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
-  gap: 1.1cqw;
+  /* Every row is its final height from the start: `--grid-rows` comes from
+     the authored count, so revealing a cell never resizes the cells shown. */
+  grid-auto-rows: calc((100% - (var(--grid-rows, 1) - 1) * var(--grid-gap)) / var(--grid-rows, 1));
+  gap: var(--grid-gap);
 }
 
 .slide-surface .outline-step--layout-grid .outline-step__cards article,
@@ -863,6 +959,39 @@
   padding: 1.1cqw 1.25cqw;
   border: 1px solid var(--border);
   overflow: hidden;
+}
+
+/* One to three cards, steps or prompts: rows as tall as their content, from
+   the top, rather than boxes stretched over the slide and mostly empty. The
+   count is the authored one, so a reveal does not change the rows. */
+.slide-surface .outline-step--layout-grid
+  :is(.outline-step__cards, .outline-step__sequence, .outline-step__bullets):is([data-item-count='1'], [data-item-count='2'], [data-item-count='3']) {
+  grid-auto-rows: minmax(0, max-content);
+  align-content: start;
+}
+
+/* A step number is never taller than its cell: in a full grid the badge
+   shrinks with the row instead of being cut by the cell border. Number and
+   text share the first baseline, so a shrunk badge still lines up. */
+.slide-surface .outline-step--layout-grid .outline-step__sequence li {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.slide-surface .outline-step--layout-grid .outline-step__sequence li > :is(span:not([data-slide-decoration]), p) {
+  align-self: first baseline;
+}
+
+.slide-surface .outline-step--layout-grid .outline-step__sequence li > span:not([data-slide-decoration]) {
+  box-sizing: border-box;
+  justify-self: center;
+  width: auto;
+  min-width: max-content;
+  height: calc(1.8em / 0.85);
+  max-height: 100%;
+  padding: 0 0.15em;
+  font-size: 0.85em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* The em dash / question mark leader is a list marker; inside a bordered cell
@@ -899,6 +1028,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  justify-content: safe center;
   background: var(--background);
 }
 
@@ -934,15 +1064,28 @@
   max-width: 100%;
 }
 
+/* A long title or caption gives way before the picture does. The caption
+   stops at three lines and the title bar at 30% of the slide's content box,
+   so the picture always keeps most of the slide. */
 .slide-surface .outline-step--layout-media .outline-step__caption {
   flex: none;
-  padding: 0.8cqw 2.5cqw;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  /* Margins, not padding: the clamped lines would show in the padding. */
+  margin: 0.8cqw 2.5cqw;
   font-size: 2.2cqw;
 }
 
 .slide-surface .outline-step--layout-media .outline-step__region--lede {
   order: 2;
   flex: none;
+  box-sizing: border-box;
+  max-height: 30%;
+  /* Clipped top and bottom only: a reveal badge left of the title stays. */
+  overflow-y: clip;
   padding: 1.4cqw 2.5cqw;
   border-top: 1px solid var(--border);
   background: var(--card);
@@ -1028,6 +1171,7 @@
 /* --- poll: question, then the answers as lettered rows ---------------- */
 .slide-surface .outline-step--layout-poll {
   justify-content: center;
+  justify-content: safe center;
   gap: 1.7cqw;
   padding: 3.4cqw 4.4cqw;
 }
@@ -1045,16 +1189,49 @@
 }
 
 .slide-surface .outline-step--layout-poll .outline-step__options {
+  --poll-option-size: 2.5cqw;
   gap: 0.8cqw;
   counter-reset: slide-option;
+}
+
+/* More answers take tighter rows: compact keeps the type size and drops the
+   space around it, dense also uses smaller type. The tier comes from the
+   authored count, so revealing answers one by one never resizes the ones
+   already shown. */
+.slide-surface .outline-step--layout-poll .outline-step__options[data-option-tier='compact'] {
+  --poll-option-pad: 0.12;
+  gap: 0.35cqw;
+}
+
+.slide-surface .outline-step--layout-poll .outline-step__options[data-option-tier='dense'] {
+  --poll-option-size: 2cqw;
+  --poll-option-pad: 0.12;
+  gap: 0.3cqw;
+}
+
+/* The same tiers on the split and text layouts a question can also take. */
+.slide-surface .outline-step:not(.outline-step--layout-poll) .outline-step__options[data-option-tier] {
+  gap: 0.3em;
+}
+
+.slide-surface .outline-step:not(.outline-step--layout-poll) .outline-step__options[data-option-tier] li:not(.slide-canvas__add-option) {
+  padding-block: 0.2em;
+}
+
+.slide-surface .outline-step:not(.outline-step--layout-poll) .outline-step__options[data-option-tier='dense'] {
+  gap: 0.25em;
+}
+
+.slide-surface .outline-step:not(.outline-step--layout-poll) .outline-step__options[data-option-tier='dense'] li:not(.slide-canvas__add-option) {
+  font-size: 0.8em;
 }
 
 .slide-surface .outline-step--layout-poll .outline-step__options li {
   display: flex;
   align-items: center;
-  gap: 1.1cqw;
-  padding: 0.95cqw 1.25cqw;
-  font-size: 2.5cqw;
+  gap: calc(var(--poll-option-size) * 0.44);
+  padding: calc(var(--poll-option-size) * var(--poll-option-pad, 0.38)) calc(var(--poll-option-size) * 0.5);
+  font-size: var(--poll-option-size);
   font-weight: 600;
   counter-increment: slide-option;
 }
@@ -1066,14 +1243,32 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 2.8cqw;
-  height: 2.8cqw;
+  width: calc(var(--poll-option-size) * 1.12);
+  height: calc(var(--poll-option-size) * 1.12);
   border: 1px solid var(--primary);
   border-radius: var(--radius);
   color: var(--primary);
-  font-size: 1.8cqw;
+  font-size: calc(var(--poll-option-size) * 0.72);
   line-height: 1;
   font-weight: 600;
+}
+
+/* A fill-the-gaps word bank: the words as chips that wrap, as on the wall. */
+.slide-surface .outline-step__word-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6cqw;
+  padding: 0;
+  list-style: none;
+}
+
+.slide-surface .outline-step__word-bank li {
+  padding: 0.25em 0.8em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 2cqw;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 /* --- activity: what they do, beside what has to be on the table ------- */
@@ -1097,6 +1292,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  justify-content: safe flex-end;
   min-width: 0;
   padding: 3.1cqw 3.4cqw;
   border-left: 1px solid var(--border);
@@ -1128,6 +1324,7 @@
   padding: 0;
   align-items: center;
   justify-content: center;
+  justify-content: safe center;
 }
 
 .slide-surface .outline-step--layout-activity .outline-step__region--support > img,
@@ -1193,6 +1390,7 @@
 .slide-surface .outline-step--layout-timer {
   align-items: center;
   justify-content: center;
+  justify-content: safe center;
   gap: 1.6cqw;
   padding: 4.4cqw;
   text-align: center;
@@ -1214,6 +1412,7 @@
 .slide-surface .outline-step--layout-join {
   align-items: center;
   justify-content: center;
+  justify-content: safe center;
   gap: 2.4cqw;
   padding: 4.4cqw;
   text-align: center;
@@ -1264,7 +1463,9 @@
   color: var(--muted-foreground);
   pointer-events: none;
 }
-.slide-surface [contenteditable][data-placeholder] {
+/* Only an empty part needs a hit area. A part with text keeps the automatic
+   minimum of a flex item, so the editor squeezes nothing the wall would not. */
+.slide-surface [contenteditable][data-placeholder]:is(:empty, [data-empty='true']) {
   min-height: 1em;
 }
 
@@ -1283,7 +1484,16 @@
 .slide-surface__background { z-index: -1; }
 .slide-surface__background img { object-fit: cover; }
 .slide-surface__logo { position: absolute; z-index: 2; top: 2cqw; right: 3cqw; width: 9cqw; height: 4cqw; object-fit: contain; pointer-events: none; }
-.slide-surface__footer { position: absolute; z-index: 2; left: var(--slide-safe-area); bottom: 1.6cqw; max-width: 80%; font-size: 1.4cqw; color: var(--muted-foreground); pointer-events: none; }
+/* The footer sits in the bottom margin and takes at most two lines. A margin
+   narrower than that grows to hold it, so content always ends above the
+   footer. `--slide-footer-band` is the height to keep clear. */
+.slide-surface[data-slide-footer] {
+  --slide-footer-bottom: 1.6cqw; --slide-footer-size: 1.4cqw; --slide-footer-leading: 1.4;
+  --slide-footer-band: calc(var(--slide-footer-bottom) + 2 * var(--slide-footer-size) * var(--slide-footer-leading) + 1.2cqw);
+}
+.slide-surface__footer { position: absolute; z-index: 2; left: var(--slide-safe-area); bottom: var(--slide-footer-bottom); max-width: 80%; font-size: var(--slide-footer-size); line-height: var(--slide-footer-leading); color: var(--muted-foreground); pointer-events: none;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.slide-surface[data-slide-footer] > .outline-step { padding-bottom: max(var(--slide-safe-area, 8cqw), var(--slide-footer-band)); }
 .slide-surface[data-slide-decoration='rule']::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1cqw; background: var(--slide-accent); pointer-events: none; }
 .slide-surface[data-slide-decoration='corner']::after { content: ''; position: absolute; right: 0; bottom: 0; width: 14cqw; height: 1.4cqw; background: var(--slide-accent); pointer-events: none; }
 

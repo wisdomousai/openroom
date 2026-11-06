@@ -1,4 +1,4 @@
-import { LAYOUTS_FOR_KIND as SCHEMA_LAYOUTS_FOR_KIND, OUTLINE_LAYOUTS } from '@openroom/schema';
+import { LAYOUTS_FOR_KIND as SCHEMA_LAYOUTS_FOR_KIND, OUTLINE_LAYOUTS, layoutForMediaPlace } from '@openroom/schema';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -63,5 +63,38 @@ describe('effectiveLayout', () => {
     expect(layoutAllowedForKind('term', 'poll')).toBe(false);
     expect(effectiveLayout({ kind: 'term', layout: 'poll' })).toBe('title');
     expect(effectiveLayout({ kind: 'cards', layout: 'timer' })).toBe('grid');
+  });
+});
+
+describe('a picture placed beside the words', () => {
+  const STACKED = new Set(['title', 'text', 'grid']);
+
+  it('draws a stacked layout as split, the layout the deck editor writes for that place', () => {
+    for (const kind of KINDS) {
+      for (const layout of LAYOUTS_FOR_KIND[kind].filter((candidate) => STACKED.has(candidate))) {
+        for (const place of ['left', 'right'] as const) {
+          const drawn = effectiveLayout({ kind, layout, media: { place } });
+          expect([kind, layout, place, drawn]).toEqual([
+            kind,
+            layout,
+            place,
+            layoutAllowedForKind(kind, 'split') ? layoutForMediaPlace(kind, place) : layout,
+          ]);
+        }
+      }
+    }
+    // A step that names no layout gets the same treatment as its default.
+    expect(effectiveLayout({ kind: 'statement', media: { place: 'right' } })).toBe('split');
+    expect(effectiveLayout({ kind: 'cards', media: { place: 'left' } })).toBe('split');
+  });
+
+  it('keeps the layout for every other place and for layouts that already hold a picture', () => {
+    for (const place of ['top', 'bottom', 'fill', undefined]) {
+      expect(effectiveLayout({ kind: 'statement', media: { place } })).toBe('title');
+      expect(effectiveLayout({ kind: 'steps', layout: 'text', media: { place } })).toBe('text');
+    }
+    expect(effectiveLayout({ kind: 'activity', media: { place: 'left' } })).toBe('activity');
+    expect(effectiveLayout({ kind: 'media', media: { place: 'right' } })).toBe('media');
+    expect(effectiveLayout({ kind: 'interaction', media: { place: 'right' } })).toBe('poll');
   });
 });

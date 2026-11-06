@@ -1,7 +1,7 @@
 /** One slide structure and saved design for editor, projector, Desktop and previews. */
 
 import { fillTheGapsPromptText, seededShuffle, type ResolvedSlideDesign } from '@openroom/schema';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { SlideSurface } from './SlideSurface';
 
 import { orientationOf, resolveMediaAspect } from './aspect';
@@ -143,6 +143,26 @@ function region(name: 'lede' | 'support', when: boolean, children: ReactNode): R
   if (!when) return children;
   return <div className={`outline-step__region outline-step__region--${name}`}>{children}</div>;
 }
+/**
+ * Row size of a question's answers, from the authored count: six to eight
+ * answers take compact rows, nine or more dense ones. Hidden answers still
+ * count, so a reveal does not resize the rows already shown.
+ */
+function optionTier(count: number): 'compact' | 'dense' | undefined {
+  if (count >= 9) return 'dense';
+  if (count >= 6) return 'compact';
+  return undefined;
+}
+
+/**
+ * Rows of the grid layout's two columns, from the authored count. Hidden
+ * cells still count, so a reveal fills rows that already have their final
+ * size instead of stretching the cells shown so far.
+ */
+function gridRows(count: number): CSSProperties {
+  return { ['--grid-rows' as string]: String(Math.max(1, Math.ceil(count / 2))) } as CSSProperties;
+}
+
 export function StepLayout(props: StepLayoutProps): ReactNode {
   const content = StepContent(props);
   return content === null ? null : <SlideSurface design={props.design} fit={props.fit} overlay={props.overlay}>{content}</SlideSurface>;
@@ -197,6 +217,35 @@ function StepContent(props: StepLayoutProps): ReactNode {
           <p className="outline-step__caption" data-overflow-target="caption" data-overflow-part="image">{picture.caption}</p>
         ) : null}
       </>
+    );
+  };
+
+  /**
+   * Cards, steps and debrief: a heading over a list. On split, a picture takes
+   * the supporting side, so `place` and `size` mean the same as on every other
+   * kind, and the list moves under the heading. Without a picture the list has
+   * the supporting side to itself.
+   */
+  const listSlide = (title: string, titleSpans: readonly SlideSpanStyle[] | undefined, list: ReactNode): ReactNode => {
+    const heading = show('header') ? (
+      <h1 {...part.attrs('header')}>
+        {decorate('header')}
+        {words(title, titleSpans)}
+      </h1>
+    ) : null;
+    const pictureBeside = split && hasPicture;
+    return (
+      <section className={rootClass(null, layout, hasPicture)} {...pictureProps}>
+        {region(
+          'lede',
+          split,
+          <>
+            {heading}
+            {pictureBeside ? list : picturePart()}
+          </>,
+        )}
+        {region('support', split, pictureBeside ? picturePart() : list)}
+      </section>
     );
   };
 
@@ -287,71 +336,45 @@ function StepContent(props: StepLayoutProps): ReactNode {
         </section>
       );
 
-    case 'cards':
-      return (
-        <section className={rootClass(null, layout, hasPicture)} {...pictureProps}>
-          {region(
-            'lede',
-            split,
-            <>
-              {show('header') ? (
-                <h1 {...part.attrs('header')}>
-                  {decorate('header')}
-                  {words(step.title, step.titleSpans)}
-                </h1>
-              ) : null}
-              {picturePart()}
-            </>,
+    case 'cards': {
+      const cards = (
+        <div className="outline-step__cards" data-item-count={step.items.length} style={gridRows(step.items.length)}>
+          {step.items.map((item, index) =>
+            show(`cell-${String(index)}`) ? (
+              <article
+                key={`${item.label ?? 'card'}-${String(index)}`}
+                {...part.hostAttrs(`cell-${String(index)}`)}
+              >
+                {decorate(`cell-${String(index)}`)}
+                {item.label ? <h2>{item.label}</h2> : null}
+                {/* The card's text is the part's value; its label is not, so
+                    the caret goes on the paragraph rather than the card. */}
+                <p {...part.editAttrs(`cell-${String(index)}`)}>{words(item.text, item.textSpans)}</p>
+              </article>
+            ) : null,
           )}
-          {region('support', split, <div className="outline-step__cards">
-            {step.items.map((item, index) =>
-              show(`cell-${String(index)}`) ? (
-                <article
-                  key={`${item.label ?? 'card'}-${String(index)}`}
-                  {...part.hostAttrs(`cell-${String(index)}`)}
-                >
-                  {decorate(`cell-${String(index)}`)}
-                  {item.label ? <h2>{item.label}</h2> : null}
-                  {/* The card's text is the part's value; its label is not, so
-                      the caret goes on the paragraph rather than the card. */}
-                  <p {...part.editAttrs(`cell-${String(index)}`)}>{words(item.text, item.textSpans)}</p>
-                </article>
-              ) : null,
-            )}
-          </div>)}
-        </section>
+        </div>
       );
+      return listSlide(step.title, step.titleSpans, cards);
+    }
 
-    case 'steps':
-      return (
-        <section className={rootClass(null, layout, hasPicture)} {...pictureProps}>
-          {region(
-            'lede',
-            split,
-            <>
-              {show('header') ? (
-                <h1 {...part.attrs('header')}>
-                  {decorate('header')}
-                  {words(step.title, step.titleSpans)}
-                </h1>
-              ) : null}
-              {picturePart()}
-            </>,
+    case 'steps': {
+      const sequence = (
+        <ol className="outline-step__sequence" data-item-count={step.items.length} style={gridRows(step.items.length)}>
+          {step.items.map((item, index) =>
+            show(`cell-${String(index)}`) ? (
+              <li key={`${String(index)}-${item}`} {...part.hostAttrs(`cell-${String(index)}`)}>
+                {decorate(`cell-${String(index)}`)}
+                <span>{index + 1}</span>
+                {/* The step number is drawn, not authored — keep it out of the caret. */}
+                <p {...part.editAttrs(`cell-${String(index)}`)}>{words(item, step.itemsSpans?.[index])}</p>
+              </li>
+            ) : null,
           )}
-          {region('support', split, <ol className="outline-step__sequence">
-            {step.items.map((item, index) =>
-              show(`cell-${String(index)}`) ? (
-                <li key={`${String(index)}-${item}`} {...part.hostAttrs(`cell-${String(index)}`)}>
-                  {decorate(`cell-${String(index)}`)}
-                  <span>{index + 1}</span>
-                  {/* The step number is drawn, not authored — keep it out of the caret. */}
-                  <p {...part.editAttrs(`cell-${String(index)}`)}>{words(item, step.itemsSpans?.[index])}</p>
-                </li>
-              ) : null,
-            )}
-          </ol>)}
-        </section>
+        </ol>
       );
+      return listSlide(step.title, step.titleSpans, sequence);
+    }
 
     case 'term':
       return (
@@ -402,14 +425,19 @@ function StepContent(props: StepLayoutProps): ReactNode {
       // `activity` is the kind's own two-column arrangement — what the learners
       // do on the left, what has to be on the table on the right — so it groups
       // exactly like `split` does.
+      const authoredMaterials = step.materials !== undefined && step.materials.length > 0 ? step.materials : null;
+      // The second column holds the materials or the picture. With neither
+      // authored there is nothing to put there, and the instructions take the
+      // whole width. Authored, not shown: materials revealed late still keep
+      // their column, so the instructions do not re-wrap when they appear.
+      const second = hasPicture || authoredMaterials !== null;
       const columns = split || layout === 'activity';
-      const picture = step.media;
       // Materials are things the learners need in front of them, not steps they
       // perform — a separate block, and one reveal part. It normally has the
       // second region to itself; when the activity carries a picture, the
       // picture takes that region and the list sits under the instructions.
       const materials =
-        step.materials !== undefined && step.materials.length > 0 && show('materials') ? (
+        authoredMaterials !== null && show('materials') ? (
           <div className="outline-step__materials" {...part.hostAttrs('materials')}>
             {decorate('materials')}
             <p className="outline-step__meta">Materials</p>
@@ -418,7 +446,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
                   part: it carries no `data-part`, so the rendered parts still
                   match `partKeysForStep` exactly, and clicking a line still
                   selects the one `materials` part it belongs to. */}
-              {step.materials.map((item, index) => (
+              {authoredMaterials.map((item, index) => (
                 <li key={`${String(index)}-${item}`} {...part.editAttrs(`material-${String(index)}`)}>
                   {words(item, step.materialsSpans?.[index])}
                 </li>
@@ -427,7 +455,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
           </div>
         ) : null;
       return (
-        <section className={rootClass(null, layout, picture !== undefined)} {...pictureProps}>
+        <section className={rootClass(null, layout, hasPicture)} {...pictureProps}>
           {region(
             'lede',
             columns,
@@ -451,23 +479,13 @@ function StepContent(props: StepLayoutProps): ReactNode {
                   ) : null,
                 )}
               </ul>
-              {picture === undefined ? null : materials}
+              {hasPicture ? materials : null}
             </>,
           )}
           {region(
             'support',
-            columns,
-            picture === undefined ? (
-              materials
-            ) : show('image') ? (
-              <>
-                {decorate('image')}
-                {pictureNode(picture, part.hostAttrs('image'))}
-                {picture.caption && pixabayCredit(picture) === null ? (
-                  <p className="outline-step__caption">{picture.caption}</p>
-                ) : null}
-              </>
-            ) : null,
+            columns && second,
+            hasPicture ? picturePart() : materials,
           )}
         </section>
       );
@@ -543,36 +561,23 @@ function StepContent(props: StepLayoutProps): ReactNode {
     }
 
     case 'debrief':
-      return (
-        <section className={rootClass(null, layout, hasPicture)} {...pictureProps}>
-          {region(
-            'lede',
-            split,
-            <>
-              {show('header') ? (
-                <h1 {...part.attrs('header')}>
-                  {decorate('header')}
-                  {words(step.title, step.titleSpans)}
-                </h1>
-              ) : null}
-              {picturePart()}
-            </>,
+      return listSlide(
+        step.title,
+        step.titleSpans,
+        <ul
+          className="outline-step__bullets outline-step__bullets--questions"
+          data-item-count={step.prompts.length}
+          style={gridRows(step.prompts.length)}
+        >
+          {step.prompts.map((item, index) =>
+            show(`cell-${String(index)}`) ? (
+              <li key={`${String(index)}-${item}`} {...part.attrs(`cell-${String(index)}`)}>
+                {decorate(`cell-${String(index)}`)}
+                {words(item, step.promptsSpans?.[index])}
+              </li>
+            ) : null,
           )}
-          {region(
-            'support',
-            split,
-            <ul className="outline-step__bullets outline-step__bullets--questions">
-              {step.prompts.map((item, index) =>
-                show(`cell-${String(index)}`) ? (
-                  <li key={`${String(index)}-${item}`} {...part.attrs(`cell-${String(index)}`)}>
-                    {decorate(`cell-${String(index)}`)}
-                    {words(item, step.promptsSpans?.[index])}
-                  </li>
-                ) : null,
-              )}
-            </ul>,
-          )}
-        </section>
+        </ul>,
       );
 
     case 'break':
@@ -677,7 +682,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
           {region(
             'support',
             split,
-            <ul className="outline-step__options">
+            <ul className="outline-step__options" data-option-tier={optionTier(options?.length ?? 0)}>
               {(options ?? []).map((option, index) =>
                 show(`option-${String(index)}`) ? (
                   <li key={option.id} {...part.attrs(`option-${String(index)}`)}>

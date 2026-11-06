@@ -94,6 +94,9 @@ export function layoutAllowedForKind(kind: SlideStepKind, layout: SlideLayout): 
   return LAYOUTS_FOR_KIND[kind].includes(layout);
 }
 
+/** Layouts that draw their blocks one under the other, with no side region. */
+const STACKED_LAYOUTS: ReadonlySet<SlideLayout> = new Set(['title', 'text', 'grid']);
+
 /**
  * The layout a step is drawn in.
  *
@@ -102,9 +105,24 @@ export function layoutAllowedForKind(kind: SlideStepKind, layout: SlideLayout): 
  * drawing it as a poll would produce an empty slide rather than a wrong one.
  * Such a step falls back to its kind's default, which is also what the
  * validator will flag in the deck editor.
+ *
+ * A picture placed `left` or `right` on a layout that stacks its blocks
+ * (`title`, `text`, `grid`) has no side to sit on, so the step is drawn as
+ * `split` when the kind allows it. This is the layout the deck editor already
+ * writes when an author picks that place (`layoutForMediaPlace` in
+ * `@openroom/schema`); outlines written by agents get the same slide.
  */
-export function effectiveLayout(step: { kind: SlideStepKind; layout?: SlideLayout }): SlideLayout {
+export function effectiveLayout(step: {
+  kind: SlideStepKind;
+  layout?: SlideLayout;
+  media?: { place?: string };
+}): SlideLayout {
   const authored = step.layout;
-  if (authored !== undefined && layoutAllowedForKind(step.kind, authored)) return authored;
-  return defaultLayoutForKind(step.kind);
+  const layout =
+    authored !== undefined && layoutAllowedForKind(step.kind, authored) ? authored : defaultLayoutForKind(step.kind);
+  const place = step.media?.place;
+  if ((place === 'left' || place === 'right') && STACKED_LAYOUTS.has(layout) && layoutAllowedForKind(step.kind, 'split')) {
+    return 'split';
+  }
+  return layout;
 }
