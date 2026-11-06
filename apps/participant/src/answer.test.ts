@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { InteractionView } from '@openroom/sdk';
-import { describeAnswer, insertAt, orderedBy, startingOrder } from './answer';
+import { ballotKey, describeAnswer, insertAt, orderedBy, startingOrder } from './answer';
 
 const ranking: InteractionView = {
   id: 'r',
@@ -91,5 +91,21 @@ describe('insertAt', () => {
 
   it('refuses a key that would pass the limit instead of cutting the end', () => {
     expect(insertAt('abc', 1, 1, 'é', 3)).toEqual({ value: 'abc', caret: 1 });
+  });
+});
+
+describe('ballotKey', () => {
+  it('reads the same answer the same way whatever the key order of a refetch', () => {
+    expect(ballotKey({ kind: 'fill-the-gaps', gaps: { g1: 'suis', g2: 'ai' } })).toBe(
+      ballotKey({ kind: 'fill-the-gaps', gaps: { g2: 'ai', g1: 'suis' } }),
+    );
+  });
+
+  it('tells a changed answer and a changed order apart', () => {
+    expect(ballotKey({ kind: 'match', pairs: { a: 'x' } })).not.toBe(ballotKey({ kind: 'match', pairs: { a: 'y' } }));
+    expect(ballotKey({ kind: 'ranking', optionIds: ['a', 'b'] })).not.toBe(
+      ballotKey({ kind: 'ranking', optionIds: ['b', 'a'] }),
+    );
+    expect(ballotKey(null)).toBe('');
   });
 });

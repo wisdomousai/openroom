@@ -44,6 +44,7 @@ describe('join error message', () => {
     expect(isTransient(new JoinError('Could not join session (503)', 503))).toBe(true);
     expect(isTransient(new JoinError('Could not join session (429)', 429))).toBe(true);
     expect(isTransient(new JoinError('That access link is not valid for this session.', 403, 'context-link-invalid'))).toBe(false);
+    expect(isTransient(new SyntaxError('Unexpected end of JSON input'))).toBe(false);
   });
 
   it('recognises only the not-started answer as a reason to wait', () => {

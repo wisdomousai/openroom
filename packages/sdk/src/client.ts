@@ -53,7 +53,7 @@ export interface SessionClientOptions<S extends Snapshot = Snapshot> {
   onStatus?: (status: ConnectionStatus) => void;
   /**
    * The server refused this token for this session for good: 401, 403, 404 or
-   * 410 on two snapshot reads in a row. The token expired, the session was
+   * 410 on consecutive snapshot reads at least 1.5 s apart. The token expired, the session was
    * wiped, or it never existed, so retrying cannot help. When this listener is
    * set the client stops polling and closes the socket before calling it with
    * the HTTP status. Without it such a response reads as `offline` and polling
@@ -95,7 +95,10 @@ const WS_KEEPALIVE_MS = 30_000;
 
 /** Snapshot responses that mean the token or the session is gone, not the network. */
 const GONE_STATUSES = new Set([401, 403, 404, 410]);
-/** A gone answer is asked once more after this long before the client gives up. */
+/**
+ * A gone answer must still hold this long later before the client gives up,
+ * so two reads inside one stray 404 do not drop a seat.
+ */
 const GONE_RECHECK_MS = 1500;
 
 function defaultOrigin(): string {
@@ -176,8 +179,8 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
   let polling = false;
   let fetching = false;
   let refetchQueued = false;
-  /** Consecutive gone answers; one stray 404 is not enough to drop a seat. */
-  let goneStrikes = 0;
+  /** When the current run of gone answers began; null after any other outcome. */
+  let goneSince: number | null = null;
   let goneTimer: ReturnType<typeof setTimeout> | null = null;
 
   function setStatus(next: ConnectionStatus): void {
@@ -216,19 +219,20 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       });
       if (closed) return;
       if (res.status === 304) {
-        goneStrikes = 0;
+        goneSince = null;
         if (status === 'offline') setStatus(polling ? 'polling' : 'live');
         return;
       }
       if (!res.ok) {
         if (GONE_STATUSES.has(res.status) && options.onGone) {
-          goneStrikes += 1;
-          if (goneStrikes < 2) {
+          const now = Date.now();
+          goneSince ??= now;
+          if (now - goneSince < GONE_RECHECK_MS) {
             if (goneTimer === null) {
               goneTimer = setTimeout(() => {
                 goneTimer = null;
                 void fetchSnapshot();
-              }, GONE_RECHECK_MS);
+              }, goneSince + GONE_RECHECK_MS - now);
             }
             return;
           }
@@ -240,11 +244,11 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
           }
           return;
         }
-        goneStrikes = 0;
+        goneSince = null;
         setStatus('offline');
         return;
       }
-      goneStrikes = 0;
+      goneSince = null;
       const body = (await res.json()) as S;
       if (closed) return;
       if (typeof body?.revision === 'number') knownRevision = body.revision;
@@ -253,6 +257,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
         setStatus(polling ? 'polling' : ws ? 'live' : 'connecting');
       }
     } catch {
+      goneSince = null;
       if (!closed) setStatus('offline');
     } finally {
       fetching = false;

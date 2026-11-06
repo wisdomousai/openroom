@@ -7,7 +7,7 @@ import {
   type SessionClient,
 } from '@openroom/sdk';
 import { useSessionTheme } from '../theme';
-import { clearSession, type StoredSession } from '../session';
+import { clearSession, forgetSessionInUrl, type StoredSession } from '../session';
 import { comeBackLine } from '../join-error';
 import { Body } from './body';
 import { LearnerLookup } from './learner-lookup';
@@ -54,8 +54,10 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
       onGone: () => {
         // An ended session that has since been wiped: the "Session ended" view
         // already says everything. Forget the seat and keep showing it.
-        if (endedRef.current) clearSession(session);
-        else goneRef.current(identityRef.current);
+        if (endedRef.current) {
+          clearSession(session);
+          forgetSessionInUrl();
+        } else goneRef.current(identityRef.current);
       },
     });
     clientRef.current = client;

@@ -7,6 +7,25 @@ import {
 import type { AnswerInput, Ballot, InteractionView, TextSpanView } from '@openroom/sdk';
 import { SpanText } from '@openroom/slides';
 
+/**
+ * A submitted ballot as a stable string. Every snapshot refetch hands back a
+ * new `ownAnswer` object, so a form resets its draft only when this changes:
+ * a pause or another learner's answer must not wipe an edit in progress.
+ */
+export function ballotKey(ballot: Ballot | null): string {
+  const stable = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(stable)
+      : value !== null && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.entries(value as Record<string, unknown>)
+              .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+              .map(([key, entry]) => [key, stable(entry)]),
+          )
+        : value;
+  return ballot === null ? '' : JSON.stringify(stable(ballot));
+}
+
 /** An option label as the author styled it, or the plain string when unstyled. */
 function OptionLabel({ label, spans }: { label: string; spans?: TextSpanView[] }) {
   return spans === undefined ? <>{label}</> : <SpanText spans={spans} />;
@@ -86,9 +105,7 @@ function ChoiceAnswer({
   const [selected, setSelected] = useState<string[]>(initial);
   const multiple = interaction.multiple === true;
 
-  // Keyed on the value: every snapshot refetch hands back a new `ownAnswer`
-  // object, and a pause or another learner's answer must not reset a choice.
-  const submitted = ownAnswer?.kind === 'choice' ? ownAnswer.optionIds.join('|') : '';
+  const submitted = ballotKey(ownAnswer);
   useEffect(() => {
     setSelected(ownAnswer?.kind === 'choice' ? ownAnswer.optionIds : []);
   }, [interaction.id, submitted]);
@@ -427,11 +444,7 @@ function RankingAnswer({
 
   const [order, setOrder] = useState<string[]>(initial);
   const [announcement, setAnnouncement] = useState('');
-  // A snapshot refetch hands back a fresh `ownAnswer` object on every revision
-  // bump, so the reset below keys off the VALUE, not the object identity —
-  // otherwise someone else answering would wipe an in-progress reorder.
-  const submitted =
-    ownAnswer?.kind === 'ranking' ? ownAnswer.optionIds.join('|') : '';
+  const submitted = ballotKey(ownAnswer);
   // Keyboard operability: the button that performed a move travels with its
   // item, so focus is restored to it after the list re-renders.
   const focusKey = useRef<string | null>(null);
@@ -629,8 +642,7 @@ function FillTheGapsAnswer({
   /** The typed gap the accent keys write into: the one last focused. */
   const [typingGap, setTypingGap] = useState<string | null>(null);
   const caret = useCaretInsert<HTMLInputElement>();
-  // Keyed on the value, as in RankingAnswer: a refetch must not wipe an edit.
-  const submitted = ownAnswer?.kind === 'fill-the-gaps' ? JSON.stringify(ownAnswer.gaps) : '';
+  const submitted = ballotKey(ownAnswer);
   useEffect(() => {
     setGaps(ownAnswer?.kind === 'fill-the-gaps' ? ownAnswer.gaps : {});
     setOpenGap(null);
@@ -875,8 +887,7 @@ function MatchAnswer({
   const initial = ownAnswer?.kind === 'match' ? ownAnswer.pairs : {};
   const [pairs, setPairs] = useState<Record<string, string>>(initial);
   const [picked, setPicked] = useState<string | null>(null);
-  // Keyed on the value, as in RankingAnswer: a refetch must not wipe an edit.
-  const submitted = ownAnswer?.kind === 'match' ? JSON.stringify(ownAnswer.pairs) : '';
+  const submitted = ballotKey(ownAnswer);
   useEffect(() => {
     setPairs(ownAnswer?.kind === 'match' ? ownAnswer.pairs : {});
     setPicked(null);

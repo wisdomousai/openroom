@@ -45,8 +45,11 @@ export function isNotStarted(error: unknown): boolean {
   return error instanceof JoinError && error.code === 'session-not-started';
 }
 
-/** No answer that says anything about the session: offline, a server fault, or a rate limit. */
+/**
+ * No answer that says anything about the session: the request never arrived
+ * (fetch rejects with a TypeError), a server fault, or a rate limit.
+ */
 export function isTransient(error: unknown): boolean {
-  if (!(error instanceof JoinError)) return true;
-  return error.status >= 500 || error.status === 429;
+  if (error instanceof JoinError) return error.status >= 500 || error.status === 429;
+  return error instanceof TypeError;
 }

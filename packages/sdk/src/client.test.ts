@@ -393,6 +393,27 @@ describe('createSessionClient', () => {
     }
   });
 
+  it('needs the gone answer to hold for 1.5 s, not just for two quick reads', async () => {
+    const fetchFake: FetchLike = async () => jsonRes(404, { error: 'session-not-found' });
+    const gone: number[] = [];
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 't',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: null,
+      onGone: (status) => gone.push(status),
+    });
+    await flush();
+    await client.refresh();
+    await flush();
+    expect(gone).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1600);
+    await flush();
+    expect(gone).toEqual([404]);
+  });
+
   it('does not give up a seat over one stray 404', async () => {
     let fetches = 0;
     const fetchFake: FetchLike = async () => {
