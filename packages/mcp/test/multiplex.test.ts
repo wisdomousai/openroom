@@ -93,6 +93,29 @@ describe('MCP multiplexer', () => {
     expect(hosted.created).toHaveLength(1);
   });
 
+  it('starts a bound file once per requestId and keeps it off the hosted deck routes', async () => {
+    const file = memoryFile();
+    const hosted = { ...hostedSpy(), appOrigin: 'https://app.test' };
+    const forwarded: string[] = [];
+    hosted.controlRequest = async (_method, path) => {
+      forwarded.push(path);
+      return { status: 404, body: { error: 'deck-not-found' } };
+    };
+    const deps = multiplexToolDeps(hosted, file);
+    const requestId = '7f1c2a9e-3b4d-4e5f-8a6b-1c2d3e4f5a6b';
+    const first = (await callTool(deps, 'deck_start', { deckId: 'file-1', requestId })) as {
+      ok: boolean;
+      sessionId: string;
+      body: { code: string; stageUrl: string };
+    };
+    const again = (await callTool(deps, 'deck_start', { deckId: 'file-1', requestId })) as typeof first;
+    expect(first).toMatchObject({ ok: true, sessionId: requestId, body: { code: 'SESSHOST' } });
+    expect(first.body.stageUrl).toBe('https://app.test/stage/?session=SESSHOST&token=s');
+    expect(again.body.code).toBe('SESSHOST');
+    expect(hosted.created).toHaveLength(1);
+    expect(forwarded).toEqual([]);
+  });
+
   it('saves an unfinished local question but rejects starting it before calling hosted', async () => {
     const file = memoryFile();
     const hosted = hostedSpy();

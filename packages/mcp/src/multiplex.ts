@@ -7,12 +7,13 @@ import { compileOutline } from '@openroom/schema';
 
 import type { FileBinding } from './file-binding.js';
 import { isBoundFileId } from './file-binding.js';
-import type { ToolDeps } from './tools.js';
+import { absoluteSessionUrls, type ToolDeps } from './tools.js';
 
 const DECK = /^\/api\/decks\/([^/?]+)(?:\/(versions|draft))?(?:\?.*)?$/;
 const LOCAL_ASSETS = /^\/api\/tutoring\/spaces\/local\/assets(?:\?.*)?$/;
 const START_SESSION = /^\/api\/sessions$/;
 const LAUNCH_SESSION = /^\/api\/sessions\/([^/?]+)\/launch(?:\?.*)?$/;
+const DECK_START = /^\/api\/decks\/([^/?]+)\/start(?:\?.*)?$/;
 
 export function multiplexToolDeps(hosted: ToolDeps, file: FileBinding | null): ToolDeps {
   let lastLocalStart: { sessionId: string; live: Awaited<ReturnType<ToolDeps['createSession']>> } | null =
@@ -63,6 +64,23 @@ async function handleLocal(
     return { status: 405, body: { error: 'method-not-allowed' } };
   }
 
+  const deckStart = DECK_START.exec(path);
+  if (deckStart !== null && method === 'POST') {
+    const deckId = decodeURIComponent(deckStart[1] ?? '');
+    if (!isBoundFileId(file, deckId)) return null;
+    const requestId = asRecord(body)['requestId'];
+    if (typeof requestId !== 'string' || requestId === '') {
+      return { status: 422, body: { error: 'request-id-required' } };
+    }
+    // The same requestId answers the same live session, as the hosted route does.
+    if (starts.last === null || starts.last.sessionId !== requestId) {
+      const compiled = compileOutline(file.getOutline());
+      if (!compiled.ok) return { status: 422, body: { error: 'invalid-content', errors: compiled.errors } };
+      starts.last = { sessionId: requestId, live: await hosted.createSession(compiled.outline) };
+    }
+    return { status: 201, body: localLaunched(hosted, file, starts.last) };
+  }
+
   if (LOCAL_ASSETS.test(path) && method === 'POST') {
     return insertImage(file, body);
   }
@@ -85,18 +103,24 @@ async function handleLocal(
   if (launch !== null && method === 'POST') {
     const sessionId = decodeURIComponent(launch[1] ?? '');
     if (starts.last === null || starts.last.sessionId !== sessionId) return null;
-    return {
-      status: 201,
-      body: {
-        ...starts.last.live,
-        sessionId,
-        deckId: file.fileId,
-        started: true,
-      },
-    };
+    return { status: 201, body: localLaunched(hosted, file, starts.last) };
   }
 
   return null;
+}
+
+function localLaunched(
+  hosted: ToolDeps,
+  file: FileBinding,
+  start: NonNullable<LocalStartSlot['last']>,
+): Record<string, unknown> {
+  return {
+    ...start.live,
+    ...absoluteSessionUrls(hosted.appOrigin, start.live),
+    sessionId: start.sessionId,
+    deckId: file.fileId,
+    started: true,
+  };
 }
 
 function getDeck(file: FileBinding): { status: number; body: unknown } {

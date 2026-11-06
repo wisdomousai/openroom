@@ -930,7 +930,7 @@ function asRecord(value: unknown): Record<string, unknown> {
  * to know their shapes. A join URL that is already absolute (a separate join
  * origin) is kept.
  */
-function absoluteSessionUrls(
+export function absoluteSessionUrls(
   appOrigin: string | undefined,
   created: { sessionCode: string; joinUrl: string; stageToken: string },
 ): { joinUrl: string; stageUrl?: string } {
