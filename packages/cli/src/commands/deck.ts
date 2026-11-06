@@ -31,6 +31,9 @@ import { stringify as stringifyYaml } from 'yaml';
 import { ApiClient, type FetchLike } from '../api.js';
 import { flagString, requireFlag, UsageError, type ParsedArgs } from '../args.js';
 import { CliError, Reporter } from '../output.js';
+import { writeState } from '../state.js';
+
+const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 
 export interface DeckCommandDeps {
   fetchImpl?: FetchLike;
@@ -44,7 +47,7 @@ export const DECK_USAGE = `usage:
   openroom deck draft put <id> --file <plan.yaml> [--base <n>] --url <base> --token <bearer>
   openroom deck draft discard <id> --url <base> --token <bearer>
   openroom deck versions <id> --url <base> --token <bearer>
-  openroom deck start <id> [--version <n>] [--title <text>] --url <base> --token <bearer>`;
+  openroom deck start <id> [--version <n>] [--title <text>] [--request-id <uuid>] --url <base> --token <bearer>`;
 
 interface Ctx {
   client: ApiClient;
@@ -281,47 +284,81 @@ async function deckStart(
 ): Promise<number> {
   const version = intFlag(args, 'version');
   const title = flagString(args, 'title');
-  // A durable session is filed first because a session is what a delivery
-  // *is* — the live console is the session being live. There is no route that
-  // skips the filing step.
-  const created = await ctx.client.tutoringRequest('POST', '/api/sessions', ctx.token, {
-    deckId,
-    ...(version === undefined ? {} : { deckVersion: version }),
-    ...(title === undefined ? {} : { title }),
-  });
-  const sessionId = (created.body as { session?: { id?: string } } | null)?.session?.id;
-  if (typeof sessionId !== 'string' || sessionId === '') {
-    throw new CliError('session creation returned no session id', {
-      code: 'E_BAD_RESPONSE',
-      body: created.body,
+  const requestId = flagString(args, 'request-id');
+  let sessionId: string;
+  let body: unknown;
+  if (requestId !== undefined) {
+    if (!UUID.test(requestId)) throw new UsageError('option --request-id must be a UUID');
+    if (version !== undefined || title !== undefined) {
+      throw new UsageError('--request-id starts the current saved version; omit --version and --title');
+    }
+    // The retry-safe route keys the durable session by requestId: running the
+    // same command again answers the same live session instead of a new one.
+    ({ body } = await ctx.client.tutoringRequest('POST', `${deckPath(deckId)}/start`, ctx.token, { requestId }));
+    sessionId = requestId;
+  } else {
+    // A durable session is filed first because a session is what a delivery
+    // *is* — the live console is the session being live. There is no route that
+    // skips the filing step.
+    const created = await ctx.client.tutoringRequest('POST', '/api/sessions', ctx.token, {
+      deckId,
+      ...(version === undefined ? {} : { deckVersion: version }),
+      ...(title === undefined ? {} : { title }),
     });
+    const filed = (created.body as { session?: { id?: string } } | null)?.session?.id;
+    if (typeof filed !== 'string' || filed === '') {
+      throw new CliError('session creation returned no session id', {
+        code: 'E_BAD_RESPONSE',
+        body: created.body,
+      });
+    }
+    sessionId = filed;
+    ({ body } = await ctx.client.tutoringRequest(
+      'POST',
+      `/api/sessions/${encodeURIComponent(sessionId)}/launch`,
+      ctx.token,
+      { start: true },
+    ));
   }
-  const { body } = await ctx.client.tutoringRequest(
-    'POST',
-    `/api/sessions/${encodeURIComponent(sessionId)}/launch`,
-    ctx.token,
-    { start: true },
-  );
   const live = body as {
     sessionCode?: string;
     code?: string;
     joinUrl?: string;
+    stageUrl?: string;
     hostToken?: string;
     stageToken?: string;
+    contextId?: string;
     deckVersion?: number;
     started?: boolean;
     startFailed?: string;
   } | null;
-  if (live === null || typeof live.sessionCode !== 'string') {
+  if (live === null || typeof live.sessionCode !== 'string' || typeof live.hostToken !== 'string') {
     throw new CliError('launch returned no session', { code: 'E_BAD_RESPONSE', body });
   }
+  // Later `openroom session …` commands control this session without another flag.
+  const statePath = writeState({
+    url: ctx.client.base,
+    sessionCode: live.sessionCode,
+    code: live.code ?? live.sessionCode,
+    hostToken: live.hostToken,
+    ...(live.stageToken === undefined ? {} : { stageToken: live.stageToken }),
+    ...(live.joinUrl === undefined ? {} : { joinUrl: live.joinUrl }),
+    ...(live.stageUrl === undefined ? {} : { stageUrl: live.stageUrl }),
+    createdAt: new Date().toISOString(),
+  }, ctx.cwd);
   reporter.line(`session ${live.sessionCode}`);
-  reporter.line(`code ${live.code ?? ''}`);
-  if (live.joinUrl !== undefined) reporter.line(`join ${live.joinUrl}`);
+  if (live.joinUrl !== undefined) {
+    reporter.line(`join  ${live.joinUrl}`);
+  } else if (live.contextId !== undefined) {
+    // An identified session admits nobody by code alone.
+    reporter.line(`join  needs the student's link: openroom api POST /api/tutoring/contexts/${live.contextId}/links --body '{"sessionCode":"${live.sessionCode}"}' answers its joinUrl (for a class, add "learnerId" or "displayName" for each student)`);
+  }
+  if (live.stageUrl !== undefined) reporter.line(`stage ${live.stageUrl}`);
+  reporter.line(`state ${statePath}`);
   if (live.startFailed !== undefined) {
     reporter.errorLine(`warning: the session was created but did not start (${live.startFailed})`);
   }
-  reporter.emit({ ok: true, deckId, sessionId, ...live });
+  reporter.emit({ ok: true, deckId, sessionId, ...live, statePath });
   return 0;
 }
 

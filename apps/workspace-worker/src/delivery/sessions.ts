@@ -6,6 +6,8 @@ import {
   canonicalOutlineJson,
   clipNextNote,
   compileRecordHomework,
+  HOMEWORK_QUIZ_TYPES,
+  HOMEWORK_TASK_MAX,
   parseHomeworkAudience,
   validateOutline,
   isPresentationPosition,
@@ -16,6 +18,7 @@ import {
   type Outline,
   type PresentationPosition,
   type OutlineValidateResult,
+  type PublishedHomeworkTask,
 } from '@openroom/schema';
 
 import { sha256Hex } from '../api-tokens.js';
@@ -242,6 +245,37 @@ export async function restoreSessionRoute(
   return json({ ok: true });
 }
 
+const RECORD_HOMEWORK_KINDS = 'reading, writing, voice or quiz';
+
+/**
+ * Why a homework list that is the right size failed to compile, naming the
+ * first task at fault so an agent can correct it. Null for a size problem,
+ * which keeps its own record-arrays-too-large answer.
+ */
+function recordHomeworkProblem(input: unknown): { index?: number; message: string } | null {
+  if (!Array.isArray(input)) {
+    return { message: `homework must be an array of tasks: a string (reading material) or a task object with kind ${RECORD_HOMEWORK_KINDS}` };
+  }
+  if (input.length > HOMEWORK_TASK_MAX) return null;
+  for (const [index, item] of input.entries()) {
+    if (compileRecordHomework([item]) !== null) continue;
+    const at = `homework[${String(index)}]`;
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+      return { index, message: `${at} must be a string (reading material) or a task object with kind ${RECORD_HOMEWORK_KINDS}` };
+    }
+    const kind = (item as Record<string, unknown>).kind;
+    if (kind === 'reading') return { index, message: `${at}.body is required for a reading task` };
+    if (kind === 'writing' || kind === 'voice') {
+      return { index, message: `${at}.prompt is required for a ${kind} task; prompt and guidance hold at most 2000 characters each` };
+    }
+    if (kind === 'quiz') {
+      return { index, message: `${at}.interaction must be a complete ${HOMEWORK_QUIZ_TYPES.join(', ')} interaction with an id` };
+    }
+    return { index, message: `${at}.kind must be ${RECORD_HOMEWORK_KINDS}` };
+  }
+  return { message: 'homework task ids must be unique' };
+}
+
 export async function sessionRecordRoute(
   request: Request,
   env: ControlEnv,
@@ -288,18 +322,38 @@ export async function sessionRecordRoute(
   if (session.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
-  const outcomes = compactArray(body.outcomes ?? []);
-  const homework = compileRecordHomework(body.homework ?? []);
-  const artifacts = compactArray(body.artifacts ?? []);
-  const notes = typeof body.notes === 'string' ? body.notes.slice(0, 10_000) : '';
-  const nextNoteProvided = Object.prototype.hasOwnProperty.call(body, 'nextNote');
-  const nextNote = nextNoteProvided ? clipNextNote(body.nextNote) : null;
+  const existing = await env.DB.prepare('SELECT id, created_at, session_code, deck_version, outcomes_json, notes, next_note, homework_json, homework_audience_json, homework_revision, artifacts_json FROM session_records WHERE session_id = ?1')
+    .bind(sessionId).first<{ id: string; created_at: number; session_code: string | null; deck_version: number; outcomes_json: string; notes: string | null; next_note: string | null; homework_json: string; homework_audience_json: string; homework_revision: number; artifacts_json: string }>();
+  // A field the body leaves out keeps its stored value; an explicit '' or []
+  // clears it. Several writers share one record (the tutor's Notes in the
+  // browser, an agent adding homework later), so a partial body must never
+  // wipe what another writer saved.
+  const provided = (key: string) => Object.prototype.hasOwnProperty.call(body, key);
+  const stored = (text: string | undefined): unknown[] => {
+    const value = parseJson(text ?? '[]', []);
+    return Array.isArray(value) ? value : [];
+  };
+  const outcomes = provided('outcomes') ? compactArray(body.outcomes ?? []) : stored(existing?.outcomes_json);
+  const artifacts = provided('artifacts') ? compactArray(body.artifacts ?? []) : stored(existing?.artifacts_json);
+  // Omitted homework is the stored snapshot itself, byte for byte, so it never
+  // counts as a homework change that would need homeworkRevision.
+  const homework = provided('homework')
+    ? compileRecordHomework(body.homework ?? [])
+    : stored(existing?.homework_json) as PublishedHomeworkTask[];
+  const notes = provided('notes')
+    ? typeof body.notes === 'string' ? body.notes.slice(0, 10_000) : ''
+    : existing?.notes ?? '';
+  const nextNote = provided('nextNote') ? clipNextNote(body.nextNote) : null;
+  if (homework === null && provided('homework')) {
+    const problem = recordHomeworkProblem(body.homework ?? []);
+    if (problem !== null) return json({ error: 'invalid-homework', ...problem }, 422);
+  }
   if (outcomes === null || homework === null || artifacts === null) {
     return json({ error: 'record-arrays-too-large' }, 422);
   }
   const deckVersion = typeof body.deckVersion === 'number' && Number.isInteger(body.deckVersion)
     ? body.deckVersion
-    : session.deck_version;
+    : existing?.deck_version ?? session.deck_version;
   const deck = await env.DB.prepare('SELECT current_version FROM decks WHERE id = ?1')
     .bind(session.deck_id)
     .first<{ current_version: number }>();
@@ -312,10 +366,10 @@ export async function sessionRecordRoute(
   ) {
     return json({ error: 'invalid-deck-version' }, 422);
   }
-  const sessionCode = typeof body.sessionCode === 'string' ? body.sessionCode.slice(0, 64) : null;
+  const sessionCode = provided('sessionCode')
+    ? typeof body.sessionCode === 'string' ? body.sessionCode.slice(0, 64) : null
+    : existing?.session_code ?? null;
   const now = Date.now();
-  const existing = await env.DB.prepare('SELECT id, created_at, next_note, homework_json, homework_audience_json, homework_revision FROM session_records WHERE session_id = ?1')
-    .bind(sessionId).first<{ id: string; created_at: number; next_note: string | null; homework_json: string; homework_audience_json: string; homework_revision: number }>();
   const taskIds = homework.map((task) => task.id);
   const storedAudience = parseJson(existing?.homework_audience_json ?? '{}', null);
   if (body.homeworkAudience === undefined && !plainObject(storedAudience)) return json({ error: 'invalid-homework-audience' }, 422);
@@ -325,22 +379,27 @@ export async function sessionRecordRoute(
   const people = session.context_id === null ? [] : (await env.DB.prepare('SELECT id FROM context_learners WHERE context_id = ?1').bind(session.context_id).all<{ id: string }>()).results ?? [];
   const audience = parseHomeworkAudience(audienceInput, taskIds, people.map((person) => person.id));
   if (audience === null) return json({ error: 'invalid-homework-audience' }, 422);
-  const homeworkJson = JSON.stringify(homework);
+  const homeworkJson = provided('homework') || existing === null ? JSON.stringify(homework) : existing.homework_json;
   const audienceJson = JSON.stringify(audience);
   const changedHomework = existing !== null && (homeworkJson !== existing.homework_json || audienceJson !== existing.homework_audience_json);
   if (changedHomework && body.homeworkRevision !== existing.homework_revision) return json({ error: 'homework-revision-conflict' }, 409);
   const homeworkRevision = existing === null ? 1 : existing.homework_revision + (changedHomework ? 1 : 0);
   const storedNextNote = nextNote ?? existing?.next_note ?? '';
+  // An existing row takes only the columns this body names, so two writers
+  // saving different fields at once never put back each other's old values.
+  // Homework columns are always written, guarded by homework_revision.
+  const updated = [
+    ['sessionCode', 'session_code'], ['deckVersion', 'deck_version'], ['outcomes', 'outcomes_json'],
+    ['notes', 'notes'], ['nextNote', 'next_note'], ['artifacts', 'artifacts_json'],
+  ].filter(([key]) => provided(key as string)).map(([, column]) => `${column as string} = excluded.${column as string}`);
   const saved = await env.DB.prepare(
     `INSERT INTO session_records
        (id, session_id, context_id, session_code, deck_version, outcomes_json, notes, next_note, homework_json, artifacts_json, created_at, updated_at, homework_revision, homework_audience_json)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?15)
      ON CONFLICT(session_id) DO UPDATE SET
-       context_id = excluded.context_id, session_code = excluded.session_code,
-       deck_version = excluded.deck_version, outcomes_json = excluded.outcomes_json,
-       notes = excluded.notes, next_note = excluded.next_note, homework_json = excluded.homework_json,
-       artifacts_json = excluded.artifacts_json, updated_at = excluded.updated_at,
-       homework_revision = excluded.homework_revision, homework_audience_json = excluded.homework_audience_json
+       ${[...updated, 'context_id = excluded.context_id', 'homework_json = excluded.homework_json',
+         'updated_at = excluded.updated_at', 'homework_revision = excluded.homework_revision',
+         'homework_audience_json = excluded.homework_audience_json'].join(', ')}
      WHERE session_records.homework_revision = ?14`,
   ).bind(
     existing?.id ?? randomId(), sessionId, session.context_id, sessionCode, deckVersion,
@@ -419,6 +478,7 @@ export async function launchSessionRoute(
   }
   return launch({
     ...(guard.connectionId ? { connectionId: guard.connectionId } : {}),
+    origin: new URL(request.url).origin,
     sessionId: session.id,
     deckId: session.deck_id,
     contextId: session.context_id,

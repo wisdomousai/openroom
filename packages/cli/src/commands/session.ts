@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { recapHtml, type OutlineStep, type SessionRecap } from '@openroom/schema';
+import { recapHtml, resolveRevealOrder, type Outline, type OutlineStep, type SessionRecap } from '@openroom/schema';
 import { parse as parseYaml } from 'yaml';
 
 import { ApiClient, type FetchLike, type HostCommand } from '../api.js';
@@ -177,6 +177,9 @@ async function sessionOutlineInsert(
   }, args, reporter, deps);
 }
 
+const SESSION_START_USAGE =
+  'usage: openroom session start <file> --url <base> (--token <personal-token> | --admin-key <ops-key>)';
+
 async function sessionStart(
   args: ParsedArgs,
   reporter: Reporter,
@@ -184,20 +187,22 @@ async function sessionStart(
 ): Promise<number> {
   const file = args.positionals[2];
   if (file === undefined) {
-    throw new UsageError('usage: openroom session start <file> --url <base> --admin-key <key>');
+    throw new UsageError(SESSION_START_USAGE);
   }
   const baseUrl = requireFlag(args, 'url');
-  const adminKey = requireFlag(args, 'admin-key');
+  const token = flagString(args, 'token');
+  const adminKey = flagString(args, 'admin-key');
+  if ((token === undefined) === (adminKey === undefined)) throw new UsageError(SESSION_START_USAGE);
 
   const session = parseOrThrow(readSessionFile(file), file);
   const client = clientFor(baseUrl, deps);
-  const created = await client.createSession(session, adminKey);
+  const created = await client.createSession(session, token === undefined ? { adminKey: adminKey! } : { token });
 
   const joinUrl = created.joinUrl ?? `https://join.openroom.app/?code=${created.code}`;
-  const stageUrl =
+  const stageUrl = created.stageUrl ?? (
     created.stageToken === undefined
       ? `${client.base}/stage/?session=${encodeURIComponent(created.sessionCode)}`
-      : `${client.base}/stage/?session=${encodeURIComponent(created.sessionCode)}&token=${encodeURIComponent(created.stageToken)}`;
+      : `${client.base}/stage/?session=${encodeURIComponent(created.sessionCode)}&token=${encodeURIComponent(created.stageToken)}`);
 
   const state: SessionState = {
     url: client.base,
@@ -242,6 +247,19 @@ function asInteractions(snapshot: Record<string, unknown>): HostInteractionSumma
   return Array.isArray(raw) ? (raw as HostInteractionSummary[]) : [];
 }
 
+/** "rule (2 of 5), revealed 1 of 2" from the host snapshot's outline. */
+function slideLine(raw: unknown): string | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const outline = raw as { content?: Outline; currentStepIndex?: number; shownGroups?: number };
+  const steps = outline.content?.steps;
+  const index = outline.currentStepIndex;
+  const step = typeof index === 'number' ? steps?.[index] : undefined;
+  if (steps === undefined || index === undefined || step === undefined) return undefined;
+  const groups = resolveRevealOrder(step, outline.content?.interactions).length;
+  const shown = outline.shownGroups ?? groups;
+  return `${step.id} (${String(index + 1)} of ${String(steps.length)})${groups > 1 ? `, revealed ${String(shown)} of ${String(groups)}` : ''}`;
+}
+
 async function sessionStatus(
   args: ParsedArgs,
   reporter: Reporter,
@@ -264,6 +282,8 @@ async function sessionStatus(
   reporter.line(
     `  active:   ${activeId === null || activeId === undefined ? '—' : `${String(activeId)}${active === undefined ? '' : ` [${active.status}]`}`}`,
   );
+  const slide = slideLine(snapshot['outline']);
+  if (slide !== undefined) reporter.line(`  slide:    ${slide}`);
   const limit = snapshot['participantLimit'];
   reporter.line(`  joined:   ${String(joined)}${typeof limit === 'number' ? ` of ${String(limit)}` : ''}   answered: ${String(answered)}`);
   reporter.emit({ ok: true, ...snapshot });

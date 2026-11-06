@@ -209,9 +209,10 @@ describe('MCP protocol core', () => {
       stepCount: 2,
       interactionCount: 1,
       steps: [
-        { id: 'welcome', kind: 'title' },
-        { id: 'check', kind: 'interaction' },
+        { id: 'welcome', kind: 'title', layout: 'title' },
+        { id: 'check', kind: 'interaction', layout: 'poll' },
       ],
+      warnings: [],
     });
   });
 
@@ -298,6 +299,13 @@ describe('MCP protocol core', () => {
     expect(toolResultJson(response)).toEqual({ error: 'session-not-found' });
   });
 
+  it('session_status passes the slide position through from the export', async () => {
+    const position = { stepId: 'rule', stepIndex: 1, stepCount: 4, kind: 'statement', shownGroups: 1, revealGroups: 2 };
+    const deps = stubDeps({ getExport: async () => ({ sessionCode: 'S', code: 'S', status: 'live', revision: 3, participantCount: 1, position, interactions: [] }) });
+    const response = await handleMcpMessage(rpc('tools/call', { name: 'session_status', arguments: { code: 'S' } }), deps, SERVER_INFO);
+    expect(toolResultJson(response).position).toEqual(position);
+  });
+
   it('session_results slices to one interaction when interactionId is given', async () => {
     const exported = {
       summary: { title: 'Result', questions: [{ prompt: 'One', rows: [], entries: [] }, { prompt: 'Two', rows: [], entries: ['A suggestion'] }] },
@@ -363,7 +371,7 @@ describe('MCP protocol core', () => {
       SERVER_INFO,
     );
     expect((blocked as any).result.isError).toBe(true);
-    expect(toolResultJson(blocked)).toEqual({ error: 'path is outside the tutoring API allowlist' });
+    expect(toolResultJson(blocked)).toEqual({ error: expect.stringMatching(/^path is outside the tutoring API allowlist; paths start with \/api\/decks, /) });
   });
 
   it('deck_get reads a deck and passes a requested version through', async () => {
@@ -585,6 +593,43 @@ describe('MCP protocol core', () => {
       { method: 'POST', path: '/api/sessions', body: { deckId: 'd1', deckVersion: 2 } },
       { method: 'POST', path: '/api/sessions/sess-9/launch', body: { start: true } },
     ]);
+  });
+
+  it('deck_start with a requestId goes through the retry-safe start route', async () => {
+    const calls: unknown[] = [];
+    const requestId = '6f1c2b8e-3d4a-4f5b-9c6d-7e8f9a0b1c2d';
+    const deps = stubDeps({
+      controlRequest: async (method, path, body) => {
+        calls.push({ method, path, body });
+        return { status: 201, body: { sessionId: requestId, sessionCode: 'CODE1234' } };
+      },
+    });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await handleMcpMessage(rpc('tools/call', { name: 'deck_start', arguments: { deckId: 'd1', requestId } }), deps, SERVER_INFO);
+      expect(toolResultJson(response)).toMatchObject({ ok: true, sessionId: requestId, status: 201 });
+    }
+    expect(calls).toEqual([
+      { method: 'POST', path: '/api/decks/d1/start', body: { requestId } },
+      { method: 'POST', path: '/api/decks/d1/start', body: { requestId } },
+    ]);
+    const mixed = await handleMcpMessage(rpc('tools/call', { name: 'deck_start', arguments: { deckId: 'd1', requestId, version: 2 } }), deps, SERVER_INFO);
+    expect((mixed as any).result.isError).toBe(true);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('session_create returns absolute join and stage URLs', async () => {
+    const response = await handleMcpMessage(
+      rpc('tools/call', { name: 'session_create', arguments: { outline: VALID_SESSION_YAML } }),
+      stubDeps({
+        appOrigin: 'https://app.test/',
+        createSession: async () => ({ sessionCode: 'CODE1234', code: 'CODE1234', joinUrl: '/join/?code=CODE1234', hostToken: 'h', stageToken: 's t' }),
+      }),
+      SERVER_INFO,
+    );
+    expect(toolResultJson(response)).toMatchObject({
+      joinUrl: 'https://app.test/join/?code=CODE1234',
+      stageUrl: 'https://app.test/stage/?session=CODE1234&token=s%20t',
+    });
   });
 
   it('deck_start reports the create failure rather than launching nothing', async () => {

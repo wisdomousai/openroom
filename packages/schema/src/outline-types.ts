@@ -424,11 +424,16 @@ export interface OutlineMedia {
   focal?: OutlineMediaFocal;
   /** Frame the player / picture keeps. Optional; surfaces resolve a default for video. */
   aspect?: OutlineMediaAspect;
-  /** Which slot the picture occupies. Default follows the step layout. */
+  /**
+   * Where the picture sits. Split honours left and right (top and bottom draw
+   * as right); title, text and grid honour top and bottom and draw left or
+   * right as split; fill fills only on the media layout.
+   */
   place?: OutlineMediaPlace;
   /**
-   * How much of the slide the picture takes, 20–100.
-   * Width for left/right, height for top/bottom. Ignored when `place` is `fill`.
+   * 20–100. On split, the picture column's share of the slide width; on title,
+   * text and grid, the most height the picture takes. Ignored when `place` is
+   * `fill` and on the media and activity layouts.
    */
   size?: number;
 }
@@ -580,8 +585,46 @@ export interface Outline {
   recap?: OutlineAside;
 }
 
+/**
+ * Advisory findings on a valid outline. A warning never fails validation:
+ * stored and imported decks keep validating, and the author decides.
+ *
+ *   W_TEXT_FIT            a step's words are estimated taller than its slide
+ *   W_MEDIA_PLACE         a picture place the slide redraws or cannot honour
+ *   W_MEDIA_SIZE          a split picture so wide the words get a thin column
+ *   W_ELEMENT_BOUNDS      a box that runs past the slide edge (x+w or y+h above 100)
+ *   W_ELEMENT_OVERLAP     a box over a blank step's title, the master logo or footer
+ *   W_SPAN_SIZE           a styled span too small to read
+ *   W_INTERACTION_FIELDS  step fields the live wall does not draw on a question
+ */
+export type OutlineWarningCode =
+  | 'W_TEXT_FIT'
+  | 'W_MEDIA_PLACE'
+  | 'W_MEDIA_SIZE'
+  | 'W_ELEMENT_BOUNDS'
+  | 'W_ELEMENT_OVERLAP'
+  | 'W_SPAN_SIZE'
+  | 'W_INTERACTION_FIELDS';
+
+export interface OutlineWarning {
+  code: OutlineWarningCode;
+  /** JSON pointer into the outline. */
+  path: string;
+  message: string;
+  /** The layout the step is drawn in, where that is what the warning is about. */
+  layout?: OutlineLayout;
+}
+
 export type OutlineValidateResult =
-  | { ok: true; outline: Outline; session: Session }
+  | {
+      ok: true;
+      outline: Outline;
+      session: Session;
+      /** The layout each step is drawn in, in step order (validateOutline sets it). */
+      layouts?: OutlineLayout[];
+      /** Advisory findings; present (possibly empty) when validateOutline produced the result. */
+      warnings?: OutlineWarning[];
+    }
   | { ok: false; errors: SessionError[] };
 
 export interface CompiledOutline {

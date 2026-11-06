@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -265,7 +265,7 @@ describe('openroom deck', () => {
     expect(JSON.parse(output.out[0] as string).versions).toHaveLength(2);
   });
 
-  it('start files a session, launches it and prints the join URL', async () => {
+  it('start files a session, launches it, prints its URLs and saves it for session commands', async () => {
     const { fetchImpl, calls } = router((call) =>
       call.url.endsWith('/launch')
         ? {
@@ -273,7 +273,8 @@ describe('openroom deck', () => {
             body: {
               sessionCode: 'CODE1234',
               code: 'CODE1234',
-              joinUrl: 'https://openroom.test/?code=CODE1234',
+              joinUrl: 'https://openroom.test/join/?code=CODE1234',
+              stageUrl: 'https://openroom.test/stage/?session=CODE1234&token=s',
               hostToken: 'h',
               stageToken: 's',
               deckVersion: 3,
@@ -283,15 +284,42 @@ describe('openroom deck', () => {
         : { status: 201, body: { session: { id: 'sess-9' } } },
     );
     const output = capture();
-    expect(await run(['deck', 'start', 'd1', ...AUTH], { io: output.io, fetchImpl })).toBe(0);
+    const cwd = planDir();
+    expect(await run(['deck', 'start', 'd1', ...AUTH], { io: output.io, fetchImpl, cwd })).toBe(0);
     expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
       '/api/sessions',
       '/api/sessions/sess-9/launch',
     ]);
     expect(calls[1]?.body).toEqual({ start: true });
-    const printed = output.out.join('\n');
-    expect(printed).toContain('session CODE1234');
-    expect(printed).toContain('https://openroom.test/?code=CODE1234');
+    expect(output.out).toEqual([
+      'session CODE1234',
+      'join  https://openroom.test/join/?code=CODE1234',
+      'stage https://openroom.test/stage/?session=CODE1234&token=s',
+      `state ${join(cwd, '.openroom.json')}`,
+    ]);
+    expect(JSON.parse(readFileSync(join(cwd, '.openroom.json'), 'utf8'))).toMatchObject({
+      url: 'https://openroom.test', sessionCode: 'CODE1234', hostToken: 'h',
+    });
+  });
+
+  it('start with --request-id uses the retry-safe route and names the link step for an identified session', async () => {
+    const requestId = '6f1c2b8e-3d4a-4f5b-9c6d-7e8f9a0b1c2d';
+    const { fetchImpl, calls } = router(() => ({
+      status: 201,
+      body: { sessionId: requestId, sessionCode: 'CODE1234', code: 'CODE1234', hostToken: 'h', stageToken: 's', contextId: 'ctx-1' },
+    }));
+    const output = capture();
+    const cwd = planDir();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      expect(await run(['deck', 'start', 'd1', '--request-id', requestId, ...AUTH], { io: output.io, fetchImpl, cwd })).toBe(0);
+    }
+    expect(calls.map((c) => [new URL(c.url).pathname, c.body])).toEqual([
+      ['/api/decks/d1/start', { requestId }],
+      ['/api/decks/d1/start', { requestId }],
+    ]);
+    expect(output.out.join('\n')).toContain('/api/tutoring/contexts/ctx-1/links --body \'{"sessionCode":"CODE1234"}\'');
+    expect(await run(['deck', 'start', 'd1', '--request-id', 'not-a-uuid', ...AUTH], { io: capture().io, fetchImpl, cwd })).toBe(2);
+    expect(calls).toHaveLength(2);
   });
 
   it('an unknown subcommand is a usage error, not a request', async () => {

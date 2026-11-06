@@ -348,12 +348,12 @@
       }
     },
     "partKey": {
-      "description": "A part of a step, derived from the step's own shape: header, stat, body, option-N, cell-N, materials, image, or el-{id} for a freeform object.",
+      "description": "A part of a step, derived from the step's own shape: header, stat, body, materials, image, option-N (a choice or ranking option, or a match's left item), cell-N (a card, a list item, a debrief prompt, or a term's example), gap-N (a fill-the-gaps blank, in authored order) or el-{id} for a freeform element.",
       "type": "string",
-      "pattern": "^(header|stat|body|materials|image|option-(0|[1-9][0-9]*)|cell-(0|[1-9][0-9]*)|el-[a-z0-9]+(-[a-z0-9]+)*)$"
+      "pattern": "^(header|stat|body|materials|image|option-(0|[1-9][0-9]*)|cell-(0|[1-9][0-9]*)|gap-(0|[1-9][0-9]*)|el-[a-z0-9]+(-[a-z0-9]+)*)$"
     },
     "elementBox": {
-      "description": "Percent box on the 16:10 slide. Integers, origin top-left.",
+      "description": "Percent box on the slide at the deck's own aspect ratio: x and w are percent of the slide width, y and h percent of its height. Integers, origin top-left.",
       "type": "object",
       "required": ["x", "y", "w", "h"],
       "additionalProperties": false,
@@ -870,12 +870,12 @@
           "enum": ["16:9", "9:16", "4:3", "1:1"]
         },
         "place": {
-          "description": "Which slot the picture occupies on the slide. Default follows the step layout.",
+          "description": "Where the picture sits. Each layout honours only some places; the outline_validate tool description has the table per layout, and validation warns W_MEDIA_PLACE when the layout draws the picture elsewhere.",
           "type": "string",
           "enum": ["left", "right", "top", "bottom", "fill"]
         },
         "size": {
-          "description": "How much of the slide the picture takes, as a whole percent (20–100). Width for left/right, height for top/bottom.",
+          "description": "Whole percent, 20–100: the picture's share of the slide on layouts that honour it. The outline_validate tool description says what it measures on each layout, and validation warns W_MEDIA_SIZE above 60 on split.",
           "type": "integer",
           "minimum": 20,
           "maximum": 100

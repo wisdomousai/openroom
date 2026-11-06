@@ -41,6 +41,9 @@ const SERVER_INSTRUCTIONS =
   'session_command for live control. ' +
   `The Outline contract is served as a JSON Schema resource (${OUTLINE_SCHEMA_RESOURCE_URI}); read it ` +
   'before authoring an outline rather than inferring the shape from validation errors. ' +
+  'A valid outline can still draw badly: outline_validate, deck_preview and deck_save_version return warnings ' +
+  '(text that will be cut, a picture place the layout redraws, a box past the edge). Fix them before deck_start; ' +
+  'the outline_validate description gives the text budgets and the picture rules per layout. ' +
   'For an embedded web-page slide, use a blank step with a full-box ' +
   'typed iframe element (HTTPS url plus title); never put iframe markup inside an html element. ' +
   'For a scrollable PDF slide, use the parallel full-box typed pdf element. ' +

@@ -96,6 +96,27 @@ describe('outline session navigation', () => {
     expectError(state, env({ command: 'outline.goto', stepId: 'missing' }), 'E_UNKNOWN_OUTLINE_STEP');
   });
 
+  it('says the last slide is reached, and names session.end, when outline.next runs past it', () => {
+    let state = run(outlineRoom(), env({ command: 'session.start' }));
+    state = run(state, env({ command: 'outline.goto', stepId: 'debrief' }));
+    const result = applyCommand(state, env({ command: 'outline.next' }), 1000);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('E_UNKNOWN_OUTLINE_STEP');
+    expect(result.error.message).toContain('last slide');
+    expect(result.error.message).toContain('session.end');
+  });
+
+  it('answers an unknown command with the command names', () => {
+    const state = run(outlineRoom(), env({ command: 'session.start' }));
+    const result = applyCommand(state, env({ command: 'session.next' } as never), 1000);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('E_INVALID_TRANSITION');
+    expect(result.error.message).toContain('"session.next"');
+    expect(result.error.message).toContain('outline.next');
+  });
+
   it('keeps tutor notes out of learner and stage snapshots', () => {
     const state = run(outlineRoom(), env({ command: 'session.start' }));
     const participant = participantSnapshot(state, 'p1');

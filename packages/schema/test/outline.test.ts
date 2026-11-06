@@ -557,6 +557,115 @@ describe('step union error pruning', () => {
     expect(result.errors[0]).toMatchObject({ code: ErrorCodes.E_UNKNOWN_KIND, path: '/steps/0/kind' });
     expect(result.errors[1]).toMatchObject({ code: ErrorCodes.E_SCHEMA, path: '/steps/1/meaning' });
   });
+
+  // A field two kinds share (`items` on cards and steps, `body` with two
+  // caps) must be judged by the authored kind's own schema only.
+  it.each([
+    ['a one-card cards step', { id: 'c', kind: 'cards', title: 'Le zoo', items: [{ text: 'un lion' }] }, '/steps/0/items', 'fewer than 2'],
+    ['a one-item steps step', { id: 's', kind: 'steps', title: 'Le zoo', items: ['entrer'] }, '/steps/0/items', 'fewer than 2'],
+    ['a statement over its length cap', { id: 'b', kind: 'statement', body: 'x'.repeat(6000) }, '/steps/0/body', '5000'],
+    [
+      'an element box past 100',
+      { id: 'e', kind: 'blank', elements: [{ id: 'note', type: 'text', text: 'Le zoo', box: { x: 0, y: 0, w: 50, h: 130 } }] },
+      '/steps/0/elements/0/box/h',
+      '100',
+    ],
+  ])('reports %s once, without errors from other union branches', (_label, step, path, text) => {
+    const result = withStep(step);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toMatchObject({ code: ErrorCodes.E_SCHEMA, path });
+    expect(result.errors[0]!.message).toContain(text);
+  });
+
+  it.each([
+    ['a step layout', { id: 's', kind: 'statement', body: 'Le zoo', layout: 'wide' }, undefined, '/steps/0/layout', ['title', 'split', 'blank']],
+    [
+      'a picture place',
+      { id: 's', kind: 'statement', body: 'Le zoo', media: { type: 'image', url: 'https://example.test/zoo.png', alt: 'Zoo', place: 'middle' } },
+      undefined,
+      '/steps/0/media/place',
+      ['left', 'right', 'top', 'bottom', 'fill'],
+    ],
+    ['a picture aspect', { id: 's', kind: 'media', media: { type: 'image', url: 'https://example.test/zoo.png', alt: 'Zoo', aspect: '21:9' } }, undefined, '/steps/0/media/aspect', ['16:9', '9:16', '1:1']],
+    ['a theme family', { id: 's', kind: 'title', title: 'Le zoo' }, { family: 'comic' }, '/design/theme/family', ['clean', 'paper', 'business']],
+  ])('lists the allowed values of %s', (_label, step, theme, path, allowed) => {
+    const result = validateOutline({
+      ...base,
+      ...(theme === undefined ? {} : { design: { aspectRatio: '16:9', theme, masters: [{ id: 'm', name: 'M', safeArea: 8, decoration: 'none' }], defaultMasterId: 'm' } }),
+      steps: [step],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    const error = result.errors.find((candidate) => candidate.path === path);
+    for (const value of allowed) expect(error?.message).toContain(value);
+  });
+
+  it('names the fields a step kind has when it carries one it does not', () => {
+    const result = withStep({ id: 's', kind: 'statement', body: 'Le zoo', text: 'Le zoo' });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toMatchObject({ path: '/steps/0/text' });
+    expect(result.errors[0]!.message).toContain('statement step');
+    expect(result.errors[0]!.message).toContain('body');
+  });
+
+  it('sends a top-level title to meta.title', () => {
+    const result = validateOutline({ ...base, title: 'Le zoo', steps: [{ id: 't', kind: 'title', title: 'Le zoo' }] });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toMatchObject({ path: '/title' });
+    expect(result.errors[0]!.message).toContain('meta.title');
+  });
+
+  it('says that options are objects when they are bare strings', () => {
+    const result = validateOutline({
+      ...base,
+      interactions: [{ id: 'q1', type: 'choice', prompt: 'Nous ___ au zoo.', options: ['sommes allés', 'allons'] }],
+      steps: [{ id: 'q', kind: 'interaction', interactionId: 'q1' }],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.map((error) => error.path)).toEqual(['/interactions/0/options/0', '/interactions/0/options/1']);
+    expect(result.errors[0]!.message).toContain('{id, label}');
+  });
+
+  it('names the part keys, not the pattern, for a reveal key that does not exist', () => {
+    const result = withStep({ id: 't', kind: 'term', term: 'le zoo', meaning: 'the zoo', example: 'On va au zoo.', reveal: [['header'], ['example']] });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toMatchObject({ path: '/steps/0/reveal/1/0' });
+    expect(result.errors[0]!.message).toContain('cell-0');
+    expect(result.errors[0]!.message).not.toContain('^(');
+  });
+});
+
+describe('YAML colons in unquoted French text', () => {
+  const document = (stepYaml: string) =>
+    `version: 1\nmeta:\n  title: Leçon\nsteps:\n${stepYaml}\ninteractions: []\n`;
+
+  it('adds a quoting hint to the parse error of a value with " : "', () => {
+    const result = parseOutline(document('  - id: s1\n    kind: statement\n    body: Attention : le verbe change'));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]!.code).toBe(ErrorCodes.E_PARSE);
+    expect(result.errors[0]!.message).toContain('must be in quotes');
+  });
+
+  it('explains a list item that YAML read as a mapping', () => {
+    const result = parseOutline(
+      document('  - id: s1\n    kind: steps\n    title: Règles\n    items:\n      - Règle : un\n      - Règle : deux'),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors.map((error) => error.path)).toEqual(['/steps/0/items/0', '/steps/0/items/1']);
+    expect(result.errors[0]!.message).toContain('quotes');
+  });
 });
 
 

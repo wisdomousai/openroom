@@ -13,6 +13,7 @@ import {
   type Ballot,
   type SessionState,
 } from '@openroom/domain';
+import { resolveRevealOrder } from '@openroom/schema';
 import { savedResults } from './saved-results.js';
 
 export type ExportFormat = 'json' | 'csv' | 'ballots';
@@ -166,8 +167,28 @@ function aggregateSummary(aggregate: Aggregate | null): string {
   }
 }
 
+/**
+ * Which slide the room is on and how much of it is revealed. `shownGroups`
+ * equals `revealGroups` when the whole step is showing.
+ */
+function outlinePosition(state: SessionState) {
+  const { content, currentStepIndex, shownGroups } = state.outline;
+  const step = content.steps[currentStepIndex];
+  if (step === undefined) return undefined;
+  const revealGroups = resolveRevealOrder(step, content.interactions).length;
+  return {
+    stepId: step.id,
+    stepIndex: currentStepIndex,
+    stepCount: content.steps.length,
+    kind: step.kind,
+    shownGroups: shownGroups ?? revealGroups,
+    revealGroups,
+  };
+}
+
 export function exportJson(input: SessionState): unknown {
   const state = ensureQna(input);
+  const position = outlinePosition(state);
   return {
     ...(state.qna.enabled
       ? {
@@ -191,6 +212,7 @@ export function exportJson(input: SessionState): unknown {
     revision: state.revision,
     meta: sessionOf(state).meta,
     participantCount: Object.keys(state.participants).length,
+    ...(position === undefined ? {} : { position }),
     ...(state.endedAt === undefined ? {} : { endedAt: state.endedAt }),
     interactions: sessionOf(state).interactions.map((interaction) => {
       const runtime = state.interactions[interaction.id];

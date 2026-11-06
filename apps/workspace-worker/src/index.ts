@@ -112,6 +112,7 @@ import { handleAssetApi } from './assets.js';
 import { homeRoute } from './home.js';
 import { prefsRoute } from './prefs.js';
 import { endSessionForCode, type SessionLaunchInput } from './delivery/index.js';
+import { identifiedNeedsContext } from './delivery/shared.js';
 import {
   archivedBallotsCsv,
   downloadArchiveRoute,
@@ -199,6 +200,28 @@ function authenticate(
  */
 
 /**
+ * The absolute URLs an agent hands to people, built here so no client has to
+ * know their shapes: the stage (projector) URL and the join URL. With
+ * JOIN_ORIGIN unset the join SPA is path-mounted on this origin.
+ *
+ * An identified session admits nobody by code alone, so its result carries no
+ * joinUrl at all; the usable join URL is the one the link mint returns with the
+ * student's link in it (`mintContextLinkRoute` with a sessionCode).
+ */
+function sessionShareUrls(
+  session: CreatedSession,
+  origin: string | undefined,
+  identified: boolean,
+): { joinUrl?: string; stageUrl?: string } {
+  const join = session.joinUrl;
+  const joinUrl = origin !== undefined && join.startsWith('/') ? `${origin}${join}` : join;
+  const stageUrl = origin === undefined
+    ? undefined
+    : `${origin}/stage/?session=${encodeURIComponent(session.sessionCode)}&token=${encodeURIComponent(session.stageToken)}`;
+  return { joinUrl: identified ? undefined : joinUrl, ...(stageUrl === undefined ? {} : { stageUrl }) };
+}
+
+/**
  * The auth-free core of session creation: init the DO, sign the token pair.
  * Callers own authentication, quota, and D1 ownership records. Direct creation
  * checks paid identity features here; durable launches check before reservation.
@@ -218,6 +241,9 @@ export async function createSessionFromOutline(
   if (!options.reservedCode && outline.defaults?.identityMode === 'identified') {
     const blocked = await requireIdentifiedSessionAccess(env, options.entitlementOwnerId ?? options.user?.id ?? null);
     if (blocked) return { ok: false, response: blocked };
+    // A session created straight from an outline has no durable session, so no
+    // student context, so no access link can ever admit anyone to it.
+    return { ok: false, response: identifiedNeedsContext() };
   }
   const sessionCode = options.reservedCode ?? generateSessionCode();
   // Read once here and carried into the DO, so joins never touch D1. A retried
@@ -286,8 +312,11 @@ export async function launchSessionForUser(
       if (blocked) return blocked;
     }
     if (validation.outline.defaults?.identityMode === 'identified') {
+      // The capability answer comes first, so a free account still learns that
+      // identified sessions are paid before it learns what else they need.
       const blocked = await requireIdentifiedSessionAccess(env, entitlementOwnerId);
       if (blocked) return blocked;
+      if (input.contextId === null) return identifiedNeedsContext();
     }
     if (await sessionQuotaExceeded(env, user.id, now)) return json({ error: 'session-quota' }, 429);
     // The unique session_id index chooses one code even for competing start requests.
@@ -354,6 +383,8 @@ export async function launchSessionForUser(
 
   return json({
     ...created.session,
+    ...sessionShareUrls(created.session, input.origin, validation.outline.defaults?.identityMode === 'identified'),
+    ...(input.contextId === null ? {} : { contextId: input.contextId }),
     sessionId: input.sessionId,
     deckId: input.deckId,
     deckVersion: input.version,
@@ -433,7 +464,7 @@ async function createLiveSessionRoute(request: Request, env: Env): Promise<Respo
     });
   }
 
-  return json({ ...created.session }, 201);
+  return json({ ...created.session, ...sessionShareUrls(created.session, new URL(request.url).origin, false) }, 201);
 }
 
 /**
@@ -786,7 +817,7 @@ export default {
     if (path === '/api/mcp/revoke') return revokeOAuthRoute(request, env);
     if (path === '/api/my/connections') return connectionsRoute(request, env);
     if (path === '/api/my/billing' || path.startsWith('/api/my/billing/')) return billingRoute(request, env, url);
-    if (path === '/api/presentations/start') return startPresentationRoute(request, env, (input, user) => launchSessionForUser(env, input, user));
+    if (path === '/api/presentations/start') return startPresentationRoute(request, env, (input, user) => launchSessionForUser(env, { origin: url.origin, ...input }, user));
     const resumeMatch = /^\/api\/sessions\/([^/]+)\/resume$/.exec(path);
     if (resumeMatch) return resumeSessionRoute(request, env, decodeURIComponent(resumeMatch[1]!));
     const connectionMatch = /^\/api\/my\/connections\/([^/]+)$/.exec(path);
@@ -859,7 +890,7 @@ export default {
         request,
         env,
         url,
-        (input, user) => launchSessionForUser(env, input, user),
+        (input, user) => launchSessionForUser(env, { origin: url.origin, ...input }, user),
       );
       if (tutoring !== null) return tutoring;
     }

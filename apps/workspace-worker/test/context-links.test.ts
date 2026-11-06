@@ -531,6 +531,44 @@ describe('identified sessions', () => {
   });
 });
 
+describe('identified session URLs', () => {
+  it('offers no bare join URL at launch and a link-bearing one at mint', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie, 'Camille');
+    const sessionId = await createSession(cookie, contextId);
+    const launched = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, { method: 'POST', body: JSON.stringify({ start: true }) });
+    const live = (await launched.json()) as { code: string; stageToken: string; joinUrl?: string; stageUrl?: string; contextId?: string };
+    expect(live.joinUrl).toBeUndefined();
+    expect(live.contextId).toBe(contextId);
+    expect(live.stageUrl).toBe(`${BASE}/stage/?session=${live.code}&token=${encodeURIComponent(live.stageToken)}`);
+
+    const minted = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: JSON.stringify({ sessionCode: live.code.toLowerCase() }) });
+    expect(minted.status).toBe(201);
+    const link = (await minted.json()) as { token: string; joinUrl: string; learnerUrl: string };
+    expect(link.learnerUrl).toBe(`${BASE}/host/#/learn?token=${encodeURIComponent(link.token)}`);
+    // Absolute (new URL would throw on a path), on the deployment's join origin.
+    const join = new URL(link.joinUrl);
+    expect(join.searchParams.get('link')).toBe(link.token);
+    const joined = await joinWith({ code: join.searchParams.get('code'), contextLink: join.searchParams.get('link') });
+    expect(joined.status).toBe(200);
+
+    // A code from another context is refused rather than baked into a dead URL.
+    const other = await createContext(cookie, 'Noor');
+    const elsewhere = await asBrowser(cookie, `/api/tutoring/contexts/${other}/links`, { method: 'POST', body: JSON.stringify({ sessionCode: live.code }) });
+    expect(elsewhere.status).toBe(422);
+    expect(await elsewhere.json()).toEqual({ error: 'session-not-in-context' });
+  });
+
+  it('gives a pseudonymous launch absolute join and stage URLs', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie, 'Camille');
+    const sessionId = await createSession(cookie, contextId, 'pseudonymous');
+    const live = (await (await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, { method: 'POST', body: JSON.stringify({ start: true }) })).json()) as { code: string; joinUrl: string; stageUrl: string };
+    expect(new URL(live.joinUrl).searchParams.get('code')).toBe(live.code);
+    expect(live.stageUrl.startsWith(`${BASE}/stage/?session=${live.code}&token=`)).toBe(true);
+  });
+});
+
 describe('identified sessions require a started session', () => {
   it('refuses an identified join while the session is still in the lobby', async () => {
     const { cookie } = await seedSession();
@@ -988,6 +1026,46 @@ describe('individual assignments', () => {
     const closed = await (await asLearner(noor.token, '/api/learner/sessions')).json() as typeof leaLessons;
     expect(closed.sessions[0]!.record.homework).toEqual([]);
     expect((await write(noor.token, 2)).status).toBe(404);
+  });
+});
+
+describe('session record writes', () => {
+  it('keeps every field a PUT leaves out and clears only on an explicit empty value', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie, 'Camille');
+    const sessionId = await createSession(cookie, contextId);
+    const path = `/api/sessions/${sessionId}/record`;
+    const put = (body: Record<string, unknown>) => asBrowser(cookie, path, { method: 'PUT', body: JSON.stringify(body) });
+    const read = async () => ((await (await asBrowser(cookie, path)).json()) as { record: Record<string, unknown> }).record;
+
+    expect((await put({ sessionCode: 'ABC123', outcomes: ['passé composé'], notes: 'Private tutor note', nextNote: 'Start with avoir', artifacts: ['board.png'], homework: ['Read page 4'] })).status).toBe(200);
+    // An agent adds homework later and sends nothing else.
+    const writing = { id: 'write', kind: 'writing', prompt: 'Write 3 sentences about last weekend' };
+    expect((await put({ homeworkRevision: 1, homework: [writing] })).status).toBe(200);
+    expect(await read()).toMatchObject({
+      sessionCode: 'ABC123', outcomes: ['passé composé'], notes: 'Private tutor note', nextNote: 'Start with avoir', artifacts: ['board.png'],
+      homework: [writing], homeworkRevision: 2,
+    });
+    // A Notes-only write keeps the homework without needing its revision.
+    expect((await put({ notes: 'Revised note' })).status).toBe(200);
+    expect(await read()).toMatchObject({ notes: 'Revised note', homework: [writing], homeworkRevision: 2 });
+    // Explicit empty values clear.
+    expect((await put({ outcomes: [], notes: '', artifacts: [] })).status).toBe(200);
+    expect(await read()).toMatchObject({ outcomes: [], notes: '', artifacts: [], homework: [writing] });
+  });
+
+  it('names the task at fault when homework does not compile', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie, 'Camille');
+    const sessionId = await createSession(cookie, contextId);
+    const put = (homework: unknown) => asBrowser(cookie, `/api/sessions/${sessionId}/record`, { method: 'PUT', body: JSON.stringify({ homework }) });
+    const essay = await put(['Read page 4', { kind: 'essay', prompt: 'x' }]);
+    expect(essay.status).toBe(422);
+    expect(await essay.json()).toEqual({ error: 'invalid-homework', index: 1, message: 'homework[1].kind must be reading, writing, voice or quiz' });
+    expect(await (await put([{ kind: 'writing', prompt: '' }])).json()).toMatchObject({ error: 'invalid-homework', index: 0 });
+    expect(await (await put('Read page 4')).json()).toMatchObject({ error: 'invalid-homework', message: expect.stringContaining('must be an array') });
+    // Size stays its own answer.
+    expect(await (await put(Array.from({ length: 51 }, () => 'Read'))).json()).toEqual({ error: 'record-arrays-too-large' });
   });
 });
 
