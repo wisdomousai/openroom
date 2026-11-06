@@ -28,6 +28,17 @@ import {
 
 import { OUTLINE_SCHEMA_RESOURCE_URI } from './schema-resource.js';
 
+/**
+ * The one rule about identified sessions, stated in every tool that can start
+ * one. The join route admits an identified participant only with an access link
+ * minted for the session's own student context, so a session without a context
+ * is refused at the start rather than left unjoinable.
+ */
+const IDENTIFIED_NEEDS_CONTEXT =
+  'defaults.identityMode identified needs the space owner’s continuity capability (403 continuity-required) and a student: ' +
+  'only a deck filed under a student context (contextId) can start an identified session, through deck_start; ' +
+  'anything else answers 422 identified-session-needs-context. Students join it only with an access link minted for that context. ';
+
 /** One sentence for every tool that starts a live session. */
 const AUDIENCE_LIMIT =
   `A session admits at most ${FREE_SESSION_PARTICIPANT_LIMIT} participants unless the space owner (the personal owner outside a space) holds the largeSessions capability when it starts; ` +
@@ -179,7 +190,8 @@ const TOOLS: ToolDefinition[] = [
       'Create a live session from an Outline v1 document (YAML/JSON text or object). ' +
       'SimpleSession (title + questions) and classroom poll lists compile to an outline of interaction steps. ' +
       'Returns the join code, joinUrl, hostToken and stageToken. Use session_command for live control. ' +
-      'defaults.identityMode roster requires the roster capability and identified requires the continuity capability (403 roster-required / continuity-required). ' +
+      'defaults.identityMode roster requires the roster capability (403 roster-required). ' +
+      'A session created here has no student context, so identified is refused with 422 identified-session-needs-context; use deck_start for an identified lesson. ' +
       AUDIENCE_LIMIT,
     inputSchema: {
       type: 'object',
@@ -241,7 +253,7 @@ const TOOLS: ToolDefinition[] = [
       'POST /decks creates a deck; pass "createSession": true to also create a draft session. ' +
       'Save content with POST /decks/{id}/versions — /decks/{id}/draft is the editor’s unvalidated ' +
       'auto-save scratch text and is not what a session delivers. ' +
-      'A deck may have no questions and no contextId. Link a student explicitly only when needed. ' +
+      'A deck may have no questions and no contextId. Link a student explicitly only when needed; an identified deck (defaults.identityMode identified) is the case that needs one, because launching it without contextId answers 422 identified-session-needs-context. ' +
       'Continuity capability: contexts of every kind (create, list, read, edit) are free. Context learners, links, returned and work paths, session records (PUT/GET /api/sessions/{id}/record, including nextNote and homework), and creating identified sessions require the space owner’s current continuity capability (the personal owner outside a space); otherwise HTTP 403 continuity-required. Without it, a context omits nextNote. Invitees need no licence of their own. Trash, restore, permanent-deletion and link revocation never require it, and lapsed data is retained. Deployments without billing hold every capability. ' +
       'GET /api/tutoring/contexts/{id}/learners lists context-local people. ' +
       'POST /api/tutoring/contexts/{id}/links takes learnerId for an existing person, or displayName for a new person; ' +
@@ -396,7 +408,8 @@ const TOOLS: ToolDefinition[] = [
       'Open a live session from a deck: files the durable session (the delivery instance) and launches it, started by ' +
       'default. Returns the session code, join code, joinUrl, hostToken and stageToken, plus the sessionId and ' +
       'the deck version delivered. Only a stamped version can launch — a deck with no content ' +
-      'answers deck-content-not-found. An identified deck needs the space owner’s continuity capability (403 continuity-required). ' +
+      'answers deck-content-not-found. ' +
+      IDENTIFIED_NEEDS_CONTEXT +
       AUDIENCE_LIMIT +
       'Use session_command for live control afterwards.',
     inputSchema: {
@@ -550,6 +563,11 @@ export async function callTool(
     case 'session_create': {
       const resolved = resolveStartOutline(args['outline']);
       if (!resolved.ok) return { ok: false, errors: resolved.errors };
+      if (resolved.outline.defaults?.identityMode === 'identified') {
+        throw new ToolError(
+          'identified-session-needs-context: an identified session needs a student; file the deck under the student (contextId), then start it with deck_start.',
+        );
+      }
       const created = await deps.createSession(resolved.outline);
       return { ok: true, ...created };
     }

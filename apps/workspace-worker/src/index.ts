@@ -199,6 +199,21 @@ function authenticate(
  */
 
 /**
+ * An identified session admits only holders of an access link minted for the
+ * session's own student context (`resolveJoinIdentity`). Without a context the
+ * session can be started but nobody can ever join it, so refuse at the start and
+ * name the fix. Join refusals stay one indistinguishable answer; this message is
+ * for the tutor who starts the session, never for a joining holder.
+ */
+function identifiedNeedsContext(): Response {
+  return json({
+    ok: false,
+    error: 'identified-session-needs-context',
+    message: 'An identified session needs a student: file the deck under the student (contextId), then start it with deck_start or POST /api/decks/{id}/start.',
+  }, 422);
+}
+
+/**
  * The auth-free core of session creation: init the DO, sign the token pair.
  * Callers own authentication, quota, and D1 ownership records. Direct creation
  * checks paid identity features here; durable launches check before reservation.
@@ -218,6 +233,9 @@ export async function createSessionFromOutline(
   if (!options.reservedCode && outline.defaults?.identityMode === 'identified') {
     const blocked = await requireIdentifiedSessionAccess(env, options.entitlementOwnerId ?? options.user?.id ?? null);
     if (blocked) return { ok: false, response: blocked };
+    // A session created straight from an outline has no durable session, so no
+    // student context, so no access link can ever admit anyone to it.
+    return { ok: false, response: identifiedNeedsContext() };
   }
   const sessionCode = options.reservedCode ?? generateSessionCode();
   // Read once here and carried into the DO, so joins never touch D1. A retried
@@ -286,8 +304,11 @@ export async function launchSessionForUser(
       if (blocked) return blocked;
     }
     if (validation.outline.defaults?.identityMode === 'identified') {
+      // The capability answer comes first, so a free account still learns that
+      // identified sessions are paid before it learns what else they need.
       const blocked = await requireIdentifiedSessionAccess(env, entitlementOwnerId);
       if (blocked) return blocked;
+      if (input.contextId === null) return identifiedNeedsContext();
     }
     if (await sessionQuotaExceeded(env, user.id, now)) return json({ error: 'session-quota' }, 429);
     // The unique session_id index chooses one code even for competing start requests.

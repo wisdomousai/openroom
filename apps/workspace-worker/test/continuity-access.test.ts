@@ -99,7 +99,16 @@ describe('continuity capability', () => {
     expect(link.status).toBe(201);
     expect((await learner(link.body.token)).status).toBe(200);
     expect((await free.request(person.record, 'PUT', NOTES, 'mcp')).status).toBe(200);
-    expect((await free.request('/api/sessions', 'POST', { outline: IDENTIFIED }, 'oauth')).status).toBe(201);
+    // With the capability, an identified session still needs a student context:
+    // without one nobody could ever join it, so the start is refused.
+    const needsContext = { status: 422, body: { ok: false, error: 'identified-session-needs-context' } };
+    expect(await free.request('/api/sessions', 'POST', { outline: IDENTIFIED }, 'oauth')).toMatchObject(needsContext);
+    expect((await free.rpc('session_create', { outline: IDENTIFIED })).value.error).toMatch(/^identified-session-needs-context/);
+    for (const client of ['cookie', 'mcp'] as const) {
+      expect(await free.request(`/api/decks/${identifiedDeck.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() }, client)).toMatchObject(needsContext);
+    }
+    const filed = await free.request('/api/decks', 'POST', { spaceId: person.context.spaceId, contextId: person.context.id, content: IDENTIFIED });
+    expect((await free.request(`/api/decks/${filed.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() })).status).toBe(201);
   });
 
   it('retains data after a lapse, keeps contexts, deletion and restore open, and answers a lapsed learner link like a revoked one', async () => {
@@ -172,7 +181,8 @@ describe('continuity capability', () => {
     const setup = await loopSetup(tutor);
     expect((await learner(setup.link.token, selfHosted)).status).toBe(200);
     expect((await tutor.request(setup.record, 'PUT', NOTES)).status).toBe(200);
-    expect((await tutor.request('/api/sessions', 'POST', { outline: IDENTIFIED })).status).toBe(201);
+    const identified = await tutor.request('/api/decks', 'POST', { spaceId: setup.context.spaceId, contextId: setup.context.id, content: IDENTIFIED });
+    expect((await tutor.request(`/api/decks/${identified.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() })).status).toBe(201);
     expect((await tutor.request('/api/my/billing')).body).toMatchObject({ available: false, selfHosted: true });
     // The same account on the hosted configuration is free.
     expect((await worker.fetch(new Request(`${BASE}/api/learner/me`, { headers: { authorization: `Bearer ${setup.link.token}` } }), env as never)).status).toBe(401);
