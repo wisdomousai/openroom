@@ -431,7 +431,7 @@ export function openapiDocument(origin: string): unknown {
       '/api/tutoring/contexts/{contextId}/returned': {
         get: {
           operationId: 'getContextReturned',
-          summary: 'Writing and missed practice for this Card — no dates, no scores',
+          summary: 'Writing and missed practice for this student context — no dates, no scores',
           security: [{ UserBearer: [] }, { SessionCookie: [] }],
           parameters: [{ name: 'contextId', in: 'path', required: true, schema: { type: 'string' } }],
           responses: { '200': { description: 'Pickup pack' }, '403': { description: 'forbidden (presenter cannot read returned work) or continuity-required' } },
@@ -810,6 +810,7 @@ export function openapiDocument(origin: string): unknown {
         put: {
           operationId: 'putSessionRecord',
           summary: 'Write compact outcomes (not a transcript; never per-participant ballots)',
+          description: 'Every field the body leaves out keeps its stored value; an explicit empty value ("", [] or {}) clears it.',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
           parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }],
           requestBody: {
@@ -821,8 +822,15 @@ export function openapiDocument(origin: string): unknown {
                   properties: {
                     outcomes: { type: 'array', items: {}, maxItems: 50 },
                     notes: { type: 'string' },
-                    nextNote: { type: 'string', description: 'Sticky on the Card: start here next time. Empty clears it.' },
-                    homework: { type: 'array', items: {}, maxItems: 50 },
+                    nextNote: { type: 'string', description: 'Kept on the student context: where to start next time.' },
+                    homework: {
+                      type: 'array',
+                      maxItems: 50,
+                      description: 'Tasks: {kind:"reading",body}, {kind:"writing"|"voice",prompt,guidance?} or {kind:"quiz",interaction}; each may carry id and title. A bare string is a reading task.',
+                      items: {},
+                    },
+                    homeworkRevision: { type: 'integer', description: 'Required when the homework or its audience changes; from GET record' },
+                    homeworkAudience: { type: 'object', description: 'taskId to learner ids; an omitted task is shared' },
                     artifacts: { type: 'array', items: {}, maxItems: 50 },
                     sessionCode: { type: 'string' },
                     deckVersion: { type: 'integer', description: 'Must exist on the deck; defaults to the session version' },
@@ -834,8 +842,8 @@ export function openapiDocument(origin: string): unknown {
           responses: {
             '200': { description: 'Saved' },
             ...CONTINUITY_REQUIRED,
-            '409': { description: 'resource-in-trash' },
-            '422': { description: 'record-arrays-too-large or invalid-deck-version' },
+            '409': { description: 'resource-in-trash or homework-revision-conflict (GET the record and resend its homeworkRevision)' },
+            '422': { description: 'invalid-homework (index and message name the task), record-arrays-too-large, invalid-homework-audience or invalid-deck-version' },
           },
         },
       },

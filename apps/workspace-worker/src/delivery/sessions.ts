@@ -6,6 +6,8 @@ import {
   canonicalOutlineJson,
   clipNextNote,
   compileRecordHomework,
+  HOMEWORK_QUIZ_TYPES,
+  HOMEWORK_TASK_MAX,
   parseHomeworkAudience,
   validateOutline,
   isPresentationPosition,
@@ -16,6 +18,7 @@ import {
   type Outline,
   type PresentationPosition,
   type OutlineValidateResult,
+  type PublishedHomeworkTask,
 } from '@openroom/schema';
 
 import { sha256Hex } from '../api-tokens.js';
@@ -242,6 +245,34 @@ export async function restoreSessionRoute(
   return json({ ok: true });
 }
 
+const RECORD_HOMEWORK_KINDS = 'reading, writing, voice or quiz';
+
+/**
+ * Why a homework list that is the right size failed to compile, naming the
+ * first task at fault so an agent can correct it. Null for a size problem,
+ * which keeps its own record-arrays-too-large answer.
+ */
+function recordHomeworkProblem(input: unknown): { index?: number; message: string } | null {
+  if (!Array.isArray(input) || input.length > HOMEWORK_TASK_MAX) return null;
+  for (const [index, item] of input.entries()) {
+    if (compileRecordHomework([item]) !== null) continue;
+    const at = `homework[${String(index)}]`;
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+      return { index, message: `${at} must be a string (reading material) or a task object with kind ${RECORD_HOMEWORK_KINDS}` };
+    }
+    const kind = (item as Record<string, unknown>).kind;
+    if (kind === 'reading') return { index, message: `${at}.body is required for a reading task` };
+    if (kind === 'writing' || kind === 'voice') {
+      return { index, message: `${at}.prompt is required for a ${kind} task; prompt and guidance hold at most 2000 characters each` };
+    }
+    if (kind === 'quiz') {
+      return { index, message: `${at}.interaction must be a complete ${HOMEWORK_QUIZ_TYPES.join(', ')} interaction with an id` };
+    }
+    return { index, message: `${at}.kind must be ${RECORD_HOMEWORK_KINDS}` };
+  }
+  return { message: 'homework task ids must be unique' };
+}
+
 export async function sessionRecordRoute(
   request: Request,
   env: ControlEnv,
@@ -288,12 +319,32 @@ export async function sessionRecordRoute(
   if (session.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
-  const outcomes = compactArray(body.outcomes ?? []);
-  const homework = compileRecordHomework(body.homework ?? []);
-  const artifacts = compactArray(body.artifacts ?? []);
-  const notes = typeof body.notes === 'string' ? body.notes.slice(0, 10_000) : '';
-  const nextNoteProvided = Object.prototype.hasOwnProperty.call(body, 'nextNote');
-  const nextNote = nextNoteProvided ? clipNextNote(body.nextNote) : null;
+  const existing = await env.DB.prepare('SELECT id, created_at, outcomes_json, notes, next_note, homework_json, homework_audience_json, homework_revision, artifacts_json FROM session_records WHERE session_id = ?1')
+    .bind(sessionId).first<{ id: string; created_at: number; outcomes_json: string; notes: string | null; next_note: string | null; homework_json: string; homework_audience_json: string; homework_revision: number; artifacts_json: string }>();
+  // A field the body leaves out keeps its stored value; an explicit '' or []
+  // clears it. Several writers share one record (the tutor's Notes in the
+  // browser, an agent adding homework later), so a partial body must never
+  // wipe what another writer saved.
+  const provided = (key: string) => Object.prototype.hasOwnProperty.call(body, key);
+  const stored = (text: string | undefined): unknown[] => {
+    const value = parseJson(text ?? '[]', []);
+    return Array.isArray(value) ? value : [];
+  };
+  const outcomes = provided('outcomes') ? compactArray(body.outcomes ?? []) : stored(existing?.outcomes_json);
+  const artifacts = provided('artifacts') ? compactArray(body.artifacts ?? []) : stored(existing?.artifacts_json);
+  // Omitted homework is the stored snapshot itself, byte for byte, so it never
+  // counts as a homework change that would need homeworkRevision.
+  const homework = provided('homework')
+    ? compileRecordHomework(body.homework ?? [])
+    : stored(existing?.homework_json) as PublishedHomeworkTask[];
+  const notes = provided('notes')
+    ? typeof body.notes === 'string' ? body.notes.slice(0, 10_000) : ''
+    : existing?.notes ?? '';
+  const nextNote = provided('nextNote') ? clipNextNote(body.nextNote) : null;
+  if (homework === null && provided('homework')) {
+    const problem = recordHomeworkProblem(body.homework ?? []);
+    if (problem !== null) return json({ error: 'invalid-homework', ...problem }, 422);
+  }
   if (outcomes === null || homework === null || artifacts === null) {
     return json({ error: 'record-arrays-too-large' }, 422);
   }
@@ -314,8 +365,6 @@ export async function sessionRecordRoute(
   }
   const sessionCode = typeof body.sessionCode === 'string' ? body.sessionCode.slice(0, 64) : null;
   const now = Date.now();
-  const existing = await env.DB.prepare('SELECT id, created_at, next_note, homework_json, homework_audience_json, homework_revision FROM session_records WHERE session_id = ?1')
-    .bind(sessionId).first<{ id: string; created_at: number; next_note: string | null; homework_json: string; homework_audience_json: string; homework_revision: number }>();
   const taskIds = homework.map((task) => task.id);
   const storedAudience = parseJson(existing?.homework_audience_json ?? '{}', null);
   if (body.homeworkAudience === undefined && !plainObject(storedAudience)) return json({ error: 'invalid-homework-audience' }, 422);
@@ -325,7 +374,7 @@ export async function sessionRecordRoute(
   const people = session.context_id === null ? [] : (await env.DB.prepare('SELECT id FROM context_learners WHERE context_id = ?1').bind(session.context_id).all<{ id: string }>()).results ?? [];
   const audience = parseHomeworkAudience(audienceInput, taskIds, people.map((person) => person.id));
   if (audience === null) return json({ error: 'invalid-homework-audience' }, 422);
-  const homeworkJson = JSON.stringify(homework);
+  const homeworkJson = provided('homework') || existing === null ? JSON.stringify(homework) : existing.homework_json;
   const audienceJson = JSON.stringify(audience);
   const changedHomework = existing !== null && (homeworkJson !== existing.homework_json || audienceJson !== existing.homework_audience_json);
   if (changedHomework && body.homeworkRevision !== existing.homework_revision) return json({ error: 'homework-revision-conflict' }, 409);

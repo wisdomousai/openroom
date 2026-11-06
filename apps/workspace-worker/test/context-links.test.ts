@@ -991,6 +991,45 @@ describe('individual assignments', () => {
   });
 });
 
+describe('session record writes', () => {
+  it('keeps every field a PUT leaves out and clears only on an explicit empty value', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie, 'Camille');
+    const sessionId = await createSession(cookie, contextId);
+    const path = `/api/sessions/${sessionId}/record`;
+    const put = (body: Record<string, unknown>) => asBrowser(cookie, path, { method: 'PUT', body: JSON.stringify(body) });
+    const read = async () => ((await (await asBrowser(cookie, path)).json()) as { record: Record<string, unknown> }).record;
+
+    expect((await put({ outcomes: ['passé composé'], notes: 'Private tutor note', nextNote: 'Start with avoir', artifacts: ['board.png'], homework: ['Read page 4'] })).status).toBe(200);
+    // An agent adds homework later and sends nothing else.
+    const writing = { id: 'write', kind: 'writing', prompt: 'Write 3 sentences about last weekend' };
+    expect((await put({ homeworkRevision: 1, homework: [writing] })).status).toBe(200);
+    expect(await read()).toMatchObject({
+      outcomes: ['passé composé'], notes: 'Private tutor note', nextNote: 'Start with avoir', artifacts: ['board.png'],
+      homework: [writing], homeworkRevision: 2,
+    });
+    // A Notes-only write keeps the homework without needing its revision.
+    expect((await put({ notes: 'Revised note' })).status).toBe(200);
+    expect(await read()).toMatchObject({ notes: 'Revised note', homework: [writing], homeworkRevision: 2 });
+    // Explicit empty values clear.
+    expect((await put({ outcomes: [], notes: '', artifacts: [] })).status).toBe(200);
+    expect(await read()).toMatchObject({ outcomes: [], notes: '', artifacts: [], homework: [writing] });
+  });
+
+  it('names the task at fault when homework does not compile', async () => {
+    const { cookie } = await seedSession();
+    const contextId = await createContext(cookie, 'Camille');
+    const sessionId = await createSession(cookie, contextId);
+    const put = (homework: unknown) => asBrowser(cookie, `/api/sessions/${sessionId}/record`, { method: 'PUT', body: JSON.stringify({ homework }) });
+    const essay = await put(['Read page 4', { kind: 'essay', prompt: 'x' }]);
+    expect(essay.status).toBe(422);
+    expect(await essay.json()).toEqual({ error: 'invalid-homework', index: 1, message: 'homework[1].kind must be reading, writing, voice or quiz' });
+    expect(await (await put([{ kind: 'writing', prompt: '' }])).json()).toMatchObject({ error: 'invalid-homework', index: 0 });
+    // Size stays its own answer.
+    expect(await (await put(Array.from({ length: 51 }, () => 'Read'))).json()).toEqual({ error: 'record-arrays-too-large' });
+  });
+});
+
 describe('private voice responses', () => {
   it('isolates playback, validates bytes, preserves immutable audio and publishes only bounded comments', async () => {
     const { cookie } = await seedSession();
