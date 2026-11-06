@@ -18,3 +18,15 @@
   overflow: hidden; border-radius: var(--radius-lg);
   background: var(--card); color: var(--card-foreground); box-shadow: var(--shadow-page);
 }
+
+/* An empty picture object on the desk: a dashed frame with one button that
+   opens the picture dialog for it. Editor chrome, never on the wall. */
+.slide-canvas__add-picture {
+  position: absolute; inset: 0; z-index: 1;
+  display: grid; place-items: center;
+  border: 1px dashed var(--border); border-radius: var(--radius);
+  background: var(--background); color: var(--muted-foreground);
+  font: inherit; font-size: 1.4cqw; font-weight: 600; cursor: pointer;
+}
+.slide-canvas__add-picture:hover,
+.slide-canvas__add-picture:focus-visible { border-color: var(--primary); color: var(--primary); outline: none; }

@@ -18,7 +18,7 @@ import {
 } from '@openroom/schema';
 import { keepValid, replaceStep, uniqueId, usedIds } from './blocks';
 import { type ListTarget } from './catalog';
-import { replaceAt } from './parts';
+import { relabeled, replaceAt } from './parts';
 import { insertSpansRow, removeSpansRow } from './slot-spans';
 import { syncedFillTheGaps } from './interaction';
 
@@ -500,4 +500,29 @@ export function optionCorrect(outline: Outline, step: OutlineStep, optionIndex: 
   const interaction = outline.interactions.find((item) => item.id === step.interactionId);
   if (interaction?.type !== 'choice') return false;
   return interaction.options[optionIndex]?.correct === true;
+}
+
+/**
+ * Retype the answer a match pairs with its left item `leftIndex`.
+ *
+ * The canvas draws the left column only (as the stage does), so the pane is
+ * where the right column and the answer key are read and fixed. A row is one
+ * pair: the left item and the right item `correct` maps it to, so editing the
+ * row's answer never re-pairs anything.
+ */
+export function setMatchAnswer(outline: Outline, stepId: string, leftIndex: number, text: string): Outline {
+  const step = outline.steps.find((item) => item.id === stepId);
+  if (step === undefined || step.kind !== 'interaction') return outline;
+  return keepValid(outline, {
+    ...outline,
+    interactions: outline.interactions.map((item) => {
+      if (item.id !== step.interactionId || item.type !== 'match') return item;
+      const left = item.left[leftIndex];
+      if (left === undefined) return item;
+      const at = item.right.findIndex((right) => right.id === item.correct[left.id]);
+      const right = item.right[at];
+      if (right === undefined || right.label === text) return item;
+      return { ...item, right: replaceAt(item.right, at, relabeled(right, text)) };
+    }) as Interaction[],
+  });
 }

@@ -229,7 +229,7 @@ export function ThemeStudio({
         <BrandingCard themeId={current} mode={theme.mode} />
         </DialogBody>
 
-        <DialogFooter className="-mx-0 -mb-0">
+        <DialogFooter flush>
           {live ? null : (
             <p className="mr-auto text-xs text-muted-foreground">Saved on this device.</p>
           )}

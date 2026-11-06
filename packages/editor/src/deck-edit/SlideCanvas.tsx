@@ -27,7 +27,7 @@ import { useSlideOverflow, type SlideOverflowIssue } from './slide-overflow';
 import { BlockedEmbedNotices } from './BlockedEmbedNotice';
 import { FormatToolbar } from './FormatToolbar';
 import { togglePatch, toolbarState, type StyledTarget, type ToggleKey } from './format-toolbar-state';
-import { partSelection, restoreSelectionIn } from './selection-offsets';
+import { EDITOR_CHROME, partSelection, restoreSelectionIn } from './selection-offsets';
 import type { SpanFormat } from './spans';
 import { ObjectFrame } from './ObjectFrame';
 import { PictureFrame } from './PictureFrame';
@@ -87,6 +87,19 @@ function editablePart(step: OutlineStep, key: string, outline: Outline): boolean
 }
 
 /**
+ * Whether a part shows its placeholder. A material line is an edit target
+ * inside the `materials` part, not a part with a value of its own, so it is
+ * read off its own line.
+ */
+function partIsEmpty(step: OutlineStep, key: string, outline: Outline): boolean {
+  const material = materialIndex(key);
+  if (material !== null) {
+    return step.kind !== 'activity' || (step.materials?.[material] ?? '').trim() === '';
+  }
+  return (partValue(step, key, outline.interactions) ?? '').trim() === '';
+}
+
+/**
  * Cmd/Ctrl shortcuts that toggle a span format. Always swallowed, selection or
  * not: letting the browser handle Cmd+B injects a `<b>` into the part, and the
  * next blur would commit that markup as text.
@@ -100,7 +113,7 @@ const SHORTCUT_FORMATS: Record<string, ToggleKey | undefined> = {
 /** Visible words of a part, minus reveal badges / remove chrome. */
 function visiblePartText(element: HTMLElement): string {
   const copy = element.cloneNode(true) as HTMLElement;
-  for (const decoration of copy.querySelectorAll('[data-slide-decoration]')) {
+  for (const decoration of copy.querySelectorAll(EDITOR_CHROME)) {
     decoration.remove();
   }
   return (copy.textContent ?? '').replace(/\u00a0/g, ' ').trim();
@@ -140,7 +153,7 @@ function wordUnderPoint(x: number, y: number): string | null {
   if (node === null || node.nodeType !== Node.TEXT_NODE) return null;
   const element = node.parentElement;
   if (element === null || element.closest('[data-part]') === null) return null;
-  if (element.closest('[data-slide-decoration]') !== null) return null;
+  if (element.closest(EDITOR_CHROME) !== null) return null;
   return wordAt(node.textContent ?? '', offset);
 }
 
@@ -465,7 +478,7 @@ export function SlideCanvas({
                   return;
                 }
               }
-              if (event.target.closest('[data-part], [data-slide-decoration]')) return;
+              if (event.target.closest(`[data-part], ${EDITOR_CHROME}`)) return;
               onSelectPart(null);
             }}
             onContextMenu={(event) => {
@@ -519,7 +532,7 @@ export function SlideCanvas({
               editable={(key) => editablePart(step, key, outline)}
               partPlaceholder={(key) => ({
                 text: key === 'header' && step.kind === 'interaction' ? 'Ask the class something' : partLabel(step, key),
-                empty: (partValue(step, key, outline.interactions) ?? '').trim() === '',
+                empty: partIsEmpty(step, key, outline),
               })}
               onPartCommit={onPartText}
               onPartKeyDown={(key, event) => {
@@ -599,11 +612,33 @@ export function SlideCanvas({
                       Remove
                     </button>
                   ) : null;
-                if (badge === null && remove === null) return null;
+                const frame = key.startsWith('el-')
+                  ? stepElements(step).find((item) => item.id === key.slice(3))
+                  : undefined;
+                // An empty picture frame says what it is for and opens the
+                // picture dialog for itself.
+                const addPicture =
+                  frame?.type === 'image' && !frame.url && onEditImage !== undefined ? (
+                    <button
+                      type="button"
+                      className="slide-canvas__add-picture"
+                      data-slide-decoration=""
+                      contentEditable={false}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelectPart(key);
+                        onEditImage({ kind: 'element', elementId: frame.id });
+                      }}
+                    >
+                      Add picture
+                    </button>
+                  ) : null;
+                if (badge === null && remove === null && addPicture === null) return null;
                 return (
                   <>
                     {badge}
                     {remove}
+                    {addPicture}
                   </>
                 );
               }}

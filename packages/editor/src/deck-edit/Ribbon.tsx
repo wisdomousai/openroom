@@ -224,6 +224,23 @@ export interface RibbonProps {
   canPresent: boolean;
   onDownloadFile?: () => void;
   fileActions?: ReactNode;
+  /**
+   * The homework or recap page is open. Slide tools do not apply to a page, so
+   * the slide tabs say why they are empty instead of offering dead buttons.
+   */
+  aside?: 'homework' | 'recap' | null;
+}
+
+const SLIDE_TABS = ['home', 'slide', 'insert', 'ask', 'reveal'] as const;
+
+function AsideReason({ aside }: { aside: 'homework' | 'recap' }) {
+  return (
+    <Row>
+      <p className="self-center px-2 text-secondary text-muted-foreground">
+        {aside === 'homework' ? 'Homework' : 'The recap'} is a page, not a slide. Select a slide in the rail to use these tools.
+      </p>
+    </Row>
+  );
 }
 
 export function Ribbon(props: RibbonProps) {
@@ -251,7 +268,7 @@ export function Ribbon(props: RibbonProps) {
       className="flex shrink-0 flex-col"
     >
       <div className="flex h-8 items-end gap-0.5 bg-chrome px-3">
-        <TabsList variant="ribbon">
+        <TabsList variant="ribbon" aria-label="Ribbon">
           <TabsTrigger value="file">File</TabsTrigger>
           <TabsTrigger value="home">Home</TabsTrigger>
           <TabsTrigger value="slide">Slide</TabsTrigger>
@@ -282,6 +299,14 @@ export function Ribbon(props: RibbonProps) {
           </Row>
         </TabsContent>
 
+        {props.aside ? (
+          SLIDE_TABS.map((value) => (
+            <TabsContent key={value} value={value} className="mt-0">
+              <AsideReason aside={props.aside ?? 'homework'} />
+            </TabsContent>
+          ))
+        ) : (
+          <>
         <TabsContent value="home" className="mt-0">
           <Row>
             <Group label="Slides">
@@ -660,6 +685,8 @@ export function Ribbon(props: RibbonProps) {
             </Group>
           </Row>
         </TabsContent>
+          </>
+        )}
 
         <TabsContent value="view" className="mt-0">
           <Row>

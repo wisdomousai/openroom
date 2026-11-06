@@ -130,7 +130,7 @@ export function IframeElementDialog({
             </div>
           ) : null}
         </div>
-        <DialogFooter className="border-t border-hairline bg-background px-6 py-3">
+        <DialogFooter flush className="py-3">
           <Button type="button" variant="subtle" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

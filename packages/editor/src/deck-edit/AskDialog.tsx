@@ -417,7 +417,7 @@ export function AskDialog({
             </div>
           ) : null}
         </div>
-        <DialogFooter>
+        <DialogFooter flush>
           <span className="min-w-0 text-caption text-muted-foreground">
             Lands as one slide, {afterLabel}
           </span>

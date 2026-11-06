@@ -73,7 +73,7 @@ export function HtmlElementDialog({
           />
           {issue === null ? null : <p className="text-caption text-destructive" role="alert">{issue}</p>}
         </div>
-        <DialogFooter className="border-t border-hairline bg-background px-6 py-3">
+        <DialogFooter flush className="py-3">
           <p className="text-caption text-muted-foreground">Saving in this school’s colours when a DESIGN.md is present.</p>
           <Button type="button" variant="subtle" onClick={() => onOpenChange(false)}>
             Cancel

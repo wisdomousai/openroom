@@ -26,7 +26,7 @@ for (const family of SLIDE_THEME_FAMILIES) {
     const surface = page.locator('.slide-canvas__frame .slide-surface');
     await expect(surface).toHaveAttribute('data-slide-theme', family);
     for (const ratio of DECK_ASPECT_RATIOS) {
-      await page.getByRole('button', { name: 'Theme', exact: true }).click();
+      await page.getByRole('tab', { name: 'Theme', exact: true }).click();
       await page.getByRole('button', { name: ratio, exact: true }).click();
       await expect(surface).toHaveAttribute('data-slide-aspect', ratio);
       for (const [index, template] of SLIDE_TEMPLATES.entries()) {

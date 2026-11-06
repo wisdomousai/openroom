@@ -174,6 +174,18 @@ describe('media assets', () => {
     expect(text.status).toBe(415);
   });
 
+  it('refuses a text file sent as a picture or a recording', async () => {
+    const { cookie, spaceId } = await seedTutor();
+    for (const contentType of ['image/png', 'audio/mpeg']) {
+      const res = await upload(cookie, spaceId, {
+        contentType,
+        body: new TextEncoder().encode('just some notes, not a file of this type'),
+      });
+      expect(res.status).toBe(415);
+      expect(await res.json()).toEqual({ error: 'unsupported-media-type' });
+    }
+  });
+
   it('refuses a body over the 20 MiB ceiling', async () => {
     const { cookie, spaceId } = await seedTutor();
     const res = await upload(cookie, spaceId, {

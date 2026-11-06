@@ -55,6 +55,7 @@ import {
   clearPairWork,
   clearPartStyling,
   duplicateStep,
+  splitStepAt,
   insertAfter,
   insertTemplate,
   insertWorkshop,
@@ -89,6 +90,7 @@ import {
   setElementMarkdown,
   setElementPdf,
   setElementImage,
+  setElementPictureDetails,
   setElementText,
   clearElementStyling,
   setElementAlign,
@@ -101,6 +103,7 @@ import {
   setMediaSize,
   setMinutes,
   setOptionCorrect,
+  setMatchAnswer,
   setGapAnswers,
   setGapDistractors,
   setFillTheGapsBank,
@@ -247,7 +250,9 @@ export type FuzzOpName =
   | 'timer-placement'
   | 'timer-persist'
   | 'ask'
-  | 'gap-extras';
+  | 'gap-extras'
+  | 'match-answer'
+  | 'split';
 
 /**
  * Every runtime export of `outline-edit` is one of these. Types vanish at
@@ -317,6 +322,7 @@ export const EDIT_WRITE_OPS = {
   setElementMarkdown: 'reading',
   setElementPdf: 'element',
   setElementImage: 'element',
+  setElementPictureDetails: 'element',
   removeElement: 'element',
   splitForPairWork: 'pair-work',
   clearPairWork: 'pair-work',
@@ -329,6 +335,8 @@ export const EDIT_WRITE_OPS = {
   setGapDistractors: 'gap-extras',
   setFillTheGapsBank: 'gap-extras',
   insertGapAtRange: 'gap-extras',
+  setMatchAnswer: 'match-answer',
+  splitStepAt: 'split',
 } as const satisfies Record<string, FuzzOpName | readonly FuzzOpName[]>;
 
 export const EDIT_READS = [
@@ -339,6 +347,7 @@ export const EDIT_READS = [
   'elementLayoutsFor',
   'LIST_TARGETS',
   'STEP_KIND_WORDS',
+  'SPLITTABLE_KINDS',
   'orderedBlocks',
   'stepMinutes',
   'hasMinutes',
@@ -421,6 +430,8 @@ export const FUZZ_OP_NAMES: FuzzOpName[] = [
   'timer-persist',
   'ask',
   'gap-extras',
+  'match-answer',
+  'split',
 ];
 
 function applyNamedOp(state: FuzzState, name: FuzzOpName, rng: () => number): FuzzState {
@@ -650,6 +661,16 @@ function applyNamedOp(state: FuzzState, name: FuzzOpName, rng: () => number): Fu
       return { outline: setMediaSize(outline, step.id, 20 + Math.floor(rng() * 81)), selectedId: step.id };
     }
     case 'element': {
+      const picture = stepElements(step).find((item) => item.type === 'image');
+      if (picture !== undefined && rng() < 0.3) {
+        return {
+          outline: setElementPictureDetails(outline, step.id, picture.id, {
+            alt: rng() < 0.5 ? '' : 'A train leaving the station',
+            focal: pick(rng, FOCALS),
+          }),
+          selectedId: step.id,
+        };
+      }
       const added = addTextElement(outline, step.id);
       if (added.elementId === '') return state;
       const moved = setElementBox(added.outline, step.id, added.elementId, {
@@ -772,6 +793,30 @@ function applyNamedOp(state: FuzzState, name: FuzzOpName, rng: () => number): Fu
       if (step.kind !== 'interaction') return state;
       const next = { ...askInteraction(step.interactionId, pick(rng, ASK_KINDS) ?? 'choice'), responseMode: rng() < 0.5 ? 'group' as const : 'individual' as const };
       return { outline: setInteraction(outline, step.id, next), selectedId: step.id };
+    }
+    case 'match-answer': {
+      if (step.kind !== 'interaction') return state;
+      const interaction = outline.interactions.find((item) => item.id === step.interactionId);
+      if (interaction === undefined || interaction.type !== 'match') return state;
+      const index = Math.floor(rng() * (interaction.left.length + 1));
+      return { outline: setMatchAnswer(outline, step.id, index, rng() < 0.3 ? '' : 'retyped answer'), selectedId: step.id };
+    }
+    case 'split': {
+      // Split a list slide at an item, the overflow panel's one-step remedy.
+      // Index 0 and the end are no-ops; the walk proves both halves (and any
+      // breakout that followed a moved item) still validate and round-trip.
+      const length =
+        step.kind === 'steps' || step.kind === 'cards'
+          ? step.items.length
+          : step.kind === 'activity'
+            ? step.instructions.length
+            : step.kind === 'debrief'
+              ? step.prompts.length
+              : 0;
+      if (length === 0) return state;
+      const result = splitStepAt(outline, step.id, Math.floor(rng() * (length + 1)));
+      if (result.stepId === '') return state;
+      return { outline: result.outline, selectedId: rng() < 0.5 ? step.id : result.stepId };
     }
     case 'gap-extras': {
       if (step.kind !== 'interaction') return state;

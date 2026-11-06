@@ -17,7 +17,7 @@ test('theme, aspect ratio and master background survive save and live presentati
   expect(created.status()).toBe(201);
   const deckId = (await created.json()).deck.id;
   await page.goto(`/host/#/decks/${deckId}/edit`);
-  await page.getByRole('button', { name: 'Theme', exact: true }).click();
+  await page.getByRole('tab', { name: 'Theme', exact: true }).click();
   await page.getByRole('button', { name: 'business', exact: true }).click();
   await page.getByRole('button', { name: '16:10', exact: true }).click();
   await page.getByRole('textbox', { name: 'Footer', exact: true }).fill('Team workshop');
@@ -69,9 +69,10 @@ test('phone reading view keeps complete text and can return to the authored slid
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
   const phone = await context.newPage();
   await joinInBrowser(phone, code);
-  await expect(phone.getByRole('button', { name: 'Slide', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await phone.getByRole('button', { name: 'Reading', exact: true }).click();
+  // A steps slide is a dense list kind, so a phone below 640 px opens it in
+  // Reading until the learner picks a view (decision LD8).
   await expect(phone.getByRole('button', { name: 'Reading', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(phone.getByRole('button', { name: 'Slide', exact: true })).toHaveAttribute('aria-pressed', 'false');
   const phrases = phone.locator('.outline-step__sequence li p');
   await expect(phrases).toHaveCount(3);
   const sizes = await phrases.evaluateAll((nodes) => nodes.map((node) => ({
@@ -80,9 +81,13 @@ test('phone reading view keeps complete text and can return to the authored slid
   expect(sizes.every((item) => item.font >= 16 && item.content <= item.height + 2)).toBe(true);
   await phone.screenshot({ path: testInfo.outputPath('phone-reading.png'), fullPage: true });
   await phone.getByRole('button', { name: 'Slide', exact: true }).click();
+  await expect(phone.getByRole('button', { name: 'Slide', exact: true })).toHaveAttribute('aria-pressed', 'true');
   const slide = await phone.locator('.slide-surface').boundingBox();
   expect(slide!.width / slide!.height).toBeCloseTo(16 / 9, 1);
   await phone.screenshot({ path: testInfo.outputPath('phone-slide.png') });
+  // The picked view is remembered for this session after a reload.
+  await phone.reload();
+  await expect(phone.getByRole('button', { name: 'Slide', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await context.close();
 
   // A new desktop participant still has the rejoin notice. It must not take

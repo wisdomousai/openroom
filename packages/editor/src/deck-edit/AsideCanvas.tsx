@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import { isHomeworkQuizType, type HomeworkTask, type Interaction, type OutlineAside } from '@openroom/schema';
+import { fillTheGapsPromptText, isHomeworkQuizType, type HomeworkTask, type Interaction, type OutlineAside } from '@openroom/schema';
 
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
@@ -12,6 +12,22 @@ import {
 } from '@openroom/ui/components/select';
 import { Textarea } from '@openroom/ui/components/textarea';
 
+/** A question as a list shows it: gaps read as blanks, never as `{{g1}}`. */
+export function questionLabel(interaction: Interaction): string {
+  const prompt = interaction.type === 'fill-the-gaps' ? fillTheGapsPromptText(interaction.prompt) : interaction.prompt;
+  return prompt.trim() === '' ? 'Unfinished question' : prompt;
+}
+
+/**
+ * Why a question cannot be a homework quiz yet, or null when it can. A ranking
+ * is a preference vote until it has a correct order, and a vote has no answer
+ * to check at home.
+ */
+export function quizRefusal(interaction: Interaction): string | null {
+  if (interaction.type === 'ranking' && interaction.correctOrder === undefined) return 'needs a correct order';
+  return null;
+}
+
 /**
  * Homework or recap — one page on the desk, not a slide.
  */
@@ -19,6 +35,8 @@ export function AsideCanvas({
   kind,
   aside,
   interactions = [],
+  recipient,
+  focusTask = null,
   onChange,
   onAddReading,
   onAddWriting,
@@ -29,6 +47,10 @@ export function AsideCanvas({
   kind: 'homework' | 'recap';
   aside: OutlineAside | undefined;
   interactions?: readonly Interaction[];
+  /** The linked student's name; null when the deck is linked to nobody. */
+  recipient?: string | null;
+  /** A task to scroll to and focus (the Start readiness line). */
+  focusTask?: { taskId: string; nonce: number } | null;
   onChange: (aside: OutlineAside | undefined) => void;
   onAddReading?: () => void;
   onAddWriting?: () => void;
@@ -48,6 +70,15 @@ export function AsideCanvas({
     task?.scrollIntoView({ block: 'nearest' });
     task?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
   }, [taskCount]);
+  useLayoutEffect(() => {
+    if (focusTask === null) return;
+    const task = pageRef.current?.querySelector<HTMLElement>(`[data-homework-task="${CSS.escape(focusTask.taskId)}"]`);
+    task?.scrollIntoView({ block: 'nearest' });
+    // The question is what Start is waiting for; a task without one gets its first field.
+    const field = task?.querySelector<HTMLElement>('textarea[aria-label="Quiz question"]')
+      ?? task?.querySelector<HTMLElement>('input, textarea');
+    field?.focus({ preventScroll: true });
+  }, [focusTask]);
   const add = (action?: () => void) => {
     pendingTask.current = taskCount;
     action?.();
@@ -70,14 +101,22 @@ export function AsideCanvas({
   return (
     <div className="aside-canvas min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-desk p-4 lg:p-7" role="region" aria-label="Homework document">
       <div ref={pageRef} className="mx-auto flex w-full min-w-0 max-w-[812px] flex-col gap-5 rounded-lg bg-card p-5 shadow-[var(--shadow-page)] lg:p-8">
-        <p className="text-caption text-muted-foreground">Sent to student</p>
-        <Input
-          value={aside?.title ?? ''}
-          placeholder="Homework"
-          onChange={(event) => writeAside(aside, { title: event.currentTarget.value }, onChange)}
-          className="border-0 bg-transparent px-0 text-screen-title shadow-none focus-visible:border-b-2"
-          aria-label="homework title"
-        />
+        <div className="flex flex-col gap-1">
+          <Input
+            value={aside?.title ?? ''}
+            placeholder="Homework"
+            onChange={(event) => writeAside(aside, { title: event.currentTarget.value }, onChange)}
+            className="border-0 bg-transparent px-0 text-screen-title shadow-none focus-visible:border-b-2"
+            aria-label="homework title"
+          />
+          {recipient === undefined ? null : (
+            <p className="text-caption text-muted-foreground" data-homework-recipient>
+              {recipient === null
+                ? 'Not linked to a student.'
+                : `For ${recipient} · shared when you save Notes after the lesson`}
+            </p>
+          )}
+        </div>
 
         {tasks.length === 0 && aside?.body === undefined && aside?.items === undefined ? (
           <p className="text-secondary text-muted-foreground">
@@ -128,11 +167,14 @@ export function AsideCanvas({
                   <SelectValue placeholder="A question in this deck" />
                 </SelectTrigger>
                 <SelectContent className="max-w-[min(36rem,calc(100vw-2rem))] [overflow-wrap:anywhere]">
-                  {quizable.map((row) => (
-                    <SelectItem key={row.id} value={row.id}>
-                      {row.prompt}
-                    </SelectItem>
-                  ))}
+                  {quizable.map((row) => {
+                    const refusal = quizRefusal(row);
+                    return (
+                      <SelectItem key={row.id} value={row.id} disabled={refusal !== null}>
+                        {refusal === null ? questionLabel(row) : `${questionLabel(row)} (${refusal})`}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </label>
@@ -268,11 +310,14 @@ function TaskEditor({
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="max-w-[min(36rem,calc(100vw-2rem))] [overflow-wrap:anywhere]">
-            {quizable.map((row) => (
-              <SelectItem key={row.id} value={row.id}>
-                {row.prompt || 'Unfinished question'}
-              </SelectItem>
-            ))}
+            {quizable.map((row) => {
+              const refusal = row.id === task.interactionId ? null : quizRefusal(row);
+              return (
+                <SelectItem key={row.id} value={row.id} disabled={refusal !== null}>
+                  {refusal === null ? questionLabel(row) : `${questionLabel(row)} (${refusal})`}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
         {quiz ? <Textarea aria-label="Quiz question" placeholder="Ask the class something" value={quiz.prompt} onChange={(event) => onQuizChange?.({ ...quiz, prompt: event.currentTarget.value })} /> : null}

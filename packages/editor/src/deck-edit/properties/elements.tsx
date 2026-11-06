@@ -1,7 +1,9 @@
 import { stepElements, type OutlineStep } from '@openroom/schema';
 
+import type { OutlineMediaFocal } from '@openroom/schema';
 import { Button } from '@openroom/ui/components/button';
 import { partLabel } from '../outline-edit';
+import { PictureDetails } from './picture';
 import { CommitTextarea, Section } from './shared';
 
 export function ElementSection({
@@ -14,6 +16,7 @@ export function ElementSection({
   onEditIframe,
   onEditPdf,
   onOpenPicture,
+  onElementPicture,
 }: {
   step: OutlineStep;
   partKey: string;
@@ -24,6 +27,10 @@ export function ElementSection({
   onEditIframe: (elementId: string) => void;
   onEditPdf: (elementId: string) => void;
   onOpenPicture: (elementId: string) => void;
+  onElementPicture: (
+    elementId: string,
+    details: { alt?: string; focal?: OutlineMediaFocal | undefined },
+  ) => void;
 }) {
   const element = stepElements(step).find((item) => item.id === partKey.slice(3));
   if (element === undefined) return null;
@@ -47,6 +54,15 @@ export function ElementSection({
         >
           Change…
         </Button>
+      ) : null}
+      {element.type === 'image' && element.url ? (
+        <PictureDetails
+          detailsKey={`${step.id}-${element.id}`}
+          alt={element.alt}
+          onAlt={(alt) => onElementPicture(element.id, { alt })}
+          focal={element.focal}
+          onFocal={(focal) => onElementPicture(element.id, { focal })}
+        />
       ) : null}
       {element.type === 'html' ? (
         <Button

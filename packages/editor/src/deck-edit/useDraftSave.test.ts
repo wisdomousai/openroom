@@ -81,6 +81,22 @@ describe('draft save state machine', () => {
     saver.dispose();
   });
 
+  it('stops on a version conflict and hands it to the host instead of retrying', async () => {
+    const conflict = Object.assign(new Error('version-conflict'), { status: 409 });
+    const put = vi.fn(async () => { throw conflict; });
+    const onConflict = vi.fn();
+    const saver = createDraftSaver({ acked: 'seed', put, onStatus: () => undefined, onConflict, debounceMs: 1_500, retryDelaysMs: [1_000, 4_000] });
+
+    saver.change('stale tab', 2);
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(onConflict).toHaveBeenCalledWith(conflict);
+    expect(saver.status().label).toBe('Couldn’t save');
+    // The host disables saving to show its choice; nothing stale is re-sent.
+    saver.dispose();
+    expect(put).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps typing during a slow save and writes the newer text after', async () => {
     let release: ((value: { savedAt: number }) => void) | null = null;
     const put = vi.fn(() => new Promise<{ savedAt: number }>((resolve) => { release = resolve; }));

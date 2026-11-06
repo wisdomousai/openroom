@@ -171,6 +171,13 @@ export interface VersionHistoryProps {
   /** Bumped after a stamp so the list refreshes. */
   refreshKey: number;
   currentVersion: number;
+  /**
+   * The version the editor holds unchanged, or null once it has been edited.
+   * That row is the one that cannot be restored; every other row can.
+   */
+  loadedVersion?: number | null;
+  /** The draft differs from every stored version: restoring asks first. */
+  unsavedDraft?: boolean;
   onLoadVersion: (source: string, version: number) => void;
 }
 

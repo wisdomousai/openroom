@@ -18,6 +18,8 @@ export {
   asksTheClass,
   clearPairWork,
   duplicateStep,
+  SPLITTABLE_KINDS,
+  splitStepAt,
   hasMinutes,
   insertAfter,
   moveBlock,
@@ -66,6 +68,7 @@ export {
   setElementHtml,
   setElementIframe,
   setElementImage,
+  setElementPictureDetails,
   setElementMarkdown,
   setElementPdf,
   setElementSpans,
@@ -121,6 +124,7 @@ export {
   setFillTheGapsBank,
   setGapAnswers,
   setGapDistractors,
+  setMatchAnswer,
   setOptionCorrect,
 } from './lists';
 

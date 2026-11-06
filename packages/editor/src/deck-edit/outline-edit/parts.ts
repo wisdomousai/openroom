@@ -349,7 +349,7 @@ function writePartText(
 }
 
 /** An option/match item with new label text and its styling re-aimed at it. */
-function relabeled<T extends { label: string; labelSpans?: TextSpan[] }>(item: T, text: string): T {
+export function relabeled<T extends { label: string; labelSpans?: TextSpan[] }>(item: T, text: string): T {
   const next = { ...item, label: text };
   const spans = item.labelSpans === undefined ? undefined : retargetSlotSpans(item.label, item.labelSpans, text);
   if (spans === undefined) delete next.labelSpans;

@@ -18,7 +18,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
-import { useEditorServices } from '../services';
+import { isServiceError, useEditorServices } from '../services';
 
 export type DraftSaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
@@ -77,6 +77,17 @@ export interface DraftSaverOptions {
   onStatus: (status: DraftStatus) => void;
   debounceMs?: number;
   retryDelaysMs?: readonly number[];
+  /**
+   * The server refused the write because the deck moved on elsewhere (409).
+   * Retrying the same base cannot succeed, so the saver stops and hands the
+   * conflict to the host instead of counting down retries.
+   */
+  onConflict?: (error: unknown) => void;
+}
+
+/** True when a draft write was refused because the deck changed elsewhere. */
+export function isDraftConflict(error: unknown): boolean {
+  return isServiceError(error) && error.status === 409;
 }
 
 export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
@@ -90,6 +101,8 @@ export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
   let inFlight = false;
   let attempt = 0;
   let disposed = false;
+  /** Set by a 409: the same base can only be refused again. */
+  let conflicted = false;
   let status: DraftStatus = IDLE_STATUS;
 
   const emit = (state: DraftSaveState, savedAt: number | null, retrying: boolean): void => {
@@ -133,9 +146,16 @@ export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
         emit('dirty', status.savedAt, false);
         schedule(debounceMs);
       }
-    } catch {
+    } catch (error) {
       inFlight = false;
       if (disposed) return;
+      if (options.onConflict !== undefined && isDraftConflict(error)) {
+        attempt = 0;
+        conflicted = true;
+        emit('error', status.savedAt, false);
+        options.onConflict(error);
+        return;
+      }
       const delay = retryDelays[attempt];
       attempt += 1;
       if (delay === undefined) {
@@ -181,7 +201,7 @@ export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
     },
     dispose(): void {
       cancelTimer();
-      if (!disposed && !inFlight && current !== acked) {
+      if (!disposed && !inFlight && !conflicted && current !== acked) {
         void options.put(current, baseVersion).catch(() => undefined);
       }
       disposed = true;
@@ -205,8 +225,12 @@ export function useDraftSave(options: {
   source: string;
   baseVersion: number;
   enabled: boolean;
+  /** A write was refused with 409: the host shows its conflict choice. */
+  onConflict?: () => void;
 }): DraftSaveHandle {
   const { deckId, source, baseVersion, enabled } = options;
+  const onConflictRef = useRef(options.onConflict);
+  onConflictRef.current = options.onConflict;
   const [status, setStatus] = useState<DraftStatus>(IDLE_STATUS);
   const [observedSource, setObservedSource] = useState(source);
   const saverRef = useRef<DraftSaver | null>(null);
@@ -225,6 +249,7 @@ export function useDraftSave(options: {
       acked: seedRef.current.source,
       put: (text, base) => drafts.save(deckId, text, base),
       onStatus: setStatus,
+      onConflict: () => onConflictRef.current?.(),
     });
     saverRef.current = saver;
     setStatus(IDLE_STATUS);

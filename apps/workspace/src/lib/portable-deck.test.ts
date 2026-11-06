@@ -48,4 +48,19 @@ describe('portable cloud deck', () => {
     await expect(portableDeck(source, 'https://openroom.test', (async () => new Response('not a picture', { headers: { 'content-type': 'image/png' } })) as typeof fetch)).rejects.toThrow('declared format');
     await expect(portableDeck(source, 'https://openroom.test', (async () => new Response(png, { headers: { 'content-type': 'image/png', 'content-length': String(21 * 1024 * 1024) } })) as typeof fetch)).rejects.toThrow('size limit');
   });
+
+  it('names the slide whose linked picture could not be fetched', async () => {
+    const source = deck();
+    source.steps.push(
+      { id: 'warm-up', kind: 'title', title: 'Warm-up' },
+      { id: 'group', kind: 'media', breakoutOf: { stepId: 'warm-up', afterKey: 'title' }, media: { type: 'image', url: 'https://images.test/b.png', alt: '' } },
+      { id: 'photo', kind: 'media', media: { type: 'image', url: 'https://images.test/a.png', alt: '' } },
+    );
+    const offline = (async () => { throw new TypeError('Failed to fetch'); }) as typeof fetch;
+    await expect(portableDeck(source, 'https://openroom.test', offline)).rejects.toThrow(
+      'The picture on a breakout of slide 2 could not be included. Upload it into this space and try again.',
+    );
+    source.steps.splice(2, 1);
+    await expect(portableDeck(source, 'https://openroom.test', offline)).rejects.toThrow('The picture on slide 3 could not be included.');
+  });
 });

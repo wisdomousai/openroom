@@ -14,7 +14,7 @@ test('workshop gallery inserts editable, themed sequences and preserves response
   await page.goto('/host/#/decks/new');
   await expect(page).toHaveURL(/#\/decks\/[^/]+\/edit$/);
   const id = /decks\/([^/]+)\/edit/.exec(page.url())![1]!;
-  await page.getByRole('button', { name: 'Theme', exact: true }).click();
+  await page.getByRole('tab', { name: 'Theme', exact: true }).click();
   await page.getByRole('button', { name: 'business', exact: true }).click();
   for (const sequence of WORKSHOP_SEQUENCES) {
     await page.getByRole('button', { name: 'New slide', exact: true }).click();
@@ -33,7 +33,7 @@ test('workshop gallery inserts editable, themed sequences and preserves response
   const team = saved.steps.find((step: { interactionId?: string }) => step.interactionId?.startsWith('team-challenge-proposal'));
   const index = saved.steps.findIndex((step: { id: string }) => step.id === team.id);
   await slides.nth(index).click();
-  await page.getByRole('button', { name: 'Design', exact: true }).click();
+  await page.getByRole('tab', { name: 'Design', exact: true }).click();
   await expect(page.getByRole('button', { name: 'One per group', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Individual', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Individual', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -41,7 +41,7 @@ test('workshop gallery inserts editable, themed sequences and preserves response
   expect(parseYaml((await (await page.request.get(`/api/decks/${id}/draft`)).json()).source).interactions.find((item: { id: string }) => item.id === team.interactionId)?.responseMode).toBe('individual');
   await page.reload();
   await slides.nth(index).click();
-  await page.getByRole('button', { name: 'Design', exact: true }).click();
+  await page.getByRole('tab', { name: 'Design', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Individual', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'One per group', exact: true }).click();
   await expect(page.locator('[data-or-draft-status]')).toHaveAttribute('data-or-draft-status', 'saved');

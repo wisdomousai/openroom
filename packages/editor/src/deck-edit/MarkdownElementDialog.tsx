@@ -159,7 +159,7 @@ export function MarkdownElementDialog({
           </p>
         )}
 
-        <DialogFooter className="border-t border-hairline bg-background px-6 py-3">
+        <DialogFooter flush className="py-3">
           {bridge === null || onRefineWithAgent === undefined ? null : (
             <Button
               type="button"

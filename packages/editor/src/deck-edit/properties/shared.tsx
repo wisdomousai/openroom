@@ -111,6 +111,8 @@ export interface PropertiesPanelProps {
   overflowFocus?: { target: string; sequence: number };
   onOverflowSelect?: (issue: SlideOverflowIssue) => void;
   onOverflowLayout?: () => void;
+  /** Move list item `index` and everything after it to a new slide right after this one. */
+  onOverflowSplit?: (index: number) => void;
   learnerFeedback?: React.ReactNode;
   onResetTemplate?: () => void;
   onApplyBrandKit: (design: DeckDesign) => void;
@@ -125,6 +127,8 @@ export interface PropertiesPanelProps {
   deckId: string;
   currentVersion: number;
   versionRefresh: number;
+  loadedVersion?: number | null;
+  unsavedDraft?: boolean;
   revealFocus: number;
   paneTab: PaneTab;
   onPaneTab: (tab: PaneTab) => void;
@@ -140,6 +144,8 @@ export interface PropertiesPanelProps {
   onAddListItem: (target: ListTarget, index?: number) => void;
   onRemoveListItem: (target: ListTarget, index: number) => void;
   onOptionCorrect: (index: number) => void;
+  /** Retype the answer a match pairs with left item `index`. */
+  onMatchAnswer?: (index: number, text: string) => void;
   onGapAnswers: (index: number, answers: string[]) => void;
   onGapDistractors: (index: number, distractors: string[]) => void;
   onFillTheGapsBank: (bank: string[]) => void;
@@ -153,6 +159,11 @@ export interface PropertiesPanelProps {
   onMediaChange?: (media: OutlineMedia) => void;
   onEmbeddedResource?: (id: string, resource: OpenRoomFileResourceV1) => void;
   onRemoveElement: (elementId: string) => void;
+  /** Alt text or crop focus of a picture object on a freeform slide. */
+  onElementPicture: (
+    elementId: string,
+    details: { alt?: string; focal?: OutlineMediaFocal | undefined },
+  ) => void;
   /** A word being looked up. A read: nothing here writes to the outline. */
   lookUpWord?: string | null;
   onCloseLookUp?: () => void;
