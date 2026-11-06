@@ -177,6 +177,9 @@ async function sessionOutlineInsert(
   }, args, reporter, deps);
 }
 
+const SESSION_START_USAGE =
+  'usage: openroom session start <file> --url <base> (--token <personal-token> | --admin-key <ops-key>)';
+
 async function sessionStart(
   args: ParsedArgs,
   reporter: Reporter,
@@ -184,20 +187,22 @@ async function sessionStart(
 ): Promise<number> {
   const file = args.positionals[2];
   if (file === undefined) {
-    throw new UsageError('usage: openroom session start <file> --url <base> --admin-key <key>');
+    throw new UsageError(SESSION_START_USAGE);
   }
   const baseUrl = requireFlag(args, 'url');
-  const adminKey = requireFlag(args, 'admin-key');
+  const token = flagString(args, 'token');
+  const adminKey = flagString(args, 'admin-key');
+  if ((token === undefined) === (adminKey === undefined)) throw new UsageError(SESSION_START_USAGE);
 
   const session = parseOrThrow(readSessionFile(file), file);
   const client = clientFor(baseUrl, deps);
-  const created = await client.createSession(session, adminKey);
+  const created = await client.createSession(session, token === undefined ? { adminKey: adminKey! } : { token });
 
   const joinUrl = created.joinUrl ?? `https://join.openroom.app/?code=${created.code}`;
-  const stageUrl =
+  const stageUrl = created.stageUrl ?? (
     created.stageToken === undefined
       ? `${client.base}/stage/?session=${encodeURIComponent(created.sessionCode)}`
-      : `${client.base}/stage/?session=${encodeURIComponent(created.sessionCode)}&token=${encodeURIComponent(created.stageToken)}`;
+      : `${client.base}/stage/?session=${encodeURIComponent(created.sessionCode)}&token=${encodeURIComponent(created.stageToken)}`);
 
   const state: SessionState = {
     url: client.base,

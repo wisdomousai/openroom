@@ -46,7 +46,7 @@ export function requireState(cwd: string = process.cwd()): SessionState {
   const state = readState(cwd);
   if (state === null) {
     throw new CliError(
-      `no active session (${STATE_FILENAME} missing or unreadable) — run "openroom session start" first`,
+      `no active session (${STATE_FILENAME} missing or unreadable) — start one with "openroom deck start <deckId> --token <personal-token>", or take over a running one with "openroom session facilitate <code> --token <personal-token>"`,
       { code: 'E_NO_SESSION' },
     );
   }

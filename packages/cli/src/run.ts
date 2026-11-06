@@ -26,14 +26,16 @@ Usage:
   openroom deck draft get|put|discard <id> [--file plan.yaml]
                                            the editor's unvalidated working text
   openroom deck versions <id>              the stamped history, newest first
-  openroom deck start <id> [--version <n>] [--title <text>]
-                                           file a session and open the live console
+  openroom deck start <id> [--version <n>] [--title <text>] [--request-id <uuid>]
+                                           file and start a live session; prints its join and
+                                           stage URLs and saves it for later session commands;
+                                           reuse one --request-id to retry without a second session
                                            (all deck commands take --url <base> --token <bearer>)
                                            a session admits ${FREE_SESSION_PARTICIPANT_LIMIT} participants unless the
                                            space owner holds largeSessions; further new joins
                                            answer 409 session-full, re-entry always works
 
-  openroom api <METHOD> </api/tutoring/...> --url <base> --token <bearer>
+  openroom api <METHOD> </api/...> --url <base> --token <bearer>
                [--body <json> | --file <json-or-yaml>]
                                            manage contexts, decks, versions, sessions, records,
                                            launch, trash/restore, or request a browser
@@ -43,7 +45,7 @@ Usage:
                                            403 continuity-required; contexts and trash/restore
                                            never do)
 
-  openroom session start <file> --url <base> --admin-key <key>
+  openroom session start <file> --url <base> --token <personal-token>   (or --admin-key <ops-key>)
   openroom session status
   openroom session facilitate <code> --url <base> --token <personal-token>
   openroom session handoff <facilitatorId>
@@ -68,7 +70,8 @@ Usage:
 
 Options:
   --json          machine-readable single-object output on stdout
-  --url <base>    API base URL (session start requires it; later commands reuse .openroom.json)
+  --url <base>    API base URL (deck start, session start and session facilitate require it;
+                  later session commands reuse .openroom.json)
   --force         allow init to overwrite an existing file
   -h, --help      show this help
   -v, --version   print the version

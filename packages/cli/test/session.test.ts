@@ -167,6 +167,16 @@ describe('session commands against a mock server', () => {
     expect(state.stageUrl).toContain('/stage/?session=CODE1234&token=stage-token');
   });
 
+  it('start accepts a personal token instead of the ops key', async () => {
+    await run(['init', '--force'], { io: capture().io });
+    const before = received.length;
+    expect(await run(['session', 'start', 'session.yaml', '--url', baseUrl, '--token', 'orpat_secret'], { io: capture().io })).toBe(0);
+    const create = received.slice(before).find((r) => r.url === '/api/sessions');
+    expect(create?.headers['authorization']).toBe('Bearer orpat_secret');
+    expect(create?.headers['x-openroom-admin']).toBeUndefined();
+    await startSession();
+  });
+
   it('open sends { idempotencyKey, command } with a bearer host token', async () => {
     await startSession();
     const cap = capture();

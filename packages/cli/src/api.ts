@@ -11,7 +11,11 @@ export interface CreateSessionResponse {
   hostToken: string;
   stageToken?: string;
   joinUrl?: string;
+  stageUrl?: string;
 }
+
+/** Who creates a session from a file: a tutor's personal token, or the deployment ops key. */
+export type SessionCredential = { token: string } | { adminKey: string };
 
 /** A host-visible command as accepted by POST /api/sessions/:sessionCode/commands. */
 export type HostCommand =
@@ -145,10 +149,13 @@ export class ApiClient {
     return { res, body };
   }
 
-  async createSession(outline: Outline, adminKey: string): Promise<CreateSessionResponse> {
+  async createSession(outline: Outline, credential: SessionCredential): Promise<CreateSessionResponse> {
+    const auth: Record<string, string> = 'token' in credential
+      ? { authorization: `Bearer ${credential.token}` }
+      : { 'x-openroom-admin': credential.adminKey };
     const { body } = await this.request('/api/sessions', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-openroom-admin': adminKey },
+      headers: { 'content-type': 'application/json', ...auth },
       body: JSON.stringify({ outline }),
     });
     const data = body as Partial<CreateSessionResponse> | null;
@@ -164,6 +171,7 @@ export class ApiClient {
       hostToken: data.hostToken,
       ...(typeof data.stageToken === 'string' ? { stageToken: data.stageToken } : {}),
       ...(typeof data.joinUrl === 'string' ? { joinUrl: data.joinUrl } : {}),
+      ...(typeof data.stageUrl === 'string' ? { stageUrl: data.stageUrl } : {}),
     };
   }
 
@@ -224,7 +232,7 @@ export class ApiClient {
   ): Promise<{ status: number; body: unknown }> {
     // Keep allowlist in lockstep with @openroom/schema isTutoringApiPath / worker router.
     if (!isTutoringApiPath(path)) {
-      throw new CliError('api path is outside /api/tutoring/contexts, /api/decks, and /api/sessions', {
+      throw new CliError('api path is outside the tutoring API allowlist; paths start with /api/decks, /api/sessions, /api/presentations/start, /api/tutoring/contexts, /api/tutoring/spaces/{spaceId}/brand-kits, /api/tutoring/brand-kits, /api/my/spaces, /api/my/invites, /api/my/archives or /api/my/billing', {
         code: 'E_API_PATH',
         path,
       });

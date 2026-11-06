@@ -50,7 +50,7 @@ export async function cmdApi(
   const path = args.positionals[2];
   if (rawMethod === undefined || path === undefined) {
     throw new UsageError(
-      'usage: openroom api <GET|POST|PATCH|PUT|DELETE> </api/tutoring/...> --url <base> --token <bearer> [--body <json>|--file <json-or-yaml>]',
+      'usage: openroom api <GET|POST|PATCH|PUT|DELETE> </api/...> --url <base> --token <bearer> [--body <json>|--file <json-or-yaml>]',
     );
   }
   const method = rawMethod.toUpperCase();
