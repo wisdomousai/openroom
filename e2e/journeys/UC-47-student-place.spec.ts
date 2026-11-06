@@ -5,7 +5,10 @@
  * addresses land in the Library, a missing student says so, Live now names the
  * student, every list row has a context menu reachable from the keyboard,
  * folders rename in place, trashing a folder takes its decks along, and the
- * purge page names what it deletes.
+ * purge page names what it deletes. At laptop sizes the access links are open,
+ * a group keeps its whole name, a long Next session note stays short, the
+ * decks scroll with the page, and a student moves to Trash from Edit student
+ * and comes back with Restore.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
@@ -138,4 +141,102 @@ test('a student place: addresses, menus, rename, folder trash and purge', async 
   await expect(page.getByText('Permanently deleted.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Return to Trash' })).toBeVisible();
   expect((await api.get(`/api/decks/${filed.deck.id}`)).status()).toBe(404);
+});
+
+test('a student place at laptop sizes: open links, whole group name, page-length deck list, trash and restore', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const api = await signIn(page);
+  const stamp = Date.now();
+
+  // A group keeps its whole name in the panel heading, not its first word.
+  const groupName = `Noor and Léa ${stamp}`;
+  const { context: group } = await json<{ context: { id: string; spaceId: string } }>(
+    api.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: groupName, kind: 'group', experience: 'tutoring' } }), 201);
+  await page.goto(`/host/#/space/${group.spaceId}?contextId=${group.id}`);
+  await expect(page.getByRole('heading', { level: 2, name: groupName, exact: true })).toBeVisible();
+  // An empty place shows the sample card as its one empty state.
+  await expect(page.getByRole('heading', { name: 'Sample deck', exact: true })).toBeVisible();
+  await expect(page.getByText('No decks in this folder')).toHaveCount(0);
+
+  const student = `Inès ${stamp}`;
+  const { context } = await json<{ context: { id: string; spaceId: string } }>(
+    api.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: student, kind: 'person', experience: 'tutoring', context: { goals: 'Order at a café', notes: 'Prefers speaking. Slow on the subjunctive.' } } }), 201);
+  const { id: contextId, spaceId } = context;
+  let sessionId = '';
+  for (let index = 1; index <= 8; index++) {
+    const created = await json<{ session?: { id: string } }>(api.post('/api/decks', { headers: CSRF, data: {
+      spaceId, contextId, createSession: index === 1,
+      content: { version: 1, meta: { title: `Leçon ${index}` }, steps: [{ id: 'one', kind: 'title', title: `Leçon ${index}` }], interactions: [] },
+    } }), 201);
+    if (created.session) sessionId = created.session.id;
+  }
+  const longNote = `Start with the café role-play. ${'Then review the subjunctive with the drills from last week and ask for three examples of her own. '.repeat(14)}`;
+  await json(api.put(`/api/sessions/${sessionId}/record`, { headers: CSRF, data: { outcomes: [], notes: '', homework: [], artifacts: [], nextNote: longNote } }), 200);
+
+  await page.goto(`/host/#/space/${spaceId}?contextId=${contextId}`);
+  await expect(page.getByRole('heading', { name: student, exact: true, level: 1 })).toBeVisible();
+
+  // The access links are on the page, under one name, without opening anything.
+  await expect(page.getByRole('heading', { name: 'Access links', exact: true })).toBeVisible();
+  await expect(page.getByText('No access link yet.')).toBeVisible();
+
+  // A long Next session note stays two lines until asked for.
+  const note = page.locator('#next-session-note');
+  const clamped = await note.evaluate((element) => element.getBoundingClientRect().height);
+  expect(clamped).toBeLessThan(60);
+  await page.getByRole('button', { name: 'Show all', exact: true }).click();
+  expect(await note.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThan(clamped * 3);
+  await page.getByRole('button', { name: 'Show less', exact: true }).click();
+
+  // The decks take their full height and the page scrolls, not a strip inside it.
+  const library = page.getByRole('listbox', { name: 'Library' });
+  const rows = library.getByRole('option');
+  await expect(rows).toHaveCount(8);
+  const listHeight = await library.evaluate((element) => element.getBoundingClientRect().height);
+  const rowHeight = await rows.first().evaluate((element) => element.getBoundingClientRect().height);
+  expect(listHeight).toBeGreaterThanOrEqual(rowHeight * 8 - 2);
+  await rows.last().scrollIntoViewIfNeeded();
+  await expect(rows.last()).toBeInViewport();
+
+  // At 1024 the header's buttons wrap instead of covering the name.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  const title = await page.getByRole('heading', { name: student, exact: true, level: 1 }).boundingBox();
+  const newDeck = await page.getByRole('main').getByRole('link', { name: 'New deck', exact: true }).first().boundingBox();
+  expect(title && newDeck).toBeTruthy();
+  const overlaps = title!.x < newDeck!.x + newDeck!.width && newDeck!.x < title!.x + title!.width
+    && title!.y < newDeck!.y + newDeck!.height && newDeck!.y < title!.y + title!.height;
+  expect(overlaps).toBe(false);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  // Edit student is a real form: Enter submits, an empty name is reported on the field.
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Edit ${student}`, exact: true })).toBeVisible();
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('');
+  await name.press('Enter');
+  await expect(page.getByRole('alert')).toHaveText('Enter a name.');
+  await expect(name).toBeFocused();
+  await expect(name).toHaveAttribute('aria-invalid', 'true');
+  await name.fill(student);
+
+  // Move to trash names what goes with the student.
+  await page.getByRole('button', { name: 'Move to trash', exact: true }).click();
+  const dialog = page.getByRole('alertdialog', { name: `Move ${student} to trash` });
+  await expect(dialog).toContainText('decks, access links and learner work');
+  await dialog.getByRole('button', { name: 'Move to trash', exact: true }).click();
+
+  // The place says the student is in Trash, offers Restore, and nothing that would fail.
+  await expect(page.getByText(`${student} is in Trash.`)).toBeVisible();
+  const main = page.getByRole('main');
+  await expect(main.getByRole('link', { name: 'New deck', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Access links', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
+  // The nav lists neither the student nor their space.
+  const nav = page.getByRole('navigation', { name: 'Workspace' });
+  await expect(nav.getByRole('link', { name: new RegExp(student) })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Restore', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Access links', exact: true })).toBeVisible();
+  await expect(page.getByText(`${student} is in Trash.`)).toHaveCount(0);
+  await expect(nav.getByRole('link', { name: new RegExp(student) })).toHaveCount(1);
 });

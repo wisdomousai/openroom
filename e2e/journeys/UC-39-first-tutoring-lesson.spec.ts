@@ -37,14 +37,19 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await page.getByRole('link', { name: 'Add student or group', exact: true }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Enter a name.');
+  // The message sits on the field and the field takes focus.
+  await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+  await expect(page.getByLabel('Name', { exact: true })).toHaveAttribute('aria-invalid', 'true');
   await page.getByLabel('Name', { exact: true }).fill('Camille First Lesson');
   await page.getByRole('button', { name: 'B1', exact: true }).click();
   await page.getByLabel('Goal', { exact: true }).fill('Explain a travel problem in French.');
   await audit(page, testInfo, '02-student-setup');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Camille First Lesson', exact: true })).toBeVisible();
-  await page.getByText('Student access links', { exact: true }).click();
+  // The access-link card is open on the student's place; a 1:1 student has no learner to choose.
   await page.getByRole('link', { name: 'Create link', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Create an access link' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Learner', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Create link', exact: true }).click();
   const learnerUrl = await page.locator('code').filter({ hasText: '#/learn?token=' }).innerText();
   await page.getByRole('link', { name: 'Done', exact: true }).click();
