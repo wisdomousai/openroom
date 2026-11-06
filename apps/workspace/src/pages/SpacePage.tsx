@@ -31,6 +31,7 @@ import {
   LibraryList,
   type Crumb,
   type LibraryRow,
+  type LibraryRowActions,
 } from '../components/LibraryList';
 import {
   EmptyInspector,
@@ -444,6 +445,25 @@ export function SpacePage({
       }
     : undefined;
 
+  const rowActions: LibraryRowActions | undefined = folderActions
+    ? {
+        onStart: (deckId) => {
+          const deck = decks.find((d) => d.id === deckId);
+          if (deck) void startItem({ kind: 'deck', data: deck });
+        },
+        onDuplicate: (row) => {
+          if (row.kind === 'folder') { void folderActions.onCopyFolder(row.id); return; }
+          const deck = decks.find((d) => d.id === row.id);
+          if (deck) void duplicateItem({ kind: 'deck', data: deck });
+        },
+        onTrash: (row) => {
+          if (row.kind === 'folder') folderActions.onTrashFolder(row.id);
+          else setPendingDelete({ kind: 'deck', id: row.id, label: row.name });
+        },
+        onRenameFolder: folderActions.onRenameFolder,
+      }
+    : undefined;
+
   const createTo = useMemo(
     () =>
       spaceId
@@ -620,6 +640,7 @@ export function SpacePage({
             samplesTo={canEdit && space?.settings?.experience === 'tutoring' ? to.lessonExamples(spaceId, { folderId: currentFolderId, contextId: currentContextId }) : null}
             onDragEnd={() => setDropTarget(null)}
             chrome="browser"
+            {...(rowActions ? { rowActions } : {})}
           />
         </div>
 
