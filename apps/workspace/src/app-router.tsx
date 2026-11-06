@@ -6,7 +6,9 @@ import {
   createRoute,
   createRouter,
   Link,
+  Navigate,
   Outlet,
+  redirect,
   useNavigate,
 } from '@tanstack/react-router';
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, type ReactNode } from 'react';
@@ -128,23 +130,27 @@ function resolveLiveSession(sessionCode: string, token: string | null): StoredSe
 }
 
 /**
- * No credentials on this device. This one exit goes Home rather than to the
- * Library: Home is where Rejoin lives, and rejoining is what is wanted here.
+ * No credentials for this session on this device. The way back is the Library's
+ * Live now row, which hands a signed-in tutor fresh host credentials; the page
+ * says so in those words and names no token.
  */
-function MissingSession({ sessionCode }: { sessionCode: string }) {
+function MissingSession() {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
-      <h1 className="font-display text-xl font-semibold">OpenRoom</h1>
-      <Alert variant="destructive">
-        <AlertTitle>No credentials for session {sessionCode} on this device.</AlertTitle>
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
+      <Alert>
+        <AlertTitle>This session is not open on this device.</AlertTitle>
         <AlertDescription className="mt-1">
-          Sign in and open the session from Home, or append the host token:{' '}
-          <code className="rounded bg-muted px-1 py-0.5 text-foreground">#/sessions/{sessionCode}?token=HOST_TOKEN</code>
+          Sign in on this device and use Rejoin under Live now in the Library.
         </AlertDescription>
       </Alert>
-      <div><Button asChild><Link {...to.home()}>Home</Link></Button></div>
-    </div>
+      <div><Button asChild><Link {...to.library()}>Library</Link></Button></div>
+    </main>
   );
+}
+
+/** An address the router does not know lands in the Library, with its chrome and sign-in. */
+function UnknownAddress() {
+  return <Navigate {...to.library()} replace />;
 }
 
 function optionalStringSearch(value: unknown): string | undefined {
@@ -155,12 +161,7 @@ function optionalStringSearch(value: unknown): string | undefined {
 
 const rootRoute = createRootRoute({
   component: RootLayout,
-  notFoundComponent: () => (
-    <main className="mx-auto flex max-w-xl flex-col gap-3 p-6">
-      <h1 className="font-display text-xl font-semibold">Page not found</h1>
-      <Link className="underline" {...to.home()}>Home</Link>
-    </main>
-  ),
+  notFoundComponent: UnknownAddress,
 });
 
 const workspaceRoute = createRoute({
@@ -313,6 +314,12 @@ function DeckEditorScreen({ deckId }: { deckId: string }) {
   );
 }
 
+/** `#/decks/:id` is the deck's address in the docs; a deck opens in its editor. */
+const deckRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/decks/$deckId',
+  beforeLoad: ({ params }) => { throw redirect({ ...to.deckEditor(params.deckId), replace: true }); },
+});
 const deckEditRoute = createRoute({ getParentRoute: () => rootRoute, path: '/decks/$deckId/edit', component: () => <DeckEditorScreen deckId={deckEditRoute.useParams().deckId} /> });
 const savedResultsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/results/$archiveId', component: () => {
   const { archiveId } = savedResultsRoute.useParams(), { session } = useAppServices();
@@ -386,28 +393,28 @@ function useResolvedSession(
 }
 
 function LiveSessionScreen() {
-  const { sessionCode, live } = useResolvedSession(liveSessionRoute, to.sessionConsole);
+  const { live } = useResolvedSession(liveSessionRoute, to.sessionConsole);
   const { exitToLibrary } = useAppServices();
-  return live ? <LiveHost live={live} onLeave={exitToLibrary} /> : <MissingSession sessionCode={sessionCode} />;
+  return live ? <LiveHost live={live} onLeave={exitToLibrary} /> : <MissingSession />;
 }
 
 function RemoteScreen() {
   const { sessionCode, live } = useResolvedSession(liveRemoteRoute, to.sessionRemote);
   const { exitToLibrary } = useAppServices();
   const navigate = useNavigate();
-  if (!live) return <MissingSession sessionCode={sessionCode} />;
+  if (!live) return <MissingSession />;
   return <PresenterRemote live={live} onLeave={exitToLibrary} onOpenLiveHost={() => void navigate(to.sessionConsole(sessionCode))} />;
 }
 
 function QnaScreen() {
-  const { sessionCode, live } = useResolvedSession(liveQnaRoute, to.sessionQna);
+  const { live } = useResolvedSession(liveQnaRoute, to.sessionQna);
   const { exitToLibrary } = useAppServices();
-  return live ? <QnaDesk live={live} onLeave={exitToLibrary} /> : <MissingSession sessionCode={sessionCode} />;
+  return live ? <QnaDesk live={live} onLeave={exitToLibrary} /> : <MissingSession />;
 }
 
 function RecapScreen() {
   const { sessionCode, live } = useResolvedSession(liveRecapRoute, to.sessionRecap);
-  return live ? <Suspense fallback={<p className="p-6">Loading recap…</p>}><SessionRecapPage key={sessionCode} live={live} /></Suspense> : <MissingSession sessionCode={sessionCode} />;
+  return live ? <Suspense fallback={<p className="p-6">Loading recap…</p>}><SessionRecapPage key={sessionCode} live={live} /></Suspense> : <MissingSession />;
 }
 
 const routeTree = rootRoute.addChildren([
@@ -436,6 +443,7 @@ const routeTree = rootRoute.addChildren([
     settingsTokenNewRoute,
   ]),
   deckNewRoute,
+  deckRoute,
   deckEditRoute,
   savedResultsRoute,
   learnRoute,
