@@ -91,7 +91,8 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
     if (field && issues[field]) setIssues((current) => { const next = { ...current }; delete next[field]; return next; });
   };
   // Removing a row renumbers the rows after it, so earlier marks no longer point at the right field.
-  const removeRow = (value: LearnerFeedback) => { setIssues({}); change(value); };
+  const clearIssues = () => { setIssues({}); setError(null); };
+  const removeRow = (value: LearnerFeedback) => { clearIssues(); change(value); };
   const markIssues = (found: FieldIssues) => {
     setIssues(found);
     const first = Object.keys(found)[0];
@@ -108,14 +109,13 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
       queryClient.setQueryData(['contexts', contextId, 'work', work.id], { ...detail, feedback: { draft: feedback, published: saved.published, version: saved.version } });
       setNotice(action === 'publish' ? `Feedback shared with ${work.displayName}.` : 'Draft saved. Only tutors in this space can see it.');
     } catch (cause) {
-      const rejected = cause instanceof ApiError && cause.status === 422 && markIssues(feedbackIssues(feedback, work.body));
-      setError(cause instanceof ApiError && cause.status === 409 ? 'Another tutor edited this feedback. Copy your changes before reloading.' : rejected ? 'Fix the marked fields, then save again.' : cause instanceof ApiError && cause.message === 'correction-not-in-submission' ? 'Each correction must quote words from this response.' : cause instanceof ApiError && cause.status === 422 ? 'Complete each correction before saving.' : messageOf(cause, 'Could not save feedback.'));
+      setError(cause instanceof ApiError && cause.status === 409 ? 'Another tutor edited this feedback. Copy your changes before reloading.' : cause instanceof ApiError && cause.message === 'correction-not-in-submission' ? 'Each correction must quote words from this response.' : cause instanceof ApiError && cause.status === 422 ? 'Complete each correction before saving.' : messageOf(cause, 'Could not save feedback.'));
     } finally { setBusy(false); }
   };
   const addComment = () => {
     const note = { atMs: position, comment: '' };
     const comments = byTime([...(feedback.audioComments ?? []), note]);
-    setIssues({});
+    clearIssues();
     change({ ...feedback, audioComments: comments });
     setFocusId(`audio-comment-${comments.indexOf(note)}`);
   };
@@ -126,8 +126,8 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
     <PageHeading title={`${work.displayName}’s ${work.task.kind === 'voice' ? 'voice response' : 'writing'}`} description="Draft feedback stays private until you share it with the learner." />
     <Button asChild variant="outline" className="w-fit"><Link {...to.studentWork(contextId)}>Back to learner work</Link></Button>
     <div className="grid items-start gap-6 lg:grid-cols-2">
-      {/* The player stays in view beside a long list of timed comments. */}
-      <div className={`grid gap-4 ${isVoice ? 'lg:sticky lg:top-0' : ''}`}>
+      {/* The player stays in view beside a long list of timed comments; a tall column scrolls on its own. */}
+      <div className={`grid gap-4 ${isVoice ? 'lg:sticky lg:top-0 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto' : ''}`}>
         <Card><CardHeader><CardTitle className="text-base">{work.task.title ?? 'The task'}</CardTitle></CardHeader><CardContent className="whitespace-pre-wrap text-base leading-relaxed">{work.task.kind === 'writing' || work.task.kind === 'voice' ? work.task.prompt : ''}</CardContent></Card>
         <Card><CardHeader><CardTitle className="text-base">{work.displayName}’s response</CardTitle></CardHeader><CardContent className="whitespace-pre-wrap text-base leading-relaxed">{work.audio ? <PrivateAudio handle={player} submissionId={work.id} {...work.audio} contextId={contextId} onPosition={setPosition} onChanged={() => void queryClient.invalidateQueries({ queryKey: ['contexts', contextId, 'work'] })} /> : work.body}</CardContent></Card>
         {detail.earlier.length > 0 ? <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer text-sm font-medium">Other responses to this task</summary><div className="mt-4 grid gap-4">{detail.earlier.map((item) => <div key={item.id} className="border-t border-border pt-4"><p className="whitespace-pre-wrap text-base">{responseSummary(item)}</p><Link {...to.studentWorkReview(contextId, item.id)} className="mt-2 inline-block text-sm text-primary underline">Open response</Link></div>)}</div></details> : null}

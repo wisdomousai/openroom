@@ -46,12 +46,13 @@ export function SessionNotesPage({ sessionId }: { sessionId: string }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   /*
-   * Arriving here usually means a session just ended. Mark the Library's Live
-   * now and write-notes lists stale so the next Library view refetches them
-   * instead of offering to rejoin the ended session. Nothing refetches now:
+   * Arriving here usually means a session just ended. Drop the Library's
+   * Live now list, so it never shows Rejoin for the ended session while it
+   * reloads, and mark the write-notes prompts stale. Nothing refetches now:
    * this page's own record query stays as loaded.
    */
   useEffect(() => {
+    queryClient.removeQueries({ queryKey: ['sessions', 'live-now'] });
     void queryClient.invalidateQueries({ predicate: (query) => ['sessions', 'dashboard'].includes(String(query.queryKey[0])) && query.queryKey[2] !== sessionId, refetchType: 'none' });
   }, [queryClient, sessionId]);
   const query = useQuery({
@@ -197,7 +198,7 @@ function SessionNotesForm({
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <PageHeading title={title} description={hasContext ? 'Share outcomes and homework with learners. Next session and tutor notes stay private.' : 'Record the outcomes and next session. These notes stay in this space.'} />
+      <PageHeading title={title} description={hasContext ? 'Share outcomes and homework with learners. Next session and tutor notes stay private.' : 'Record the outcomes and a note for the next session. These notes stay in this space.'} />
       {hasSeparateScratchpad && !addedScratchpad ? <section className="grid gap-3 rounded-xl border border-border bg-card p-6" aria-label="Notes on this device"><h2 className="text-section">Notes on this device</h2><p className="whitespace-pre-wrap break-words text-secondary">{scratchpad}</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={accessLost} onClick={() => { const next = [form.getFieldValue('notes'), scratchpad].filter(Boolean).join('\n\n'); form.setFieldValue('notes', next); writeSessionNotes(sessionId, next); setAddedScratchpad(true); }}>Add to private notes</Button><Button type="button" variant="ghost" onClick={() => downloadPrivateNotes(scratchpad)}>Download private notes</Button></div></section> : null}
       <form onSubmit={(event) => { event.preventDefault(); void form.handleSubmit(); }}>
         <Card>

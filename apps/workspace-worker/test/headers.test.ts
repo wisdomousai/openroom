@@ -17,15 +17,15 @@ async function policy(path: string): Promise<string | null> {
 }
 
 describe('Permissions-Policy', () => {
-  it('lets the workspace app, which hosts the learner page, use its own microphone', async () => {
+  it('lets the workspace app, which hosts the learner page, use its own microphone', async (ctx) => {
     const value = await policy('/host/');
-    if (value === null) return;
+    if (value === null) ctx.skip('apps/workspace dist is not collected into public/host; run the workspace-worker build first');
     expect(value).toBe('geolocation=(), microphone=(self), camera=()');
   });
 
-  it('keeps the microphone off on the public site', async () => {
+  it('keeps the microphone off on the public site', async (ctx) => {
     const value = await policy('/');
-    if (value === null) return;
+    if (value === null) ctx.skip('apps/site dist is not collected into public; run the workspace-worker build first');
     expect(value).toBe('geolocation=(), microphone=(), camera=()');
   });
 });
