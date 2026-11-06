@@ -160,6 +160,12 @@ export function StageView({
 
   const code = snapshot?.code ?? '······';
   const joinUrl = resolveJoinUrl(snapshot, code);
+  /*
+   * An identified session admits only the learner's own access link, so a
+   * code or QR on the shared screen admits nobody and invites bystanders. The
+   * Stage prints neither, as the console header does not.
+   */
+  const showJoin = snapshot?.identityMode !== 'identified';
   const interaction = snapshot?.interaction ?? null;
   // Require an actual outline. Without this, `snapshot.outline?.… !== 'interaction'`
   // is true when outline is missing, so outlineContent becomes `undefined` and the
@@ -205,13 +211,14 @@ export function StageView({
             closesAt={snapshot?.closesAt}
             offline={status === 'offline'}
             connecting={status === 'connecting' && snapshot !== null}
+            showJoin={showJoin}
             compact
           />
         ) : null}
         {/* Standalone stage owns the page landmark; embedded LiveHost already has <main>. */}
         {embedded ? (
           <div className="stage__main" style={{ position: 'relative' }}>
-            <Body snapshot={snapshot} reduced={reduced} code={code} joinUrl={joinUrl} overlay={<InkOverlay
+            <Body snapshot={snapshot} reduced={reduced} code={code} joinUrl={joinUrl} showJoin={showJoin} overlay={<InkOverlay
               marks={snapshot?.marks}
               capture={drawTool}
               color={inkColor}
@@ -226,7 +233,7 @@ export function StageView({
           </div>
         ) : (
           <main className="stage__main" style={{ position: 'relative' }}>
-            <Body snapshot={snapshot} reduced={reduced} code={code} joinUrl={joinUrl} overlay={<InkOverlay marks={snapshot?.marks} />} />
+            <Body snapshot={snapshot} reduced={reduced} code={code} joinUrl={joinUrl} showJoin={showJoin} overlay={<InkOverlay marks={snapshot?.marks} />} />
             <StageMeaning meaning={snapshot?.meaning} dictionary={snapshot?.dictionary} />
             <StageClock snapshot={snapshot} />
           </main>
@@ -253,6 +260,7 @@ function Rail({
   closesAt,
   offline,
   connecting,
+  showJoin,
   compact,
 }: {
   code: string;
@@ -264,6 +272,8 @@ function Rail({
   closesAt?: number;
   offline: boolean;
   connecting: boolean;
+  /** False for an identified session: no code, no QR. */
+  showJoin: boolean;
   compact: boolean;
 }) {
   const answeredPct = expected > 0 ? Math.min(100, Math.round((answered / expected) * 100)) : 0;
@@ -290,13 +300,19 @@ function Rail({
         <span className="rail__brandname">OpenRoom</span>
       </div>
 
-      <div className="rail__join">
-        <p className="rail__code">{code}</p>
-      </div>
+      {showJoin ? (
+        <>
+          <div className="rail__join">
+            <p className="rail__code">{code}</p>
+          </div>
 
-      <div className={`rail__qr${compact ? ' rail__qr--compact' : ''}`}>
-        <QrCode text={joinUrl} title={`QR code to join session ${code}`} />
-      </div>
+          <div className={`rail__qr${compact ? ' rail__qr--compact' : ''}`}>
+            <QrCode text={joinUrl} title={`QR code to join session ${code}`} />
+          </div>
+        </>
+      ) : joined === 0 ? (
+        <p className="rail__waiting">Waiting for the student</p>
+      ) : null}
 
       <p className="rail__counts">
         <AnimatedNumber value={joined} className="rail__num" /> joined ·{' '}
@@ -326,12 +342,14 @@ function Body({
   reduced,
   code,
   joinUrl,
+  showJoin,
   overlay,
 }: {
   snapshot: StageSnapshot | null;
   reduced: boolean;
   code: string;
   joinUrl: string;
+  showJoin: boolean;
   overlay?: React.ReactNode;
 }) {
   if (!snapshot) {
@@ -409,6 +427,7 @@ function Body({
         lobby={snapshot.status === 'lobby'}
         code={code}
         joinUrl={joinUrl}
+        showJoin={showJoin}
         joined={snapshot.participantCount}
       />
     );
@@ -641,11 +660,14 @@ function IdleScreen({
   lobby,
   code,
   joinUrl,
+  showJoin,
   joined,
 }: {
   lobby: boolean;
   code: string;
   joinUrl: string;
+  /** False for an identified session: no code, address or QR. */
+  showJoin: boolean;
   joined: number;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -674,18 +696,25 @@ function IdleScreen({
     <div className="idle" ref={root}>
       <div className="idle__plate">
         <p className="idle__brand">OpenRoom</p>
-        <p className="idle__code">{code}</p>
-        <p className="idle__url">{host}</p>
-        <div className="idle__qr">
-          <QrCode text={joinUrl} title={`QR code to join session ${code}`} />
-        </div>
+        {showJoin ? (
+          <>
+            <p className="idle__code">{code}</p>
+            <p className="idle__url">{host}</p>
+            <div className="idle__qr">
+              <QrCode text={joinUrl} title={`QR code to join session ${code}`} />
+            </div>
+          </>
+        ) : joined === 0 ? (
+          <p className="idle__waiting">Waiting for the student</p>
+        ) : null}
         <p className="idle__sub">
           <span className="idle__state">{lobby ? 'Waiting to start' : 'Next'}</span> ·{' '}
           <AnimatedNumber value={joined} className="idle__count" /> joined
         </p>
       </div>
       <p className="sr-only" role="status" aria-live="polite">
-        {lobby ? 'Waiting to start.' : 'Waiting for the next question.'} Join code {code}.{' '}
+        {lobby ? 'Waiting to start.' : 'Waiting for the next question.'}{' '}
+        {showJoin ? `Join code ${code}. ` : ''}
         {joined} joined.
       </p>
     </div>
