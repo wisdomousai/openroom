@@ -1,5 +1,9 @@
 # UC-59 — Slide content fits its box in the editor and on the stage
 
+Status: green on local Chromium (editor at 1440 × 900, stage at 1920 × 1080).
+
+Spec: `e2e/journeys/UC-59-slide-fitting.spec.ts`.
+
 Long text, pictures, short and long grids, many answers, a large word bank and
 HTML objects stay inside their slide. Where content is too long, the heading
 stays at the top and only the end of the text is cut, the same way in the editor
