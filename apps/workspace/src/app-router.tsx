@@ -266,7 +266,7 @@ const contextNewRoute = createRoute({
     sourceSpaceId: optionalStringSearch(search.sourceSpaceId),
     experience: search.experience === 'classroom' ? 'classroom' as const : 'tutoring' as const,
   }),
-  component: () => <ContextNewPage {...contextNewRoute.useSearch()} />,
+  component: () => <ContextNewPage {...contextNewRoute.useSearch()} notify={useAppServices().notify} />,
 });
 const spaceNewRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/space/new', component: SpaceNewPage });
 const contextDetailRoute = createRoute({

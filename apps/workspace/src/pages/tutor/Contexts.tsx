@@ -1,6 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { ContextKind, SpaceLanguages } from '@openroom/schema';
 
 import {
@@ -29,6 +29,7 @@ import {
   LoadState,
   messageOf,
   useLoad,
+  type Notify,
 } from './shared';
 
 /**
@@ -165,22 +166,26 @@ export function suggestedLanguages(spaces: readonly MySpace[], sourceSpaceId?: s
   return source?.settings.languages ?? null;
 }
 
-export function ContextNewPage({ sourceSpaceId, experience = 'tutoring' }: { sourceSpaceId?: string; experience?: 'tutoring' | 'classroom' }) {
+export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify }: { sourceSpaceId?: string; experience?: 'tutoring' | 'classroom'; notify?: Notify }) {
   const navigate = useNavigate();
   const [kind, setKind] = useState<'person' | 'group'>('person');
   const spacesQuery = useQuery({ queryKey: ['spaces', 'all'] as const, queryFn: listAllSpaces });
-  const suggested = useMemo(
-    () => suggestedLanguages(spacesQuery.data ?? [], sourceSpaceId),
-    [sourceSpaceId, spacesQuery.data],
-  );
-  const pair = useLanguagePair(suggested);
+  /*
+   * The suggestion is taken once, from the first answer: a later refetch must
+   * not replace a pair the tutor has already chosen. The fields wait for it.
+   */
+  const [suggested, setSuggested] = useState<SpaceLanguages | null | undefined>(undefined);
+  useEffect(() => {
+    if (suggested === undefined && spacesQuery.data) setSuggested(suggestedLanguages(spacesQuery.data, sourceSpaceId));
+  }, [sourceSpaceId, spacesQuery.data, suggested]);
+  const pair = useLanguagePair(suggested ?? null);
   return (
     <ContextForm
       extra={
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-row-title">Dictionary languages</legend>
           <p className="text-secondary text-muted-foreground">Optional. Word lookup in these lessons uses this pair.</p>
-          <LanguagePairFields pair={pair} idPrefix="new-context" />
+          <LanguagePairFields pair={pair} idPrefix="new-context" disabled={spacesQuery.isPending} />
         </fieldset>
       }
       heading={experience === 'classroom' ? 'Add class' : 'Add student or group'}
@@ -196,8 +201,20 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring' }: { sou
           sourceSpaceId,
           experience,
         });
-        // The pair lives on the new space; what the form shows is what it gets.
-        await setSpaceLanguages(created.spaceId, pair.complete ? { taught: pair.taught, native: pair.native } : null);
+        /*
+         * The pair lives on the new space. A complete pair is saved; a pair the
+         * tutor cleared is cleared; an untouched empty one leaves whatever the
+         * worker copied at creation. The student exists by now, so a failure
+         * here is reported on their place rather than inviting a second Save.
+         */
+        const languages = pair.complete ? { taught: pair.taught, native: pair.native } : pair.changed ? null : undefined;
+        if (languages !== undefined) {
+          try {
+            await setSpaceLanguages(created.spaceId, languages);
+          } catch (cause) {
+            notify?.(`${input.displayName} was added, but the dictionary languages were not saved. ${messageOf(cause, 'Set them in Space settings.')}`, 'error');
+          }
+        }
         await invalidateManagementData();
         await navigate(to.library({ spaceId: created.spaceId, contextId: created.id }));
       }}
