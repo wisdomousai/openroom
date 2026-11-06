@@ -96,6 +96,12 @@ describe('W_TEXT_FIT: words taller than their slide', () => {
     ]);
   });
 
+  it('reads a newline in the body as a space, as the slide draws it', () => {
+    // The german-a2 "message" step: four short paragraphs drawn as one, which fits.
+    const body = 'Guten Tag Frau Weber,\n\nseit gestern funktioniert die Lampe in der Küche nicht. Die Lampen in den anderen Zimmern funktionieren. Könnten Sie bitte jemanden schicken? Am Dienstag bin ich ab 14 Uhr zu Hause. Am Mittwoch habe ich vormittags Zeit.\n\nFreundliche Grüsse\n\nNora Meier';
+    expect(codes({ id: 'm', kind: 'statement', title: 'Eine Nachricht an die Verwaltung', body })).toEqual([]);
+  });
+
   it('scales with the safe area: a statement that fits a margin of 8 runs into a margin of 12', () => {
     expect(codes(statement(300))).toEqual([]);
     const [warning] = check(statement(300), design('16:9', 12)).warnings;

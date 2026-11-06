@@ -122,12 +122,14 @@ function characters(text: string): number {
   return [...text].length;
 }
 
+/**
+ * Slide text is ordinary HTML text: a newline in the source collapses to a
+ * space like any other run of white space, so it does not start a line.
+ */
 function lines(text: string, face: Face, width: number, slide: Slide): number {
   const em = face.heading ? slide.headingEm : slide.bodyEm;
   const perLine = Math.max(1, Math.floor(width / (face.size * em)));
-  return text
-    .split('\n')
-    .reduce((count, line) => count + Math.max(1, Math.ceil(characters(line) / perLine)), 0);
+  return Math.max(1, Math.ceil(characters(text.trim().replace(/\s+/g, ' ')) / perLine));
 }
 
 function textHeight(text: string, face: Face, width: number, slide: Slide): number {
