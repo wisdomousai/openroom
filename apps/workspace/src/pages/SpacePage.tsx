@@ -676,7 +676,7 @@ export function SpacePage({
             chrome="browser"
             /* The welcome card is this place's empty state; the list does not add a second one. */
             hideEmpty={welcome}
-            searchLabel={personView && person ? `Search decks for ${person.displayName}` : 'Search this space'}
+            searchLabel={currentContextId === null ? 'Search this space' : person ? `Search decks for ${person.displayName}` : 'Search this student’s decks'}
             /* On a student's place the page scrolls as one, so the panel and links above do not squeeze the decks into a strip. */
             scroll={personView ? 'page' : 'list'}
             {...(rowActions ? { rowActions } : {})}

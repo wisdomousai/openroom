@@ -146,6 +146,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
   const accountPage = pathname === '/settings' || pathname.startsWith('/settings/');
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const contextById = useMemo(() => new Map([...(trashedContextsQuery.data ?? []), ...contexts].map((context) => [context.id, context])), [contexts, trashedContextsQuery.data]);
   const searchResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return needle ? decks.filter((deck) => deck.title.toLocaleLowerCase().includes(needle)) : [];
@@ -173,14 +174,12 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
           {searchOpen && query.trim() ? <div className="absolute left-0 top-9 z-50 max-h-80 w-[400px] overflow-auto rounded-md border border-border bg-popover p-1 shadow-[var(--shadow-overlay)]" aria-label="Search results">
             {searchResults.length === 0 ? <p className="p-3 text-secondary text-muted-foreground">No decks match</p> : searchResults.map((deck) => {
               // A student's deck opens in that student's place, as the sidebar link does; a trashed student's place shows Restore.
-              const person = deck.contextId
-                ? contexts.find((context) => context.id === deck.contextId) ?? trashedContextsQuery.data?.find((context) => context.id === deck.contextId)
-                : undefined;
+              const person = deck.contextId ? contextById.get(deck.contextId) : undefined;
               return <Link
                 key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: deck.folderId, itemId: deck.id, contextId: person?.id })}
                 onClick={() => { setSearchOpen(false); setQuery(''); }} className="block rounded p-2 hover:bg-accent focus:bg-accent">
                 <span className="block text-secondary">{deck.title}</span>
-                <span className="block text-caption text-muted-foreground">{person?.displayName ?? allSpaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
+                <span className="block text-caption text-muted-foreground">{person ? (person.deletedAt != null ? `${person.displayName} · in Trash` : person.displayName) : allSpaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
               </Link>;
             })}
           </div> : null}

@@ -38,7 +38,7 @@ export default function LessonExamplesPage({ spaceId, folderId, contextId }: { s
     <p role="status" className="text-secondary text-muted-foreground">{examples.length === 0 ? 'No lessons match these filters.' : examples.length === 1 ? 'One lesson' : `${examples.length} lessons`}</p>
     {open.error ? <p role="alert" className="text-secondary text-destructive">{messageOf(open.error, 'Could not open this lesson. Try again.')}</p> : null}
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-      {examples.map(({ id, outline }) => <article key={id} className="flex flex-col overflow-hidden rounded-xl border border-border bg-card" aria-label={`${outline.meta.language} ${outline.meta.level}: ${outline.meta.title}`}>
+      {examples.map(({ id, outline }) => { const label = open.isPending && open.variables === id ? 'Opening…' : 'Open lesson'; return <article key={id} className="flex flex-col overflow-hidden rounded-xl border border-border bg-card" aria-label={`${outline.meta.language} ${outline.meta.level}: ${outline.meta.title}`}>
         <div className="aspect-video border-b border-border"><SlideThumbnail outline={outline} step={outline.steps[0]!} /></div>
         <div className="flex flex-1 flex-col gap-3 p-5">
           <div className="flex flex-col gap-1">
@@ -48,9 +48,9 @@ export default function LessonExamplesPage({ spaceId, folderId, contextId }: { s
           <p lang={outline.meta.locale} className="text-secondary leading-relaxed text-muted-foreground">{outline.meta.description}</p>
           <p className="text-secondary text-muted-foreground">{outline.steps.filter((step) => !step.breakoutOf).length} slides · questions · writing and voice homework</p>
           <details className="text-secondary"><summary className="cursor-pointer font-semibold">Lesson aims</summary><ul lang={outline.meta.locale} className="mt-2 list-disc space-y-1 pl-5">{outline.meta.objectives?.map((objective) => <li key={objective}>{objective}</li>)}</ul></details>
-          <Button className="mt-auto self-start" aria-label={`${open.isPending && open.variables === id ? 'Opening' : 'Open lesson'}: ${outline.meta.title}`} disabled={!canEdit || !validFolder || open.isPending} onClick={() => open.mutate(id)}>{open.isPending && open.variables === id ? 'Opening…' : 'Open lesson'}</Button>
+          <Button className="mt-auto self-start" aria-label={`${label}: ${outline.meta.title}`} disabled={!canEdit || !validFolder || open.isPending} onClick={() => open.mutate(id)}>{label}</Button>
         </div>
-      </article>)}
+      </article>; })}
     </div>
   </div>;
 }
