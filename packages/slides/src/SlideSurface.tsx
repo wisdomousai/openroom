@@ -38,7 +38,8 @@ export function SlideSurface({ design = resolveSlideDesign(), children, overlay,
 }) {
   const background = design.background;
   const slide = <div className="slide-surface" data-slide-theme={design.theme.family} data-slide-aspect={design.aspectRatio}
-    data-slide-decoration={design.decoration} style={slideDesignStyle(design)}>
+    data-slide-decoration={design.decoration} data-slide-footer={design.footer ? '' : undefined}
+    style={slideDesignStyle(design)}>
     <div className="slide-surface__background" aria-hidden="true" style={background.kind === 'solid'
       ? { background: background.color }
       : background.kind === 'gradient' ? { background: `linear-gradient(${background.angle}deg, ${background.from}, ${background.to})` } : undefined}>
