@@ -16,6 +16,7 @@
 
 import {
   FREE_SESSION_PARTICIPANT_LIMIT,
+  LAYOUTS_FOR_KIND,
   OUTLINE_STEP_KINDS,
   isTutoringApiPath,
   TUTORING_API_PATH_PATTERN,
@@ -27,6 +28,12 @@ import {
 } from '@openroom/schema';
 
 import { OUTLINE_SCHEMA_RESOURCE_URI } from './schema-resource.js';
+
+/** Which layouts each step kind accepts, generated from the schema's own table so it cannot drift. */
+const LAYOUTS_BY_KIND =
+  'Layouts by kind (the first is the default): ' +
+  Object.entries(LAYOUTS_FOR_KIND).map(([kind, layouts]) => `${kind}: ${layouts.join(', ')}`).join('; ') +
+  '. ';
 
 /**
  * The one rule about identified sessions, stated in every tool that can start
@@ -162,7 +169,11 @@ const TOOLS: ToolDefinition[] = [
       'over their own part keys, and a one-level "breakoutOf". The part keys are a closed set: ' +
       'header, stat, body, materials, image, option-N, cell-N, gap-N (a fill-the-gaps blank, in authored ' +
       'order) and el-<id> (one per freeform element); keys you leave out are revealed last, so a ' +
-      'partial order is safe. An embedded web-page slide is a blank ' +
+      'partial order is safe. ' +
+      LAYOUTS_BY_KIND +
+      'The live wall draws an interaction step from its question alone: the prompt with the answer count, then the results chart once results show. ' +
+      'It ignores the step’s own title, body, media and layout, which the editor, Presenter and deck_preview do draw, so put what students must see into the question prompt. ' +
+      'An embedded web-page slide is a blank ' +
       'step with one full-box typed iframe element (HTTPS url and accessible title), not iframe markup ' +
       'inside an html element. A scrollable document slide uses the parallel typed pdf element. ' +
       'A slide of reading prose is an html element carrying a markdown source; its html must be ' +

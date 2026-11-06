@@ -353,7 +353,7 @@
       "pattern": "^(header|stat|body|materials|image|option-(0|[1-9][0-9]*)|cell-(0|[1-9][0-9]*)|el-[a-z0-9]+(-[a-z0-9]+)*)$"
     },
     "elementBox": {
-      "description": "Percent box on the 16:10 slide. Integers, origin top-left.",
+      "description": "Percent box on the slide at the deck's own aspect ratio: x and w are percent of the slide width, y and h percent of its height. Integers, origin top-left.",
       "type": "object",
       "required": ["x", "y", "w", "h"],
       "additionalProperties": false,
