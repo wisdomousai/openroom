@@ -15,6 +15,7 @@ import { ErrorCodes, type SessionError, type Session } from './types.js';
 import { compileSimpleSession, isSimpleSession } from './simple-session.js';
 import { validateDraftSession, validateSession } from './validate.js';
 import { stripDeprecatedOutlineFields } from './normalize.js';
+import { describeParseError, describeSchemaError, withoutBranchNoise } from './outline-errors.js';
 import { isHomeworkQuizType } from './homework.js';
 import { elementMarkupIssue } from './element-html.js';
 import { iframeUrlIssue, pdfUrlIssue } from './element-iframe.js';
@@ -28,27 +29,6 @@ import {
   SLOT_SPANS_FOR_KIND,
   stepElements,
 } from './outline-parts.js';
-
-function escapePointerToken(token: string): string {
-  return token.replace(/~/g, '~0').replace(/\//g, '~1');
-}
-
-function schemaError(err: ErrorObject): SessionError {
-  let path = err.instancePath === '' ? '/' : err.instancePath;
-  if (err.keyword === 'required') {
-    const missing = (err.params as { missingProperty?: string }).missingProperty;
-    if (typeof missing === 'string') path = `${err.instancePath}/${escapePointerToken(missing)}`;
-  }
-  if (err.keyword === 'additionalProperties' || err.keyword === 'unevaluatedProperties') {
-    const params = err.params as {
-      additionalProperty?: string;
-      unevaluatedProperty?: string;
-    };
-    const extra = params.additionalProperty ?? params.unevaluatedProperty;
-    if (typeof extra === 'string') path = `${err.instancePath}/${escapePointerToken(extra)}`;
-  }
-  return { code: ErrorCodes.E_SCHEMA, path, message: err.message ?? 'schema violation' };
-}
 
 function semanticErrors(outline: Outline): SessionError[] {
   const errors: SessionError[] = [];
@@ -550,10 +530,14 @@ function pruneStepUnionErrors(errors: readonly ErrorObject[], input: unknown): S
   const seen = new Set<string>();
   const reportedUnknownKind = new Set<number>();
 
-  for (const err of errors) {
+  for (const err of withoutBranchNoise(errors, input)) {
     const index = stepIndexOf(err.instancePath);
     if (index === null) {
-      kept.push(schemaError(err));
+      const mapped = describeSchemaError(err, input);
+      const key = `${mapped.code}|${mapped.path}|${mapped.message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      kept.push(mapped);
       continue;
     }
 
@@ -596,7 +580,7 @@ function pruneStepUnionErrors(errors: readonly ErrorObject[], input: unknown): S
       if (field !== undefined && !branch.allowed.has(field)) continue;
     }
 
-    const mapped = schemaError(err);
+    const mapped = describeSchemaError(err, input);
     const key = `${mapped.code}|${mapped.path}|${mapped.message}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -647,7 +631,7 @@ export function parseOutline(text: string, format?: 'yaml' | 'json'): OutlineVal
       errors: [{
         code: ErrorCodes.E_PARSE,
         path: '/',
-        message: error instanceof Error ? error.message : String(error),
+        message: describeParseError(error instanceof Error ? error.message : String(error)),
       }],
     };
   }
@@ -671,7 +655,7 @@ export function parseStartOutline(text: string, format?: 'yaml' | 'json'): Outli
       errors: [{
         code: ErrorCodes.E_PARSE,
         path: '/',
-        message: error instanceof Error ? error.message : String(error),
+        message: describeParseError(error instanceof Error ? error.message : String(error)),
       }],
     };
   }
