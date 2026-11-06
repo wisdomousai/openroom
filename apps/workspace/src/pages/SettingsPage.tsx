@@ -99,7 +99,7 @@ function AgentAccessCard({ signedIn }: { signedIn: boolean }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-row-title">Personal API tokens</p>
-                <p className="text-caption text-muted-foreground">The secret is shown once when you create a token.</p>
+                <p className="text-caption text-muted-foreground">A token acts as your account: it can read and change your decks, students and sessions until you revoke it here. The secret is shown once when you create it.</p>
               </div>
               <Button asChild size="sm"><Link {...to.settingsTokenNew()}>Create token</Link></Button>
             </div>
@@ -144,7 +144,8 @@ function AgentAccessCard({ signedIn }: { signedIn: boolean }) {
 export function ApiTokenNewPage() {
   const [minted, setMinted] = useState<MintedApiToken | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const mcpUrl = `${window.location.origin}/api/mcp`;
+  const origin = window.location.origin;
+  const mcpUrl = `${origin}/api/mcp`;
   const form = useForm({
     defaultValues: { name: '' },
     onSubmit: async ({ value }) => {
@@ -165,12 +166,20 @@ export function ApiTokenNewPage() {
         <Card>
           <CardHeader><CardTitle className="text-section">Token</CardTitle></CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <p className="text-secondary text-muted-foreground">This secret will not be shown again.</p>
+            <p className="text-secondary text-muted-foreground">This secret will not be shown again. It acts as your account until you revoke it in Settings.</p>
             <code className="break-all rounded border border-border bg-muted/40 p-3 text-caption">{minted.token}</code>
             <div className="flex flex-wrap gap-2">
               <CopyButton label="Copy token" value={minted.token} />
               <CopyButton label="Copy Claude command" value={`claude mcp add --transport http openroom ${mcpUrl} --header "Authorization: Bearer ${minted.token}"`} />
               <CopyButton label="Copy header" value={`Authorization: Bearer ${minted.token}`} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-secondary">For the openroom CLI, pass the server address and the token:</p>
+              <code className="break-all rounded border border-border bg-muted/40 p-3 text-caption">--url {origin} --token {minted.token}</code>
+              <span className="flex flex-wrap gap-2">
+                <CopyButton label="Copy CLI options" value={`--url ${origin} --token ${minted.token}`} />
+                <CopyButton label="Copy server address" value={origin} />
+              </span>
             </div>
             <Button asChild className="w-fit" variant="outline"><Link {...to.settings()}>Settings</Link></Button>
           </CardContent>
@@ -229,9 +238,6 @@ export function SettingsPage({ session }: Props) {
           <a className="underline" href="/docs/" target="_blank" rel="noreferrer">
             Documentation
           </a>
-          <Link className="underline" {...to.home()}>
-            Home
-          </Link>
           <Link className="underline" {...to.library()}>
             Library
           </Link>
