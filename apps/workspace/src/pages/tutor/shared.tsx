@@ -102,13 +102,14 @@ export function EmptyCollection({ children }: { children: ReactNode }) {
  * Loading, locked, missing or failed. `error` is the message or the raw
  * failure; a raw 404 shows `NotAvailable` instead of a Retry that cannot help.
  */
-export function LoadState({ error }: { error: unknown }) {
+/** `what` names the missing thing on a 404 (“This student is not available”). */
+export function LoadState({ error, what }: { error: unknown; what?: string }) {
   const queryClient = useQueryClient();
   if (error === CONTINUITY_REQUIRED || isContinuityRequired(error)) return <ContinuityLock />;
   if (error === null || error === undefined || error === '') {
     return <p className="text-secondary text-muted-foreground" role="status">Loading…</p>;
   }
-  if (isMissing(error)) return <NotAvailable />;
+  if (isMissing(error)) return <NotAvailable {...(what ? { what } : {})} />;
   return (
     <div className="flex flex-col items-start gap-2 text-secondary text-destructive" role="alert">
       <p>{typeof error === 'string' ? error : messageOf(error, 'Could not load this page.')}</p>

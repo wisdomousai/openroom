@@ -212,7 +212,7 @@ export function ContextEditPage({ contextId }: { contextId: string }) {
     () => getContext(contextId),
     'Could not load the context',
   );
-  if (detail === null) return <LoadState error={cause} />;
+  if (detail === null) return <LoadState error={cause} what="student" />;
   return (
     <ContextForm
       heading={`${detail.displayName}’s context`}
@@ -252,6 +252,6 @@ export function ContextDetailPage({ contextId }: { contextId: string }) {
     });
   }, [contextId, data, navigate]);
 
-  if (data === null) return <LoadState error={cause} />;
+  if (data === null) return <LoadState error={cause} what="student" />;
   return <p className="text-secondary text-muted-foreground">Opening…</p>;
 }
