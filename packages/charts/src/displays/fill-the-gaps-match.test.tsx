@@ -140,6 +140,21 @@ describe('PairsChart', () => {
     expect(html).not.toContain('+1 more');
   });
 
+  it('draws the correct pairing after reveal even when nobody chose it, and the caption keeps every answer', () => {
+    const html = renderToStaticMarkup(
+      <PairsChart
+        interaction={{ ...match, correct: { l1: 'r1', l2: 'r1' } }}
+        pairs={pairs}
+        total={3}
+        dontKnow={0}
+        revealed
+      />,
+    );
+    expect(html).toMatch(/data-or-pair="l2:r1"[^>]*data-or-correct/);
+    // The row folds r2 for l1 into "+1 more"; the caption still reads it.
+    expect(html).toContain('le quai → the platform 2 (correct), the ticket 1');
+  });
+
   it('marks the correct pairing per left item after reveal', () => {
     const html = renderToStaticMarkup(
       <PairsChart

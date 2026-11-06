@@ -37,6 +37,15 @@ function leftRows(
         correct: revealed && key === rightId,
       }))
       .sort((a, b) => b.count - a.count);
+    // After the reveal the right pairing is drawn even when nobody chose it.
+    if (revealed && key !== undefined && !choices.some((choice) => choice.id === key)) {
+      choices.push({
+        id: key,
+        label: interaction.right.find((item) => item.id === key)?.label ?? key,
+        count: 0,
+        correct: true,
+      });
+    }
     return {
       id: left.id,
       label: left.label,
@@ -46,11 +55,14 @@ function leftRows(
   });
 }
 
+/** The full reading: every answer each left item got, which the rows fold into "+N more". */
 function pairsSummary(rows: LeftRow[], total: number, revealed: boolean): string {
   const parts = rows.map((row) => {
-    const top = row.choices[0];
-    if (!top) return `${row.label}: no answers yet`;
-    return `${row.label} → ${top.label} ${String(top.count)}${revealed && top.correct ? ' (correct)' : ''}`;
+    if (row.choices.length === 0) return `${row.label}: no answers yet`;
+    const answers = row.choices.map(
+      (choice) => `${choice.label} ${String(choice.count)}${revealed && choice.correct ? ' (correct)' : ''}`,
+    );
+    return `${row.label} → ${answers.join(', ')}`;
   });
   return `${String(total)} answer${total === 1 ? '' : 's'}. ${parts.join('; ')}`;
 }
