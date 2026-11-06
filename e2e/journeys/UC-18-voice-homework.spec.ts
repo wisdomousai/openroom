@@ -124,6 +124,7 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await mic.getByRole('tab', { name: 'Lesson', exact: true }).click();
   await expect(mic.getByRole('status').filter({ hasText: /^Recording stopped at \d:\d\d because you left the Lesson tab\. Listen to it, then send it or record again\.$/ })).toBeVisible();
   await expect(mic.getByRole('button', { name: 'Send response', exact: true })).toBeEnabled();
+  await mic.screenshot({ path: testInfo.outputPath('voice-stopped-on-tab-change-phone.png'), fullPage: true });
   await mic.getByRole('button', { name: 'Send response', exact: true }).click();
   await expect(mic.getByText('Response sent', { exact: true })).toBeVisible();
   await expect(mic.getByText(/^Recording stopped at/)).toHaveCount(0);
