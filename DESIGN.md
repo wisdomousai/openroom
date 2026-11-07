@@ -126,7 +126,9 @@ rings, selection, the "you can act" half of any toggle.
 Orange: **Start session**, the join code, interactive-block markers, the live
 dot, a running clock, the last-ten-seconds fill, the Q&A-on-the-wall action,
 and **every primary button in the participant app**. Blue never appears on a
-button a student presses.
+button a student presses in a live session. The learner page (`#/learn`) is not
+the participant app: nothing is live there, so its primary buttons keep action
+blue. A running recording timer on that page is still orange, as a running clock.
 
 Nothing else is coloured. A third hue means a third meaning, and there isn't
 one.
@@ -189,6 +191,13 @@ a rail row, `text-option font-semibold` for a full-width touch action. Nothing
 outside these nine steps: `text-[13px]` and friends are a defect.
 
 `text-label` is **deleted**. Do not revive uppercase tracked caps.
+
+Wall type. Result text on the stage scales with the slide in `cqw`, on a small
+ramp: label, value, tick and note. Chart labels do not go below about 1.1 cqw
+(about 20 px on a 1920 px wall), and the correct-answer badge is a fixed token.
+The console tokens above do not apply on the wall. This is decided (LD12) and
+not built yet: the ramp needs the height the question plate gives back to the
+chart first.
 
 Counts, codes, timers and tallies keep `font-variant-numeric: tabular-nums`.
 
@@ -283,6 +292,13 @@ the shell accepts. Settings, Add student, Space settings, Sample lessons, a
 session's Notes and Review learner work fit any width: the sidebar hides below
 `md` and the search field below `lg`.
 
+Deck editor: authoring is a desktop task, and teaching from a tablet is not.
+Below `lg` the task pane collapses to an overlay; below `md` the editor shows a
+notice to open the deck on a larger screen to edit it. **Present** and **Start
+session** stay usable at every width. This is decided (D8) and not built yet:
+the editor currently keeps its three panes and scrolls sideways in a narrow
+window.
+
 Observed rhythm: `2 / 4 / 6 / 8 / 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 / 44 / 56`.
 
 ### Stage geometry tokens (`apps/stage/src/stage-ui.css` on `.stage`)
@@ -299,7 +315,9 @@ Observed rhythm: `2 / 4 / 6 / 8 / 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 / 44 / 5
 
 Do not add rem/vh caps on individual charts. A content slide has **no rail**.
 The waiting board is the only screen that prints the join address; resolve it
-with `resolveJoinUrl` / `localJoinUrl` — never hardcode.
+with `resolveJoinUrl` / `localJoinUrl` — never hardcode. An identified session
+prints no code, address or QR anywhere on the stage: the rail says **Waiting for
+the student**.
 
 ## Components
 
