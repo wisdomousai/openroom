@@ -662,9 +662,87 @@ Recommendation: Option 1. The skill file itself is written by the docs cluster.
 | --- | --- |
 | participant-clock-14 | Affects only devices with a wrong clock and needs a server-time offset in the snapshot or SDK wire. Rare, with a protocol change risk. Revisit if wrong-clock reports appear. |
 
+## Native PowerPoint check
+
+After the fleet run, the add-in was driven by hand in PowerPoint for Mac through computer use. Both manifests were sideloaded from `bun run dev:office --skip-build` at https://localhost:3443, with the relay started separately (see native-04). A scripted audience of 40 SDK participants joined the session and 35 of them answered. The test deck had six slides: four plain PowerPoint slides, an OpenRoom choice question on slide 5, and slide 6 as a PowerPoint copy of slide 5. Steps covered:
+
+- sign-in and consent
+- choosing a space and deck
+- embedding the question
+- rehearsal
+- Start session
+- reveal and hide results
+- the slideshow (Play from start, slide 5, Escape)
+- the copied-slide guard
+- saving as .pptx, closing and reopening in the same PowerPoint process
+- quitting PowerPoint, reopening the file, then Resume session
+
+These worked:
+
+- Sideloaded add-ins load in PowerPoint, and sign-in and consent work through the Office dialog.
+- After the native-01 fix, a question embeds on a native slide and the binding survives saving, closing and a full PowerPoint restart.
+- Rehearsal works.
+- With the relay running, Start session works. The 40 joined and 35 answered counts match on the slide and in the pane.
+- In edit view, Reveal draws the correct bars and Hide results returns the slide to the answer count.
+- A copied slide is refused in the slideshow and in the pane, and is still refused after reopening.
+- After a full restart and a new sign-in, Resume session restores the join code, QR, counts and revealed results.
+
+### Native findings
+
+| Finding | Severity | Observed | Evidence |
+| --- | --- | --- | --- |
+| native-01: Native slide IDs were rejected, so no question could be embedded in real PowerPoint | high, fixed in the working tree | PowerPoint for Mac returns slide IDs such as `267#763315295` (also `267#` and `#763315295`). The binding validator allowed only `[A-Za-z0-9_-]`, so `writeBinding` threw "This activity cannot be connected to PowerPoint." Start session would also have returned 422 invalid-presentation-activities. The simulated adapter uses plain IDs, so UC-34 to UC-36 could not catch this. Fix: a `slideReference` check that also allows `#`, in both files, with tests for the three ID forms. Not committed. | `apps/office/src/bindings.ts` (`slideReference`, `parseBinding`), `apps/workspace-worker/src/presentation-start.ts`, `apps/office/src/bindings.test.ts`, `apps/workspace-worker/test/presentation-start.test.ts:67` |
+| native-02: In the slideshow, the embedded slide shows only the static preview | high | In Slide Show view, slide 5 showed the question preview and none of the live state: no join code, no QR, no counts, no results. The question type was oversized and ran past the frame. In edit view, the same slide showed the live state correctly. The cause is not yet known. The slideshow webview may not receive the BroadcastChannel display messages from the pane's webview, or the read view may reject them (`content.tsx:60-124`, `selectedHere` and `readSelection` in read view). Diagnosing it needs the PowerPoint web inspector (`OfficeWebAddinDeveloperExtras`), which was not turned on. | `apps/office/src/content.tsx:60-124`, `apps/office/src/display-channel.ts` |
+| native-03: After the slideshow ends, the embed in edit view stays broken | medium | After Escape, the edit-view embed kept a layout in which the rail fills the frame and the question is pushed out of view. Selecting another slide and coming back did not restore it. | `apps/office/src/content.tsx` (view change handling) |
+| native-04: `dev:office` does not start the relay, so Start session returns 503 | medium | `scripts/dev-office.mjs` starts only the control-plane Worker. Its config binds `RELAY` and `SessionDO` to the script `openroom-relay`, but nothing starts that script. Start session returns 503. The pane shows "Could not complete this action. Try again." but still saves a session reference, so the next state is a Resume session button for a session that never started. Workaround used: a second `wrangler dev` with the relay config on port 8788 and the same `--persist-to` state. | `scripts/dev-office.mjs:77-84`, `apps/office/src/api.ts:31`, `apps/office/src/LivePanel.tsx:53` |
+| native-05: After saving, the task pane goes blank and only a PowerPoint restart brings it back | medium | After Cmd+S, the pane turned white. It stayed white after closing and reopening the file in the same PowerPoint process, after the pane's Reload, and after closing and reopening the pane. Not even the boot text "Connecting to PowerPoint…" rendered. The server log shows the page and its scripts being fetched but no API call. The same bundle renders normally in a browser. Only quitting PowerPoint fixed it. A presenter who saves just before a session loses the pane. | server log (taskpane.html and assets 200/304, no `/api` request), `apps/office/src/main.tsx` |
+| native-06: Sign-in is lost when PowerPoint restarts, and the display and pane sign in separately | medium | After the restart, the pane showed the welcome screen again and needed sign-in and consent. The content display had needed its own sign-in earlier. Extends powerpoint-addin-06 (consent on every reload) to a real restart: a trainer who opens PowerPoint on the day signs in again before they can resume. | seen on screen |
+| native-07: The embed error shows at the top of the picker, out of view | medium | When embedding failed (native-01), the error appeared at the top of the embedded picker while the button was further down. The button seemed to do nothing. | `apps/office/src/App.tsx:25` (notice placement) |
+| native-08: After a restart the OpenRoom ribbon button is missing | low | After PowerPoint restarted, the Home ribbon had no OpenRoom button. The pane opened only from Add-ins > Developer Add-ins, where both add-ins show as identical truncated "OpenRoom…" tiles. The ribbon button came back after the pane was opened once. Part of this may be how sideloaded add-ins behave. A store install was not tested. | Add-ins menu, Developer Add-ins |
+| native-09: The pane refers to "OpenRoom Slide", which does not exist in the Add-ins menu | low | The pane says "Insert OpenRoom Slide from PowerPoint's Add-ins menu". The menu lists "OpenRoom…" twice (the content add-in's name is "OpenRoom Activity Display"). The slide placeholder heading is also "OpenRoom Slide". | `apps/office/src/App.tsx:36` and `:89`, `apps/office/src/content.tsx:132` |
+| native-10: The copied-slide message contradicts what is on screen | low | On the copied slide, the footer reads "Select this PowerPoint slide. Copied slides need their own embedded slide selection." while that slide is selected. The body reads "Open the OpenRoom pane to load this slide…" while the pane is open. The pane's own line ("This slide was copied. Choose a slide below to embed in this copy.") is clear. | `apps/office/src/content.tsx:75` and `:133` |
+| native-11: Edit-view preview shows "0 answers so far" for a session with 35 answers | low | After reopening and before Resume session, slide 5 showed the question with "0 answers so far" in large type, and the question ran past the frame. After Resume, it showed 35. | seen on screen |
+| native-12: Rehearsal preview leaves out options with no answers | low | The rehearsal preview of a four-option question showed two bars, because options with zero answers were not drawn. A presenter cannot check that all options fit. | `apps/office/src/rehearsal.ts` |
+| native-13: PowerPoint asks to save a file that was not edited | low | After reopening the file and only opening the pane, quitting PowerPoint asked "Want to save your changes?". The add-in probably writes document settings or tags on load. | seen on screen |
+
+Also seen in native PowerPoint, already covered above: the tagline and hero before sign-in (powerpoint-addin-01), "Teach from PowerPoint" and the demo account "Alice Teacher" (powerpoint-addin-08), and "start participation" wording (powerpoint-addin-10). The deck API still defaults `shape` to `tutoring` when a deck is created through the API.
+
+### Fix status
+
+Typecheck and the office unit tests pass, and the UC-34, UC-35 and UC-36 journeys pass. After the 1.0.2.0 manifests were installed, native-05, 06, 08, 09 and 13 were retested in PowerPoint for Mac. native-02, 03, 07, 10, 11 and 12 still need a native retest.
+
+| Finding | Status | Change |
+| --- | --- | --- |
+| native-01 | fixed, confirmed natively | `slideReference` allows `#` in the add-in and the worker. |
+| native-02 | fixed, not retested natively | Cause found: PowerPoint for Mac reuses the edit-view webview for Slide Show and does not load `content.html` again. In read view, `readSelection` returns the edit-view selection or fails, so `selectedHere` rejected the display. PowerPoint for the web starts Slide Show as a new page with no selection, which fails the same check. Read view now trusts the stored binding. The pane checks the slide by ID with `slides.getItemOrNullObject` (`readSlide` in `bindings.ts`) and not by selection. The content add-in handles display messages one at a time, keeps the newest, and posts `openroom.slide.activate` once per showing. UC-36 has a regression test for read view with another slide selected. |
+| native-03 | fixed, not retested natively | Cause: the stage rail, QR and join code have fixed pixel sizes, so the slide laid out differently at each webview size PowerPoint used (edit view, Slide Show, zoom). The embedded slide now lays out at a fixed 720-pixel projector height and scales to the frame (`ScaledStage.tsx`), so it is the same slide in every view. |
+| native-04 | fixed, confirmed | `dev:office` starts the relay Worker as `openroom-office-relay` on a free port with the same state folder, waits for its health check, and points the control plane's `SessionDO` and `RELAY` bindings at it. A live session start through the local server returned 201 with a join code. Migrations run without the prompt. Manifests are always written to `.wrangler/office/manifests`. `bun run office:addin` installs the manifests; when macOS blocks the write to the `wef` folder, it hands the copy to a helper app that the user grants Full Disk Access (see Native notes). |
+| native-05 | fixed, confirmed natively | The task-pane manifest used `taskpane.html` as its function file, so PowerPoint could run a hidden second copy of the pane. It now uses a minimal `commands.html`. `boot-watch.js` loads before office.js. If the add-in has not started after 6 seconds, it shows a Reload button and says whether Office or OpenRoom failed to load. After Cmd+S the pane stayed rendered. |
+| native-06 | fixed, confirmed natively | Decision: keep the user signed in. The connection is stored in the add-in's own `localStorage`, under `Office.context.partitionKey` where Office partitions storage, never in document settings or tags. It is dropped a day before it expires, after a 401, and on Sign out. The embedded chooser and the pane share it. UC-35 and UC-36 check that a reload keeps the sign-in. The sign-in survived a PowerPoint restart. |
+| native-07 | fixed, not retested natively | The pane error scrolls into view and takes focus. |
+| native-08 | fixed, confirmed natively | The two add-ins are now named **OpenRoom** and **OpenRoom Slide** and have different icons, so the Add-ins menu tiles differ. Both manifests are at version 1.0.2.0 so PowerPoint reloads them. The Add-ins menu shows both names and icons. The ribbon button still appears only after the pane has been opened once in the session; this looks like sideloading behavior. |
+| native-09 | fixed, confirmed natively | The installed manifest was older. The new manifests name the content add-in "OpenRoom Slide", matching the pane text. |
+| native-10 | fixed, not retested natively | The copied slide says "This slide is a copy. Choose an OpenRoom slide for it." |
+| native-11 | fixed, not retested natively | When a session reference is saved, the toolbar reads "Preview · Resume the session in the OpenRoom pane". |
+| native-12 | fixed, not retested natively | Cause: the rehearsal preview frame in the pane is about 170 pixels high and the chart rows were clipped. The preview now uses the same scaled projector layout as the embedded slide, so every option shows. |
+| native-13 | PowerPoint behavior | No add-in code writes to the document on load: every write follows a user action or a binding mismatch, and the content manifest sets `AllowSnapshot` to false. In the retest, opening any task pane from the Add-ins menu, including another vendor's add-in, made PowerPoint ask to save on quit. Opening the file without opening a pane did not. |
+
+Also changed from the cluster list: the pane tagline and hero are replaced by a plain "Embed OpenRoom slides" heading (powerpoint-addin-01), the pane heading "Teach from PowerPoint" is now "Session" (powerpoint-addin-08), and the context-mismatch and 503 messages no longer say "start participation" (powerpoint-addin-10).
+
+### Manifest version
+
+The version bump to 1.0.2.0 broke slides embedded under the older version. Slide 5 of the test deck, saved with version 1.0.0.0, showed "Add-in Error" once the 1.0.2.0 manifest was installed. A copy of the deck with its reference changed to 1.0.2.0 loaded normally. PowerPoint for Mac loads an embedded sideloaded content add-in only when the stored and installed versions match. The content manifest version is now fixed at 1.0.2.0, with a comment in `office.ts`, a unit test and a README note. Slides inserted under 1.0.0.0 or 1.0.1.0 must be inserted again. A store-installed add-in was not checked.
+
+### Native notes
+
+- While the question is open, the live slide shows the answer count, not the options. Whether the options should show belongs with D8.
+- A presenter with one screen cannot reach the pane during the slideshow. The companion link is the only way to control the session from the slideshow.
+- macOS app-data protection blocks writes into PowerPoint's `wef` folder from any process without Full Disk Access, including the user's own Terminal. `bun run office:addin` builds a small helper app, OpenRoom Add-in Installer, which the user grants Full Disk Access once. The helper copied the manifests once after the grant. In a later run, macOS refused it again; the cause is not known. A drag in Finder always works.
+- The server log showed constant `GET /api/sessions/<code>/state` polling and bursts of POST commands while the scripted audience was connected. This was not checked. It may be the SDK clients falling back to polling.
+
 ## Not covered
 
-- Native PowerPoint (webview communication, slideshow lifecycle, .pptx save and reopen); only the simulated Office adapter was driven.
+- Native PowerPoint on Windows and in PowerPoint for the web. PowerPoint for Mac was checked by hand (see Native PowerPoint check). Presenter view, a second display and a store-installed add-in were not checked.
 - Real phones, real soft keyboards and hosted load; the crowd ran against a loopback runtime.
 - Plan limits (the 50-participant cap, team, branding, keep); judged from code only.
 - Desktop app, public site and manual as a whole (manual chapters were checked only where a scenario named them).
