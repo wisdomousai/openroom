@@ -74,6 +74,7 @@ test('capture the manual from a real local teaching journey', async ({ page, lea
   await expect(presenter.locator('.stage-mirror .barrow__label')).toHaveCount(3);
   await expect(presenter.locator('.moment__title')).toHaveText('Results');
   await expect(presenter.locator('.moment__title')).toHaveCSS('opacity', '0');
+  await expect(presenter.locator('.moment__wash')).toHaveCSS('opacity', '0');
   await capture(page, 'live-results');
   await presenter.getByRole('textbox', { name: 'Private notes', exact: true }).fill('Revisit the difference between imparfait and passé composé.');
   await presenter.locator('header').getByRole('button', { name: 'End session', exact: true }).click();
