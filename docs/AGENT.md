@@ -268,7 +268,8 @@ carries. Put it on *that* step; do not insert a new media step to illustrate
 one. `timer`, `break`, and `join` cannot carry one.
 
 Place and size the picture with `media.place` (`left` `right` `top` `bottom`
-`fill`) and `media.size` (20–100, a percent of the slide). The teacher can
+`fill`) and `media.size` (a percent of the slide). What each layout does with
+them, and the limits `outline_validate` enforces, are in its tool description. The teacher can
 drag the same values on the canvas. Default place follows the step layout
 (`split` → right, `media` → fill, otherwise bottom); default size is 42.
 
