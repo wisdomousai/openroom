@@ -107,6 +107,7 @@ test('phone reading view keeps complete text and can return to the authored slid
   expect(shown.lines).toBeGreaterThan(3);
   await phone.screenshot({ path: testInfo.outputPath('phone-reading-caption.png'), fullPage: true });
   await context.close();
+  await command(sessionCode, hostToken, { command: 'outline.goto', stepId: 'rules' });
 
   // A new desktop participant still has the rejoin notice. It must not take
   // the slide's available height or force the person to dismiss it first.

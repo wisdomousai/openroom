@@ -400,7 +400,9 @@ test.describe('UC-44 participant phone states', () => {
 
     // A lost connection names the unsent answer. The banner clears once the phone
     // is back; the unsent line stays until the learner sends again.
+    // The answered view is shorter than the ten options: start from the top.
     const change = phone.getByRole('button', { name: 'Change answer', exact: true });
+    await scrollToTop(phone);
     expect(await reachByScrolling(phone, change)).toBe(true);
     await change.click();
     await context.setOffline(true);
