@@ -127,9 +127,10 @@ function starterRuns<T extends { starter: string }>(items: readonly T[]): T[][] 
   return runs;
 }
 
-function Row({ children }: { children: ReactNode }) {
+/** A ribbon row; `wrap` moves whole groups to a second line when the window is too narrow for them. */
+function Row({ children, wrap = false }: { children: ReactNode; wrap?: boolean }) {
   return (
-    <div className="flex min-h-[76px] items-stretch overflow-x-auto px-2 py-2 pb-1.5">{children}</div>
+    <div className={cn('flex min-h-[76px] items-stretch px-2 py-2 pb-1.5', wrap ? 'flex-wrap gap-y-2' : 'overflow-x-auto')}>{children}</div>
   );
 }
 
@@ -498,7 +499,7 @@ export function Ribbon(props: RibbonProps) {
         </TabsContent>
 
         <TabsContent value="slide" className="mt-0">
-          <Row>
+          <Row wrap>
             {INSERT_CATALOG.map((group, index) => (
               <div key={group.group} className="flex">
                 {index > 0 ? <Rule /> : null}
