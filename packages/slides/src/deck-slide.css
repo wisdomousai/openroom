@@ -981,10 +981,14 @@
   align-self: first baseline;
 }
 
+/* The badge keeps its column's width when the row shrinks its height, and
+   grows to its digits: with a square ratio a shrunk badge is narrower than
+   "10". */
 .slide-surface .outline-step--layout-grid .outline-step__sequence li > span:not([data-slide-decoration]) {
   box-sizing: border-box;
   justify-self: center;
-  width: auto;
+  aspect-ratio: auto;
+  width: calc(1.8em / 0.85);
   min-width: max-content;
   height: calc(1.8em / 0.85);
   max-height: 100%;
