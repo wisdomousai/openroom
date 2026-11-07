@@ -2,7 +2,7 @@ import { resolveRevealOrder } from '@openroom/schema';
 import { json, type ControlEnv } from './auth';
 import { requireControlUser } from './control-auth';
 import { readJson } from './control-utils';
-import { deckAccess, identifiedNeedsContext, latestContent, sessionAccess, type SessionLauncher } from './delivery/shared';
+import { deckAccess, identifiedNeedsStudent, latestContent, sessionAccess, type SessionLauncher } from './delivery/shared';
 import { requireIdentifiedSessionAccess } from './continuity-access';
 import { facilitateSessionRoute } from './facilitation';
 import { spaceRole } from './members';
@@ -29,16 +29,16 @@ export async function startDeckRoute(request: Request, env: ControlEnv, deckId: 
   const available = await latestContent(env, deckId, existing?.deck_version ?? deck.current_version);
   if (!available) return json({ error: 'deck-content-not-found' }, 409);
   if (body.stepId !== undefined && !available.outline.steps.some((item) => item.id === body.stepId && !item.breakoutOf)) return json({ error: 'activity-not-found' }, 422);
-  // Refuse before the durable row exists: a row filed without a context would
+  // Refuse before the durable row exists: a row filed without a student would
   // keep refusing this requestId after the deck is filed under the student.
-  if (!existing && deck.context_id === null && available.outline.defaults?.identityMode === 'identified') {
-    return (await requireIdentifiedSessionAccess(env, access.space.owner_user_id)) ?? identifiedNeedsContext();
+  if (!existing && deck.student_id === null && available.outline.defaults?.identityMode === 'identified') {
+    return (await requireIdentifiedSessionAccess(env, access.space.owner_user_id)) ?? identifiedNeedsStudent();
   }
   const now = Date.now();
   await env.DB.prepare(`INSERT OR IGNORE INTO sessions
-    (id,space_id,folder_id,deck_id,deck_version,context_id,created_by,title,shape,status,metadata_json,created_at,updated_at)
+    (id,space_id,folder_id,deck_id,deck_version,student_id,created_by,title,shape,status,metadata_json,created_at,updated_at)
     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,'draft','{}',?10,?10)`)
-    .bind(body.requestId, deck.space_id, deck.folder_id, deck.id, deck.current_version, deck.context_id, guard.user.id, deck.title, deck.shape, now).run();
+    .bind(body.requestId, deck.space_id, deck.folder_id, deck.id, deck.current_version, deck.student_id, guard.user.id, deck.title, deck.shape, now).run();
   const session = await sessionAccess(env, guard.user.id, body.requestId);
   if (!session || session.deleted_at !== null) return json({ error: 'session-not-found' }, 404);
   // A racing request may have won INSERT after the initial read.
@@ -47,7 +47,7 @@ export async function startDeckRoute(request: Request, env: ControlEnv, deckId: 
   if (!content) return json({ error: 'deck-content-not-found' }, 409);
   const step = body.stepId === undefined ? undefined : content.outline.steps.find((item) => item.id === body.stepId && !item.breakoutOf);
   if (body.stepId !== undefined && !step) return json({ error: 'activity-not-found' }, 422);
-  return launch({ sessionId: session.id, deckId, contextId: session.context_id, title: session.title, version: content.version,
+  return launch({ sessionId: session.id, deckId, studentId: session.student_id, title: session.title, version: content.version,
     outline: content.outline, start: true,
     ...(step ? { cursor: { stepId: step.id, shown: resolveRevealOrder(step, content.outline.interactions).length } } : {}),
     ...(guard.connectionId ? { connectionId: guard.connectionId } : {}),

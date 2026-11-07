@@ -3,7 +3,7 @@
  *
  * ## What this is for, and what it is not for
  *
- * A context access link carries a 256-bit random secret (context-links.ts), so
+ * A student access link carries a 256-bit random secret (student-links.ts), so
  * guessing one is not a threat a rate limit meaningfully changes — this is NOT
  * anti-brute-force, and it is not a second factor. It buys exactly two things:
  *

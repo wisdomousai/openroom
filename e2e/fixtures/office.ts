@@ -28,7 +28,7 @@ export async function officeHostFixture(context: BrowserContext) {
         HostType: { PowerPoint: 'PowerPoint' }, AsyncResultStatus: { Succeeded: 'succeeded' },
         EventType: { DialogMessageReceived: 'message', DialogEventReceived: 'closed', DocumentSelectionChanged: 'selection', ActiveViewChanged: 'activeView' },
         onReady: () => Promise.resolve({ host: 'PowerPoint' }),
-        context: {
+        student: {
           requirements: { isSetSupported: () => true },
           document: { getActiveViewAsync: (callback) => callback({ status: 'succeeded', value: activeView }), addHandlerAsync: (type, handler) => { if (!handlers.has(type)) handlers.set(type, new Set()); handlers.get(type).add(handler); }, removeHandlerAsync: (type, options) => options?.handler ? handlers.get(type)?.delete(options.handler) : handlers.delete(type), settings: {
             get: (key) => contentSettings[key], set: (key, value) => { contentSettings[key] = value; }, remove: (key) => { delete contentSettings[key]; },

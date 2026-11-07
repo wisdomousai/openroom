@@ -32,7 +32,7 @@ Open the presenter and the participant's Reading view. Use reading documents for
 
 Check the current eight-character code or guest link and the network connection. A session ended by the host or removed by retention requires a new live session.
 
-For a named learner session, use the personal learner credential for that context and wait until the host starts. For a guest-list session, use its individual guest link. Ask the issuer to replace an expired or revoked link.
+For a named learner session, use the personal learner credential for that student and wait until the host starts. For a guest-list session, use its individual guest link. Ask the issuer to replace an expired or revoked link.
 
 To restore a generated session name in another browser, use **Rejoin with your name** and enter the exact name shown previously. To retain the current browser's participation, return using the same browser and session address.
 

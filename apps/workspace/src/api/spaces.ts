@@ -34,7 +34,7 @@ export interface SpaceTreeDeck {
   shape: string;
   currentVersion: number;
   folderId: string | null;
-  contextId: string | null;
+  studentId: string | null;
   updatedAt: number;
   contents?: DeckContents;
 }
@@ -47,7 +47,7 @@ export interface SpaceTreeSession {
   deckId: string;
   deckVersion: number;
   folderId: string | null;
-  contextId: string | null;
+  studentId: string | null;
   updatedAt: number;
 }
 
@@ -63,7 +63,7 @@ export interface SpaceTreeRecord {
   sessionId: string;
   /** The session's title; a record is not separately named. */
   title: string;
-  contextId: string | null;
+  studentId: string | null;
   deckVersion: number;
   folderId: string | null;
   createdAt: number;
@@ -76,7 +76,7 @@ export interface SpaceTree {
     /** False until the owner saves an experience; the Personal space starts without one. */
     experienceSaved?: boolean;
     /** The student whose own space this is; null for a space of decks. */
-    context?: { id: string; displayName: string } | null;
+    student?: { id: string; displayName: string } | null;
   };
   folders: FolderSummary[];
   /** Folder-scoped decks (content items). */

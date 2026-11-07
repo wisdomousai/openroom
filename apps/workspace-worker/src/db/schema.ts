@@ -322,11 +322,11 @@ export const folders = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
-// Contexts
+// Students
 // ---------------------------------------------------------------------------
 
-export const contexts = sqliteTable(
-  'contexts',
+export const students = sqliteTable(
+  'students',
   {
     id: text('id').primaryKey(),
     spaceId: text('space_id')
@@ -337,62 +337,62 @@ export const contexts = sqliteTable(
       .references(() => users.id),
     kind: text('kind').notNull().default('person'),
     displayName: text('display_name').notNull(),
-    contextJson: text('context_json').notNull().default('{}'),
+    studentJson: text('student_json').notNull().default('{}'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
     deletedAt: integer('deleted_at'),
     nextNote: text('next_note').notNull().default(''),
   },
   (table) => [
-    index('idx_contexts_space').on(table.spaceId, table.deletedAt, sql`${table.updatedAt} DESC`),
-    // One live context per space.
-    uniqueIndex('idx_contexts_one_live_per_space')
+    index('idx_students_space').on(table.spaceId, table.deletedAt, sql`${table.updatedAt} DESC`),
+    // One live student per space.
+    uniqueIndex('idx_students_one_live_per_space')
       .on(table.spaceId)
       .where(sql`${table.deletedAt} IS NULL`),
   ],
 );
 
-export const spaceContexts = sqliteTable(
-  'space_contexts',
+export const spaceStudents = sqliteTable(
+  'space_students',
   {
     spaceId: text('space_id')
       .primaryKey()
       .references(() => spaces.id),
-    contextId: text('context_id')
+    studentId: text('student_id')
       .notNull()
-      .references(() => contexts.id),
+      .references(() => students.id),
     createdAt: integer('created_at').notNull(),
   },
-  (table) => [index('idx_space_contexts_context').on(table.contextId)],
+  (table) => [index('idx_space_students_student').on(table.studentId)],
 );
 
-/** Stable people within one context. Access links can be replaced independently. */
-export const contextLearners = sqliteTable(
-  'context_learners',
+/** Stable people within one student. Access links can be replaced independently. */
+export const studentLearners = sqliteTable(
+  'student_learners',
   {
     id: text('id').primaryKey(),
-    contextId: text('context_id').notNull().references(() => contexts.id),
+    studentId: text('student_id').notNull().references(() => students.id),
     displayName: text('display_name').notNull(),
     createdAt: integer('created_at').notNull(),
   },
-  (table) => [index('idx_context_learners_context').on(table.contextId)],
+  (table) => [index('idx_student_learners_student').on(table.studentId)],
 );
 
-export const contextAccessLinks = sqliteTable(
-  'context_access_links',
+export const studentAccessLinks = sqliteTable(
+  'student_access_links',
   {
     id: text('id').primaryKey(),
-    contextId: text('context_id')
+    studentId: text('student_id')
       .notNull()
-      .references(() => contexts.id),
-    learnerId: text('learner_id').notNull().references(() => contextLearners.id),
+      .references(() => students.id),
+    learnerId: text('learner_id').notNull().references(() => studentLearners.id),
     tokenHash: text('token_hash').notNull().unique(),
     tokenPrefix: text('token_prefix').notNull(),
     createdAt: integer('created_at').notNull(),
     expiresAt: integer('expires_at'),
     revokedAt: integer('revoked_at'),
   },
-  (table) => [index('idx_context_access').on(table.contextId, sql`${table.createdAt} DESC`)],
+  (table) => [index('idx_student_access').on(table.studentId, sql`${table.createdAt} DESC`)],
 );
 
 // ---------------------------------------------------------------------------
@@ -407,7 +407,7 @@ export const decks = sqliteTable(
       .notNull()
       .references(() => spaces.id),
     folderId: text('folder_id').references(() => folders.id),
-    contextId: text('context_id').references(() => contexts.id),
+    studentId: text('student_id').references(() => students.id),
     createdBy: text('created_by')
       .notNull()
       .references(() => users.id),
@@ -422,7 +422,7 @@ export const decks = sqliteTable(
   (table) => [
     index('idx_decks_space').on(table.spaceId, table.deletedAt, sql`${table.updatedAt} DESC`),
     index('idx_decks_folder').on(table.folderId, sql`${table.updatedAt} DESC`),
-    index('idx_decks_context').on(table.contextId, table.deletedAt, sql`${table.updatedAt} DESC`),
+    index('idx_decks_student').on(table.studentId, table.deletedAt, sql`${table.updatedAt} DESC`),
   ],
 );
 
@@ -514,7 +514,7 @@ export const sessions = sqliteTable(
       .notNull()
       .references(() => decks.id),
     deckVersion: integer('deck_version').notNull().default(0),
-    contextId: text('context_id').references(() => contexts.id),
+    studentId: text('student_id').references(() => students.id),
     createdBy: text('created_by')
       .notNull()
       .references(() => users.id),
@@ -532,7 +532,7 @@ export const sessions = sqliteTable(
     index('idx_sessions_space').on(table.spaceId, table.deletedAt, sql`${table.updatedAt} DESC`),
     index('idx_sessions_folder').on(table.folderId, sql`${table.updatedAt} DESC`),
     index('idx_sessions_deck').on(table.deckId, table.deletedAt, sql`${table.updatedAt} DESC`),
-    index('idx_sessions_context').on(table.contextId, sql`${table.createdAt} DESC`),
+    index('idx_sessions_student').on(table.studentId, sql`${table.createdAt} DESC`),
   ],
 );
 
@@ -544,7 +544,7 @@ export const sessionRecords = sqliteTable(
       .notNull()
       .unique()
       .references(() => sessions.id),
-    contextId: text('context_id').references(() => contexts.id),
+    studentId: text('student_id').references(() => students.id),
     sessionCode: text('session_code'),
     deckVersion: integer('deck_version').notNull(),
     outcomesJson: text('outcomes_json').notNull().default('[]'),
@@ -558,7 +558,7 @@ export const sessionRecords = sqliteTable(
     nextNote: text('next_note').notNull().default(''),
   },
   (table) => [
-    index('idx_session_records_context').on(table.contextId, sql`${table.updatedAt} DESC`),
+    index('idx_session_records_student').on(table.studentId, sql`${table.updatedAt} DESC`),
   ],
 );
 
@@ -649,7 +649,7 @@ export const itemTags = sqliteTable(
   (table) => [
     check(
       'item_tags_item_type_check',
-      sql`${table.itemType} IN ('deck', 'session', 'record', 'context')`,
+      sql`${table.itemType} IN ('deck', 'session', 'record', 'student')`,
     ),
     uniqueIndex('idx_item_tags_unique').on(table.spaceId, table.itemType, table.itemId, table.tag),
     index('idx_item_tags_space').on(table.spaceId, table.tag),
@@ -695,8 +695,8 @@ export const learnerSubmissions = sqliteTable(
   'learner_submissions',
   {
     id: text('id').primaryKey(),
-    learnerId: text('learner_id').notNull().references(() => contextLearners.id),
-    contextId: text('context_id').notNull(),
+    learnerId: text('learner_id').notNull().references(() => studentLearners.id),
+    studentId: text('student_id').notNull(),
     sessionId: text('session_id').notNull().references(() => sessions.id),
     taskId: text('task_id').notNull(),
     taskJson: text('task_json').notNull(),
@@ -705,7 +705,7 @@ export const learnerSubmissions = sqliteTable(
     createdAt: integer('created_at').notNull(),
   },
   (table) => [
-    index('idx_learner_submissions_context').on(table.contextId, table.createdAt),
+    index('idx_learner_submissions_student').on(table.studentId, table.createdAt),
     index('idx_learner_submissions_task').on(table.learnerId, table.sessionId, table.taskId, table.createdAt),
   ],
 );
@@ -730,8 +730,8 @@ export const learnerAudio = sqliteTable('learner_audio', {
 
 export const learnerPracticeAttempts = sqliteTable('learner_practice_attempts', {
   id: text('id').primaryKey(),
-  learnerId: text('learner_id').notNull().references(() => contextLearners.id),
-  contextId: text('context_id').notNull(),
+  learnerId: text('learner_id').notNull().references(() => studentLearners.id),
+  studentId: text('student_id').notNull(),
   sessionId: text('session_id').notNull().references(() => sessions.id),
   itemId: text('item_id').notNull(),
   taskJson: text('task_json').notNull(),
@@ -742,13 +742,13 @@ export const learnerPracticeAttempts = sqliteTable('learner_practice_attempts', 
   assignmentRevision: integer('assignment_revision').notNull(),
   srsVersion: integer('srs_version').notNull(),
   createdAt: integer('created_at').notNull(),
-}, (table) => [index('idx_learner_practice_attempts_context').on(table.contextId), index('idx_learner_practice_attempts_session').on(table.sessionId)]);
+}, (table) => [index('idx_learner_practice_attempts_student').on(table.studentId), index('idx_learner_practice_attempts_session').on(table.sessionId)]);
 
 export const learnerSrs = sqliteTable(
   'learner_srs',
   {
-    learnerId: text('learner_id').notNull().references(() => contextLearners.id),
-    contextId: text('context_id').notNull(),
+    learnerId: text('learner_id').notNull().references(() => studentLearners.id),
+    studentId: text('student_id').notNull(),
     itemId: text('item_id').notNull(),
     taskHash: text('task_hash').notNull(),
     version: integer('version').notNull(),
@@ -765,6 +765,6 @@ export const learnerSrs = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.learnerId, table.itemId] }),
     index('idx_learner_srs_due').on(table.learnerId, table.dueAt),
-    index('idx_learner_srs_context').on(table.contextId, table.lastGrade),
+    index('idx_learner_srs_student').on(table.studentId, table.lastGrade),
   ],
 );

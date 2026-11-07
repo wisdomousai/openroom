@@ -32,38 +32,38 @@ export const SMOKE_OUTLINE = {
   ],
 };
 
-/** Create a presentation context (required parent for sessions/templates). */
+/** Create a student (required parent for sessions/templates). */
 /**
- * A context and the space it brought with it.
+ * A student and the space it brought with it.
  *
- * A space holds one context, so a new context is created in a space of its own
- * — never the caller's home space. Tests that file work alongside the context
+ * A space holds one student, so a new student is created in a space of its own
+ * — never the caller's home space. Tests that file work alongside the student
  * must use `spaceId` from here, not `/api/my/spaces` [0], or they are naming
  * two different spaces and the cross-boundary check will refuse them.
  */
-export interface SmokeContext {
-  contextId: string;
+export interface SmokeStudent {
+  studentId: string;
   spaceId: string;
 }
 
-export async function createSmokeContext(
+export async function createSmokeStudent(
   request: (path: string, init?: RequestInit) => Promise<Response>,
-): Promise<SmokeContext> {
+): Promise<SmokeStudent> {
   // Bootstrap personal space first (the new space inherits its settings).
   await request('/api/my/spaces', { method: 'GET' });
-  const res = await request('/api/tutoring/contexts', {
+  const res = await request('/api/tutoring/students', {
     method: 'POST',
     body: JSON.stringify({
-      displayName: 'Test context',
+      displayName: 'Test student',
       kind: 'person',
-      context: { language: 'en', level: 'A1', goals: ['test'] },
+      student: { language: 'en', level: 'A1', goals: ['test'] },
     }),
   });
   if (res.status !== 201) {
-    throw new Error(`createSmokeContext failed: ${res.status} ${await res.text()}`);
+    throw new Error(`createSmokeStudent failed: ${res.status} ${await res.text()}`);
   }
-  const body = (await res.json()) as { context: { id: string; spaceId: string } };
-  return { contextId: body.context.id, spaceId: body.context.spaceId };
+  const body = (await res.json()) as { student: { id: string; spaceId: string } };
+  return { studentId: body.student.id, spaceId: body.student.spaceId };
 }
 
 export interface CreatedSession {

@@ -32,9 +32,9 @@ import {
   checkEmbeddable,
   downloadExport,
   fetchHostSnapshot,
-  fetchSessionContext,
+  fetchSessionStudent,
   fetchStageToken,
-  getContextReturned,
+  getStudentReturned,
   getSessionItem,
   importReadingMaterial,
   listAssets,
@@ -102,11 +102,11 @@ function useDictionaryEntry(word: string, deckId: string) {
   });
 }
 
-function useReturned(contextId: string | null) {
+function useReturned(studentId: string | null) {
   return useQuery({
-    queryKey: ['contexts', contextId, 'returned'] as const,
-    queryFn: () => getContextReturned(contextId!),
-    enabled: contextId !== null && contextId !== '',
+    queryKey: ['students', studentId, 'returned'] as const,
+    queryFn: () => getStudentReturned(studentId!),
+    enabled: studentId !== null && studentId !== '',
   });
 }
 
@@ -152,7 +152,7 @@ function useCloudEditorServices(): EditorServices {
     live: {
       fetchHostSnapshot,
       fetchStageToken,
-      fetchSessionContext,
+      fetchSessionStudent,
       getSessionItem,
       downloadExport,
       stageUrl: stageUrlFor,

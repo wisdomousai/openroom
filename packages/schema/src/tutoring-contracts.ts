@@ -1,11 +1,11 @@
 /**
- * Shared enums for the tutoring control plane (contexts, decks, sessions).
+ * Shared enums for the tutoring control plane (students, decks, sessions).
  * Single source of truth for the worker, host console, CLI, and MCP so a new
  * kind/shape/status lands in one place instead of drifting across clients.
  */
 
-export const CONTEXT_KINDS = ['person', 'group', 'class', 'event', 'other'] as const;
-export type ContextKind = (typeof CONTEXT_KINDS)[number];
+export const STUDENT_KINDS = ['person', 'group', 'class', 'event', 'other'] as const;
+export type StudentKind = (typeof STUDENT_KINDS)[number];
 
 export const DECK_SHAPES = [
   'tutoring',

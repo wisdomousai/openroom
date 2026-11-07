@@ -47,7 +47,7 @@ export const MAX_PREFS_BYTES = 8 * 1024;
 export const MAX_PINS = 12;
 
 /** What a pin may point at, in **UI kind vocabulary** plus `folder`. */
-export const PIN_KINDS = ['template', 'session', 'session', 'record', 'context', 'folder', 'space'] as const;
+export const PIN_KINDS = ['template', 'session', 'session', 'record', 'student', 'folder', 'space'] as const;
 export type PinKind = (typeof PIN_KINDS)[number];
 
 const PIN_KIND_SET: ReadonlySet<string> = new Set(PIN_KINDS);

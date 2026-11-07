@@ -613,13 +613,13 @@ export interface JoinSessionOptions {
   /** Generated nickname used to rejoin a nickname session as the same participant. */
   recoveryName?: string;
   /**
-   * Context access link (`orlnk_…`) for an identified (tutoring) session. It is
+   * Student access link (`orlnk_…`) for an identified (tutoring) session. It is
    * forwarded to `POST /api/join` and nowhere else: the Worker verifies it,
-   * checks it belongs to this session's context, and passes only the resolved
+   * checks it belongs to this session's student, and passes only the resolved
    * display name on. Never store it alongside the returned session token.
    */
-  contextLink?: string;
-  /** Guest link (`orinv_…`) for a named-seat session. Not a context access link. */
+  studentLink?: string;
+  /** Guest link (`orinv_…`) for a named-seat session. Not a student access link. */
   guestLink?: string;
 }
 
@@ -636,7 +636,7 @@ export async function joinSession(
   const f: FetchLike =
     options.fetch ?? ((globalThis as unknown as { fetch: FetchLike }).fetch as FetchLike);
   const recoveryName = options.recoveryName?.trim();
-  const contextLink = options.contextLink?.trim();
+  const studentLink = options.studentLink?.trim();
   const guestLink = options.guestLink?.trim();
   const res = await f(`${base}/api/join`, {
     method: 'POST',
@@ -644,7 +644,7 @@ export async function joinSession(
     body: JSON.stringify({
       code: code.trim().toUpperCase(),
       ...(recoveryName ? { recoveryName } : {}),
-      ...(contextLink ? { contextLink } : {}),
+      ...(studentLink ? { studentLink } : {}),
       ...(guestLink ? { guestLink } : {}),
     }),
   });

@@ -6,17 +6,17 @@ Purpose: in an identified tutoring session the host sees the learner's name,
 while the stage and the learner plane receive no names, signals, private
 notes or session code.
 
-Fixture: demo account alice. A tutoring context "Léa {stamp}" (fr, B1,
+Fixture: demo account alice. A tutoring student "Léa {stamp}" (fr, B1,
 speaking) and a tutoring deck "Privacy journey {stamp}" with
 `identityMode: 'identified'`: a title step "Bienvenue" and an interaction step
 "check" with the choice "Ready to start?" (Yes, No). The session is launched
-with `start: true` and a learner access link is made for the context. Join
+with `start: true` and a learner access link is made for the student. Join
 uses `OPENROOM_JOIN_URL` when set, else `{base}/join`.
 
 Surfaces: learner join page opened with `?code=` and `?link=`, host state API,
 stage state API, stage page at 1280 × 720, `/api/learner/sessions`.
 
-Lifecycle: create context and deck with a session → launch → create access
+Lifecycle: create student and deck with a session → launch → create access
 link → learner opens the join URL → read host and stage state → open the stage
 → `outline.goto` the "check" step → `session.end` → save the session record
 with outcomes, notes and homework → read the learner session list.

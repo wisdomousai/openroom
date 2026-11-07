@@ -56,7 +56,7 @@ Cloud synchronization, live participant sessions, stock search, web embeds, exte
 1. Sign in to OpenRoom through the system browser when prompted.
 2. Open **File → Save to workspace…**.
 3. Choose the space and folder.
-4. Select a student or class only when the deck belongs to that context; otherwise keep **No student**.
+4. Select a student or class only when the deck belongs to that student; otherwise keep **No student**.
 5. Confirm and wait for the deck and its resources to finish uploading.
 
 The local file becomes linked to that cloud deck. Use **Open online** to open its workspace copy. Shared-space roles apply to cloud reads and writes.

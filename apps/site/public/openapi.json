@@ -3,7 +3,7 @@
   "info": {
     "title": "OpenRoom API",
     "version": "0.2.0",
-    "description": "Business control plane for tutor-delivered sessions plus the live classroom runtime. Original school documents stay in the external preparation agent; OpenRoom stores typed outlines and presentation contexts (person, group, class, event).",
+    "description": "Business control plane for tutor-delivered sessions plus the live classroom runtime. Original school documents stay in the external preparation agent; OpenRoom stores typed outlines and students (person, group, class, event).",
     "contact": {
       "url": "https://openroom.app",
       "email": "hello@openroom.app"
@@ -63,9 +63,9 @@
                     "type": "string",
                     "description": "Generated nickname used to rejoin a nickname session as the same participant"
                   },
-                  "contextLink": {
+                  "studentLink": {
                     "type": "string",
-                    "description": "Context access link (orlnk_…) for an identified session. The session must already be started by its host; a session still in the lobby answers 409 session-not-started."
+                    "description": "Student access link (orlnk_…) for an identified session. The session must already be started by its host; a session still in the lobby answers 409 session-not-started."
                   }
                 }
               }
@@ -109,13 +109,13 @@
             "description": "Missing session code or invalid recovery name"
           },
           "403": {
-            "description": "Identified session joined without a context link (context-link-required), or a link that is invalid, revoked, expired, or issued for a different context (context-link-invalid)"
+            "description": "Identified session joined without a student link (student-link-required), or a link that is invalid, revoked, expired, or issued for a different student (student-link-invalid)"
           },
           "404": {
             "description": "Unknown session or recovery name"
           },
           "409": {
-            "description": "Name recovery is unavailable for this session, a context link was offered to a session that is not identified (identified-join-unavailable), or the identified session has not been started yet (session-not-started), or the session admits no new participant (session-full): without the space owner's largeSessions capability at start a session admits 50 participants. Re-entry with an existing recovery name, access link or guest link is never refused for size"
+            "description": "Name recovery is unavailable for this session, a student link was offered to a session that is not identified (identified-join-unavailable), or the identified session has not been started yet (session-not-started), or the session admits no new participant (session-full): without the space owner's largeSessions capability at start a session admits 50 participants. Re-entry with an existing recovery name, access link or guest link is never refused for size"
           },
           "429": {
             "description": "Too many failed recovery attempts"
@@ -295,11 +295,11 @@
         }
       }
     },
-    "/api/tutoring/contexts": {
+    "/api/tutoring/students": {
       "get": {
-        "operationId": "listContexts",
-        "summary": "List active or trashed presentation contexts",
-        "description": "Contexts answer who an outline is for: person, group, class, event, or other.",
+        "operationId": "listStudents",
+        "summary": "List active or trashed students",
+        "description": "Students answer who an outline is for: person, group, class, event, or other.",
         "security": [
           {
             "UserBearer": []
@@ -344,13 +344,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Context summaries"
+            "description": "Student summaries"
           }
         }
       },
       "post": {
-        "operationId": "createContext",
-        "summary": "Create a presentation context with curated notes",
+        "operationId": "createStudent",
+        "summary": "Create a student with curated notes",
         "security": [
           {
             "UserBearer": []
@@ -387,7 +387,7 @@
                   "spaceId": {
                     "type": "string"
                   },
-                  "context": {
+                  "student": {
                     "type": "object",
                     "additionalProperties": true
                   }
@@ -398,14 +398,14 @@
         },
         "responses": {
           "201": {
-            "description": "Context created"
+            "description": "Student created"
           }
         }
       }
     },
-    "/api/tutoring/contexts/{contextId}/returned": {
+    "/api/tutoring/students/{studentId}/returned": {
       "get": {
-        "operationId": "getContextReturned",
+        "operationId": "getStudentReturned",
         "summary": "Writing and missed practice for this Card — no dates, no scores",
         "security": [
           {
@@ -417,7 +417,7 @@
         ],
         "parameters": [
           {
-            "name": "contextId",
+            "name": "studentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -435,10 +435,10 @@
         }
       }
     },
-    "/api/tutoring/contexts/{contextId}": {
+    "/api/tutoring/students/{studentId}": {
       "get": {
-        "operationId": "getContext",
-        "summary": "Read a context and curated notes",
+        "operationId": "getStudent",
+        "summary": "Read a student and curated notes",
         "security": [
           {
             "UserBearer": []
@@ -449,7 +449,7 @@
         ],
         "parameters": [
           {
-            "name": "contextId",
+            "name": "studentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -459,7 +459,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Context detail"
+            "description": "Student detail"
           },
           "404": {
             "description": "Not found"
@@ -467,8 +467,8 @@
         }
       },
       "patch": {
-        "operationId": "updateContext",
-        "summary": "Update context name, kind, or curated notes",
+        "operationId": "updateStudent",
+        "summary": "Update student name, kind, or curated notes",
         "security": [
           {
             "UserBearer": []
@@ -480,7 +480,7 @@
         ],
         "parameters": [
           {
-            "name": "contextId",
+            "name": "studentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -490,13 +490,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Context updated"
+            "description": "Student updated"
           }
         }
       },
       "delete": {
-        "operationId": "trashContext",
-        "summary": "Move a context to recoverable trash",
+        "operationId": "trashStudent",
+        "summary": "Move a student to recoverable trash",
         "security": [
           {
             "UserBearer": []
@@ -508,7 +508,7 @@
         ],
         "parameters": [
           {
-            "name": "contextId",
+            "name": "studentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -523,10 +523,10 @@
         }
       }
     },
-    "/api/tutoring/contexts/{contextId}/restore": {
+    "/api/tutoring/students/{studentId}/restore": {
       "post": {
-        "operationId": "restoreContext",
-        "summary": "Restore a context from trash",
+        "operationId": "restoreStudent",
+        "summary": "Restore a student from trash",
         "security": [
           {
             "UserBearer": []
@@ -538,7 +538,7 @@
         ],
         "parameters": [
           {
-            "name": "contextId",
+            "name": "studentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -553,9 +553,9 @@
         }
       }
     },
-    "/api/tutoring/contexts/{contextId}/permanent-deletion": {
+    "/api/tutoring/students/{studentId}/permanent-deletion": {
       "post": {
-        "operationId": "requestContextPurge",
+        "operationId": "requestStudentPurge",
         "summary": "Request a short-lived browser confirmation URL",
         "description": "The purge cannot be completed through this API, MCP, or CLI. A signed-in user must open and confirm the returned URL.",
         "security": [
@@ -569,7 +569,7 @@
         ],
         "parameters": [
           {
-            "name": "contextId",
+            "name": "studentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -666,13 +666,13 @@
                     ],
                     "description": "Defaults to tutoring"
                   },
-                  "contextId": {
+                  "studentId": {
                     "type": "string",
-                    "description": "Presentation context this deck is for"
+                    "description": "Student this deck is for"
                   },
                   "spaceId": {
                     "type": "string",
-                    "description": "Workspace space; ignored when contextId or folderId resolves one"
+                    "description": "Workspace space; ignored when studentId or folderId resolves one"
                   },
                   "folderId": {
                     "type": "string",
@@ -701,7 +701,7 @@
             "description": "Deck created (session included only when createSession was set)"
           },
           "404": {
-            "description": "context or folder not found in this space"
+            "description": "student or folder not found in this space"
           },
           "422": {
             "description": "Invalid Outline v1"
@@ -747,7 +747,7 @@
       },
       "patch": {
         "operationId": "updateDeck",
-        "summary": "Update deck title, shape, location, or context default",
+        "summary": "Update deck title, shape, location, or student default",
         "security": [
           {
             "UserBearer": []
@@ -788,9 +788,9 @@
                       "other"
                     ]
                   },
-                  "contextId": {
+                  "studentId": {
                     "type": "string",
-                    "description": "Required when changing context; omission keeps the current link"
+                    "description": "Required when changing student; omission keeps the current link"
                   },
                   "folderId": {
                     "type": [
@@ -813,7 +813,7 @@
             "description": "Deck updated"
           },
           "404": {
-            "description": "context or folder not found in this space"
+            "description": "student or folder not found in this space"
           },
           "409": {
             "description": "resource-in-trash"
@@ -1127,7 +1127,7 @@
     "/api/sessions": {
       "get": {
         "operationId": "listSessions",
-        "summary": "List sessions; filter by deck, context, space, or folder",
+        "summary": "List sessions; filter by deck, student, space, or folder",
         "security": [
           {
             "UserBearer": []
@@ -1156,7 +1156,7 @@
             }
           },
           {
-            "name": "contextId",
+            "name": "studentId",
             "in": "query",
             "schema": {
               "type": "string"
@@ -1208,9 +1208,9 @@
                   "deckId": {
                     "type": "string"
                   },
-                  "contextId": {
+                  "studentId": {
                     "type": "string",
-                    "description": "Defaults to the deck context when omitted"
+                    "description": "Defaults to the deck student when omitted"
                   },
                   "deckVersion": {
                     "type": "integer",
@@ -1245,7 +1245,7 @@
             "description": "Session created"
           },
           "404": {
-            "description": "deck, context, or folder not found"
+            "description": "deck, student, or folder not found"
           },
           "422": {
             "description": "invalid-deck-version or status-server-owned"
@@ -1283,7 +1283,7 @@
       },
       "patch": {
         "operationId": "updateSession",
-        "summary": "Update session title, location, or context",
+        "summary": "Update session title, location, or student",
         "security": [
           {
             "UserBearer": []
@@ -1313,9 +1313,9 @@
                   "title": {
                     "type": "string"
                   },
-                  "contextId": {
+                  "studentId": {
                     "type": "string",
-                    "description": "Required when changing context; omission keeps the current link"
+                    "description": "Required when changing student; omission keeps the current link"
                   },
                   "folderId": {
                     "type": [
@@ -1334,7 +1334,7 @@
             "description": "Updated"
           },
           "404": {
-            "description": "context or folder not found in this space"
+            "description": "student or folder not found in this space"
           },
           "409": {
             "description": "resource-in-trash"

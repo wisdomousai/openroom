@@ -22,6 +22,13 @@
       "when": 1789995395811,
       "tag": "0002_nickname",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790081795811,
+      "tag": "0003_student",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useEditorServices, type SessionContext } from '../services';
+import { useEditorServices, type SessionStudent } from '../services';
 import type { StoredSession } from '../types';
 import { shouldHandOffNotes, type ProbeState } from './session-exit';
 
@@ -10,12 +10,12 @@ export interface DeckPlace {
   folderId: string | null;
   itemId: string;
   /** The student the session was run for, so the exit opens their place. */
-  contextId?: string;
+  studentId?: string;
 }
 
 export interface SessionExit {
   /** `undefined` while the probe is in flight or has failed; else the payload. */
-  context: SessionContext | null | undefined;
+  student: SessionStudent | null | undefined;
   probe: ProbeState;
   probeFailed: boolean;
   retryProbe: () => void;
@@ -27,23 +27,23 @@ export interface SessionExit {
 }
 
 /**
- * The context probe and the end-of-session hand-off, shared by every live
+ * The student probe and the end-of-session hand-off, shared by every live
  * surface (console, presenter remote, Q&A desk).
  *
  * Two reads. The first says what the session was launched for and gives the
  * durable session id; the second turns that id into the deck's place in the
  * Library, so the exit lands on the deck rather than at the library root.
  *
- * A failed probe is kept distinct from "no context". The console must not treat
+ * A failed probe is kept distinct from "no student". The console must not treat
  * an unreachable server as a session with nothing to write: the hand-off would
  * then drop the tutor's scratchpad.
  */
 export function useSessionExit(live: StoredSession, ended: boolean): SessionExit {
   const services = useEditorServices();
-  const { fetchSessionContext, getSessionItem } = services.live;
+  const { fetchSessionStudent, getSessionItem } = services.live;
   const clearSession = services.live.sessions.clear;
   const scratchpad = services.slots.scratchpad;
-  const [context, setContext] = useState<SessionContext | null | undefined>(undefined);
+  const [student, setStudent] = useState<SessionStudent | null | undefined>(undefined);
   const [probeFailed, setProbeFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [deckPlace, setDeckPlace] = useState<DeckPlace | null>(null);
@@ -51,7 +51,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
 
   const retryProbe = useCallback(() => {
     setProbeFailed(false);
-    setContext(undefined);
+    setStudent(undefined);
     setAttempt((n) => n + 1);
   }, []);
 
@@ -59,10 +59,10 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
 
   useEffect(() => {
     let cancelled = false;
-    fetchSessionContext(sessionCode, hostToken)
+    fetchSessionStudent(sessionCode, hostToken)
       .then((value) => {
         if (cancelled) return;
-        setContext(value);
+        setStudent(value);
         setProbeFailed(false);
       })
       .catch(() => {
@@ -75,7 +75,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     return () => {
       cancelled = true;
     };
-  }, [fetchSessionContext, sessionCode, hostToken, attempt]);
+  }, [fetchSessionStudent, sessionCode, hostToken, attempt]);
 
   /** One automatic retry at the moment the session ends — that is when it matters. */
   const retriedOnEnd = useRef(false);
@@ -85,8 +85,8 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     retryProbe();
   }, [ended, probeFailed, retryProbe]);
 
-  const sessionId = context?.session?.id ?? null;
-  const contextId = context?.context?.id;
+  const sessionId = student?.session?.id ?? null;
+  const studentId = student?.student?.id;
 
   useEffect(() => {
     if (sessionId === null) return;
@@ -99,7 +99,7 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
           spaceId: session.spaceId,
           folderId: session.folderId,
           itemId: session.deckId,
-          ...(contextId ? { contextId } : {}),
+          ...(studentId ? { studentId } : {}),
         });
       })
       .catch(() => {
@@ -111,11 +111,11 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     return () => {
       cancelled = true;
     };
-  }, [getSessionItem, sessionId, contextId]);
+  }, [getSessionItem, sessionId, studentId]);
 
   const probe: ProbeState = probeFailed
     ? { state: 'failed' }
-    : context === undefined
+    : student === undefined
       ? { state: 'pending' }
       : { state: 'resolved', sessionId };
 
@@ -129,5 +129,5 @@ export function useSessionExit(live: StoredSession, ended: boolean): SessionExit
     clearSession(sessionCode);
   }, [clearSession, ended, probe, scratchpad, sessionCode, sessionId]);
 
-  return { context, probe, probeFailed, retryProbe, sessionId, deckPlace, canEdit };
+  return { student, probe, probeFailed, retryProbe, sessionId, deckPlace, canEdit };
 }

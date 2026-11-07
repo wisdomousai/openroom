@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
 import { signCookieValue } from '../src/cookies.js';
 import worker from '../src/index.js';
-import { BASE, createSmokeContext } from './helpers.js';
+import { BASE, createSmokeStudent } from './helpers.js';
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 
@@ -46,12 +46,12 @@ function asUser(cookie: string, path: string, init: RequestInit = {}): Promise<R
 /** A space with one deck in it, which is the thing we tag. */
 async function seedDeck(): Promise<{ cookie: string; spaceId: string; deckId: string }> {
   const { cookie } = await seedSession();
-  // The context's own space: the personal space shares its updated_at to the
+  // The student's own space: the personal space shares its updated_at to the
   // millisecond often enough that the first listed space is not a stable pick.
-  const { contextId, spaceId } = await createSmokeContext((path, init) => asUser(cookie, path, init ?? {}));
+  const { studentId, spaceId } = await createSmokeStudent((path, init) => asUser(cookie, path, init ?? {}));
   const res = await asUser(cookie, '/api/decks', {
     method: 'POST',
-    body: JSON.stringify({ title: 'Passé composé', contextId, spaceId }),
+    body: JSON.stringify({ title: 'Passé composé', studentId, spaceId }),
   });
   expect(res.status).toBe(201);
   const body = (await res.json()) as { deck: { id: string } };

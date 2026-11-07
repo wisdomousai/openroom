@@ -1,4 +1,4 @@
-# Prepared delivery (contexts, decks, sessions)
+# Prepared delivery (students, decks, sessions)
 
 Canonical names (UI vs API, library vs instance): **[`docs/TERMINOLOGY.md`](TERMINOLOGY.md)**.
 
@@ -9,10 +9,10 @@ is a **typed item** with type-specific metadata — not separate apps for
 | Primitive | Role |
 | --- | --- |
 | **Folder** | How you nest and name work (same tree for everyone). |
-| **Context** | Who it is for (person, group, class, event). |
+| **Student** | Who it is for (person, group, class, event). |
 | **Deck** | The reusable file: content and structure, versioned. One noun everywhere — UI, API, DB, CLI, MCP. Not called an “outline.” |
 | **Session** | One teaching of a deck **that was started**: who, the live plane, the Notes. Not a primary library nav peer — see terminology doc. |
-| **Access link** | A revocable capability the tutor mints on a context so that student can read their own sessions and records. Not an account. |
+| **Access link** | A revocable capability the tutor mints on a student so that student can read their own sessions and records. Not an account. |
 
 Codex, Claude Desktop, or another MCP client can prepare content and create
 decks/sessions through the same API as the browser. OpenRoom does not upload
@@ -24,18 +24,17 @@ On a billed deployment (openroom.app) the teaching loop — homework → prepara
 → class → recap → next class — is the paid `continuity` capability
 (`apps/workspace-worker/src/continuity-access.ts`), in Tutoring and Classroom workspaces
 alike. It covers session Notes (`/api/sessions/:id/record`, including the
-next-time sticky and the homework published on the record), context people,
+next-time sticky and the homework published on the record), learners,
 access links, returned and learner work (practice, writing and voice
 submissions, feedback, private audio), creating identified sessions, and the
-learner plane (`/api/learner/*`). Contexts themselves — students and classes,
-every kind — are free: create, list, read, edit and file into a space.
+learner plane (`/api/learner/*`). Students themselves, of every kind, are free: create, list, read, edit and file into a space.
 
 - **Whose capability.** The space owner's, exactly like `team`: an editor in a
   paid owner's space needs no licence, and an editor's own subscription never
   substitutes for an owner's lapsed one. Learner routes resolve the link to its
-  context, the context to its space, the space to its owner.
+  student, the student to its space, the space to its owner.
 - **What lapsing does.** Gated reads and writes answer
-  `403 { ok: false, error: "continuity-required" }`; contexts stay listed and
+  `403 { ok: false, error: "continuity-required" }`; students stay listed and
   editable but omit `nextNote`, and the Library stops offering unwritten Notes.
   Nothing is deleted. Trash, restore, permanent deletion,
   link revocation and recording trash/restore never need the capability, so a
@@ -45,7 +44,7 @@ every kind — are free: create, list, read, edit and file into a space.
   when it is created or first allocated (direct, deck, presentation and MCP
   creation), the same rule as named (`guest-list`) sessions. A session already
   running keeps admitting its learners.
-- **What stays free.** Contexts, decks, anonymous and nickname live
+- **What stays free.** Students, decks, anonymous and nickname live
   sessions, the results recap, listening recordings, Desktop, the CLI and MCP,
   and the
   `/api/tutoring/lookup`, `/dictionary`, `/stock`, `/embed-check` and
@@ -55,17 +54,17 @@ every kind — are free: create, list, read, edit and file into a space.
 
 The host shows a **Homework and Notes** lock with a **Plans** action
 (Settings → Billing) on the loop surfaces — Notes, learner links, learner work —
-instead of hiding them. Context surfaces never show it.
+instead of hiding them. Student surfaces never show it.
 
 ## Product routes (current + target)
 
 | Route | Job |
 | --- | --- |
-| Space folders (`#/space/:id`, optional `?folderId=`) | Primary **place** browser (Explorer). Decks are typed rows in the current folder; **sessions are not rows**. A student's own space opens as that student's view (the same page as `?contextId=`): their decks, a **Notes** group of session titles, the **Access links** card and **Review learner work**. |
-| `/host/#/tutor/contexts` | Redirects to the first student's place in the Library (`#/space/:id?contextId=`). With no students it shows **Add student**. |
-| `/host/#/tutor/contexts/new` | Add a student or group (link root). |
-| `/host/#/tutor/contexts/:id` | Redirects to that student's place in the Library (`#/space/:id?contextId=`). Existing access links are listed there. |
-| `/host/#/tutor/contexts/:id/links/new` | **Create an access link**. Its own route, not a form beside the list: minting carries an option (how long the link lives) and shows a secret exactly once. |
+| Space folders (`#/space/:id`, optional `?folderId=`) | Primary **place** browser (Explorer). Decks are typed rows in the current folder; **sessions are not rows**. A student's own space opens as that student's view (the same page as `?studentId=`): their decks, a **Notes** group of session titles, the **Access links** card and **Review learner work**. |
+| `/host/#/tutor/students` | Redirects to the first student's place in the Library (`#/space/:id?studentId=`). With no students it shows **Add student**. |
+| `/host/#/tutor/students/new` | Add a student or group (link root). |
+| `/host/#/tutor/students/:id` | Redirects to that student's place in the Library (`#/space/:id?studentId=`). Existing access links are listed there. |
+| `/host/#/tutor/students/:id/links/new` | **Create an access link**. Its own route, not a form beside the list: minting carries an option (how long the link lives) and shows a secret exactly once. |
 | `/host/#/learn?token=orlnk_…` | The learner's own page: their sessions and records. Deliberately outside the signed-in workspace shell — no nav, no library, nothing to sign in to. |
 | `/host/#/decks/new` | Deck create route. `#/decks/:id` redirects to `#/decks/:id/edit`; there is no separate deck detail page. |
 | `/host/#/decks/:id/edit` | **Edit deck**: full-bleed three-pane authoring — slide rail · canvas · task pane — with **Start session** in the top bar, and **Live now** · **Rejoin** beside it while a session of this deck runs. In code: `DeckEditor` (component), `DeckEditorPage` (routed page). |
@@ -85,17 +84,17 @@ a file, and scheduling does not exist at all — not even in the API.
 
 Collections and forms stay on separate routes (CRUD invariant). **Exception:** folder create/rename may be inline on the Explorer browser because folders are navigation chrome, not typed library entities — see `AGENTS.md`.
 
-**Place + link:** location is never a flat parent/folder form field. Deck requires a context; a session inherits its deck's place and context when it is started. Create entry points must prefill those links — see `AGENTS.md`.
+**Place + link:** location is never a flat parent/folder form field. Deck requires a student; a session inherits its deck's place and student when it is started. Create entry points must prefill those links — see `AGENTS.md`.
 
 ## Preparation and delivery
 
 1. The tutor receives school material, sometimes shortly before the session.
 2. The tutor opens those files in Codex, Claude Desktop, or another external
    agent with the OpenRoom plugin or MCP connection.
-3. The agent retrieves only the curated OpenRoom presentation context it needs,
+3. The agent retrieves only the curated OpenRoom student it needs,
    works through the source material locally, and drafts an `Outline v1`.
 4. The agent calls `outline_validate`, then uses `openroom_api` to create or
-   update the context, deck, and immutable deck version.
+   update the student, deck, and immutable deck version.
 5. The tutor chooses **Edit deck** on the deck, reads the saved
    outline through, and edits anything the agent got wrong.
 6. The tutor presses **Start** — which stamps the version, files the session and
@@ -106,11 +105,11 @@ Collections and forms stay on separate routes (CRUD invariant). **Exception:** f
 7. During the session, the tutor uses the host console, tablet, CLI, direct API,
    or `session_command` to move between semantic steps and existing interactions.
 8. After the session, the tutor saves a short record. This is an outcome record,
-   not a transcript. **Next session** writes a sticky on the context so the next
+   not a transcript. **Next session** writes a sticky on the student so the next
    session for that person opens with it. Homework on the record is what the
    student can do on their access-link page (reading, quiz, writing). Missed
    quiz items come back on that page later; the teacher never sees due dates.
-9. Optionally, the tutor issues a **context access link** so the student or family can
+9. Optionally, the tutor issues a **student access link** so the student or family can
    read that record themselves — and do the homework. See "Learner access" below.
 
 The canonical provider-neutral workflow is in
@@ -242,10 +241,10 @@ affordance the tutor has; what stays tutor-only is the ability to put something
 on the wall.)
 
 The route is session-scoped, not on `/api/learner/*`, and that is a boundary rather
-than a convenience. The learner plane is authenticated by a context access link
+than a convenience. The learner plane is authenticated by a student access link
 (`orlnk_…`), and the participant app is built never to keep one — it calls
 `forgetLinkInUrl()` the moment it joins. Reaching `/api/learner/*` from a phone
-would mean persisting a context-wide credential beside a session-scoped one, which
+would mean persisting a student-wide credential beside a session-scoped one, which
 is exactly the credential collapse `AGENTS.md` forbids. Its budget is keyed on
 `sessionCode` + `participantId`, both already on the verified token, so no IP hashing
 is needed and one learner cannot spend another's.
@@ -283,11 +282,11 @@ Entering an interaction step opens its referenced interaction and closes the
 previous one. Entering a content step clears the active interaction. Sessions
 without tutoring steps continue to use their existing interaction lifecycle.
 
-## Learner access (context access links)
+## Learner access (student access links)
 
 A student cannot sign in — there is no participant account system and there is not going
-to be one. What a tutor can do instead is issue a **context access link**: a revocable
-bearer capability scoped to exactly one context.
+to be one. What a tutor can do instead is issue a **student access link**: a revocable
+bearer capability scoped to exactly one student.
 
 ### Tutor side
 
@@ -296,18 +295,18 @@ not mint a credential.
 
 | Route | Job |
 | --- | --- |
-| `POST /api/tutoring/contexts/:id/links` | Mint. Body `{ learnerId? \| displayName?, expiresInDays?, sessionCode? }` (expiry default 180, min 1, max 365). `201 { id, token, tokenPrefix, createdAt, expiresAt, learnerId, displayName, learnerUrl, joinUrl? }`. `learnerUrl` is the student's page; `joinUrl` is present when `sessionCode` names a session of this context and is the only usable join URL of an identified session. `422 session-not-in-context` otherwise. |
-| `GET /api/tutoring/contexts/:id/links` | List. `{ links: [{ id, tokenPrefix, createdAt, expiresAt, revokedAt }] }` — prefixes only. |
-| `DELETE /api/tutoring/contexts/:id/links/:linkId` | Revoke. `{ ok: true }`. Sets `revoked_at`; never hard-deletes. |
+| `POST /api/tutoring/students/:id/links` | Mint. Body `{ learnerId? \| displayName?, expiresInDays?, sessionCode? }` (expiry default 180, min 1, max 365). `201 { id, token, tokenPrefix, createdAt, expiresAt, learnerId, displayName, learnerUrl, joinUrl? }`. `learnerUrl` is the student's page; `joinUrl` is present when `sessionCode` names a session of this student and is the only usable join URL of an identified session. `422 session-not-in-student` otherwise. |
+| `GET /api/tutoring/students/:id/links` | List. `{ links: [{ id, tokenPrefix, createdAt, expiresAt, revokedAt }] }` — prefixes only. |
+| `DELETE /api/tutoring/students/:id/links/:linkId` | Revoke. `{ ok: true }`. Sets `revoked_at`; never hard-deletes. |
 
 The raw token is returned **once**, at mint. Only its SHA-256 is stored, and the listing
 shows only the `orlnk_…` prefix — a tutor who loses a link mints a new one and revokes the
-old. At most **10 live links per context** (`429 link-limit` at the cap); ten is "every
+old. At most **10 live links per student** (`429 link-limit` at the cap); ten is "every
 device the household owns", and the cap keeps a compromised tutor account from quietly
-farming credentials. Minting on a trashed context is `409 resource-in-trash`.
+farming credentials. Minting on a trashed student is `409 resource-in-trash`.
 
 Browser: existing links are listed in the **Access links** card on the student's place in
-the Library; minting is its own route (`#/tutor/contexts/:id/links/new`) because it takes an option and reveals a secret once.
+the Library; minting is its own route (`#/tutor/students/:id/links/new`) because it takes an option and reveals a secret once.
 
 ### Learner side
 
@@ -319,7 +318,7 @@ read on these routes, and an `orpat_` personal token fails the shape check.
 
 | Route | Returns |
 | --- | --- |
-| `GET /api/learner/me` | `{ contextId, displayName }` |
+| `GET /api/learner/me` | `{ studentId, displayName }` |
 | `GET /api/learner/sessions` | `{ sessions: [{ id, title, status, record?: { outcomes, homework, artifacts } }] }` — newest first, non-draft, non-trashed, capped at 200. Homework is typed tasks; writing tasks may include the caller's `submitted` body. Never `notes` or `nextNote`. |
 | `GET /api/learner/practice` | `{ items: [{ itemId, assignmentRevision, title?, interaction }] }` — due or changed assigned exercises. Optional `?itemId=` revisits one assigned exercise regardless of due state. No `dueAt`, ease, or streak. |
 | `POST /api/learner/practice` | `{ itemId, assignmentRevision, attemptId, grade: "again" \| "good", answer }` → `{ attemptId, done: true }` or `{ attemptId, item }`. The answer is typed by exercise format. |
@@ -336,7 +335,7 @@ returns to practice; edits to unrelated homework preserve its existing progress.
 The learner keeps the displayed exercise and answer until choosing to load its update.
 Failed refreshes can be retried; a withdrawn exercise has a path to the next exercise.
 Tutor pickup pairs earlier answers with their original questions, not revised content.
-Permanent session/context deletion removes attempts and associated practice state.
+Permanent session/student deletion removes attempts and associated practice state.
 
 In the deck editor's Notes pane, Practice to revisit lets the tutor inspect an original
 exercise, learner response and answer key. Add as a slide or Add to homework copies one
@@ -345,7 +344,7 @@ in the private preparation view. Copies are ordinary editable deck content, with
 identities and no connection that silently updates them when homework changes.
 
 Learner routes share a **per-client budget of 10 failed authentications per 60 s**, enforced
-inside `requireContextLink` so any learner route added later is covered by construction.
+inside `requireStudentLink` so any learner route added later is covered by construction.
 Over budget is `429 learner-rate-limited`. This is cost control on the one route family with
 no cookie and no session, plus a brake on bulk-validating a leaked batch of links — it is
 not anti-brute-force (the secret is 256-bit) and it is not a second factor. A successful
@@ -354,8 +353,8 @@ SHA-256 of `CF-Connecting-IP`; the raw address is never stored. The check sessio
 credential is examined, so 429 is reachable identically for an absent, malformed, unknown,
 expired or revoked link — the throttle cannot become the oracle the single 401 exists to deny.
 
-**Lapsed continuity is a revoked link to the holder.** When the context's space owner no
-longer holds the `continuity` capability, `requireContextLink` answers exactly what a revoked
+**Lapsed continuity is a revoked link to the holder.** When the student's space owner no
+longer holds the `continuity` capability, `requireStudentLink` answers exactly what a revoked
 link gets: the same `401 { error: "unauthorized" }` body, after the same failed-attempt
 budget charge. There is deliberately no `continuity-required` (or any other distinct status)
 on learner routes: a distinct answer would confirm to a link holder that the credential is
@@ -367,12 +366,12 @@ and still expire on their 90-day schedule.
 
 ### The boundary
 
-A context access link **is not an account**: no `users` row, no sign-in session, no space
-membership, no role, no email, no cross-context identity. It never resolves to a signed-in
+A student access link **is not an account**: no `users` row, no sign-in session, no space
+membership, no role, no email, no cross-student identity. It never resolves to a signed-in
 user and is rejected on every `/api/tutoring/*` and `/api/my/*` path. It grants exactly one
-context's learner-visible data — ten students in one space cannot read each other. The
-context id is taken from the verified credential and never from a path, query, or body, so
-a holder has no vocabulary in which to ask for someone else's context.
+student's learner-visible data — ten students in one space cannot read each other. The
+student id is taken from the verified credential and never from a path, query, or body, so
+a holder has no vocabulary in which to ask for someone else's student.
 
 Deliberately withheld from every learner response: the tutor's private record notes; the
 session code (it would turn a records credential into a session credential); deck and
@@ -384,22 +383,22 @@ migration cannot leak by default.
 
 An outline may set `defaults.identityMode: identified` (beside `anonymous` and
 `nickname`; the default remains `nickname`). In an identified session the name is
-the context's `display_name` — the name the tutor authored — not a generated session-local
+the student's `display_name` — the name the tutor authored — not a generated session-local
 name. A participant is still never asked to type a name.
 
-`POST /api/join` accepts an optional `contextLink`. The session proves its association through
-the launch chain `sessions.session_id → sessions.context_id`, which means **a session created by bare
-`POST /api/sessions` filed with no deck has no context, therefore no link can identify into
+`POST /api/join` accepts an optional `studentLink`. The session proves its association through
+the launch chain `sessions.session_id → sessions.student_id`, which means **a session created by bare
+`POST /api/sessions` filed with no deck has no student, therefore no link can identify into
 it**. That is the tight answer, not a gap to route around.
 
-- Starting an identified session with no context (a bare `session_create`, or a deck not filed
-  under a student) → `422 identified-session-needs-context`, whose message names the fix: file
+- Starting an identified session with no student (a bare `session_create`, or a deck not filed
+  under a student) → `422 identified-session-needs-student`, whose message names the fix: file
   the deck under the student, then start it. This answer goes to the tutor who starts the
   session, never to a joining holder.
-- Identified session, no link → `403 context-link-required`.
+- Identified session, no link → `403 student-link-required`.
 - Link offered to a non-identified session → `409 identified-join-unavailable`.
-- Bad, revoked, expired, or wrong-context link → one indistinguishable `403
-  context-link-invalid`, so a probing holder learns nothing about which sessions exist.
+- Bad, revoked, expired, or wrong-student link → one indistinguishable `403
+  student-link-invalid`, so a probing holder learns nothing about which sessions exist.
 - Identified session still in `lobby` → `409 session-not-started` ("The tutor has not started the
   session."). **The tutor pressing start is the gate**: a leaked link cannot be used
   against an unattended lobby. This applies to `identified` sessions only — anonymous and
@@ -409,7 +408,7 @@ it**. That is the tight answer, not a gap to route around.
 
 The link itself never reaches the Durable Object: the Worker verifies it and forwards only
 the resolved display name, so a leaked session capability token can never be walked back into
-a context credential. Presenting the same link again re-enters as the same participant
+a student credential. Presenting the same link again re-enters as the same participant
 rather than forking a second identity.
 
 ## Listening recordings
@@ -446,7 +445,7 @@ and external content inside HTML still need their original online service.
 
 ## Storage boundary
 
-D1 holds durable business records: contexts, decks (content metadata),
+D1 holds durable business records: students, decks (content metadata),
 immutable deck versions, sessions (delivery instances), compact Notes,
 trash state, and short-lived deletion intents.
 The selected outline is copied into a Durable Object only when a session launches.

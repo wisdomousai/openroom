@@ -32,8 +32,8 @@ export function navigableSpaces(
     decks?: readonly { spaceId: string }[] | undefined;
   },
 ): MySpace[] {
-  const trashed = new Set((known.trashed ?? []).map((context) => context.spaceId));
-  const live = known.live && known.decks ? new Set(known.live.map((context) => context.spaceId)) : null;
+  const trashed = new Set((known.trashed ?? []).map((student) => student.spaceId));
+  const live = known.live && known.decks ? new Set(known.live.map((student) => student.spaceId)) : null;
   const filed = known.decks ? new Set(known.decks.map((deck) => deck.spaceId)) : null;
   return spaces.filter((space) => {
     if (!space.id.startsWith('sp_ctx_')) return true;

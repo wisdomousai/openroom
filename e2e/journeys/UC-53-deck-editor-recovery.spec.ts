@@ -250,7 +250,7 @@ test('the dictionary offers the language pair, says when it is offline and stays
 
 test('the homework page names its student and Start shows the unfinished quiz', async ({ page }, testInfo) => {
   await signIn(page);
-  const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Camille', kind: 'person', experience: 'tutoring' } })).json();
+  const { student } = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'Camille', kind: 'person', experience: 'tutoring' } })).json();
   const outline: Outline = {
     version: 1,
     meta: { title: 'Homework deck' },
@@ -266,7 +266,7 @@ test('the homework page names its student and Start shows the unfinished quiz', 
     ],
     homework: { title: 'Practice', tasks: [{ id: 'task-quiz', kind: 'quiz', interactionId: 'quiz' }] },
   } as Outline;
-  const deck = await createDeck(page, outline, { contextId: context.id, spaceId: context.spaceId });
+  const deck = await createDeck(page, outline, { studentId: student.id, spaceId: student.spaceId });
   await open(page, deck.id);
 
   const readiness = page.locator('#question-readiness');

@@ -14,10 +14,10 @@ Prepare the deck's identity policy through a connected agent or the typed outlin
 | --- | --- |
 | Anonymous | Join with the session code; individual names are withheld. |
 | Nickname | Join with the code and receive a generated nickname. Rejoin with the same name to recover it. |
-| Identified | Use a personal learner credential belonging to the deck's context; joining opens after the teacher starts. |
+| Identified | Use a personal learner credential belonging to the deck's student; joining opens after the teacher starts. |
 | Guest list | Use a personal guest link the host issued for one named guest in one session; lobby entry is available. |
 
-An identified deck needs a real student, group, or class context: file the deck under that student before starting it. Identified mode is set in the outline by a connected agent; the browser has no control for it. Named guest-list sessions require the **Guest lists for sessions** entitlement. See [access links](/docs/learner-links/#use-named-live-participation) and [guest link administration](/docs/cli/#issue-guest-links) to prepare the corresponding entry addresses.
+An identified deck needs a student (a person, group, or class): file the deck under that student before starting it. Identified mode is set in the outline by a connected agent; the browser has no control for it. Named guest-list sessions require the **Guest lists for sessions** entitlement. See [access links](/docs/learner-links/#use-named-live-participation) and [guest link administration](/docs/cli/#issue-guest-links) to prepare the corresponding entry addresses.
 
 ## Start and share entry
 

@@ -608,9 +608,9 @@ export class SessionDO implements DurableObject {
     const identityMode = sessionOf(state).defaults.identityMode;
 
     /*
-     * Identified mode. The DO knows nothing about contexts or access links —
+     * Identified mode. The DO knows nothing about students or access links —
      * the Worker has already verified the `orlnk_` capability AND proved it
-     * belongs to this session's originating context, and passes only the resulting
+     * belongs to this session's originating student, and passes only the resulting
      * display name. The DO's job is the invariant that identified sessions are
      * *only* enterable that way: no link, no join.
      */
@@ -628,7 +628,7 @@ export class SessionDO implements DurableObject {
       if (identityName === '') {
         return json(
           {
-            error: identityMode === 'guest-list' ? 'guest-link-required' : 'context-link-required',
+            error: identityMode === 'guest-list' ? 'guest-link-required' : 'student-link-required',
             message:
               identityMode === 'guest-list'
                 ? 'This session is only open to people on the guest list.'
@@ -639,15 +639,15 @@ export class SessionDO implements DurableObject {
       }
       /*
        * Each mode admits exactly one credential family (AGENTS.md, credential
-       * boundary): a context link never enters a guest-list session and a guest
+       * boundary): a student link never enters a guest-list session and a guest
        * link never enters an identified one. The refusal is the one the
        * Worker gives for an invalid credential of the kind presented.
        */
-      const expectedKind = identityMode === 'guest-list' ? 'guest-link' : 'context-link';
+      const expectedKind = identityMode === 'guest-list' ? 'guest-link' : 'student-link';
       if (identityBody?.kind !== expectedKind) {
         return identityBody?.kind === 'guest-link'
           ? json({ error: 'guest-link-invalid', message: 'That guest link is not valid for this session.' }, 403)
-          : json({ error: 'context-link-invalid', message: 'That access link is not valid for this session.' }, 403);
+          : json({ error: 'student-link-invalid', message: 'That access link is not valid for this session.' }, 403);
       }
       /*
        * Identified sessions are enterable only once the tutor has actually started

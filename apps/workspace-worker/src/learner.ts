@@ -2,24 +2,24 @@
  * `/api/learner/*` — the learner capability plane.
  *
  * Reads are the curated record. Writes (practice grades, writing) are keyed by
- * the stable context-local learner id, never a users row or credential id.
+ * the stable student-local learner id, never a users row or credential id.
  *
- * Authenticated ONLY by a context access link (`Authorization: Bearer orlnk_…`,
- * see context-links.ts). Every route here serves exactly one context's
+ * Authenticated ONLY by a student access link (`Authorization: Bearer orlnk_…`,
+ * see student-links.ts). Every route here serves exactly one student's
  * learner-visible records; nothing folder-, template-, deck-, space-, or
  * user-scoped is reachable, by construction rather than by filtering.
  *
  * Everything else in the tutoring control plane joins `space_members` to decide
  * what a caller may read. These routes cannot: the caller has no user row at
- * all. The equivalent discipline is that the context id comes from the verified
+ * all. The equivalent discipline is that the student id comes from the verified
  * credential and is never read from the request — no path parameter, no query
  * string, no body field. A caller therefore has no vocabulary in which to ask
- * for someone else's context, which is why context B returns 401/empty by
+ * for someone else's student, which is why student B returns 401/empty by
  * absence of a request shape rather than by an access check that could be
  * mis-ordered later.
  *
  * The same discipline covers the per-client throttle: it sits inside
- * `requireContextLink` (learner-rate-limit.ts), so every route here and every
+ * `requireStudentLink` (learner-rate-limit.ts), so every route here and every
  * route added later is budgeted by construction rather than by remembering to
  * call it. Over budget is `429 learner-rate-limited`, reached identically for an
  * absent, malformed, unknown, expired or revoked credential.
@@ -30,7 +30,7 @@
  * - `session_records.session_code` — a live-session join code. Handing a past session code
  *   to a link holder would turn a records credential into a session credential.
  * - `sessions.deck_id` / `deck_version`, `session_records.deck_version` — the
- *   template is tutor IP and is shared across contexts.
+ *   template is tutor IP and is shared across students.
  * - `sessions.space_id`, `folder_id` — filing structure of someone else's workspace.
  * - `sessions.created_by` — the tutor's user id.
  * - `sessions.metadata_json` — free-form tutor metadata with no learner contract.
@@ -39,7 +39,7 @@
 
 import { json, type ControlEnv } from './auth.js';
 import { parseJson } from './control-utils.js';
-import { requireContextLink } from './context-links.js';
+import { requireStudentLink } from './student-links.js';
 import {
   learnerPracticeGet,
   learnerPracticePost,
@@ -69,14 +69,14 @@ function jsonArray(value: string | null): unknown[] {
 
 /** GET /api/learner/me */
 export async function learnerMeRoute(request: Request, env: ControlEnv): Promise<Response> {
-  const guard = await requireContextLink(request, env);
+  const guard = await requireStudentLink(request, env);
   if (!guard.ok) return guard.response;
-  return json({ contextId: guard.link.contextId, displayName: guard.link.displayName });
+  return json({ studentId: guard.link.studentId, displayName: guard.link.displayName });
 }
 
 /** GET /api/learner/sessions */
 export async function learnerSessionsRoute(request: Request, env: ControlEnv): Promise<Response> {
-  const guard = await requireContextLink(request, env);
+  const guard = await requireStudentLink(request, env);
   if (!guard.ok) return guard.response;
 
   // Column list is an allowlist, not a `SELECT *` with deletions afterwards:
@@ -88,13 +88,13 @@ export async function learnerSessionsRoute(request: Request, env: ControlEnv): P
             rec.artifacts_json AS artifacts_json
        FROM sessions r
        LEFT JOIN session_records rec ON rec.session_id = r.id
-      WHERE r.context_id = ?1
+      WHERE r.student_id = ?1
         AND r.deleted_at IS NULL
         AND r.status <> 'draft'
       ORDER BY r.created_at DESC
       LIMIT 200`,
   )
-    .bind(guard.link.contextId)
+    .bind(guard.link.studentId)
     .all<LearnerSessionRow>();
 
   const submissions = await submissionsForLearner(env, guard.link.learnerId);

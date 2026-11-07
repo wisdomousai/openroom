@@ -28,18 +28,18 @@ test('a live deck offers Rejoin beside Start session, and Start asks once', asyn
   await page.setViewportSize({ width: 1280, height: 800 });
   const api = await signIn(page);
   const stamp = Date.now();
-  const student = `Léa ${stamp}`;
+  const studentName = `Léa ${stamp}`;
   const title = `Au café ${stamp}`;
-  const created = await api.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: student, kind: 'person', experience: 'tutoring' } });
+  const created = await api.post('/api/tutoring/students', { headers: CSRF, data: { displayName: studentName, kind: 'person', experience: 'tutoring' } });
   expect(created.status()).toBe(201);
-  const { context } = await created.json() as { context: { id: string; spaceId: string } };
+  const { student } = await created.json() as { student: { id: string; spaceId: string } };
   const deckRes = await api.post('/api/decks', { headers: CSRF, data: {
-    spaceId: context.spaceId, contextId: context.id,
+    spaceId: student.spaceId, studentId: student.id,
     content: { version: 1, meta: { title }, steps: [{ id: 'one', kind: 'title', title }], interactions: [] },
   } });
   expect(deckRes.status()).toBe(201);
   const { deck } = await deckRes.json() as { deck: { id: string } };
-  const libraryUrl = `/host/#/space/${context.spaceId}?contextId=${context.id}&itemId=${deck.id}`;
+  const libraryUrl = `/host/#/space/${student.spaceId}?studentId=${student.id}&itemId=${deck.id}`;
   const liveOfDeck = async () => {
     const { sessions } = await (await api.get('/api/my/sessions')).json() as { sessions: { sessionCode: string; deckId?: string; ended: boolean }[] };
     return sessions.filter((session) => session.deckId === deck.id && !session.ended);
@@ -61,14 +61,14 @@ test('a live deck offers Rejoin beside Start session, and Start asks once', asyn
     await expect(inspector.getByRole('button', { name: 'Rejoin', exact: true })).toBeVisible();
     await inspector.getByRole('button', { name: 'Start session', exact: true }).click();
     const ask = page.getByRole('dialog', { name: 'This deck is live now' });
-    await expect(ask).toContainText(`A session of this deck with ${student} is still running.`);
+    await expect(ask).toContainText(`A session of this deck with ${studentName} is still running.`);
     await ask.getByRole('button', { name: 'Rejoin', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`#/sessions/${code}`));
     expect((await liveOfDeck()).map((session) => session.sessionCode)).toEqual([code]);
 
     // The editor top bar names the student and offers the same way back in.
     await page.goto(`/host/#/decks/${deck.id}/edit`);
-    await expect(page.locator('[data-deck-student]')).toHaveText(student);
+    await expect(page.locator('[data-deck-student]')).toHaveText(studentName);
     const bar = page.locator('[data-deck-live-now]');
     await expect(bar).toContainText('Live now');
     await expect(bar.getByRole('button', { name: 'Rejoin', exact: true })).toBeVisible();

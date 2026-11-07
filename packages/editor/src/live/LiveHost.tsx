@@ -138,9 +138,9 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   const theme = useTheme();
 
   /*
-   * The context probe, the deck's place in the Library, and the end-of-session
+   * The student probe, the deck's place in the Library, and the end-of-session
    * hand-off all live in one hook shared with the remote and the Q&A desk.
-   * `context === undefined` while the probe is in flight: ending the session
+   * `student === undefined` while the probe is in flight: ending the session
    * before we know the durable id must not clear the notes as lost.
    */
   const exit = useSessionExit(live, ended);
@@ -374,7 +374,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   const joinUrl = services.live.joinUrl(code, snapshot?.joinUrl ?? live.joinUrl);
   const { joined, answered } = countsOf(snapshot);
 
-  const learner = exit.context?.context ?? null;
+  const learner = exit.student?.student ?? null;
   const identified = snapshot?.outline?.content?.defaults?.identityMode === 'identified';
 
   /**

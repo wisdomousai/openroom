@@ -61,7 +61,7 @@ Rehearse the complete presentation in Slide Show as well. Test the connection an
 
 ## Start one audience session
 
-Select **Start session** in the connected task pane. The session gathers embedded OpenRoom slides in native presentation order. The selected slides must belong to one space and use compatible context and identity settings.
+Select **Start session** in the connected task pane. The session gathers embedded OpenRoom slides in native presentation order. The selected slides must belong to one space and use compatible student and identity settings.
 
 The session captures that composition. Finish selecting and arranging activities before starting. To include later additions, replacements, or reordered activities, end the current audience session and start a new one.
 

@@ -10,7 +10,7 @@
  *   /sessions/:code/qna        audience Q&A desk (co-host moderation surface)
  *   /sessions/:id/record       a session's Notes (durable id)
  *   /settings                  account + ops
- *   /tutor/contexts            students
+ *   /tutor/students            students
  *   /learn?token=orlnk_…       the student's own records (no account, no shell)
  *
  * There is one home for library work: the space folder tree (`/space`). Decks
@@ -37,17 +37,17 @@ export const to = {
           search: {
             folderId: opt(place.folderId),
             itemId: opt(place.itemId),
-            contextId: opt(place.contextId),
+            studentId: opt(place.studentId),
           },
         })
       : ({ to: '/space' as const }),
 
   deckNew: (
-    place: { contextId?: string | null; spaceId?: string | null; folderId?: string | null } = {},
+    place: { studentId?: string | null; spaceId?: string | null; folderId?: string | null } = {},
   ) => ({
     to: '/decks/new' as const,
     search: {
-      contextId: opt(place.contextId),
+      studentId: opt(place.studentId),
       spaceId: opt(place.spaceId),
       folderId: opt(place.folderId),
     },
@@ -79,30 +79,30 @@ export const to = {
     params: { sessionKey },
   }),
 
-  students: () => ({ to: '/tutor/contexts' as const }),
+  students: () => ({ to: '/tutor/students' as const }),
   studentNew: (sourceSpaceId?: string, experience?: 'tutoring' | 'classroom') => ({
-    to: '/tutor/contexts/new' as const, search: { sourceSpaceId, experience },
+    to: '/tutor/students/new' as const, search: { sourceSpaceId, experience },
   }),
-  student: (contextId: string) => ({
-    to: '/tutor/contexts/$contextId' as const,
-    params: { contextId },
+  student: (studentId: string) => ({
+    to: '/tutor/students/$studentId' as const,
+    params: { studentId },
   }),
-  studentEdit: (contextId: string) => ({
-    to: '/tutor/contexts/$contextId/edit' as const,
-    params: { contextId },
+  studentEdit: (studentId: string) => ({
+    to: '/tutor/students/$studentId/edit' as const,
+    params: { studentId },
   }),
-  studentLinkNew: (contextId: string) => ({
-    to: '/tutor/contexts/$contextId/links/new' as const,
-    params: { contextId },
+  studentLinkNew: (studentId: string) => ({
+    to: '/tutor/students/$studentId/links/new' as const,
+    params: { studentId },
   }),
-  studentWork: (contextId: string) => ({ to: '/tutor/contexts/$contextId/work' as const, params: { contextId } }),
-  studentWorkReview: (contextId: string, submissionId: string) => ({ to: '/tutor/contexts/$contextId/work/$submissionId/edit' as const, params: { contextId, submissionId } }),
+  studentWork: (studentId: string) => ({ to: '/tutor/students/$studentId/work' as const, params: { studentId } }),
+  studentWorkReview: (studentId: string, submissionId: string) => ({ to: '/tutor/students/$studentId/work/$submissionId/edit' as const, params: { studentId, submissionId } }),
 
   spaceNew: () => ({ to: '/space/new' as const }),
-  lessonExamples: (spaceId: string, place: { folderId?: string | null; contextId?: string | null } = {}) => ({
+  lessonExamples: (spaceId: string, place: { folderId?: string | null; studentId?: string | null } = {}) => ({
     to: '/space/$spaceId/samples' as const,
     params: { spaceId },
-    search: { folderId: opt(place.folderId), contextId: opt(place.contextId) },
+    search: { folderId: opt(place.folderId), studentId: opt(place.studentId) },
   }),
   brandKits: (spaceId: string, trashed = false) => ({ to: '/space/$spaceId/brand-kits' as const, params: { spaceId }, search: { trashed: trashed || undefined } }),
   brandKitNew: (spaceId: string) => ({ to: '/space/$spaceId/brand-kits/new' as const, params: { spaceId } }),
@@ -174,7 +174,7 @@ export function qnaShareUrl(
   );
 }
 
-/** The student's own page, opened by a context access link and nothing else. */
+/** The student's own page, opened by a student access link and nothing else. */
 export function learnerShareUrl(origin: string, pathname: string, token: string): string {
   return shareUrl(`/learn?token=${encodeURIComponent(token)}`, origin, pathname);
 }

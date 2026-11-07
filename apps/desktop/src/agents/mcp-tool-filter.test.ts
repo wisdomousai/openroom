@@ -61,7 +61,7 @@ describe('openroom_api confirmation gate', () => {
       .toMatchObject({ id: 7, method: 'POST', path: '/api/my/spaces/s1/invites' });
     expect(apiCallNeedingConfirmation(call('delete', '/api/my/spaces/s1/members/u2'))).not.toBeNull();
     expect(apiCallNeedingConfirmation(call('POST', '/api/my/invites/i1/accept'))).not.toBeNull();
-    expect(apiCallNeedingConfirmation(call('POST', '/api/tutoring/contexts/c1/links'))).not.toBeNull();
+    expect(apiCallNeedingConfirmation(call('POST', '/api/tutoring/students/c1/links'))).not.toBeNull();
     expect(apiCallNeedingConfirmation(call('POST', '/api/my/billing/checkout', { priceId: 'p' }))).not.toBeNull();
     // Passes the tool's path allowlist as a deck id, but decodes to the billing route.
     expect(apiCallNeedingConfirmation(call('POST', '/api/decks/%2e%2e%2fmy%2fbilling%2fcheckout'))).not.toBeNull();

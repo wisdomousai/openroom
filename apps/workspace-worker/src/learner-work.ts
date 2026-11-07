@@ -2,10 +2,10 @@ import { VOICE_TRASH_DAYS, parseLearnerFeedback, publishedHomeworkOf } from '@op
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { parseJson, readJson } from './control-utils.js';
-import { requireContextLink } from './context-links.js';
+import { requireStudentLink } from './student-links.js';
 import { roleAtLeast, spaceRole } from './members.js';
 import { privateAudioResponse } from './learner-audio.js';
-import { requireContextContinuity } from './continuity-access.js';
+import { requireStudentContinuity } from './continuity-access.js';
 
 interface WorkRow {
   id: string; learner_id: string; display_name: string; session_id: string;
@@ -18,8 +18,8 @@ const WORK_COLUMNS = `w.id, w.learner_id, person.display_name, w.session_id, w.t
   w.task_json, w.body, w.assignment_revision, f.draft_json, f.published_json, f.version,
   a.duration_ms, a.object_key, a.expires_at, a.removed_at`;
 const WORK_JOIN = `FROM learner_submissions w
-  JOIN context_learners person ON person.id = w.learner_id AND person.context_id = w.context_id
-  JOIN sessions s ON s.id = w.session_id AND s.context_id = w.context_id AND s.deleted_at IS NULL AND s.status <> 'draft'
+  JOIN student_learners person ON person.id = w.learner_id AND person.student_id = w.student_id
+  JOIN sessions s ON s.id = w.session_id AND s.student_id = w.student_id AND s.deleted_at IS NULL AND s.status <> 'draft'
   LEFT JOIN learner_feedback f ON f.submission_id = w.id
   LEFT JOIN learner_audio a ON a.submission_id = w.id`;
 
@@ -40,30 +40,30 @@ function workJson(row: WorkRow) {
   };
 }
 
-/** All tutor review reads and writes require editor access to this context. */
-export async function contextWorkRoute(request: Request, env: ControlEnv, contextId: string, submissionId?: string, leaf?: 'feedback' | 'audio'): Promise<Response> {
+/** All tutor review reads and writes require editor access to this student. */
+export async function studentWorkRoute(request: Request, env: ControlEnv, studentId: string, submissionId?: string, leaf?: 'feedback' | 'audio'): Promise<Response> {
   const guard = await requireControlUser(request, env, request.method !== 'GET');
   if (!guard.ok) return guard.response;
-  const context = await env.DB.prepare('SELECT space_id FROM contexts WHERE id = ?1 AND deleted_at IS NULL').bind(contextId).first<{ space_id: string }>();
-  if (!context) return json({ error: 'not-found' }, 404);
-  const access = await spaceRole(env, guard.user, context.space_id);
+  const student = await env.DB.prepare('SELECT space_id FROM students WHERE id = ?1 AND deleted_at IS NULL').bind(studentId).first<{ space_id: string }>();
+  if (!student) return json({ error: 'not-found' }, 404);
+  const access = await spaceRole(env, guard.user, student.space_id);
   if (!access) return json({ error: 'not-found' }, 404);
   if (!roleAtLeast(access.role, 'editor')) return json({ error: 'forbidden' }, 403);
   // Moving a recording to trash (DELETE) and restoring it (PATCH) are never paid.
   if (!(leaf === 'audio' && (request.method === 'DELETE' || request.method === 'PATCH'))) {
-    const blocked = await requireContextContinuity(env, contextId);
+    const blocked = await requireStudentContinuity(env, studentId);
     if (blocked) return blocked;
   }
   if (!submissionId) {
     if (request.method !== 'GET') return json({ error: 'method-not-allowed' }, 405);
     const { results } = await env.DB.prepare(`SELECT ${WORK_COLUMNS} ${WORK_JOIN}
-      WHERE w.context_id = ?1 AND NOT EXISTS (SELECT 1 FROM learner_submissions newer
+      WHERE w.student_id = ?1 AND NOT EXISTS (SELECT 1 FROM learner_submissions newer
         WHERE newer.learner_id = w.learner_id AND newer.session_id = w.session_id
           AND newer.task_id = w.task_id AND newer.rowid > w.rowid)
-      ORDER BY person.display_name, w.rowid DESC`).bind(contextId).all<WorkRow>();
+      ORDER BY person.display_name, w.rowid DESC`).bind(studentId).all<WorkRow>();
     return json({ work: (results ?? []).map(workJson) });
   }
-  const row = await env.DB.prepare(`SELECT ${WORK_COLUMNS} ${WORK_JOIN} WHERE w.context_id = ?1 AND w.id = ?2`).bind(contextId, submissionId).first<WorkRow>();
+  const row = await env.DB.prepare(`SELECT ${WORK_COLUMNS} ${WORK_JOIN} WHERE w.student_id = ?1 AND w.id = ?2`).bind(studentId, submissionId).first<WorkRow>();
   if (!row) return json({ error: 'not-found' }, 404);
   if (leaf === 'audio') {
     if (request.method !== 'GET' && request.method !== 'DELETE' && request.method !== 'PATCH') return json({ error: 'method-not-allowed' }, 405);
@@ -100,15 +100,15 @@ export async function contextWorkRoute(request: Request, env: ControlEnv, contex
 
 /** The learner projection never selects a draft or another learner's response. */
 export async function learnerFeedbackRoute(request: Request, env: ControlEnv): Promise<Response> {
-  const guard = await requireContextLink(request, env);
+  const guard = await requireStudentLink(request, env);
   if (!guard.ok) return guard.response;
   const { results } = await env.DB.prepare(`SELECT w.id, w.task_json, w.body, f.published_json, a.duration_ms, a.object_key, a.expires_at, a.removed_at
     FROM learner_submissions w
-    JOIN sessions s ON s.id = w.session_id AND s.context_id = w.context_id AND s.deleted_at IS NULL AND s.status <> 'draft'
+    JOIN sessions s ON s.id = w.session_id AND s.student_id = w.student_id AND s.deleted_at IS NULL AND s.status <> 'draft'
     JOIN learner_feedback f ON f.submission_id = w.id AND f.published_json IS NOT NULL
     LEFT JOIN learner_audio a ON a.submission_id = w.id
-    WHERE w.learner_id = ?1 AND w.context_id = ?2 ORDER BY w.rowid DESC`)
-    .bind(guard.link.learnerId, guard.link.contextId).all<{ id: string; task_json: string; body: string; published_json: string; duration_ms: number | null; object_key: string | null; expires_at: number | null; removed_at: number | null }>();
+    WHERE w.learner_id = ?1 AND w.student_id = ?2 ORDER BY w.rowid DESC`)
+    .bind(guard.link.learnerId, guard.link.studentId).all<{ id: string; task_json: string; body: string; published_json: string; duration_ms: number | null; object_key: string | null; expires_at: number | null; removed_at: number | null }>();
   return json({ feedback: (results ?? []).map((row) => ({ submissionId: row.id,
     task: publishedHomeworkOf([parseJson(row.task_json, null)])[0], body: row.body,
     audio: audioJson(row),

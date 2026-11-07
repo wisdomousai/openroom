@@ -32,7 +32,7 @@ export interface Place {
  * to put on the stage, which is why the ladder offers Open instead.
  */
 export async function startSessionFromDeck(
-  deck: Pick<SpaceTreeDeck, 'id' | 'title' | 'contextId' | 'currentVersion'>,
+  deck: Pick<SpaceTreeDeck, 'id' | 'title' | 'studentId' | 'currentVersion'>,
   place: Place,
   cursor?: PresentationPosition,
 ): Promise<StoredSession> {
@@ -47,7 +47,7 @@ export async function startSessionFromDeck(
     deckId: deck.id,
     deckVersion: deck.currentVersion,
     title: deck.title,
-    ...(deck.contextId ? { contextId: deck.contextId } : {}),
+    ...(deck.studentId ? { studentId: deck.studentId } : {}),
     spaceId: place.spaceId,
     folderId: place.folderId,
   });
@@ -76,14 +76,14 @@ export function copyName(title: string): string {
  * rather than as an empty shell the teacher has to prepare again.
  */
 export async function duplicateDeck(
-  deck: Pick<SpaceTreeDeck, 'id' | 'title' | 'contextId' | 'shape' | 'folderId'>,
+  deck: Pick<SpaceTreeDeck, 'id' | 'title' | 'studentId' | 'shape' | 'folderId'>,
   place: Place,
 ): Promise<{ id: string; title: string }> {
   const { outline } = await currentCloudDocument(deck.id);
   const title = copyName(outline.meta.title);
   const created = await createDeck({
     title,
-    ...(deck.contextId ? { contextId: deck.contextId } : {}),
+    ...(deck.studentId ? { studentId: deck.studentId } : {}),
     content: renameDeck(outline, title),
     spaceId: place.spaceId,
     folderId: deck.folderId,

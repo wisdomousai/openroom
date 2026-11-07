@@ -1,24 +1,24 @@
 {
   "id": "tutor-workspace",
-  "title": "Prepare a tutoring context, deck, session, and Notes",
-  "persona": "A tutor keeping durable context and a compact post-session record around a reusable outline.",
+  "title": "Prepare a tutoring student, deck, session, and Notes",
+  "persona": "A tutor keeping durable student and a compact post-session record around a reusable outline.",
   "purpose": "Walk the dedicated collection, creation, deck editor, session, and Notes routes without merging CRUD surfaces.",
-  "outcome": "A tutor can create durable preparation context, save an outline version, start a session, and write the record.",
+  "outcome": "A tutor can create durable preparation student, save an outline version, start a session, and write the record.",
   "prerequisites": ["OpenRoom worker running locally.", "The local demo account alice/demo is enabled."],
-  "routes": ["#/tutor/contexts", "#/tutor/contexts/new", "#/tutor/contexts/:contextId", "#/decks/new", "#/decks/:deckId/edit", "#/sessions/:sessionId/record", "#/tutor/trash"],
+  "routes": ["#/tutor/students", "#/tutor/students/new", "#/tutor/students/:studentId", "#/decks/new", "#/decks/:deckId/edit", "#/sessions/:sessionId/record", "#/tutor/trash"],
   "status": "scripted",
   "chapters": [
     {
-      "id": "context",
-      "title": "Create a tutoring context",
-      "narration": "We open the contexts collection. Context is durable preparation information, not the original school document. It has its own collection and its own creation route.",
+      "id": "student",
+      "title": "Create a tutoring student",
+      "narration": "We open the students collection. Student is durable preparation information, not the original school document. It has its own collection and its own creation route.",
       "actions": [
         { "type": "goto", "path": "/host/" },
         { "type": "fillLabel", "label": "Username", "value": "alice" },
         { "type": "fillLabel", "label": "Password", "value": "demo" },
         { "type": "clickRole", "role": "button", "name": "Sign in", "exact": true },
-        { "type": "goto", "path": "/host/#/tutor/contexts" },
-        { "type": "expectRole", "role": "heading", "name": "Contexts", "exact": true },
+        { "type": "goto", "path": "/host/#/tutor/students" },
+        { "type": "expectRole", "role": "heading", "name": "Students", "exact": true },
         { "type": "clickRole", "role": "link", "name": "Add", "exact": true },
         { "type": "expectRole", "role": "heading", "name": "Who is this for?", "exact": true },
         { "type": "fillLabel", "label": "Name", "value": "Walkthrough learner {{runTag}}" },
@@ -31,7 +31,7 @@
     {
       "id": "deck",
       "title": "Create and version a deck",
-      "narration": "From the context detail we create a separate deck. The deck editor owns the structured outline and its version history; it does not become a second collection inspector.",
+      "narration": "From the student detail we create a separate deck. The deck editor owns the structured outline and its version history; it does not become a second collection inspector.",
       "actions": [
         { "type": "clickRole", "role": "link", "name": "New deck", "exact": true },
         { "type": "expectRole", "role": "heading", "name": "New deck", "exact": true },

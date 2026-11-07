@@ -12,7 +12,7 @@ import {
   type Outline,
   type OutlineValidateResult,
 } from '@openroom/schema';
-import { useEditorServices, useIdleQuery, type ContextReturned } from '../services';
+import { useEditorServices, useIdleQuery, type StudentReturned } from '../services';
 import { ToastRegion, useToasts } from '@openroom/ui/toasts';
 import type { ReadinessTarget } from '../deck-document';
 
@@ -140,7 +140,7 @@ export function DeckEditor({
   cliOrigin = null,
   activeStepId,
   spaceId,
-  contextId = null,
+  studentId = null,
   currentVersion = 0,
   versionRefresh = 0,
   source,
@@ -166,7 +166,7 @@ export function DeckEditor({
   cliOrigin?: string | null;
   activeStepId?: string;
   spaceId: string | null;
-  contextId?: string | null;
+  studentId?: string | null;
   /**
    * Hand reading material to the agent pane. Desktop only — the browser app has
    * no agent surface, so this is absent there and the button does not render.
@@ -248,11 +248,11 @@ export function DeckEditor({
   const [placing, setPlacing] = useState<'text' | null>(null);
 
   const { learnerWork, VersionHistory } = useEditorServices().slots;
-  const useReturned = learnerWork?.useReturned ?? useIdleQuery<ContextReturned>;
-  const pickupQuery = useReturned(contextId);
+  const useReturned = learnerWork?.useReturned ?? useIdleQuery<StudentReturned>;
+  const pickupQuery = useReturned(studentId);
   const nextNote = pickupQuery.data?.nextNote ?? '';
   // Hide holds for this note on this device; a new note shows again.
-  const hiddenKey = contextId === null ? null : `or.next-note-hidden.${contextId}`;
+  const hiddenKey = studentId === null ? null : `or.next-note-hidden.${studentId}`;
   const [hiddenNote, setHiddenNote] = useState<string | null>(() => readHiddenNote(hiddenKey));
   useEffect(() => { setHiddenNote(readHiddenNote(hiddenKey)); }, [hiddenKey]);
   const hideNextNote = () => {

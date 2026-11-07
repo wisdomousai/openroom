@@ -2,17 +2,17 @@ import { Link } from '@tanstack/react-router';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import type { LinkTarget } from '../destinations';
-import type { ContextKind, SpaceSettings } from '@openroom/schema';
+import type { StudentKind, SpaceSettings } from '@openroom/schema';
 
-import { contextChips, contextIsEmpty, fieldsFromContext } from '../lib/context-fields';
+import { studentChips, studentIsEmpty, fieldsFromStudent } from '../lib/student-fields';
 import { givenName } from '../lib/initials';
 import { cn } from '@openroom/ui/utils';
 
 interface Props {
   displayName: string;
   /** A person is called by their given name; a group or class by its whole name. */
-  kind: ContextKind;
-  context: Record<string, unknown>;
+  kind: StudentKind;
+  student: Record<string, unknown>;
   nextNote?: string;
   onEdit?: () => void;
   /** The space's language pair, which word lookup reads. */
@@ -22,21 +22,21 @@ interface Props {
 }
 
 /**
- * The context — four answers and a paragraph, pinned to the person's folder.
+ * The student — four answers and a paragraph, pinned to the person's folder.
  * Agents read this before they draft a deck.
  */
-export function ContextPanel({
+export function StudentPanel({
   displayName,
   kind,
-  context,
+  student,
   nextNote,
   onEdit,
   languages,
   settingsTo,
 }: Props) {
-  const fields = fieldsFromContext(context);
-  const chips = contextChips(fields);
-  const empty = contextIsEmpty(fields);
+  const fields = fieldsFromStudent(student);
+  const chips = studentChips(fields);
+  const empty = studentIsEmpty(fields);
   const who = kind === 'person' ? givenName(displayName) : displayName;
 
   return (
@@ -100,7 +100,7 @@ export function ContextPanel({
         <p className="min-w-0 flex-1 text-caption text-muted-foreground">
           {languages === undefined
             ? `No language pair for ${who}. Word lookup needs one.`
-            : `Agents and the CLI read this context before drafting a deck for ${who}.`}
+            : `Agents and the CLI read this student before drafting a deck for ${who}.`}
         </p>
         {languages === undefined && settingsTo ? (
           <Link

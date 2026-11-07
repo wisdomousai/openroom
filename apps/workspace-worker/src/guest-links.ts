@@ -1,7 +1,7 @@
 /**
  * Guest links — a named guest in one session.
  *
- * Fifth credential family (`orinv_…`). Not a context access link, not a space
+ * Fifth credential family (`orinv_…`). Not a student access link, not a space
  * invite, not an account. The host types the display name. The blast radius
  * of a leaked token is exactly one session.
  */

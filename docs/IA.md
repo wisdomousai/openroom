@@ -14,7 +14,7 @@ Related: [`DESIGN.md`](../DESIGN.md) (surfaces, two hues, named rules),
 ## Parity: shared session vs tutoring
 
 One shell. The **mode** changes the tools, never the layout. Mode is derived from the
-session's launch chain — a session either has a context or it does not — not from a toggle
+session's launch chain — a session either has a student or it does not — not from a toggle
 the host flips.
 
 | Region | Shared session | Tutoring |

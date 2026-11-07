@@ -9,9 +9,9 @@ test('practice keeps the answered exercise through a lost response and tutor rev
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
-  const created = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Camille', kind: 'person', experience: 'tutoring' } })).json();
-  const { id: contextId, spaceId } = created.context;
-  const deck = await page.request.post('/api/decks', { headers: CSRF, data: { contextId, spaceId, createSession: true,
+  const created = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'Camille', kind: 'person', experience: 'tutoring' } })).json();
+  const { id: studentId, spaceId } = created.student;
+  const deck = await page.request.post('/api/decks', { headers: CSRF, data: { studentId, spaceId, createSession: true,
     content: { version: 1, meta: { title: 'Les saisons et les mois' }, steps: [{ id: 'hello', kind: 'title', title: 'Les saisons' }], interactions: [] },
   } });
   expect(deck.status()).toBe(201);
@@ -24,7 +24,7 @@ test('practice keeps the answered exercise through a lost response and tutor rev
     expect(response.status()).toBe(200);
   };
   await publish('La saison après le printemps ?', 'été');
-  const { token } = await (await page.request.post(`/api/tutoring/contexts/${contextId}/links`, { headers: CSRF, data: {} })).json();
+  const { token } = await (await page.request.post(`/api/tutoring/students/${studentId}/links`, { headers: CSRF, data: {} })).json();
   const learner = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const submissions: Record<string, unknown>[] = [];
   let loseResponse = true;
@@ -49,7 +49,7 @@ test('practice keeps the answered exercise through a lost response and tutor rev
   await expect(practice).toHaveCount(0);
   expect(submissions).toHaveLength(2);
   expect(submissions[0]).toEqual(submissions[1]);
-  const pickup = await (await page.request.get(`/api/tutoring/contexts/${contextId}/returned`)).json();
+  const pickup = await (await page.request.get(`/api/tutoring/students/${studentId}/returned`)).json();
   expect(pickup.missed).toEqual([expect.objectContaining({ exercise: expect.objectContaining({ interaction: expect.objectContaining({ prompt: 'La saison après le printemps ?' }) }), lastAnswer: { kind: 'text', text: 'ete' } })]);
 
   await learner.reload();

@@ -9,7 +9,7 @@
  * token-checked forward to it.
  *
  * Capability tokens (`./tokens.ts`) are the only credential this module
- * understands. Cookies, API tokens, guest lists and context links are the control
+ * understands. Cookies, API tokens, guest lists and student links are the control
  * plane's and arrive here, if at all, as a resolved `JoinIdentity`.
  */
 
@@ -191,12 +191,12 @@ export async function issueSessionTokens(
 /**
  * A name and seat the deployment resolved from its own guest-link credential.
  * `kind` names the credential family that was verified: an identified session
- * admits only a context link, a guest-list session only a guest link.
+ * admits only a student link, a guest-list session only a guest link.
  */
 export interface JoinIdentity {
   displayName: string;
   seatKey: string;
-  kind: 'context-link' | 'guest-link';
+  kind: 'student-link' | 'guest-link';
 }
 
 /**

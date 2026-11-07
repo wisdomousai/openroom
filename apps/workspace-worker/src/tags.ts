@@ -38,7 +38,7 @@ import { roleAtLeast, spaceRole } from './members.js';
  * (`docs/TERMINOLOGY.md`). The database and every wire path use the domain
  * word; the browser translates on the way in and out.
  */
-export const TAGGABLE_ITEM_TYPES = ['deck', 'session', 'record', 'context'] as const;
+export const TAGGABLE_ITEM_TYPES = ['deck', 'session', 'record', 'student'] as const;
 export type TaggableItemType = (typeof TAGGABLE_ITEM_TYPES)[number];
 
 const ITEM_TYPE_SET: ReadonlySet<string> = new Set(TAGGABLE_ITEM_TYPES);
@@ -115,7 +115,7 @@ async function itemSpaceId(
   const query: Record<TaggableItemType, string> = {
     deck: 'SELECT space_id FROM decks WHERE id = ?1 AND deleted_at IS NULL',
     session: 'SELECT space_id FROM sessions WHERE id = ?1 AND deleted_at IS NULL',
-    context: 'SELECT space_id FROM contexts WHERE id = ?1 AND deleted_at IS NULL',
+    student: 'SELECT space_id FROM students WHERE id = ?1 AND deleted_at IS NULL',
     record:
       `SELECT r.space_id AS space_id FROM session_records rr
          JOIN sessions r ON r.id = rr.session_id

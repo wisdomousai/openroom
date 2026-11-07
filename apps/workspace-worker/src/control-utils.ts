@@ -58,36 +58,36 @@ export async function memberOfSpace(env: ControlEnv, userId: string, spaceId: st
 }
 
 /**
- * Link a context into a space.
+ * Link a student into a space.
  *
  * One row per space — the primary key is `space_id`, which is how "a space
- * holds one context" is enforced rather than remembered. `context_id` is not
- * unique: the same person linked from a second space is how a context is
+ * holds one student" is enforced rather than remembered. `student_id` is not
+ * unique: the same person linked from a second space is how a student is
  * reused, and since the language pair lives on the space, it is also how one
  * student is taught two languages.
  *
  * Callers must have checked the space is free; a plain INSERT is used so a
- * mistake surfaces instead of silently evicting the space's current context.
+ * mistake surfaces instead of silently evicting the space's current student.
  */
-export async function linkContext(
+export async function linkStudent(
   env: ControlEnv,
   spaceId: string,
-  contextId: string,
+  studentId: string,
   now: number,
 ): Promise<void> {
   await env.DB.prepare(
-    'INSERT INTO space_contexts (space_id, context_id, created_at) VALUES (?1, ?2, ?3)',
+    'INSERT INTO space_students (space_id, student_id, created_at) VALUES (?1, ?2, ?3)',
   )
-    .bind(spaceId, contextId, now)
+    .bind(spaceId, studentId, now)
     .run();
 }
 
-/** The context a space holds, or null when it holds none. */
-export async function contextOfSpace(env: ControlEnv, spaceId: string): Promise<string | null> {
-  const row = await env.DB.prepare('SELECT context_id FROM space_contexts WHERE space_id = ?1')
+/** The student a space holds, or null when it holds none. */
+export async function studentOfSpace(env: ControlEnv, spaceId: string): Promise<string | null> {
+  const row = await env.DB.prepare('SELECT student_id FROM space_students WHERE space_id = ?1')
     .bind(spaceId)
-    .first<{ context_id: string }>();
-  return row?.context_id ?? null;
+    .first<{ student_id: string }>();
+  return row?.student_id ?? null;
 }
 
 export async function resolveSpace(

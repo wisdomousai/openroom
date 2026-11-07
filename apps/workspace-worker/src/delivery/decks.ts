@@ -1,6 +1,6 @@
 /**
  * Folder-scoped decks (content) and sessions (delivery instances).
- * Contexts stay in tutoring.ts. Live sessions are launched from a session.
+ * Students stay in tutoring.ts. Live sessions are launched from a session.
  */
 import {
   canonicalOutlineJson,
@@ -28,7 +28,7 @@ import {
   resolveFolder,
   deckAccess,
   sessionAccess,
-  contextAccess,
+  studentAccess,
   mutationAllowed,
   targetSpace,
   requestedLocationEditable,
@@ -58,7 +58,7 @@ export async function decksCollectionRoute(
     const trashed = url.searchParams.get('trash') === '1';
     const folderId = url.searchParams.get('folderId');
     const spaceId = url.searchParams.get('spaceId');
-    const contextId = url.searchParams.get('contextId');
+    const studentId = url.searchParams.get('studentId');
     const binds: string[] = [guard.user.id];
     let where = trashed ? 'd.deleted_at IS NOT NULL' : 'd.deleted_at IS NULL';
     let n = 2;
@@ -74,9 +74,9 @@ export async function decksCollectionRoute(
       binds.push(folderId);
       n += 1;
     }
-    if (contextId !== null && contextId !== '') {
-      where += ` AND d.context_id = ?${n}`;
-      binds.push(contextId);
+    if (studentId !== null && studentId !== '') {
+      where += ` AND d.student_id = ?${n}`;
+      binds.push(studentId);
     }
     const { results } = await env.DB.prepare(
       `SELECT d.* FROM decks d
@@ -95,17 +95,17 @@ export async function decksCollectionRoute(
     return json({ error: requestedAccess }, requestedAccess === 'forbidden' ? 403 : 404);
   }
 
-  // Filing and student association are independent. Standalone decks have no context.
+  // Filing and student association are independent. Standalone decks have no student.
   const spaceId = await targetSpace(env, guard.user, body);
   if (spaceId === null) return json({ error: 'not-found' }, 404);
-  let linkedContext: { id: string; space_id: string; deleted_at: number | null } | null = null;
-  if (typeof body.contextId === 'string' && body.contextId.trim() !== '') {
-    linkedContext = await contextAccess(env, guard.user.id, body.contextId);
-    if (linkedContext === null || linkedContext.deleted_at !== null || linkedContext.space_id !== spaceId) {
-      return json({ error: 'context-not-found' }, 404);
+  let linkedStudent: { id: string; space_id: string; deleted_at: number | null } | null = null;
+  if (typeof body.studentId === 'string' && body.studentId.trim() !== '') {
+    linkedStudent = await studentAccess(env, guard.user.id, body.studentId);
+    if (linkedStudent === null || linkedStudent.deleted_at !== null || linkedStudent.space_id !== spaceId) {
+      return json({ error: 'student-not-found' }, 404);
     }
-  } else if (body.contextId !== undefined && body.contextId !== null) {
-    return json({ error: 'invalid-context-id' }, 422);
+  } else if (body.studentId !== undefined && body.studentId !== null) {
+    return json({ error: 'invalid-student-id' }, 422);
   }
 
   const outlineValidation: OutlineValidateResult | null = body.content === undefined && body.outline === undefined
@@ -146,11 +146,11 @@ export async function decksCollectionRoute(
   const statements = [
     env.DB.prepare(
       `INSERT INTO decks
-         (id, space_id, folder_id, context_id, created_by, title, shape,
+         (id, space_id, folder_id, student_id, created_by, title, shape,
           current_version, metadata_json, created_at, updated_at, deleted_at)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, NULL)`,
     ).bind(
-      deckId, spaceId, folderId, linkedContext?.id ?? null, guard.user.id,
+      deckId, spaceId, folderId, linkedStudent?.id ?? null, guard.user.id,
       title, shape, version, JSON.stringify(metadata), now,
     ),
   ];
@@ -184,12 +184,12 @@ export async function decksCollectionRoute(
     sessionId = randomId();
     statements.push(env.DB.prepare(
       `INSERT INTO sessions
-         (id, space_id, folder_id, deck_id, deck_version, context_id,
+         (id, space_id, folder_id, deck_id, deck_version, student_id,
           created_by, title, shape, status,
           metadata_json, created_at, updated_at, deleted_at)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'draft', '{}', ?10, ?10, NULL)`,
     ).bind(
-      sessionId, spaceId, folderId, deckId, version, linkedContext?.id ?? null,
+      sessionId, spaceId, folderId, deckId, version, linkedStudent?.id ?? null,
       guard.user.id, title, shape, now,
     ));
   }
@@ -263,16 +263,16 @@ export async function deckItemRoute(
     : typeof body.title === 'string' ? body.title.trim().slice(0, 200) : '';
   if (title === '') return json({ error: 'title-required' }, 422);
   const shape = body.shape === undefined ? row.shape : parseShape(body.shape, row.shape);
-  let contextId = row.context_id;
-  if (body.contextId === null) {
-    contextId = null;
+  let studentId = row.student_id;
+  if (body.studentId === null) {
+    studentId = null;
   }
-  if (typeof body.contextId === 'string') {
-    const ctx = await contextAccess(env, guard.user.id, body.contextId);
+  if (typeof body.studentId === 'string') {
+    const ctx = await studentAccess(env, guard.user.id, body.studentId);
     if (ctx === null || ctx.deleted_at !== null || ctx.space_id !== row.space_id) {
-      return json({ error: 'context-not-found' }, 404);
+      return json({ error: 'student-not-found' }, 404);
     }
-    contextId = ctx.id;
+    studentId = ctx.id;
   }
   const location = await resolveFolder(env, guard.user, row.space_id, body, row.folder_id);
   if (!location.ok) return location.response;
@@ -282,12 +282,12 @@ export async function deckItemRoute(
   if (metadata === null) return json({ error: 'metadata-must-be-object' }, 422);
   const now = Date.now();
   await env.DB.prepare(
-    `UPDATE decks SET title = ?1, shape = ?2, context_id = ?3, folder_id = ?4,
+    `UPDATE decks SET title = ?1, shape = ?2, student_id = ?3, folder_id = ?4,
        metadata_json = ?5, updated_at = ?6 WHERE id = ?7`,
-  ).bind(title, shape, contextId, location.folderId, JSON.stringify(metadata), now, deckId).run();
+  ).bind(title, shape, studentId, location.folderId, JSON.stringify(metadata), now, deckId).run();
   return json({
     deck: deckJson({
-      ...row, title, shape, context_id: contextId, folder_id: location.folderId,
+      ...row, title, shape, student_id: studentId, folder_id: location.folderId,
       metadata_json: JSON.stringify(metadata), updated_at: now,
     }),
   });

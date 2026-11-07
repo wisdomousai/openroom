@@ -17,11 +17,11 @@ describe('join error message', () => {
   it('tells a learner without a working link what to do next', () => {
     expect(
       joinErrorMessage(
-        new JoinError('This session is only open to people with an access link.', 403, 'context-link-required'),
+        new JoinError('This session is only open to people with an access link.', 403, 'student-link-required'),
       ),
     ).toBe('Open the personal link your tutor sent you to come back to the lesson.');
     expect(
-      joinErrorMessage(new JoinError('That access link is not valid for this session.', 403, 'context-link-invalid')),
+      joinErrorMessage(new JoinError('That access link is not valid for this session.', 403, 'student-link-invalid')),
     ).toBe('This link no longer works. Ask your tutor for a new one.');
   });
 
@@ -43,7 +43,7 @@ describe('join error message', () => {
     expect(isTransient(new TypeError('Failed to fetch'))).toBe(true);
     expect(isTransient(new JoinError('Could not join session (503)', 503))).toBe(true);
     expect(isTransient(new JoinError('Could not join session (429)', 429))).toBe(true);
-    expect(isTransient(new JoinError('That access link is not valid for this session.', 403, 'context-link-invalid'))).toBe(false);
+    expect(isTransient(new JoinError('That access link is not valid for this session.', 403, 'student-link-invalid'))).toBe(false);
     expect(isTransient(new SyntaxError('Unexpected end of JSON input'))).toBe(false);
   });
 

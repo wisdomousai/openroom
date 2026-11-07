@@ -9,11 +9,11 @@ test('group learners keep private work across link replacement and same-tab swit
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
-  const created = await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'French conversation group', kind: 'group', experience: 'tutoring' } });
+  const created = await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'French conversation group', kind: 'group', experience: 'tutoring' } });
   expect(created.status()).toBe(201);
-  const { id: contextId, spaceId } = (await created.json()).context;
+  const { id: studentId, spaceId } = (await created.json()).student;
   const deck = await page.request.post('/api/decks', { headers: CSRF, data: {
-    contextId, spaceId, createSession: true,
+    studentId, spaceId, createSession: true,
     content: { version: 1, meta: { title: 'Un voyage mémorable' }, steps: [{ id: 'welcome', kind: 'title', title: 'Un voyage mémorable' }], interactions: [] },
   } });
   expect(deck.status()).toBe(201);
@@ -30,7 +30,7 @@ test('group learners keep private work across link replacement and same-tab swit
   } })).status()).toBe(200);
 
   async function createLink(name: string, existing = false) {
-    await page.goto(`/host/#/tutor/contexts/${contextId}/links/new`);
+    await page.goto(`/host/#/tutor/students/${studentId}/links/new`);
     await expect(page.getByRole('heading', { name: 'Create an access link' })).toBeVisible();
     const choice = page.getByRole('combobox', { name: 'Learner', exact: true });
     if (existing || name === 'Noor') {
@@ -38,7 +38,7 @@ test('group learners keep private work across link replacement and same-tab swit
       await page.getByRole('option', { name: existing ? name : 'New learner', exact: true }).click();
     }
     if (!existing) await page.getByLabel('Display name').fill(name);
-    const response = page.waitForResponse((res) => res.url().endsWith(`/contexts/${contextId}/links`) && res.request().method() === 'POST');
+    const response = page.waitForResponse((res) => res.url().endsWith(`/students/${studentId}/links`) && res.request().method() === 'POST');
     await page.getByRole('button', { name: 'Create link', exact: true }).click();
     const res = await response;
     expect(res.status()).toBe(201);

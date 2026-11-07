@@ -26,7 +26,7 @@ import { invalidateManagementData, queryClient } from '../query-client';
 import {
   addDeckVersion,
   facilitateSession,
-  getContext,
+  getStudent,
   getDeck,
   getDeckDraft,
   getDeckFileLink,
@@ -102,18 +102,18 @@ export function DeckEditorPage({
     retry: (count, error) => !isMissing(error) && count < 2,
   });
   const liveQuery = useQuery({ queryKey: ['sessions', 'live-now'], queryFn: listMySessions, refetchInterval: 15_000 });
-  const contextId = designQuery.data?.detail.deck.contextId ?? null;
-  const liveSession = designQuery.data ? liveSessionOf(liveQuery.data ?? [], { id: deckId, contextId }) : null;
-  const contextQuery = useQuery({
-    queryKey: ['contexts', contextId],
-    queryFn: () => getContext(contextId!),
-    enabled: contextId !== null && contextId !== '',
+  const studentId = designQuery.data?.detail.deck.studentId ?? null;
+  const liveSession = designQuery.data ? liveSessionOf(liveQuery.data ?? [], { id: deckId, studentId }) : null;
+  const studentQuery = useQuery({
+    queryKey: ['students', studentId],
+    queryFn: () => getStudent(studentId!),
+    enabled: studentId !== null && studentId !== '',
   });
   const recipient = !designQuery.data
     ? undefined
-    : contextId === null || contextId === ''
+    : studentId === null || studentId === ''
       ? null
-      : contextQuery.data?.displayName;
+      : studentQuery.data?.displayName;
 
   // The Library row and inspector summarise the draft; leaving the editor makes them read it again.
   useEffect(() => () => {
@@ -275,7 +275,7 @@ export function DeckEditorPage({
       // carries the deck's title and place, which is what Notes reads to find
       // its way back to the deck afterwards.
       const live = await startSessionFromDeck(
-        { id: deck.id, title: validation.outline.meta.title, contextId: deck.contextId, currentVersion: version },
+        { id: deck.id, title: validation.outline.meta.title, studentId: deck.studentId, currentVersion: version },
         { spaceId: deck.spaceId, folderId: deck.folderId },
         cursor,
       );
@@ -321,7 +321,7 @@ export function DeckEditorPage({
 
   const openStart = () => { setStartImmediately(true); setPresentFrom(0); };
   const liveNow: LiveNowCue | null = liveSession
-    ? { label: liveSession.shared ? 'Join' : 'Rejoin', who: liveSession.contextName ?? recipient ?? null, onRejoin: () => void rejoin(liveSession), rejoining }
+    ? { label: liveSession.shared ? 'Join' : 'Rejoin', who: liveSession.studentName ?? recipient ?? null, onRejoin: () => void rejoin(liveSession), rejoining }
     : null;
   const readiness = validation?.ok ? questionReadinessIssue(validation.outline) : null;
 
@@ -365,7 +365,7 @@ export function DeckEditorPage({
             spaceId: detail?.deck.spaceId,
             folderId: detail?.deck.folderId,
             itemId: detail?.deck.id,
-            contextId: detail?.deck.contextId,
+            studentId: detail?.deck.studentId,
           },
         }}
         shareTo={detail?.deck.spaceId ? { kind: 'spaceMembers', spaceId: detail.deck.spaceId } : null}
@@ -410,7 +410,7 @@ export function DeckEditorPage({
               cliOrigin={window.location.origin}
               activeStepId={activeStepId}
               spaceId={detail?.deck.spaceId ?? null}
-              contextId={detail?.deck.contextId ?? null}
+              studentId={detail?.deck.studentId ?? null}
               currentVersion={baseVersion}
               versionRefresh={baseVersion}
               source={source}

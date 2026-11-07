@@ -129,10 +129,10 @@ export async function dictionaryRoute(
  * The in-session learner lookup.
  *
  * Session-scoped on purpose. The obvious home, `/api/learner/*`, is authenticated
- * by a context access link, and the participant app is built never to keep one
+ * by a student access link, and the participant app is built never to keep one
  * (`forgetLinkInUrl()` executes the moment it joins). A learner in a live session
  * holds a session capability token and nothing else, so putting this behind the
- * context link would mean persisting a context-wide credential beside a
+ * student link would mean persisting a student-wide credential beside a
  * session-scoped one — the exact collapse `AGENTS.md` forbids.
  *
  * No role restriction: host, stage and participant all reach it with the token
@@ -157,7 +157,7 @@ export async function sessionDictionaryRoute(
   if (word === '' || !isLookupWord(word)) return json({ error: 'invalid-word' }, 422);
 
   /*
-   * A tutoring session is one launched from a session that has a context. That, not
+   * A tutoring session is one launched from a session that has a student. That, not
    * the identity mode, is the gate: the phone surface only *offers* a lookup
    * on the identified surface, but a lookup is a read and the route has no
    * reason to be narrower than the session class it belongs to.
@@ -166,13 +166,13 @@ export async function sessionDictionaryRoute(
    * does not exist, so there is nothing for a phone to discover.
    */
   const session = await env.DB.prepare(
-    `SELECT r.space_id AS space_id, ru.context_id AS context_id
+    `SELECT r.space_id AS space_id, ru.student_id AS student_id
        FROM live_sessions r LEFT JOIN sessions ru ON ru.id = r.session_id
       WHERE r.code = ?1`,
   )
     .bind(sessionCode)
-    .first<{ space_id: string | null; context_id: string | null }>();
-  if (session === null || session.context_id === null) return json({ error: 'not-found' }, 404);
+    .first<{ space_id: string | null; student_id: string | null }>();
+  if (session === null || session.student_id === null) return json({ error: 'not-found' }, 404);
   if (session.space_id === null) return json({ error: 'languages-not-configured' }, 422);
 
   const { languages } = await spaceSettings(env, session.space_id);

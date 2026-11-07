@@ -5,7 +5,7 @@
  * work, practice and returned work, feedback, identified sessions and the whole
  * learner plane. It applies to every workspace experience alike.
  *
- * Contexts themselves ("who it is for") are free for every kind, as are decks,
+ * Students themselves ("who it is for") are free for every kind, as are decks,
  * live sessions, the results recap and the shared lookup tools.
  *
  * Billing follows the space owner, exactly like `team`: an editor in a paid
@@ -40,12 +40,12 @@ export async function spaceOwnerId(env: ControlEnv, spaceId: string | null): Pro
   return row?.owner_user_id ?? null;
 }
 
-/** A context bills the owner of the space it was created in. */
-export async function contextOwnerId(env: ControlEnv, contextId: string): Promise<string | null> {
+/** A student bills the owner of the space it was created in. */
+export async function studentOwnerId(env: ControlEnv, studentId: string): Promise<string | null> {
   const row = await env.DB.prepare(
-    'SELECT s.owner_user_id AS owner FROM contexts c JOIN spaces s ON s.id = c.space_id WHERE c.id = ?1',
+    'SELECT s.owner_user_id AS owner FROM students c JOIN spaces s ON s.id = c.space_id WHERE c.id = ?1',
   )
-    .bind(contextId)
+    .bind(studentId)
     .first<{ owner: string }>();
   return row?.owner ?? null;
 }
@@ -55,9 +55,9 @@ export async function requireSpaceContinuity(env: ControlEnv, spaceId: string | 
   return (await ownerHasContinuity(env, await spaceOwnerId(env, spaceId))) ? null : continuityRequiredResponse();
 }
 
-/** `null` when the context's owner holds `continuity`; otherwise the 403 to return. */
-export async function requireContextContinuity(env: ControlEnv, contextId: string): Promise<Response | null> {
-  return (await ownerHasContinuity(env, await contextOwnerId(env, contextId))) ? null : continuityRequiredResponse();
+/** `null` when the student's owner holds `continuity`; otherwise the 403 to return. */
+export async function requireStudentContinuity(env: ControlEnv, studentId: string): Promise<Response | null> {
+  return (await ownerHasContinuity(env, await studentOwnerId(env, studentId))) ? null : continuityRequiredResponse();
 }
 
 /**

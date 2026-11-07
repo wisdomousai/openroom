@@ -51,7 +51,7 @@ describe('spaceRowOwnsAccent', () => {
 
   it('ignores paths outside the browser', () => {
     expect(spaceRowOwnsAccent('/', [mine])).toBe(false);
-    expect(spaceRowOwnsAccent('/tutor/contexts', [mine])).toBe(false);
+    expect(spaceRowOwnsAccent('/tutor/students', [mine])).toBe(false);
   });
 });
 

@@ -306,7 +306,7 @@ describe('openroom deck', () => {
     const requestId = '6f1c2b8e-3d4a-4f5b-9c6d-7e8f9a0b1c2d';
     const { fetchImpl, calls } = router(() => ({
       status: 201,
-      body: { sessionId: requestId, sessionCode: 'CODE1234', code: 'CODE1234', hostToken: 'h', stageToken: 's', contextId: 'ctx-1' },
+      body: { sessionId: requestId, sessionCode: 'CODE1234', code: 'CODE1234', hostToken: 'h', stageToken: 's', studentId: 'ctx-1' },
     }));
     const output = capture();
     const cwd = planDir();
@@ -317,7 +317,7 @@ describe('openroom deck', () => {
       ['/api/decks/d1/start', { requestId }],
       ['/api/decks/d1/start', { requestId }],
     ]);
-    expect(output.out.join('\n')).toContain('/api/tutoring/contexts/ctx-1/links --body \'{"sessionCode":"CODE1234"}\'');
+    expect(output.out.join('\n')).toContain('/api/tutoring/students/ctx-1/links --body \'{"sessionCode":"CODE1234"}\'');
     expect(await run(['deck', 'start', 'd1', '--request-id', 'not-a-uuid', ...AUTH], { io: capture().io, fetchImpl, cwd })).toBe(2);
     expect(calls).toHaveLength(2);
   });

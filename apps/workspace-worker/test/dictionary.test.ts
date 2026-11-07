@@ -6,7 +6,7 @@ import { dictionaryRoute } from '../src/dictionary-route.js';
 import { isLookupWord, languageCode, lemmaTarget, resolveEntry, wordPath } from '../src/dictionary.js';
 import worker from '../src/index.js';
 import { signCookieValue } from '../src/cookies.js';
-import { BASE, createSmokeContext } from './helpers.js';
+import { BASE, createSmokeStudent } from './helpers.js';
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 
@@ -409,10 +409,10 @@ async function seedConfiguredSpace(
   languages: { taught: string; native: string } | null = { taught: 'de', native: 'en' },
 ): Promise<{ cookie: string; spaceId: string; deckId: string }> {
   const { cookie } = await seedSession();
-  const { contextId, spaceId } = await createSmokeContext((path, init) => asUser(cookie, path, init ?? {}));
+  const { studentId, spaceId } = await createSmokeStudent((path, init) => asUser(cookie, path, init ?? {}));
   const res = await asUser(cookie, '/api/decks', {
     method: 'POST',
-    body: JSON.stringify({ title: 'Perfekt', contextId, spaceId }),
+    body: JSON.stringify({ title: 'Perfekt', studentId, spaceId }),
   });
   expect(res.status).toBe(201);
   const { deck } = (await res.json()) as { deck: { id: string } };

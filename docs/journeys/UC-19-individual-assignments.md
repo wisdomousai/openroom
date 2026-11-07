@@ -6,8 +6,8 @@ published assignments. The reusable deck contains no learner identities.
 
 ## Acceptance
 
-- Every task defaults to everyone in the context. Selected learners requires at least
-  one named learner from that context; no first person is selected automatically.
+- Every task defaults to everyone in the student. Selected learners requires at least
+  one named learner from that student; no first person is selected automatically.
 - The choice survives reopening Notes. Tutors can revise instructions and recipients.
 - A learner's Lesson and Practice include only shared tasks and their own assignments.
   Other learners, recipient lists, tutor notes and private next steps are never exposed.
@@ -39,6 +39,6 @@ recipient editor, the phone lesson and the French practice field with its accent
 
 Green in Chromium on 2026-09-18 (4.9 seconds):
 `e2e/journeys/UC-19-individual-assignments.spec.ts`.
-Worker context-link/tutoring/workspace suites passed 62 tests. Two audience schema
+Worker student-link/tutoring/workspace suites passed 62 tests. Two audience schema
 tests cover filtering, validation, canonicalization and fail-closed behavior.
 Host/Worker typechecks and schema/MCP/host/asset builds passed. No deployment implied.

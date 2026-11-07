@@ -5,7 +5,7 @@ import type { HomeworkPracticeInteraction, LearnerFeedback, PublishedHomeworkTas
 /* ----------------------------------------------------------- learner side */
 
 export interface LearnerIdentity {
-  contextId: string;
+  studentId: string;
   displayName: string;
 }
 

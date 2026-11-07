@@ -7,7 +7,7 @@ private teaching guidance and self-contained homework, rather than placeholder t
 ## Acceptance
 
 - The gallery offers all eight lessons and filters by language and level.
-- Location and optional context come from the URL. The displayed folder path, reload,
+- Location and optional student come from the URL. The displayed folder path, reload,
   return link and created deck agree. No default learner is invented.
 - Opening a sample creates a copy and enters the full-bleed deck editor. It carries
   its design, masters, questions, answer keys, private notes and homework.
@@ -19,7 +19,7 @@ private teaching guidance and self-contained homework, rather than placeholder t
 ## Fixture and lifecycle
 
 `examples/tutoring/*.yaml` supplies eight decks. The browser journey uses a tutoring
-context with a child folder, filters the gallery, opens a lesson, checks the saved
+student with a child folder, filters the gallery, opens a lesson, checks the saved
 file, publishes its homework and opens a personal learner link.
 
 ## Visual notes
@@ -32,7 +32,7 @@ has saved color and master backgrounds; application chrome retains its own appea
 
 Green in Chromium on 2026-09-18. Both journeys in
 `e2e/journeys/UC-21-language-lessons.spec.ts` pass: French B1 and German B2,
-including all twelve slides in each editor, preserved folder/context, publication
+including all twelve slides in each editor, preserved folder/student, publication
 and self-contained phone homework. Gallery, French reading and German discussion
 screenshots inspected. On 19 September, [UC-39](UC-39-first-tutoring-lesson.md)
 extended this to all eight lessons: all 96 editor/live slides, all 16 submitted

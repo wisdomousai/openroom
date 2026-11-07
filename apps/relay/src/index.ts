@@ -151,7 +151,7 @@ async function createSessionRoute(request: Request, env: Env): Promise<Response>
 async function joinRelayRoute(request: Request, env: Env): Promise<Response> {
   return joinRoute(env, request, normalizeSessionCode, async (body) => {
     if (
-      Object.prototype.hasOwnProperty.call(body, 'contextLink') ||
+      Object.prototype.hasOwnProperty.call(body, 'studentLink') ||
       Object.prototype.hasOwnProperty.call(body, 'guestLink')
     ) {
       return {

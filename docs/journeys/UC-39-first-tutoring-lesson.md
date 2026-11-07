@@ -16,7 +16,7 @@ in UC-39. The catalog check reads the authored YAML only to select visible answe
 Local demo authentication does not establish that Google OAuth works.
 
 The tutor and learners run in separate browser processes. Each learner has its own
-cookie/storage context and live connection. The first lesson uses a narrow learner
+cookie/storage student and live connection. The first lesson uses a narrow learner
 and a second learner at 1024 × 768; homework also runs at 320, 390 and 768 CSS pixels.
 Chromium is the default learner engine. Set `OPENROOM_E2E_LEARNER_ENGINE=webkit`
 to use WebKit learners with a Chromium tutor (install Playwright WebKit first).
@@ -48,7 +48,7 @@ follow-up checks; WebKit automation does not establish native Safari behavior.
 9. Save a private feedback draft and verify that the learner cannot see it. Share
    the correction and verify that the learner can read it on a narrow screen.
 10. Open a new deck in the same place and reuse that correction as an editable slide.
-    Saving and returning preserve the student context and learner-work link.
+    Saving and returning preserve the student and learner-work link.
 11. Open all eight French/German A1–B2 samples. Inspect every editor slide, start
     every deck, walk every live slide, submit each choice/gap/ranking interaction,
     reveal actual results, check presenter label bounds and learner labels at both

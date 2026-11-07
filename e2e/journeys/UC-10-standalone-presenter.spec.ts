@@ -19,7 +19,7 @@ test('blank deck → current draft → present → participate → return → do
   const id = /decks\/([^/]+)\/edit/.exec(page.url())![1]!;
   await expect(page.getByRole('list', { name: 'Slides' }).getByRole('button')).toHaveCount(1);
   const detail = await (await page.request.get(`/api/decks/${id}`)).json();
-  expect(detail.deck.contextId).toBeNull();
+  expect(detail.deck.studentId).toBeNull();
   const title = `Presentation ${Date.now()}`;
   await page.getByRole('button', { name: 'Rename deck', exact: true }).click();
   await page.getByRole('textbox', { name: 'Deck title' }).fill(title);

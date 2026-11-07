@@ -4,29 +4,29 @@ import type { WorkspaceExperience } from '@openroom/schema';
 export const EXPERIENCES: Record<WorkspaceExperience, {
   label: string;
   description: string;
-  contextLabel: string | null;
-  addContextLabel: string | null;
+  studentLabel: string | null;
+  addStudentLabel: string | null;
   starterTitle: string;
 }> = {
   tutoring: {
     label: 'Tutoring',
     description: 'Language lessons, students, practice and feedback.',
-    contextLabel: 'Students',
-    addContextLabel: 'Add student or group',
+    studentLabel: 'Students',
+    addStudentLabel: 'Add student or group',
     starterTitle: 'French · At the café',
   },
   classroom: {
     label: 'Classroom',
     description: 'Lessons, class questions and discussion.',
-    contextLabel: 'Classes',
-    addContextLabel: 'Add class',
+    studentLabel: 'Classes',
+    addStudentLabel: 'Add class',
     starterTitle: 'Science · What plants need',
   },
   training: {
     label: 'Training',
     description: 'Workshops, group decisions and facilitation.',
-    contextLabel: null,
-    addContextLabel: null,
+    studentLabel: null,
+    addStudentLabel: null,
     starterTitle: 'Workshop · Make a decision',
   },
 };

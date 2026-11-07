@@ -1,26 +1,26 @@
 import { handleBrandKits } from './brand-kits.js';
 import { startDeckRoute } from './deck-start.js';
 /**
- * Presentation contexts control plane plus the shared tutoring router and the
+ * Students control plane plus the shared tutoring router and the
  * browser-confirmed permanent-deletion flow.
  *
- * Contexts are durable "who is this for?" records (person, group, class, event).
+ * Students are durable "who is this for?" records (person, group, class, event).
  * Decks (versioned content) and sessions (delivery instances) live in delivery.ts;
  * launch compiles into the Session runtime contract (Durable Object).
  */
-import { CONTEXT_KINDS, isWorkspaceExperience } from '@openroom/schema';
+import { STUDENT_KINDS, isWorkspaceExperience } from '@openroom/schema';
 
 import { sha256Hex } from './api-tokens.js';
 import { getSession, json, type ControlEnv, type SessionUser } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import {
-  listContextLinksRoute,
-  listContextLearnersRoute,
-  mintContextLinkRoute,
-  revokeContextLinkRoute,
-} from './context-links.js';
-import { contextReturnedRoute } from './learner-practice.js';
-import { contextWorkRoute } from './learner-work.js';
+  listStudentLinksRoute,
+  listStudentLearnersRoute,
+  mintStudentLinkRoute,
+  revokeStudentLinkRoute,
+} from './student-links.js';
+import { studentReturnedRoute } from './learner-practice.js';
+import { studentWorkRoute } from './learner-work.js';
 import { purgeLearnerAudio } from './learner-audio.js';
 import { dictionaryRoute } from './dictionary-route.js';
 import { embedCheckRoute, embedImportRoute } from './embed-route.js';
@@ -30,8 +30,8 @@ import { ownerHasContinuity, spaceOwnerId } from './continuity-access.js';
 import { roleAtLeast, spaceRole } from './members.js';
 import {
   DELETION_INTENT_TTL_MS,
-  contextOfSpace,
-  linkContext,
+  studentOfSpace,
+  linkStudent,
   memberOfSpace,
   parseJson,
   plainObject,
@@ -61,56 +61,56 @@ import {
 
 export { DELETION_INTENT_TTL_MS };
 
-type ResourceType = 'context' | 'deck' | 'session' | 'folder';
+type ResourceType = 'student' | 'deck' | 'session' | 'folder';
 
-const CONTEXT_KIND_SET: ReadonlySet<string> = new Set(CONTEXT_KINDS);
+const STUDENT_KIND_SET: ReadonlySet<string> = new Set(STUDENT_KINDS);
 
-interface ContextRow {
+interface StudentRow {
   id: string;
   space_id: string;
   created_by: string;
   kind: string;
   display_name: string;
-  context_json: string;
+  student_json: string;
   next_note: string;
   created_at: number;
   updated_at: number;
   deleted_at: number | null;
 }
 
-async function contextAccess(
+async function studentAccess(
   env: ControlEnv,
   userId: string,
-  contextId: string,
-): Promise<ContextRow | null> {
+  studentId: string,
+): Promise<StudentRow | null> {
   return env.DB.prepare(
-    `SELECT c.* FROM contexts c
+    `SELECT c.* FROM students c
       JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?2
      WHERE c.id = ?1`,
   )
-    .bind(contextId, userId)
-    .first<ContextRow>();
+    .bind(studentId, userId)
+    .first<StudentRow>();
 }
 
-/** Changing, trashing or purging a context needs `editor` on its space; reads need membership. */
-async function contextEditable(env: ControlEnv, user: SessionUser, spaceId: string): Promise<boolean> {
+/** Changing, trashing or purging a student needs `editor` on its space; reads need membership. */
+async function studentEditable(env: ControlEnv, user: SessionUser, spaceId: string): Promise<boolean> {
   const access = await spaceRole(env, user, spaceId);
   return access !== null && roleAtLeast(access.role, 'editor');
 }
 
 /**
- * The context itself is free. Its "for next time" sticky is written from Notes,
+ * The student itself is free. Its "for next time" sticky is written from Notes,
  * so it is shown only while the space owner holds `continuity`; it is retained,
  * not cleared, and returns with access.
  */
-function contextJson(row: ContextRow, includeContext = true, withNextNote = true): Record<string, unknown> {
+function studentJson(row: StudentRow, includeStudent = true, withNextNote = true): Record<string, unknown> {
   const nextNote = withNextNote && typeof row.next_note === 'string' ? row.next_note : '';
   return {
     id: row.id,
     spaceId: row.space_id,
     kind: row.kind,
     displayName: row.display_name,
-    ...(includeContext ? { context: parseJson(row.context_json, {}) } : {}),
+    ...(includeStudent ? { student: parseJson(row.student_json, {}) } : {}),
     ...(nextNote !== '' ? { nextNote } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -119,11 +119,11 @@ function contextJson(row: ContextRow, includeContext = true, withNextNote = true
 }
 
 function parseKind(value: unknown, fallback = 'person'): string {
-  return typeof value === 'string' && CONTEXT_KIND_SET.has(value) ? value : fallback;
+  return typeof value === 'string' && STUDENT_KIND_SET.has(value) ? value : fallback;
 }
 
 
-export async function contextsCollectionRoute(
+export async function studentsCollectionRoute(
   request: Request,
   env: ControlEnv,
   url: URL,
@@ -145,25 +145,25 @@ export async function contextsCollectionRoute(
       binds.push(spaceId);
       next += 1;
     }
-    if (kind !== null && CONTEXT_KIND_SET.has(kind)) {
+    if (kind !== null && STUDENT_KIND_SET.has(kind)) {
       where += ` AND c.kind = ?${next}`;
       binds.push(kind);
     }
     const { results } = await env.DB.prepare(
-      `SELECT c.*, s.owner_user_id AS owner_user_id FROM contexts c
+      `SELECT c.*, s.owner_user_id AS owner_user_id FROM students c
         JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?1
         JOIN spaces s ON s.id = c.space_id
        WHERE ${where}
        ORDER BY c.updated_at DESC LIMIT 500`,
     )
       .bind(...binds)
-      .all<ContextRow & { owner_user_id: string }>();
+      .all<StudentRow & { owner_user_id: string }>();
     const rows = results ?? [];
     const continuity = new Map<string, boolean>();
     for (const owner of new Set(rows.filter((row) => row.next_note).map((row) => row.owner_user_id))) {
       continuity.set(owner, await ownerHasContinuity(env, owner));
     }
-    return json({ contexts: rows.map((row) => contextJson(row, false, continuity.get(row.owner_user_id) === true)) });
+    return json({ students: rows.map((row) => studentJson(row, false, continuity.get(row.owner_user_id) === true)) });
   }
 
   if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
@@ -171,16 +171,16 @@ export async function contextsCollectionRoute(
   if (body === null) return json({ error: 'invalid-json' }, 400);
   const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
   if (displayName === '') return json({ error: 'display-name-required' }, 422);
-  const context = body.context === undefined ? {} : plainObject(body.context);
-  if (context === null) return json({ error: 'context-must-be-object' }, 422);
-  const serializedContext = JSON.stringify(context);
-  if (serializedContext.length > 100_000) return json({ error: 'context-too-large' }, 413);
+  const student = body.student === undefined ? {} : plainObject(body.student);
+  if (student === null) return json({ error: 'student-must-be-object' }, 422);
+  const serializedStudent = JSON.stringify(student);
+  if (serializedStudent.length > 100_000) return json({ error: 'student-too-large' }, 413);
   const kind = parseKind(body.kind);
   const id = randomId();
   const now = Date.now();
 
   /*
-   * A space holds one context, so a new context brings its own space unless the
+   * A space holds one student, so a new student brings its own space unless the
    * caller names an empty one. It used to fall back to the caller's home space,
    * which put every person a tutor added into the same one — and with the
    * language pair living on the space, that meant one language for everybody.
@@ -199,11 +199,11 @@ export async function contextsCollectionRoute(
     }
     /*
      * The link is the reservation, and it survives trashing: a space whose
-     * context is in the trash stays that person's, so a restore always has
+     * student is in the trash stays that person's, so a restore always has
      * somewhere to land.
      */
-    if ((await contextOfSpace(env, body.spaceId)) !== null) {
-      return json({ error: 'space-has-context' }, 409);
+    if ((await studentOfSpace(env, body.spaceId)) !== null) {
+      return json({ error: 'space-has-student' }, 409);
     }
     spaceId = body.spaceId;
   } else {
@@ -227,39 +227,39 @@ export async function contextsCollectionRoute(
   }
 
   await env.DB.prepare(
-    `INSERT INTO contexts
-       (id, space_id, created_by, kind, display_name, context_json, created_at, updated_at, deleted_at)
+    `INSERT INTO students
+       (id, space_id, created_by, kind, display_name, student_json, created_at, updated_at, deleted_at)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, NULL)`,
   )
-    .bind(id, spaceId, guard.user.id, kind, displayName.slice(0, 200), serializedContext, now)
+    .bind(id, spaceId, guard.user.id, kind, displayName.slice(0, 200), serializedStudent, now)
     .run();
-  await linkContext(env, spaceId, id, now);
-  const row = await contextAccess(env, guard.user.id, id);
-  return json({ context: contextJson(row!) }, 201);
+  await linkStudent(env, spaceId, id, now);
+  const row = await studentAccess(env, guard.user.id, id);
+  return json({ student: studentJson(row!) }, 201);
 }
 
 
-export async function contextItemRoute(
+export async function studentItemRoute(
   request: Request,
   env: ControlEnv,
-  contextId: string,
+  studentId: string,
 ): Promise<Response> {
   const mutating = request.method !== 'GET';
   const guard = await requireControlUser(request, env, mutating);
   if (!guard.ok) return guard.response;
-  const row = await contextAccess(env, guard.user.id, contextId);
+  const row = await studentAccess(env, guard.user.id, studentId);
   if (row === null) return json({ error: 'not-found' }, 404);
 
   const withNextNote = async () => row.next_note !== '' && (await ownerHasContinuity(env, await spaceOwnerId(env, row.space_id)));
 
-  if (request.method === 'GET') return json({ context: contextJson(row, true, await withNextNote()) });
-  if (!(await contextEditable(env, guard.user, row.space_id))) return json({ error: 'forbidden' }, 403);
+  if (request.method === 'GET') return json({ student: studentJson(row, true, await withNextNote()) });
+  if (!(await studentEditable(env, guard.user, row.space_id))) return json({ error: 'forbidden' }, 403);
 
   if (request.method === 'DELETE') {
     if (row.deleted_at === null) {
       const now = Date.now();
-      await env.DB.prepare('UPDATE contexts SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2')
-        .bind(now, contextId)
+      await env.DB.prepare('UPDATE students SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2')
+        .bind(now, studentId)
         .run();
     }
     return json({ ok: true, recoverable: true });
@@ -274,40 +274,40 @@ export async function contextItemRoute(
       ? body.displayName.trim().slice(0, 200)
       : '';
   if (displayName === '') return json({ error: 'display-name-required' }, 422);
-  const currentContext = parseJson(row.context_json, {});
-  const context = body.context === undefined ? currentContext : plainObject(body.context);
-  if (context === null) return json({ error: 'context-must-be-object' }, 422);
-  const serialized = JSON.stringify(context);
-  if (serialized.length > 100_000) return json({ error: 'context-too-large' }, 413);
+  const currentStudent = parseJson(row.student_json, {});
+  const student = body.student === undefined ? currentStudent : plainObject(body.student);
+  if (student === null) return json({ error: 'student-must-be-object' }, 422);
+  const serialized = JSON.stringify(student);
+  if (serialized.length > 100_000) return json({ error: 'student-too-large' }, 413);
   const kind = body.kind === undefined ? row.kind : parseKind(body.kind, row.kind);
   const now = Date.now();
   await env.DB.prepare(
-    'UPDATE contexts SET display_name = ?1, context_json = ?2, kind = ?3, updated_at = ?4 WHERE id = ?5',
+    'UPDATE students SET display_name = ?1, student_json = ?2, kind = ?3, updated_at = ?4 WHERE id = ?5',
   )
-    .bind(displayName, serialized, kind, now, contextId)
+    .bind(displayName, serialized, kind, now, studentId)
     .run();
-  const payload = contextJson({
+  const payload = studentJson({
     ...row,
     display_name: displayName,
-    context_json: serialized,
+    student_json: serialized,
     kind,
     updated_at: now,
   }, true, await withNextNote());
-  return json({ context: payload });
+  return json({ student: payload });
 }
 
-export async function restoreContextRoute(
+export async function restoreStudentRoute(
   request: Request,
   env: ControlEnv,
-  contextId: string,
+  studentId: string,
 ): Promise<Response> {
   const guard = await requireControlUser(request, env, true);
   if (!guard.ok) return guard.response;
-  const row = await contextAccess(env, guard.user.id, contextId);
+  const row = await studentAccess(env, guard.user.id, studentId);
   if (row === null) return json({ error: 'not-found' }, 404);
-  if (!(await contextEditable(env, guard.user, row.space_id))) return json({ error: 'forbidden' }, 403);
-  await env.DB.prepare('UPDATE contexts SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2')
-    .bind(Date.now(), contextId)
+  if (!(await studentEditable(env, guard.user, row.space_id))) return json({ error: 'forbidden' }, 403);
+  await env.DB.prepare('UPDATE students SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2')
+    .bind(Date.now(), studentId)
     .run();
   return json({ ok: true });
 }
@@ -319,9 +319,9 @@ export async function createDeletionIntentRoute(
 ): Promise<Response> {
   const guard = await requireControlUser(request, env, true);
   if (!guard.ok) return guard.response;
-  const resource = await contextAccess(env, guard.user.id, resourceId);
+  const resource = await studentAccess(env, guard.user.id, resourceId);
   if (resource === null) return json({ error: 'not-found' }, 404);
-  if (!(await contextEditable(env, guard.user, resource.space_id))) return json({ error: 'forbidden' }, 403);
+  if (!(await studentEditable(env, guard.user, resource.space_id))) return json({ error: 'forbidden' }, 403);
   if (resource.deleted_at === null) return json({ error: 'move-to-trash-first' }, 409);
   const token = randomToken();
   const tokenHash = await sha256Hex(token);
@@ -329,7 +329,7 @@ export async function createDeletionIntentRoute(
   await env.DB.prepare(
     `INSERT INTO deletion_intents
        (token_hash, user_id, resource_type, resource_id, resource_name, created_at, expires_at, used_at)
-     VALUES (?1, ?2, 'context', ?3, ?4, ?5, ?6, NULL)`,
+     VALUES (?1, ?2, 'student', ?3, ?4, ?5, ?6, NULL)`,
   ).bind(tokenHash, guard.user.id, resourceId, resource.display_name, now, now + DELETION_INTENT_TTL_MS).run();
   const origin = new URL(request.url).origin;
   return json({
@@ -413,29 +413,29 @@ function notInTrash(): Response {
   );
 }
 
-/** The noun a context goes by, from its kind: a person is a student. */
-const CONTEXT_NOUNS: Record<string, string> = {
+/** The noun a student goes by, from its kind: a person is a student. */
+const STUDENT_NOUNS: Record<string, string> = {
   person: 'student',
   group: 'group',
   class: 'class',
   event: 'event',
-  other: 'context',
+  other: 'student',
 };
 
 async function deletionNoun(env: ControlEnv, intent: IntentRow): Promise<string> {
-  if (intent.resource_type !== 'context') return intent.resource_type;
-  const row = await env.DB.prepare('SELECT kind FROM contexts WHERE id = ?1')
+  if (intent.resource_type !== 'student') return intent.resource_type;
+  const row = await env.DB.prepare('SELECT kind FROM students WHERE id = ?1')
     .bind(intent.resource_id).first<{ kind: string }>();
-  return CONTEXT_NOUNS[row?.kind ?? 'person'] ?? 'context';
+  return STUDENT_NOUNS[row?.kind ?? 'person'] ?? 'student';
 }
 
 /**
  * What the purge removes, in the words of TERMINOLOGY.md. Each line matches a
  * table the confirm route deletes from; Notes of sessions of another deck are
- * only unlinked from a context, so the context list does not claim them.
+ * only unlinked from a student, so the student list does not claim them.
  */
 function deletionContents(type: ResourceType, noun: string): string[] {
-  if (type === 'context') {
+  if (type === 'student') {
     return [
       `The ${noun} and their access links`,
       'Their decks, with those decks’ sessions and Notes',
@@ -484,18 +484,18 @@ function deletionPage(title: string, body: string, status = 200): Response {
  * purge itself is the permission: whoever may delete the student and their
  * decks may delete the empty space that held them. A deck, session, picture or
  * brand kit still filed there keeps the space. Saved results of its lessons
- * stay with the tutor who ran them. A space the context was only attached to is
+ * stay with the tutor who ran them. A space the student was only attached to is
  * never touched. This is tidying after the purge: if it cannot finish, the
  * space stays and the purge still stands.
  */
-async function removeEmptyStudentSpace(env: ControlEnv, contextId: string, spaceId: string): Promise<void> {
-  if (spaceId !== `sp_ctx_${contextId}`) return;
+async function removeEmptyStudentSpace(env: ControlEnv, studentId: string, spaceId: string): Promise<void> {
+  if (spaceId !== `sp_ctx_${studentId}`) return;
   const space = await env.DB.prepare(
     `SELECT (EXISTS (SELECT 1 FROM decks WHERE space_id = s.id)
              OR EXISTS (SELECT 1 FROM sessions WHERE space_id = s.id)
              OR EXISTS (SELECT 1 FROM media_assets WHERE space_id = s.id)
              OR EXISTS (SELECT 1 FROM brand_kits WHERE space_id = s.id)
-             OR EXISTS (SELECT 1 FROM contexts WHERE space_id = s.id)) AS kept
+             OR EXISTS (SELECT 1 FROM students WHERE space_id = s.id)) AS kept
        FROM spaces s WHERE s.id = ?1`,
   ).bind(spaceId).first<{ kept: number }>();
   if (space === null || space.kept) return;
@@ -507,7 +507,7 @@ async function removeEmptyStudentSpace(env: ControlEnv, contextId: string, space
       env.DB.prepare('DELETE FROM folders WHERE space_id = ?1').bind(spaceId),
       env.DB.prepare('DELETE FROM space_invites WHERE space_id = ?1').bind(spaceId),
       env.DB.prepare('DELETE FROM space_members WHERE space_id = ?1').bind(spaceId),
-      env.DB.prepare('DELETE FROM space_contexts WHERE space_id = ?1').bind(spaceId),
+      env.DB.prepare('DELETE FROM space_students WHERE space_id = ?1').bind(spaceId),
       env.DB.prepare('DELETE FROM spaces WHERE id = ?1').bind(spaceId),
     ]);
   } catch (cause) {
@@ -540,32 +540,32 @@ export async function confirmPermanentDeletionRoute(
     return linkNoLongerWorks();
   }
 
-  if (intent.resource_type === 'context') {
-    const resource = await contextAccess(env, user.id, intent.resource_id);
+  if (intent.resource_type === 'student') {
+    const resource = await studentAccess(env, user.id, intent.resource_id);
     if (resource === null || resource.deleted_at === null) return notInTrash();
     // The role may have changed since the intent was made; purging still needs editor.
-    if (!(await contextEditable(env, user, resource.space_id))) return notInTrash();
-    const { results } = await env.DB.prepare('SELECT id FROM decks WHERE context_id = ?1')
+    if (!(await studentEditable(env, user, resource.space_id))) return notInTrash();
+    const { results } = await env.DB.prepare('SELECT id FROM decks WHERE student_id = ?1')
       .bind(resource.id).all<{ id: string }>();
     for (const deck of results ?? []) {
       await purgeDeck(env, deck.id);
     }
-    await purgeLearnerAudio(env, 'context_id', resource.id);
+    await purgeLearnerAudio(env, 'student_id', resource.id);
     await env.DB.batch([
-      // Sessions of other decks may still reference this context; detach them
-      // before the context row goes away.
-      env.DB.prepare('UPDATE sessions SET context_id = NULL WHERE context_id = ?1').bind(resource.id),
-      env.DB.prepare('UPDATE session_records SET context_id = NULL WHERE context_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM learner_feedback WHERE submission_id IN (SELECT id FROM learner_submissions WHERE context_id = ?1)').bind(resource.id),
-      env.DB.prepare('DELETE FROM learner_submissions WHERE context_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM learner_srs WHERE context_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM learner_practice_attempts WHERE context_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM context_access_links WHERE context_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM context_learners WHERE context_id = ?1').bind(resource.id),
-      env.DB.prepare("DELETE FROM item_tags WHERE item_type = 'context' AND item_id = ?1").bind(resource.id),
+      // Sessions of other decks may still reference this student; detach them
+      // before the student row goes away.
+      env.DB.prepare('UPDATE sessions SET student_id = NULL WHERE student_id = ?1').bind(resource.id),
+      env.DB.prepare('UPDATE session_records SET student_id = NULL WHERE student_id = ?1').bind(resource.id),
+      env.DB.prepare('DELETE FROM learner_feedback WHERE submission_id IN (SELECT id FROM learner_submissions WHERE student_id = ?1)').bind(resource.id),
+      env.DB.prepare('DELETE FROM learner_submissions WHERE student_id = ?1').bind(resource.id),
+      env.DB.prepare('DELETE FROM learner_srs WHERE student_id = ?1').bind(resource.id),
+      env.DB.prepare('DELETE FROM learner_practice_attempts WHERE student_id = ?1').bind(resource.id),
+      env.DB.prepare('DELETE FROM student_access_links WHERE student_id = ?1').bind(resource.id),
+      env.DB.prepare('DELETE FROM student_learners WHERE student_id = ?1').bind(resource.id),
+      env.DB.prepare("DELETE FROM item_tags WHERE item_type = 'student' AND item_id = ?1").bind(resource.id),
       // Every space that pointed at it, before the row it points to is gone.
-      env.DB.prepare('DELETE FROM space_contexts WHERE context_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM contexts WHERE id = ?1').bind(resource.id),
+      env.DB.prepare('DELETE FROM space_students WHERE student_id = ?1').bind(resource.id),
+      env.DB.prepare('DELETE FROM students WHERE id = ?1').bind(resource.id),
     ]);
     await removeEmptyStudentSpace(env, resource.id, resource.space_id);
   } else if (intent.resource_type === 'folder') {
@@ -617,53 +617,53 @@ export async function handleTutoringApi(
     return embedImportRoute(request, env);
   }
 
-  if (path === '/api/tutoring/contexts') {
-    return contextsCollectionRoute(request, env, url);
+  if (path === '/api/tutoring/students') {
+    return studentsCollectionRoute(request, env, url);
   }
-  const contextAction = /^\/api\/tutoring\/contexts\/([^/]+)\/(restore|permanent-deletion)$/.exec(path);
-  if (contextAction !== null) {
-    const id = decodeURIComponent(contextAction[1] as string);
+  const studentAction = /^\/api\/tutoring\/students\/([^/]+)\/(restore|permanent-deletion)$/.exec(path);
+  if (studentAction !== null) {
+    const id = decodeURIComponent(studentAction[1] as string);
     if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
-    return contextAction[2] === 'restore'
-      ? restoreContextRoute(request, env, id)
+    return studentAction[2] === 'restore'
+      ? restoreStudentRoute(request, env, id)
       : createDeletionIntentRoute(request, env, id);
   }
   // Access links are tutor-side administration of a learner credential, so they
   // live on the normal control plane behind requireControlUser. Redeeming a
   // link happens only under /api/learner/* (learner.ts) and /api/join.
-  const learners = /^\/api\/tutoring\/contexts\/([^/]+)\/learners$/.exec(path);
+  const learners = /^\/api\/tutoring\/students\/([^/]+)\/learners$/.exec(path);
   if (learners !== null) {
     if (request.method !== 'GET') return json({ error: 'method-not-allowed' }, 405);
-    return listContextLearnersRoute(request, env, decodeURIComponent(learners[1]!));
+    return listStudentLearnersRoute(request, env, decodeURIComponent(learners[1]!));
   }
-  const linkItem = /^\/api\/tutoring\/contexts\/([^/]+)\/links\/([^/]+)$/.exec(path);
+  const linkItem = /^\/api\/tutoring\/students\/([^/]+)\/links\/([^/]+)$/.exec(path);
   if (linkItem !== null) {
     if (request.method !== 'DELETE') return json({ error: 'method-not-allowed' }, 405);
-    return revokeContextLinkRoute(
+    return revokeStudentLinkRoute(
       request,
       env,
       decodeURIComponent(linkItem[1] as string),
       decodeURIComponent(linkItem[2] as string),
     );
   }
-  const linkCollection = /^\/api\/tutoring\/contexts\/([^/]+)\/links$/.exec(path);
+  const linkCollection = /^\/api\/tutoring\/students\/([^/]+)\/links$/.exec(path);
   if (linkCollection !== null) {
     const id = decodeURIComponent(linkCollection[1] as string);
-    if (request.method === 'GET') return listContextLinksRoute(request, env, id);
-    if (request.method === 'POST') return mintContextLinkRoute(request, env, id);
+    if (request.method === 'GET') return listStudentLinksRoute(request, env, id);
+    if (request.method === 'POST') return mintStudentLinkRoute(request, env, id);
     return json({ error: 'method-not-allowed' }, 405);
   }
 
-  const returned = /^\/api\/tutoring\/contexts\/([^/]+)\/returned$/.exec(path);
-  const work = /^\/api\/tutoring\/contexts\/([^/]+)\/work(?:\/([^/]+)(?:\/(feedback|audio))?)?$/.exec(path);
-  if (work) return contextWorkRoute(request, env, decodeURIComponent(work[1]!), work[2] ? decodeURIComponent(work[2]) : undefined, work[3] as 'feedback' | 'audio' | undefined);
+  const returned = /^\/api\/tutoring\/students\/([^/]+)\/returned$/.exec(path);
+  const work = /^\/api\/tutoring\/students\/([^/]+)\/work(?:\/([^/]+)(?:\/(feedback|audio))?)?$/.exec(path);
+  if (work) return studentWorkRoute(request, env, decodeURIComponent(work[1]!), work[2] ? decodeURIComponent(work[2]) : undefined, work[3] as 'feedback' | 'audio' | undefined);
   if (returned !== null) {
     if (request.method !== 'GET') return json({ error: 'method-not-allowed' }, 405);
-    return contextReturnedRoute(request, env, decodeURIComponent(returned[1] as string));
+    return studentReturnedRoute(request, env, decodeURIComponent(returned[1] as string));
   }
-  const contextItem = /^\/api\/tutoring\/contexts\/([^/]+)$/.exec(path);
-  if (contextItem !== null) {
-    return contextItemRoute(request, env, decodeURIComponent(contextItem[1] as string));
+  const studentItem = /^\/api\/tutoring\/students\/([^/]+)$/.exec(path);
+  if (studentItem !== null) {
+    return studentItemRoute(request, env, decodeURIComponent(studentItem[1] as string));
   }
 
   if (path === '/api/decks') {

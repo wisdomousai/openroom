@@ -35,7 +35,7 @@ next deck, present its question, write a private live note, end and publish home
 
 ## Visual notes and Playwright map
 
-The permanent task pane owns the private learner context. Expandable exercise previews
+The permanent task pane owns the student's private learner record. Expandable exercise previews
 show the answer and key before the two copy actions. They remain keyboard reachable;
 success and load failure have accessible status text. Copied slides use saved deck design.
 
@@ -55,7 +55,7 @@ another run correctly caught a stale pre-rebuild slide heading.
 
 Six focused practice-copy tests cover all five formats plus open answers, independent
 copies and YAML saves. Four editor fuzz tests and ten exit-policy tests passed. Worker
-context-link suite: 36 passed. Host/Worker/MCP typechecks and host/MCP/asset builds passed.
+student-link suite: 36 passed. Host/Worker/MCP typechecks and host/MCP/asset builds passed.
 The fuzz suite first hit a five-second default under concurrent local load, then passed
 unchanged in 2.7 seconds; its coverage and timeout were not reduced. No deployment or
 native Desktop acceptance is implied.

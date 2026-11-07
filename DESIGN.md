@@ -282,7 +282,7 @@ relative time, a usage tally ("Times taught", session counts), a delivery status
 word as row or tile data (`draft` / `scheduled` / `completed`), or a version
 stamp — anywhere outside three sanctioned homes: (1) the **History tab** of
 the deck editor's task pane, (2) the two **admin tables** (Settings API
-tokens, Space members) and the context-link lifecycle card (credential expiry
+tokens, Space members) and the student-link lifecycle card (credential expiry
 is security, not delivery), (3) a **live session's own live counts**
 (joined / answered / votes / countdown). A row states what is *in* the file.
 Sorting by recency silently is fine; exposing the sort as visible metadata is

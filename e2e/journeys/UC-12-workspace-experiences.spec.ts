@@ -34,7 +34,7 @@ test('choose an experience, open its sample, and return to the same place', asyn
     const deckId = /decks\/([^/]+)\/edit/.exec(page.url())![1]!;
     const detail = await (await page.request.get(`/api/decks/${deckId}`)).json();
     expect(detail.deck.spaceId).toBe(spaceId);
-    expect(detail.deck.contextId).toBeNull();
+    expect(detail.deck.studentId).toBeNull();
     expect(detail.content.steps).toHaveLength(5);
     await page.getByRole('link', { name: 'Back', exact: true }).click();
     await expect(shell).toHaveAttribute('data-workspace-experience', experience);

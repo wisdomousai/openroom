@@ -1,5 +1,5 @@
 /**
- * Guest-list sessions: host-typed names, `orinv_…`, not a context access link.
+ * Guest-list sessions: host-typed names, `orinv_…`, not a student access link.
  */
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
@@ -89,7 +89,7 @@ describe('guest-list sessions', () => {
     const asLink = await call('/api/join', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: session.code, contextLink: first.token }),
+      body: JSON.stringify({ code: session.code, studentLink: first.token }),
     });
     expect(asLink.status).toBe(403);
 
@@ -98,7 +98,7 @@ describe('guest-list sessions', () => {
     });
     expect(learner.status).toBeGreaterThanOrEqual(400);
 
-    const tutoring = await call('/api/tutoring/contexts', {
+    const tutoring = await call('/api/tutoring/students', {
       headers: { authorization: `Bearer ${first.token}` },
     });
     expect(tutoring.status).toBe(401);

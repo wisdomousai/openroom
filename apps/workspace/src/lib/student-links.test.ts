@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { learnerLinkUrl, linkState, liveLinkCount } from './context-links';
+import { learnerLinkUrl, linkState, liveLinkCount } from './student-links';
 
 const HOUR = 60 * 60 * 1000;
 
-describe('context access link state', () => {
+describe('student access link state', () => {
   const now = 1_700_000_000_000;
 
   it('is active while unrevoked and unexpired', () => {

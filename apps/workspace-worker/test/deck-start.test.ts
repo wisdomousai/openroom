@@ -21,22 +21,22 @@ interface Live { sessionId: string; sessionCode: string; hostToken: string }
 const host = (live: Live, path = 'state?role=host', body?: object) => call(`/api/sessions/${live.sessionCode}/${path}`, { method: body ? 'POST' : 'GET', headers: { authorization: `Bearer ${live.hostToken}`, 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
 
 describe('retry-safe deck start and authorized recovery', () => {
-  it('retains the durable Notes destination without a student context and keeps it host-only', async () => {
+  it('retains the durable Notes destination without a student and keeps it host-only', async () => {
     const owner = await user(), source = await deck(owner);
     const live = await (await owner.request(`/api/decks/${source.id}/start`, { requestId: crypto.randomUUID() })).json() as Live;
     const read = async () => {
-      const response = await host(live, 'context');
+      const response = await host(live, 'student');
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ context: null, session: { id: live.sessionId, title: SMOKE_OUTLINE.meta.title } });
+      expect(await response.json()).toEqual({ student: null, session: { id: live.sessionId, title: SMOKE_OUTLINE.meta.title } });
     };
     await read();
     const joined = await (await call('/api/join', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: live.sessionCode }) })).json() as { participantToken: string };
-    expect((await call(`/api/sessions/${live.sessionCode}/context`, { headers: { authorization: `Bearer ${joined.participantToken}` } })).status).toBe(403);
+    expect((await call(`/api/sessions/${live.sessionCode}/student`, { headers: { authorization: `Bearer ${joined.participantToken}` } })).status).toBe(403);
     await host(live, 'commands', { command: { command: 'session.end' }, idempotencyKey: 'end' });
     await read();
     const temporary = await createSessionWithOutline(SMOKE_OUTLINE);
-    const response = await call(`/api/sessions/${temporary.code}/context`, { headers: { authorization: `Bearer ${temporary.hostToken}` } });
-    expect(await response.json()).toEqual({ context: null, session: null });
+    const response = await call(`/api/sessions/${temporary.code}/student`, { headers: { authorization: `Bearer ${temporary.hostToken}` } });
+    expect(await response.json()).toEqual({ student: null, session: null });
   });
 
   it('allocates one audience for competing starts and preserves its current question, reveal and answers on retries', async () => {

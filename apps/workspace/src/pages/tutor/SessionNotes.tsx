@@ -12,9 +12,9 @@ import { NEXT_NOTE_MAX, snapshotHomework, publishedHomeworkOf, type HomeworkAudi
 
 import {
   ApiError,
-  getContext,
-  listContextLearners,
-  type ContextLearner,
+  getStudent,
+  listStudentLearners,
+  type StudentLearner,
   getDeck,
   getSessionItem,
   getSessionRecord,
@@ -38,8 +38,8 @@ import {
 } from './shared';
 
 /** "Session notes — Léa, Au cafe": the person first, as Live now names them. */
-function notesTitle(title: string, contextName: string | null): string {
-  return contextName ? `Session notes — ${contextName}, ${title}` : `Session notes — ${title}`;
+function notesTitle(title: string, studentName: string | null): string {
+  return studentName ? `Session notes — ${studentName}, ${title}` : `Session notes — ${title}`;
 }
 
 export function SessionNotesPage({ sessionId }: { sessionId: string }) {
@@ -60,15 +60,15 @@ export function SessionNotesPage({ sessionId }: { sessionId: string }) {
     enabled: !!user, retry: false, gcTime: 0,
     queryFn: async () => {
       const [detail, existing] = await Promise.all([getSessionItem(sessionId), getSessionRecord(sessionId)]);
-      const contextId = detail.session.contextId;
-      const [deck, learners, context] = await Promise.all([
+      const studentId = detail.session.studentId;
+      const [deck, learners, student] = await Promise.all([
         detail.canEdit && existing === null ? getDeck(detail.session.deckId, detail.session.deckVersion) : Promise.resolve(null),
-        detail.canEdit && contextId ? listContextLearners(contextId) : Promise.resolve([]),
+        detail.canEdit && studentId ? listStudentLearners(studentId) : Promise.resolve([]),
         // The heading names the person; a name that cannot be read leaves the deck title alone.
-        contextId ? getContext(contextId).catch(() => null) : Promise.resolve(null),
+        studentId ? getStudent(studentId).catch(() => null) : Promise.resolve(null),
       ]);
       const published = existing !== null ? publishedHomeworkOf(existing.homework) : deck?.content ? snapshotHomework(deck.content) : [];
-      return { session: detail.session, canEdit: detail.canEdit, record: existing, published, learners, contextName: context?.displayName ?? null };
+      return { session: detail.session, canEdit: detail.canEdit, record: existing, published, learners, studentName: student?.displayName ?? null };
     },
   });
   // Shared Notes are paid; notes kept on this device are not.
@@ -81,10 +81,10 @@ export function SessionNotesPage({ sessionId }: { sessionId: string }) {
   }
   if (!user || query.isError || !query.data) return <LoadState error={query.isError ? messageOf(query.error, 'Could not load notes') : null} />;
   const { data } = query;
-  const place = { spaceId: data.session.spaceId, folderId: data.session.folderId, itemId: data.session.deckId, contextId: data.session.contextId };
-  const title = notesTitle(data.session.title, data.contextName);
+  const place = { spaceId: data.session.spaceId, folderId: data.session.folderId, itemId: data.session.deckId, studentId: data.session.studentId };
+  const title = notesTitle(data.session.title, data.studentName);
   if (!data.canEdit) return <ReadOnlySessionNotes key={`${user.id}:${sessionId}`} sessionId={sessionId} title={title} record={data.record} tasks={data.published} place={place} inTrash={data.session.deletedAt !== null} />;
-  return <SessionNotesForm key={`${user.id}:${sessionId}`} learners={data.learners} sessionId={sessionId} title={title} contextName={data.contextName} record={data.record} published={data.published} hasContext={data.session.contextId !== null} place={place} />;
+  return <SessionNotesForm key={`${user.id}:${sessionId}`} learners={data.learners} sessionId={sessionId} title={title} studentName={data.studentName} record={data.record} published={data.published} hasStudent={data.session.studentId !== null} place={place} />;
 }
 
 /** The notes as plain text, one labelled block per filled field, for the download after a failed save. */
@@ -129,20 +129,20 @@ function ReadOnlySessionNotes({ sessionId, title, record, tasks, place, inTrash 
 function SessionNotesForm({
   sessionId,
   title,
-  contextName,
+  studentName,
   record,
   published,
   learners,
-  hasContext,
+  hasStudent,
   place,
 }: {
   sessionId: string;
   title: string;
-  contextName: string | null;
+  studentName: string | null;
   record: Awaited<ReturnType<typeof getSessionRecord>>;
   published: PublishedHomeworkTask[];
-  learners: ContextLearner[];
-  hasContext: boolean;
+  learners: StudentLearner[];
+  hasStudent: boolean;
   place: LibraryPlace;
 }) {
   const navigate = useNavigate();
@@ -160,7 +160,7 @@ function SessionNotesForm({
   const [scratchpad] = useState(() => readSessionNotes(sessionId));
   const [addedScratchpad, setAddedScratchpad] = useState(false);
   const hasSeparateScratchpad = !!record?.notes && !!scratchpad && record.notes !== scratchpad;
-  const notesLabel = hasContext ? 'Tutor notes' : 'Private notes';
+  const notesLabel = hasStudent ? 'Tutor notes' : 'Private notes';
   const form = useForm({
     defaultValues: {
       outcomes: (record?.outcomes ?? []).map(String).join('\n'),
@@ -175,10 +175,10 @@ function SessionNotesForm({
           outcomes: value.outcomes.split('\n').map((line) => line.trim()).filter(Boolean),
           notes: value.notes,
           /*
-           * The context's Next session note is the latest one written. Re-saving
+           * The student's Next session note is the latest one written. Re-saving
            * an older session's Notes with the field untouched must not put that
            * older note back, so an unchanged value on an existing record is left
-           * out (the worker then keeps both the record's and the context's note).
+           * out (the worker then keeps both the record's and the student's note).
            * A new record always sends it: a blank one clears the note.
            */
           ...(record && value.nextNote === (record.nextNote ?? '') ? {} : { nextNote: value.nextNote }),
@@ -204,23 +204,23 @@ function SessionNotesForm({
           setError('Notes were not saved. Check your connection and try again.');
           return;
         }
-        setError(cause instanceof ApiError && cause.status === 409 ? 'Another tutor changed the homework. Copy your edits before reloading.' : cause instanceof ApiError && cause.message === 'invalid-homework-audience' ? 'Check the selected learners. Each individual task needs at least one person from this context.' : messageOf(cause, 'Could not save notes'));
+        setError(cause instanceof ApiError && cause.status === 409 ? 'Another tutor changed the homework. Copy your edits before reloading.' : cause instanceof ApiError && cause.message === 'invalid-homework-audience' ? 'Check the selected learners. Each individual task needs at least one person from this student.' : messageOf(cause, 'Could not save notes'));
       }
     },
   });
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <PageHeading title={title} description={hasContext ? 'Share outcomes and homework with learners. Next session and tutor notes stay private.' : 'Record the outcomes and a note for the next session. These notes stay in this space.'} />
+      <PageHeading title={title} description={hasStudent ? 'Share outcomes and homework with learners. Next session and tutor notes stay private.' : 'Record the outcomes and a note for the next session. These notes stay in this space.'} />
       {hasSeparateScratchpad && !addedScratchpad ? <section className="grid gap-3 rounded-xl border border-border bg-card p-6" aria-labelledby="unsaved-notes-heading"><div><h2 id="unsaved-notes-heading" className="text-section">Unsaved {notesLabel.toLowerCase()}</h2><p className="mt-1 text-secondary text-muted-foreground">Kept on this device from an edit that was not saved.</p></div><p className="whitespace-pre-wrap break-words text-secondary">{scratchpad}</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={accessLost} onClick={() => { const next = [form.getFieldValue('notes'), scratchpad].filter(Boolean).join('\n\n'); form.setFieldValue('notes', next); writeSessionNotes(sessionId, next); setAddedScratchpad(true); }}>Add to private notes</Button><Button type="button" variant="ghost" onClick={() => downloadPrivateNotes(scratchpad)}>Download private notes</Button></div></section> : null}
       <form onSubmit={(event) => { event.preventDefault(); void form.handleSubmit(); }}>
         <Card>
           <CardContent className="flex flex-col gap-5 p-6">
             <fieldset disabled={accessLost} className="contents">
             <form.Field name="outcomes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-outcomes">Outcomes (one per line)</Label><Textarea id="record-outcomes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
-            <form.Field name="nextNote">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-next">Next session</Label>{contextName ? <p id="record-next-help" className="text-secondary text-muted-foreground">Tutors only. Shown with {contextName} in the Library and at the top of their next deck.</p> : null}<Textarea id="record-next" maxLength={NEXT_NOTE_MAX} aria-describedby={contextName ? 'record-next-help' : undefined} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
+            <form.Field name="nextNote">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-next">Next session</Label>{studentName ? <p id="record-next-help" className="text-secondary text-muted-foreground">Tutors only. Shown with {studentName} in the Library and at the top of their next deck.</p> : null}<Textarea id="record-next" maxLength={NEXT_NOTE_MAX} aria-describedby={studentName ? 'record-next-help' : undefined} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
             <form.Field name="notes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-notes">{notesLabel}</Label><Textarea id="record-notes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => { field.handleChange(event.currentTarget.value); writeSessionNotes(sessionId, event.currentTarget.value); }} /></div>}</form.Field>
-            {hasContext ? <form.Subscribe selector={(state) => state.isSubmitting}>{(busy) => <HomeworkAssignments tasks={tasks} audience={audience} learners={learners} onTasks={setTasks} onAudience={setAudience} disabled={busy} />}</form.Subscribe> : null}
+            {hasStudent ? <form.Subscribe selector={(state) => state.isSubmitting}>{(busy) => <HomeworkAssignments tasks={tasks} audience={audience} learners={learners} onTasks={setTasks} onAudience={setAudience} disabled={busy} />}</form.Subscribe> : null}
             </fieldset>
             {accessLost ? <form.Subscribe selector={(state) => state.values}>{(values) => <Button type="button" variant="outline" className="w-fit" onClick={() => downloadPrivateNotes(notesText([['Outcomes', values.outcomes], ['Next session', values.nextNote], [notesLabel, values.notes]]))}>Download notes</Button>}</form.Subscribe> : null}
             {error === CONTINUITY_REQUIRED ? <><ContinuityLock /><p role="alert" className="text-secondary text-destructive">Shared notes not saved. {notesLabel} are kept on this device. Download notes to keep the outcomes, Next session and {notesLabel.toLowerCase()}.</p></> : error ? <p role="alert" className="text-secondary text-destructive">{error}</p> : null}

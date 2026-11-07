@@ -274,8 +274,8 @@ describe('user prefs', () => {
       body: JSON.stringify({
         prefs: {
           pins: [
-            { kind: 'context', id: 'ctx-1', label: '  Léa Marchand  ' },
-            { kind: 'context', id: 'ctx-1', label: 'duplicate' },
+            { kind: 'student', id: 'ctx-1', label: '  Léa Marchand  ' },
+            { kind: 'student', id: 'ctx-1', label: 'duplicate' },
             { kind: 'not-a-kind', id: 'x', label: 'bogus' },
             { kind: 'session', id: 'session-1' },
             'nonsense',
@@ -292,7 +292,7 @@ describe('user prefs', () => {
     // Duplicates collapse, unknown kinds and label-less rows are dropped, the
     // rest is capped — and a key this build knows nothing about survives.
     expect(stored.prefs.pins).toHaveLength(12);
-    expect(stored.prefs.pins[0]).toEqual({ kind: 'context', id: 'ctx-1', label: 'Léa Marchand' });
+    expect(stored.prefs.pins[0]).toEqual({ kind: 'student', id: 'ctx-1', label: 'Léa Marchand' });
     expect(stored.prefs.pins.filter((p) => p.id === 'ctx-1')).toHaveLength(1);
     expect(stored.prefs.pins.some((p) => p.kind === 'not-a-kind')).toBe(false);
     expect(stored.prefs.theme).toBe('chalkboard');

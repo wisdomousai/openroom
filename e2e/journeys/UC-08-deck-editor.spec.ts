@@ -100,25 +100,25 @@ async function seedDesign(api: APIRequestContext): Promise<Seed> {
   const stamp = Date.now();
 
 
-  const contextRes = await api.post(`${BASE}/api/tutoring/contexts`, {
+  const studentRes = await api.post(`${BASE}/api/tutoring/students`, {
     headers: CSRF,
-    // Pinned to the space, because a deck is filed in its context's space —
-    // `spaceId` on the deck create only takes effect through the context.
+    // Pinned to the space, because a deck is filed in its student's space —
+    // `spaceId` on the deck create only takes effect through the student.
     data: {
       displayName: `Léa ${stamp}`,
       kind: 'person',
-      context: { language: 'fr', level: 'B1', goals: ['speaking'] },
+      student: { language: 'fr', level: 'B1', goals: ['speaking'] },
     },
   });
-  expect(contextRes.status()).toBe(201);
-  const { context } = await contextRes.json();
-  const contextId: string = context.id;
-  const spaceId: string = context.spaceId;
+  expect(studentRes.status()).toBe(201);
+  const { student } = await studentRes.json();
+  const studentId: string = student.id;
+  const spaceId: string = student.spaceId;
 
   const title = `Deck editor journey ${stamp}`;
   const deckRes = await api.post(`${BASE}/api/decks`, {
     headers: CSRF,
-    data: { title, contextId, spaceId, shape: 'tutoring', outline: seedOutline(title) },
+    data: { title, studentId, spaceId, shape: 'tutoring', outline: seedOutline(title) },
   });
   expect(deckRes.status()).toBe(201);
   const deckId: string = (await deckRes.json()).deck.id;

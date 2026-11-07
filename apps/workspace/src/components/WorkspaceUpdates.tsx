@@ -9,12 +9,12 @@ import { Button } from '@openroom/ui/components/button';
  * The prompt is timeless: it names the person and the deck, never when the
  * session happened or how often the deck was taught (AGENTS.md No-Ledger rule).
  */
-export function writeNotesLabel(row: Pick<HomeNeedsRecord, 'contextName' | 'title'>): string {
-  return row.contextName ? `Write the notes for ${row.contextName}’s session, ${row.title}` : `Write the notes for ${row.title}`;
+export function writeNotesLabel(row: Pick<HomeNeedsRecord, 'studentName' | 'title'>): string {
+  return row.studentName ? `Write the notes for ${row.studentName}’s session, ${row.title}` : `Write the notes for ${row.title}`;
 }
 
 /** Prompts that would read the same get a silent ordinal (" · 2"), like the person view's Notes group. */
-export function numberedLabels<Row extends Pick<HomeNeedsRecord, 'contextName' | 'title'>>(rows: readonly Row[]): { row: Row; label: string }[] {
+export function numberedLabels<Row extends Pick<HomeNeedsRecord, 'studentName' | 'title'>>(rows: readonly Row[]): { row: Row; label: string }[] {
   const seen = new Map<string, number>();
   return rows.map((row) => {
     const label = writeNotesLabel(row);
@@ -25,7 +25,7 @@ export function numberedLabels<Row extends Pick<HomeNeedsRecord, 'contextName' |
 }
 
 /** Invitations and unfinished Notes remain reachable from the Library. */
-export function WorkspaceUpdates({ contextId }: { contextId: string | null }) {
+export function WorkspaceUpdates({ studentId }: { studentId: string | null }) {
   const navigate = useNavigate();
   const invites = useQuery({ queryKey: ['spaces', 'invitations'], queryFn: myInvites });
   const home = useQuery({ queryKey: ['dashboard', 'home'], queryFn: getHomeSummary });
@@ -34,7 +34,7 @@ export function WorkspaceUpdates({ contextId }: { contextId: string | null }) {
     await invites.refetch();
     void navigate(to.library({ spaceId: result.spaceId }));
   } });
-  const notes = (home.data?.needsRecord ?? []).filter((row) => !contextId || row.contextId === contextId);
+  const notes = (home.data?.needsRecord ?? []).filter((row) => !studentId || row.studentId === studentId);
   if (!invites.data?.length && !notes.length) return null;
   return <section aria-label="Invitations and Notes" className="flex flex-col gap-2 border-b px-8 py-3 text-secondary">
     {invites.data?.map((invite) => <div key={invite.id} className="flex items-center justify-between gap-3">

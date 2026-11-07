@@ -1,7 +1,7 @@
 /**
- * "Share with this student" — the tutor's half of the context access link.
+ * "Share with this student" — the tutor's half of the student access link.
  *
- * Two surfaces, deliberately separate (AGENTS.md CRUD invariant): the context
+ * Two surfaces, deliberately separate (AGENTS.md CRUD invariant): the student
  * detail page lists existing links and offers a *button*; the mint form, which
  * has an option to choose, lives at its own `/links/new` route. That route is
  * also the only place the raw token ever exists in the browser, held in React
@@ -15,13 +15,13 @@ import { Link2, Plus } from 'lucide-react';
 
 import {
   ApiError,
-  listContextLinks,
-  listContextLearners,
-  getContext,
-  mintContextLink,
-  revokeContextLink,
-  type ContextLinkSummary,
-  type MintedContextLink,
+  listStudentLinks,
+  listStudentLearners,
+  getStudent,
+  mintStudentLink,
+  revokeStudentLink,
+  type StudentLinkSummary,
+  type MintedStudentLink,
 } from '../../api';
 import { ConfirmActionDialog } from '../../components/ManagementTable';
 import { Badge } from '@openroom/ui/components/badge';
@@ -42,13 +42,13 @@ import {
   linkState,
   linkStateLabel,
   liveLinkCount,
-  MAX_LINKS_PER_CONTEXT,
-} from '../../lib/context-links';
+  MAX_LINKS_PER_STUDENT,
+} from '../../lib/student-links';
 import { to } from '../../destinations';
 import { PageHeading, formatDate, messageOf } from './shared';
 import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../../components/ContinuityLock';
 
-const LINKS_KEY = (contextId: string) => ['contexts', contextId, 'links'] as const;
+const LINKS_KEY = (studentId: string) => ['students', studentId, 'links'] as const;
 
 /**
  * Real messages for the failures a tutor can actually hit, rather than
@@ -59,7 +59,7 @@ function mintErrorMessage(cause: unknown, name: string | undefined): string {
   if (isContinuityRequired(cause)) return CONTINUITY_REQUIRED;
   if (cause instanceof ApiError) {
     if (cause.status === 429) {
-      return `${who} already has ${MAX_LINKS_PER_CONTEXT} active access links. Revoke one you no longer need, then make a new one.`;
+      return `${who} already has ${MAX_LINKS_PER_STUDENT} active access links. Revoke one you no longer need, then make a new one.`;
     }
     if (cause.status === 403) {
       return 'You can run sessions in this space but not change its library, so you cannot create an access link. Ask an editor or the owner of this space.';
@@ -103,30 +103,30 @@ function CopyButton({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * The list + one button. Rendered on the context detail page only for editors
+ * The list + one button. Rendered on the student detail page only for editors
  * and owners — a presenter cannot mint, so showing them the control would be a
  * button that exists to fail.
  */
-export function ContextLinksCard({
-  contextId,
+export function StudentLinksCard({
+  studentId,
 }: {
-  contextId: string;
+  studentId: string;
 }) {
   const queryClient = useQueryClient();
-  const [pendingRevoke, setPendingRevoke] = useState<ContextLinkSummary | null>(null);
-  const linksQuery = useQuery({ queryKey: LINKS_KEY(contextId), queryFn: () => listContextLinks(contextId) });
+  const [pendingRevoke, setPendingRevoke] = useState<StudentLinkSummary | null>(null);
+  const linksQuery = useQuery({ queryKey: LINKS_KEY(studentId), queryFn: () => listStudentLinks(studentId) });
   const revokeMutation = useMutation({
-    mutationFn: (linkId: string) => revokeContextLink(contextId, linkId),
+    mutationFn: (linkId: string) => revokeStudentLink(studentId, linkId),
     onSuccess: async () => {
       setPendingRevoke(null);
-      await queryClient.invalidateQueries({ queryKey: LINKS_KEY(contextId) });
+      await queryClient.invalidateQueries({ queryKey: LINKS_KEY(studentId) });
     },
   });
 
   const links = linksQuery.data ?? null;
   const now = Date.now();
   const live = links === null ? 0 : liveLinkCount(links, now);
-  const atCap = live >= MAX_LINKS_PER_CONTEXT;
+  const atCap = live >= MAX_LINKS_PER_STUDENT;
   const error = revokeMutation.error
     ? revokeErrorMessage(revokeMutation.error)
     : linksQuery.error
@@ -181,12 +181,12 @@ export function ContextLinksCard({
             <>
               <Button type="button" disabled><Plus /> Create link</Button>
               <p className="text-caption text-muted-foreground">
-                {MAX_LINKS_PER_CONTEXT} access links are active. Revoke one before making another.
+                {MAX_LINKS_PER_STUDENT} access links are active. Revoke one before making another.
               </p>
             </>
           ) : (
             <Button asChild>
-              <Link {...to.studentLinkNew(contextId)}><Plus /> Create link</Link>
+              <Link {...to.studentLinkNew(studentId)}><Plus /> Create link</Link>
             </Button>
           )}
         </div>
@@ -211,39 +211,39 @@ const EXPIRY_OPTIONS: { value: string; label: string }[] = [
   { value: '365', label: '365 days' },
 ];
 
-/** `#/tutor/contexts/:id/links/new` — the mint form and the single reveal. */
-export function ContextLinkNewPage({ contextId }: { contextId: string }) {
+/** `#/tutor/students/:id/links/new` — the mint form and the single reveal. */
+export function StudentLinkNewPage({ studentId }: { studentId: string }) {
   const queryClient = useQueryClient();
   const [expiresInDays, setExpiresInDays] = useState('180');
   const [displayName, setDisplayName] = useState('');
   const [learnerChoice, setLearnerChoice] = useState<string | null>(null);
-  const learnersQuery = useQuery({ queryKey: ['contexts', contextId, 'learners'], queryFn: () => listContextLearners(contextId) });
-  const contextQuery = useQuery({ queryKey: ['contexts', contextId], queryFn: () => getContext(contextId) });
-  const person = contextQuery.data?.kind === 'person';
-  /** Learners other than the student themself: only an older or agent-made context has them. */
-  const otherLearners = (learnersQuery.data ?? []).filter((learner) => !person || learner.id !== `person-${contextId}`);
+  const learnersQuery = useQuery({ queryKey: ['students', studentId, 'learners'], queryFn: () => listStudentLearners(studentId) });
+  const studentQuery = useQuery({ queryKey: ['students', studentId], queryFn: () => getStudent(studentId) });
+  const person = studentQuery.data?.kind === 'person';
+  /** Learners other than the student themself: only an older or agent-made student has them. */
+  const otherLearners = (learnersQuery.data ?? []).filter((learner) => !person || learner.id !== `person-${studentId}`);
   /** A 1:1 student is the only learner, so there is nobody to choose. */
   const onePerson = person && otherLearners.length === 0;
   const selectedLearner = onePerson ? 'person' : learnerChoice ?? (person ? 'person' : otherLearners.length === 0 ? 'new' : '');
-  const ready = contextQuery.isSuccess && learnersQuery.isSuccess;
-  const [minted, setMinted] = useState<MintedContextLink | null>(null);
+  const ready = studentQuery.isSuccess && learnersQuery.isSuccess;
+  const [minted, setMinted] = useState<MintedStudentLink | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const backTo = to.student(contextId);
+  const backTo = to.student(studentId);
 
   const submit = async () => {
     setBusy(true);
     setError(null);
     try {
-      const created = await mintContextLink(contextId, {
+      const created = await mintStudentLink(studentId, {
         expiresInDays: Number(expiresInDays),
         ...(selectedLearner === 'person' ? {} : selectedLearner === 'new' ? { displayName: displayName.trim() } : { learnerId: selectedLearner }),
       });
       setMinted(created);
-      await queryClient.invalidateQueries({ queryKey: LINKS_KEY(contextId) });
-      await queryClient.invalidateQueries({ queryKey: ['contexts', contextId, 'learners'] });
+      await queryClient.invalidateQueries({ queryKey: LINKS_KEY(studentId) });
+      await queryClient.invalidateQueries({ queryKey: ['students', studentId, 'learners'] });
     } catch (cause) {
-      setError(mintErrorMessage(cause, contextQuery.data?.displayName));
+      setError(mintErrorMessage(cause, studentQuery.data?.displayName));
     } finally {
       setBusy(false);
     }
@@ -291,21 +291,21 @@ export function ContextLinkNewPage({ contextId }: { contextId: string }) {
       <PageHeading
         title="Create an access link"
         description={onePerson
-          ? `For ${contextQuery.data?.displayName ?? 'this student'}. Their writing and practice stay with them when you create a new link.`
+          ? `For ${studentQuery.data?.displayName ?? 'this student'}. Their writing and practice stay with them when you create a new link.`
           : 'Choose the same learner when replacing a link. Their writing and practice stay with them.'}
       />
       <form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
         <Card>
           <CardContent className="flex flex-col gap-5 p-6">
-            {!ready ? <p role={contextQuery.isError || learnersQuery.isError ? 'alert' : 'status'} className="text-secondary text-muted-foreground">
-              {contextQuery.isError || learnersQuery.isError ? 'Could not load learners. Reload this page to try again.' : 'Loading learners…'}
+            {!ready ? <p role={studentQuery.isError || learnersQuery.isError ? 'alert' : 'status'} className="text-secondary text-muted-foreground">
+              {studentQuery.isError || learnersQuery.isError ? 'Could not load learners. Reload this page to try again.' : 'Loading learners…'}
             </p> : null}
             {ready && !onePerson && otherLearners.length > 0 ? <div className="grid gap-2">
               <Label>Learner</Label>
               <Select value={selectedLearner} onValueChange={setLearnerChoice}>
                 <SelectTrigger aria-label="Learner"><SelectValue placeholder="Choose a learner" /></SelectTrigger>
                 <SelectContent>
-                  {person ? <SelectItem value="person">{contextQuery.data?.displayName}</SelectItem> : null}
+                  {person ? <SelectItem value="person">{studentQuery.data?.displayName}</SelectItem> : null}
                   {otherLearners.map((learner) => <SelectItem key={learner.id} value={learner.id}>{learner.displayName}</SelectItem>)}
                   <SelectItem value="new">New learner</SelectItem>
                 </SelectContent>

@@ -1,6 +1,6 @@
 import type { HomeworkAudience } from '@openroom/schema';
 import type { DeckShape, PresentationPosition, SessionStatus } from '@openroom/schema';
-import type { ApiErrorBody, ExportFormat, SessionContext } from '@openroom/editor';
+import type { ApiErrorBody, ExportFormat, SessionStudent } from '@openroom/editor';
 import {
   ApiError,
   baseUrl,
@@ -16,7 +16,7 @@ export interface SessionSummary {
   folderId: string | null;
   deckId: string;
   deckVersion: number;
-  contextId: string | null;
+  studentId: string | null;
   title: string;
   shape: DeckShape;
   status: SessionStatus;
@@ -28,14 +28,14 @@ export interface SessionSummary {
 export async function listSessions(options: {
   trash?: boolean;
   deckId?: string;
-  contextId?: string;
+  studentId?: string;
   folderId?: string;
   spaceId?: string;
 } = {}): Promise<SessionSummary[]> {
   const query = new URLSearchParams();
   if (options.trash) query.set('trash', '1');
   if (options.deckId) query.set('deckId', options.deckId);
-  if (options.contextId) query.set('contextId', options.contextId);
+  if (options.studentId) query.set('studentId', options.studentId);
   if (options.folderId !== undefined) query.set('folderId', options.folderId);
   if (options.spaceId) query.set('spaceId', options.spaceId);
   const qs = query.toString();
@@ -51,7 +51,7 @@ export async function createSession(input: {
   deckId: string;
   deckVersion?: number;
   title?: string;
-  contextId?: string;
+  studentId?: string;
   folderId?: string | null;
   spaceId?: string | null;
 }): Promise<SessionSummary> {
@@ -92,7 +92,7 @@ export async function launchSession(id: string, options: { start?: boolean; vers
 export interface SessionRecord {
   id: string;
   sessionId: string;
-  contextId: string | null;
+  studentId: string | null;
   sessionCode: string | null;
   deckVersion: number;
   outcomes: unknown[];
@@ -133,12 +133,12 @@ export function saveSessionRecord(
 }
 
 export function requestPermanentDeletion(
-  type: 'context' | 'deck' | 'session',
+  type: 'student' | 'deck' | 'session',
   id: string,
 ): Promise<DeletionIntent> {
   const base =
-    type === 'context'
-      ? `/api/tutoring/contexts/${encodeURIComponent(id)}`
+    type === 'student'
+      ? `/api/tutoring/students/${encodeURIComponent(id)}`
       : type === 'deck'
         ? `/api/decks/${encodeURIComponent(id)}`
         : `/api/sessions/${encodeURIComponent(id)}`;
@@ -192,15 +192,15 @@ export async function fetchStageToken(sessionCode: string, hostToken: string): P
 
 /**
  * The console's mode is derived from this, not from a control: a session either
- * came from a run with a context (tutoring) or it did not (shared). Host token
+ * came from a run with a student (tutoring) or it did not (shared). Host token
  * only — the answer names a person.
  */
-export async function fetchSessionContext(sessionCode: string, hostToken: string): Promise<SessionContext> {
-  const res = await fetch(`${baseUrl}/api/sessions/${encodeURIComponent(sessionCode)}/context`, {
+export async function fetchSessionStudent(sessionCode: string, hostToken: string): Promise<SessionStudent> {
+  const res = await fetch(`${baseUrl}/api/sessions/${encodeURIComponent(sessionCode)}/student`, {
     headers: { authorization: `Bearer ${hostToken}` },
   });
-  if (!res.ok) throw new ApiError(res.status, `Could not load the session's context (HTTP ${res.status})`);
-  return (await res.json()) as SessionContext;
+  if (!res.ok) throw new ApiError(res.status, `Could not load the session's student (HTTP ${res.status})`);
+  return (await res.json()) as SessionStudent;
 }
 
 export function exportUrl(sessionCode: string, format: ExportFormat): string {

@@ -23,7 +23,7 @@ const LAUNCHED = {
           stageToken: { type: 'string' },
           stageUrl: { type: 'string', format: 'uri', description: 'Absolute projector page URL carrying the stage token' },
           joinUrl: { type: 'string', format: 'uri', description: 'Absolute join URL. Absent for an identified session: mint the student link with sessionCode for the join URL that carries it.' },
-          contextId: { type: 'string', description: 'The student context the session was filed under, when there is one' },
+          studentId: { type: 'string', description: 'The student the session was filed under, when there is one' },
           deckId: { type: 'string' },
           deckVersion: { type: 'integer' },
           status: { type: 'string', enum: ['draft', 'live'] },
@@ -96,7 +96,7 @@ export function openapiDocument(origin: string): unknown {
       title: 'OpenRoom API',
       version: '0.2.0',
       description:
-        'Business control plane for tutor-delivered sessions plus the live classroom runtime. Original school documents stay in the external preparation agent; OpenRoom stores typed outlines and presentation contexts (person, group, class, event).',
+        'Business control plane for tutor-delivered sessions plus the live classroom runtime. Original school documents stay in the external preparation agent; OpenRoom stores typed outlines and students (person, group, class, event).',
       contact: { url: origin, email: 'hello@openroom.app' },
     },
     servers: [{ url: origin }],
@@ -120,7 +120,7 @@ export function openapiDocument(origin: string): unknown {
             '401': { description: 'Account authentication required' }, '403': { description: 'CSRF or owner-paid collaboration required' },
             '404': { description: 'Source deck or session unavailable' }, '409': { description: 'Conflicting retry identity, missing source content or ended session' },
             '410': { description: 'Expired live allocation' }, '413': { description: 'Composition exceeds stored content limit' },
-            '422': { description: 'Invalid references, duplicate native slides, missing question, mixed space/context/identity or outline limits exceeded' },
+            '422': { description: 'Invalid references, duplicate native slides, missing question, mixed space/student/identity or outline limits exceeded' },
           },
         },
       },
@@ -208,10 +208,10 @@ export function openapiDocument(origin: string): unknown {
                       description:
                         'Generated nickname used to rejoin a nickname session as the same participant',
                     },
-                    contextLink: {
+                    studentLink: {
                       type: 'string',
                       description:
-                        'Context access link (orlnk_…) for an identified session. The session must ' +
+                        'Student access link (orlnk_…) for an identified session. The session must ' +
                         'already be started by its host; a session still in the lobby answers ' +
                         '409 session-not-started. Creating an identified session requires the continuity ' +
                         'capability; joining one already running does not recheck it.',
@@ -244,13 +244,13 @@ export function openapiDocument(origin: string): unknown {
             '404': { description: 'Unknown session or recovery name' },
             '403': {
               description:
-                'Identified session joined without a context link (context-link-required), or a ' +
-                'link that is invalid, revoked, expired, or issued for a different context ' +
-                '(context-link-invalid)',
+                'Identified session joined without a student link (student-link-required), or a ' +
+                'link that is invalid, revoked, expired, or issued for a different student ' +
+                '(student-link-invalid)',
             },
             '409': {
               description:
-                'Name recovery is unavailable for this session, a context link was offered to a ' +
+                'Name recovery is unavailable for this session, a student link was offered to a ' +
                 'session that is not identified (identified-join-unavailable), or the identified ' +
                 'session has not been started yet (session-not-started), or the session admits no new ' +
                 'participant (session-full): without the space owner\'s largeSessions capability at start a ' +
@@ -408,13 +408,13 @@ export function openapiDocument(origin: string): unknown {
           },
         },
       },
-      '/api/tutoring/contexts': {
+      '/api/tutoring/students': {
         get: {
-          operationId: 'listContexts',
-          summary: 'List active or trashed presentation contexts',
+          operationId: 'listStudents',
+          summary: 'List active or trashed students',
           description:
-            'Contexts answer who an outline is for: person, group, class, event, or other. '
-            + 'Contexts need no paid capability. nextNote appears only while the space owner holds continuity.',
+            'Students answer who an outline is for: person, group, class, event, or other. '
+            + 'Students need no paid capability. nextNote appears only while the space owner holds continuity.',
           security: [{ UserBearer: [] }, { SessionCookie: [] }],
           parameters: [
             { name: 'trash', in: 'query', schema: { type: 'string', enum: ['0', '1'] } },
@@ -425,11 +425,11 @@ export function openapiDocument(origin: string): unknown {
               schema: { type: 'string', enum: ['person', 'group', 'class', 'event', 'other'] },
             },
           ],
-          responses: { '200': { description: 'Context summaries' } },
+          responses: { '200': { description: 'Student summaries' } },
         },
         post: {
-          operationId: 'createContext',
-          summary: 'Create a presentation context with curated notes',
+          operationId: 'createStudent',
+          summary: 'Create a student with curated notes',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
           requestBody: {
             required: true,
@@ -446,28 +446,28 @@ export function openapiDocument(origin: string): unknown {
                       description: 'Defaults to person',
                     },
                     spaceId: { type: 'string' },
-                    context: { type: 'object', additionalProperties: true },
+                    student: { type: 'object', additionalProperties: true },
                   },
                 },
               },
             },
           },
-          responses: { '201': { description: 'Context created' } },
+          responses: { '201': { description: 'Student created' } },
         },
       },
-      '/api/tutoring/contexts/{contextId}/returned': {
+      '/api/tutoring/students/{studentId}/returned': {
         get: {
-          operationId: 'getContextReturned',
-          summary: 'Writing and missed practice for this student context — no dates, no scores',
+          operationId: 'getStudentReturned',
+          summary: 'Writing and missed practice for this student — no dates, no scores',
           security: [{ UserBearer: [] }, { SessionCookie: [] }],
-          parameters: [{ name: 'contextId', in: 'path', required: true, schema: { type: 'string' } }],
+          parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
           responses: { '200': { description: 'Pickup pack' }, '403': { description: 'forbidden (presenter cannot read returned work) or continuity-required' } },
         },
       },
       '/api/learner/practice': {
         get: {
           operationId: 'getLearnerPractice',
-          summary: 'Exercises due for the learner who holds this context link; itemId selects one to revisit. No due dates',
+          summary: 'Exercises due for the learner who holds this student link; itemId selects one to revisit. No due dates',
           security: [{ LearnerLink: [] }],
           parameters: [{ name: 'itemId', in: 'query', required: false, schema: { type: 'string' } }],
           responses: {
@@ -486,45 +486,45 @@ export function openapiDocument(origin: string): unknown {
           },
         },
       },
-      '/api/tutoring/contexts/{contextId}': {
+      '/api/tutoring/students/{studentId}': {
         get: {
-          operationId: 'getContext',
-          summary: 'Read a context and curated notes',
+          operationId: 'getStudent',
+          summary: 'Read a student and curated notes',
           security: [{ UserBearer: [] }, { SessionCookie: [] }],
-          parameters: [{ name: 'contextId', in: 'path', required: true, schema: { type: 'string' } }],
-          responses: { '200': { description: 'Context detail' }, '404': { description: 'Not found' } },
+          parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { '200': { description: 'Student detail' }, '404': { description: 'Not found' } },
         },
         patch: {
-          operationId: 'updateContext',
-          summary: 'Update context name, kind, or curated notes',
+          operationId: 'updateStudent',
+          summary: 'Update student name, kind, or curated notes',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
-          parameters: [{ name: 'contextId', in: 'path', required: true, schema: { type: 'string' } }],
-          responses: { '200': { description: 'Context updated' } },
+          parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { '200': { description: 'Student updated' } },
         },
         delete: {
-          operationId: 'trashContext',
-          summary: 'Move a context to recoverable trash',
+          operationId: 'trashStudent',
+          summary: 'Move a student to recoverable trash',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
-          parameters: [{ name: 'contextId', in: 'path', required: true, schema: { type: 'string' } }],
+          parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
           responses: { '200': { description: 'Moved to trash; recoverable' } },
         },
       },
-      '/api/tutoring/contexts/{contextId}/restore': {
+      '/api/tutoring/students/{studentId}/restore': {
         post: {
-          operationId: 'restoreContext',
-          summary: 'Restore a context from trash',
+          operationId: 'restoreStudent',
+          summary: 'Restore a student from trash',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
-          parameters: [{ name: 'contextId', in: 'path', required: true, schema: { type: 'string' } }],
+          parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
           responses: { '200': { description: 'Restored' } },
         },
       },
-      '/api/tutoring/contexts/{contextId}/permanent-deletion': {
+      '/api/tutoring/students/{studentId}/permanent-deletion': {
         post: {
-          operationId: 'requestContextPurge',
+          operationId: 'requestStudentPurge',
           summary: 'Request a short-lived browser confirmation URL',
           description: 'The purge cannot be completed through this API, MCP, or CLI. A signed-in user must open and confirm the returned URL.',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
-          parameters: [{ name: 'contextId', in: 'path', required: true, schema: { type: 'string' } }],
+          parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
           responses: { '202': { description: 'Browser confirmation required' } },
         },
       },
@@ -560,8 +560,8 @@ export function openapiDocument(origin: string): unknown {
                       enum: ['tutoring', 'lecture', 'meeting', 'event', 'interaction', 'other'],
                       description: 'Defaults to tutoring',
                     },
-                    contextId: { type: 'string', description: 'Presentation context this deck is for' },
-                    spaceId: { type: 'string', description: 'Workspace space; ignored when contextId or folderId resolves one' },
+                    studentId: { type: 'string', description: 'Student this deck is for' },
+                    spaceId: { type: 'string', description: 'Workspace space; ignored when studentId or folderId resolves one' },
                     folderId: { type: 'string', description: 'Must belong to the same space' },
                     content: {
                       type: 'object',
@@ -580,7 +580,7 @@ export function openapiDocument(origin: string): unknown {
           },
           responses: {
             '201': { description: 'Deck created (session included only when createSession was set)' },
-            '404': { description: 'context or folder not found in this space' },
+            '404': { description: 'student or folder not found in this space' },
             '422': { description: 'Invalid Outline v1' },
           },
         },
@@ -599,7 +599,7 @@ export function openapiDocument(origin: string): unknown {
         },
         patch: {
           operationId: 'updateDeck',
-          summary: 'Update deck title, shape, location, or context default',
+          summary: 'Update deck title, shape, location, or student default',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
           parameters: [{ name: 'deckId', in: 'path', required: true, schema: { type: 'string' } }],
           requestBody: {
@@ -611,7 +611,7 @@ export function openapiDocument(origin: string): unknown {
                   properties: {
                     title: { type: 'string' },
                     shape: { type: 'string', enum: ['tutoring', 'lecture', 'meeting', 'event', 'interaction', 'other'] },
-                    contextId: { type: 'string', description: 'Required when changing context; omission keeps the current link' },
+                    studentId: { type: 'string', description: 'Required when changing student; omission keeps the current link' },
                     folderId: { type: ['string', 'null'], description: 'Must belong to the same space; null moves to root' },
                     metadata: { type: 'object', additionalProperties: true },
                   },
@@ -621,7 +621,7 @@ export function openapiDocument(origin: string): unknown {
           },
           responses: {
             '200': { description: 'Deck updated' },
-            '404': { description: 'context or folder not found in this space' },
+            '404': { description: 'student or folder not found in this space' },
             '409': { description: 'resource-in-trash' },
           },
         },
@@ -742,7 +742,7 @@ export function openapiDocument(origin: string): unknown {
             '404': { description: 'deck-not-found' },
             '409': { description: 'request-id-conflict, deck-content-not-found or session-already-ended' },
             '410': { description: 'session-expired' },
-            '422': { description: 'request-id-required, activity-not-found or identified-session-needs-context (an identified deck must be filed under a student)' },
+            '422': { description: 'request-id-required, activity-not-found or identified-session-needs-student (an identified deck must be filed under a student)' },
           },
         },
       },
@@ -755,12 +755,12 @@ export function openapiDocument(origin: string): unknown {
       '/api/sessions': {
         get: {
           operationId: 'listSessions',
-          summary: 'List sessions; filter by deck, context, space, or folder',
+          summary: 'List sessions; filter by deck, student, space, or folder',
           security: [{ UserBearer: [] }, { SessionCookie: [] }],
           parameters: [
             { name: 'trash', in: 'query', schema: { type: 'string', enum: ['0', '1'] } },
             { name: 'deckId', in: 'query', schema: { type: 'string' } },
-            { name: 'contextId', in: 'query', schema: { type: 'string' } },
+            { name: 'studentId', in: 'query', schema: { type: 'string' } },
             { name: 'spaceId', in: 'query', schema: { type: 'string' } },
             { name: 'folderId', in: 'query', schema: { type: 'string' } },
           ],
@@ -787,7 +787,7 @@ export function openapiDocument(origin: string): unknown {
                   ],
                   properties: {
                     deckId: { type: 'string', description: 'Durable session: the deck it delivers' },
-                    contextId: { type: 'string', description: 'Defaults to the deck context when omitted' },
+                    studentId: { type: 'string', description: 'Defaults to the deck student when omitted' },
                     deckVersion: { type: 'integer', description: 'Pin a version; defaults to the current one' },
                     title: { type: 'string', description: 'Falls back to the deck title' },
                     shape: { type: 'string', enum: ['tutoring', 'lecture', 'meeting', 'event', 'interaction', 'other'] },
@@ -823,8 +823,8 @@ export function openapiDocument(origin: string): unknown {
               },
             },
             '403': { description: 'team-required, guest-list-required (identityMode guest-list) or continuity-required (identityMode identified), from the space owner or the creating account' },
-            '404': { description: 'deck, context, or folder not found' },
-            '422': { description: 'invalid-deck-version, status-server-owned, or identified-session-needs-context (an outline body has no student context, so identified is refused; start a deck filed under the student instead)' },
+            '404': { description: 'deck, student, or folder not found' },
+            '422': { description: 'invalid-deck-version, status-server-owned, or identified-session-needs-student (an outline body has no student, so identified is refused; start a deck filed under the student instead)' },
           },
         },
       },
@@ -832,7 +832,7 @@ export function openapiDocument(origin: string): unknown {
         get: { operationId: 'getSession', summary: 'Read a session', security: [{ UserBearer: [] }, { SessionCookie: [] }], parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Session plus canEdit from current space role and trash state; writes recheck access independently' } } },
         patch: {
           operationId: 'updateSession',
-          summary: 'Update session title, location, or context',
+          summary: 'Update session title, location, or student',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
           parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }],
           requestBody: {
@@ -843,7 +843,7 @@ export function openapiDocument(origin: string): unknown {
                   type: 'object',
                   properties: {
                     title: { type: 'string' },
-                    contextId: { type: 'string', description: 'Required when changing context; omission keeps the current link' },
+                    studentId: { type: 'string', description: 'Required when changing student; omission keeps the current link' },
                     folderId: { type: ['string', 'null'], description: 'Must belong to the same space; null moves to root' },
                   },
                 },
@@ -852,7 +852,7 @@ export function openapiDocument(origin: string): unknown {
           },
           responses: {
             '200': { description: 'Updated' },
-            '404': { description: 'context or folder not found in this space' },
+            '404': { description: 'student or folder not found in this space' },
             '409': { description: 'resource-in-trash' },
             '422': { description: 'status-server-owned or invalid-status' },
           },
@@ -884,7 +884,7 @@ export function openapiDocument(origin: string): unknown {
             '201': LAUNCHED,
             '403': { description: 'team-required, guest-list-required or continuity-required (identified sessions), from the space owner' },
             '409': { description: 'session-already-live or deck-content-not-found' },
-            '422': { description: 'identified-session-needs-context (an identified deck must be filed under a student) or invalid-presentation-cursor' },
+            '422': { description: 'identified-session-needs-student (an identified deck must be filed under a student) or invalid-presentation-cursor' },
           },
         },
       },
@@ -905,7 +905,7 @@ export function openapiDocument(origin: string): unknown {
                   properties: {
                     outcomes: { type: 'array', items: {}, maxItems: 50 },
                     notes: { type: 'string' },
-                    nextNote: { type: 'string', description: 'Kept on the student context: where to start next time.' },
+                    nextNote: { type: 'string', description: 'Kept on the student: where to start next time.' },
                     homework: {
                       type: 'array',
                       maxItems: 50,
@@ -1059,7 +1059,7 @@ export function openapiDocument(origin: string): unknown {
         LearnerLink: {
           type: 'http',
           scheme: 'bearer',
-          description: 'Personal context access link (orlnk_…) held by one learner',
+          description: 'Personal student access link (orlnk_…) held by one learner',
         },
       },
     },

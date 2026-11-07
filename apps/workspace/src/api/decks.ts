@@ -11,7 +11,7 @@ export interface DeckSummary {
   id: string;
   spaceId: string;
   folderId: string | null;
-  contextId: string | null;
+  studentId: string | null;
   title: string;
   shape: DeckShape;
   currentVersion: number;
@@ -51,13 +51,13 @@ export async function listDecks(options: {
   trash?: boolean;
   folderId?: string;
   spaceId?: string;
-  contextId?: string;
+  studentId?: string;
 } = {}): Promise<DeckSummary[]> {
   const query = new URLSearchParams();
   if (options.trash) query.set('trash', '1');
   if (options.folderId !== undefined) query.set('folderId', options.folderId);
   if (options.spaceId) query.set('spaceId', options.spaceId);
-  if (options.contextId) query.set('contextId', options.contextId);
+  if (options.studentId) query.set('studentId', options.studentId);
   const qs = query.toString();
   const body = await request<{ decks: DeckSummary[] }>(`/api/decks${qs ? `?${qs}` : ''}`);
   return body.decks ?? [];
@@ -70,7 +70,7 @@ export function getDeck(id: string, version?: number): Promise<DeckDetailRespons
 
 export async function createDeck(input: {
   title?: string;
-  contextId?: string;
+  studentId?: string;
   shape?: DeckShape;
   folderId?: string | null;
   spaceId?: string | null;
@@ -89,7 +89,7 @@ export function updateDeck(
   id: string,
   input: {
     title?: string;
-    contextId?: string;
+    studentId?: string;
     shape?: DeckShape;
     folderId?: string | null;
     spaceId?: string | null;

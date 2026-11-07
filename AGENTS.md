@@ -10,7 +10,7 @@ OpenRoom is **not** a SaaS ops dashboard or teaching ERP. The product is three t
 | **Share / invite** | A **space** is the sharing boundary — members and invites share one folder tree of decks | Per-item ACLs, project hierarchy, approval workflows |
 | **Common tutoring space** | Folders of decks; start a session when you teach; optional short Notes after | Week stats, “next up” calendars, delivery-management shelves |
 
-Infrastructure stores a durable session row (live instance + record linkage). **UI must not** turn sessions into a shelf teachers curate. Prefer **deck**, **folder**, **space**, **context**, **Notes**.
+Infrastructure stores a durable session row (live instance + record linkage). **UI must not** turn sessions into a shelf teachers curate. Prefer **deck**, **folder**, **space**, **student**, **Notes**.
 
 When adding a surface, ask: does this help open a deck, share a space, or teach from a common place? If it only helps “manage deliveries,” delete it.
 
@@ -53,23 +53,23 @@ credential is ever converted into another. Keep this true in code review:
 | `or_session` cookie (+ CSRF header on writes) | who the tutor is | the control plane only |
 | Personal API token `orpat_…` | the same tutor, headless | the same control plane, minus final purge |
 | Session capability token (`apps/relay/src/tokens.ts`) | a seat in one live session | exactly that session |
-| **Context access link `orlnk_…`** | possession of one context's learner credential | exactly that context's learner-visible records |
+| **Student access link `orlnk_…`** | possession of one student's learner credential | exactly that student's learner-visible records |
 | **Guest link `orinv_…`** | this named guest on one session's guest list | join **that one session** as that host-authored name |
 
-A **context access link is not an account**. It resolves to a `VerifiedContextLink`
-(link id, learner id, context id, display name) and *never* to a `SessionUser`, so it physically
+A **student access link is not an account**. It resolves to a `VerifiedStudentLink`
+(link id, learner id, student id, display name) and *never* to a `SessionUser`, so it physically
 cannot be handed to `requireControlUser`. Join forwards the display name and the
-stable context-local learner id as a seat key — never the `orlnk_…` token — so two named people in one
+stable student-local learner id as a seat key — never the `orlnk_…` token — so two named people in one
 group do not collapse into one participant. It creates no `users` row, grants no space
 membership, carries no role, and is rejected on every `/api/tutoring/*` and `/api/my/*`
-path. The blast radius of a leaked link is exactly one context.
+path. The blast radius of a leaked link is exactly one student.
 
-A **guest link is not a context access link**. It proves a named seat in **one
-session**, not a context. The host types the names; the participant never types one.
+A **guest link is not a student access link**. It proves a named seat in **one
+session**, not a student. The host types the names; the participant never types one.
 Join forwards `{ displayName, seatKey }` — never the `orinv_…` token. It creates
 no `users` row, grants no space membership, unlocks no learner records, and is
 rejected on every `/api/tutoring/*`, `/api/learner/*`, and `/api/my/*` path. A
-context link cannot enter a guest-list session; a guest link cannot enter an
+student link cannot enter a guest-list session; a guest link cannot enter an
 identified session. Guest-list sessions may join from the lobby (a committee files in
 before the host starts). Do not extend the tutoring start-gate to them. The
 blast radius of a leaked guest link is exactly one session.
@@ -94,7 +94,7 @@ Rules that follow, and that a change must not quietly break:
 - `/api/learner/*` is dispatched **before** the control plane, so no learner path can
   fall through to cookie or PAT auth; an unknown `/api/learner/*` path 404s there rather
   than continuing down the router.
-- The learner context id comes from the verified credential — never from a path
+- The student id comes from the verified credential — never from a path
   parameter, query string, or body field.
 - Learner responses are built from an explicit **column allowlist**, not `SELECT *`
   minus deletions. Adding a column to `sessions` or `session_records` must not leak it.
@@ -105,17 +105,17 @@ Rules that follow, and that a change must not quietly break:
 - The learner page (`#/learn?token=…`) renders outside the workspace shell: no nav, no
   library, no sign-in affordance. Do not fold it into the signed-in host chrome, and do
   not add a "create an account" path to it.
-- A live session proves its context only through its durable session row
-  (`sessions.context_id`). A live session with no durable session row has no context, so
+- A live session proves its student only through its durable session row
+  (`sessions.student_id`). A live session with no durable session row has no student, so
   no link may identify into it. Do not add a second, weaker association path.
 - An **identified** session admits joins only while `status === 'live'`. The tutor pressing
   start is the gate, so a leaked link is useless against an unattended lobby. Do not
   extend that restriction to anonymous or nickname sessions — they join from the lobby
   on purpose.
-- A link whose context owner lacks `continuity` answers **exactly like a revoked link**
-  (same `401`, same throttle charge), from inside `requireContextLink`. Never give
+- A link whose student owner lacks `continuity` answers **exactly like a revoked link**
+  (same `401`, same throttle charge), from inside `requireStudentLink`. Never give
   learner routes a distinct paywall status.
-- The learner throttle lives **in `requireContextLink`**, ahead of the credential lookup,
+- The learner throttle lives **in `requireStudentLink`**, ahead of the credential lookup,
   so new learner routes are budgeted by construction and the `429` is not an oracle. Keep
   it there rather than in individual routes, keep it in front of the lookup, and keep the
   client key a salted hash — no raw IP column.
@@ -148,7 +148,7 @@ stamp — anywhere outside three sanctioned homes:
 
 1. The **History tab** of the deck editor's task pane (version list with dates).
 2. The two **admin tables** (Settings API tokens, Space members) and the
-   context-link lifecycle card (credential expiry is security, not delivery).
+   student-link lifecycle card (credential expiry is security, not delivery).
 3. A **live session's own live counts** (joined / answered / votes / countdown).
 
 A row states what is *in* the file (`6 slides · 2 ask the class · homework`).
@@ -205,11 +205,11 @@ Never put a collection and its create or edit form on the same screen.
 ### Standalone decks and optional students
 
 - **New deck** creates a blank file and opens its editor immediately. No metadata form or student gate.
-- Cloud location is inherited from the current space/folder. An explicitly selected student supplies `contextId`; otherwise it stays null. Never choose the first student or generate a compatibility context.
-- A session inherits its deck and optional context. Student-specific identity and learner records require a real context; presenting and participating do not.
+- Cloud location is inherited from the current space/folder. An explicitly selected student supplies `studentId`; otherwise it stays null. Never choose the first student or generate a compatibility student.
+- A session inherits its deck and optional student. Student-specific identity and learner records require a real student; presenting and participating do not.
 - **Present** opens the presenter without participants. **Start session** enables participation in that view, preserving slide and reveal position. Live state remains authoritative in the session Durable Object.
 - There is no global `isTutoring` product mode. Document tools depend on document content, participation on live session state, identity on the verified credential, and collaboration on space membership plus the owner entitlement. Do not infer layout or annotation tools from a linked student.
-- Contexts (students and classes, every kind) are free. The teaching loop — Notes (including the next-time sticky and homework published on the record), context people and access links, learner work, practice and feedback, identified sessions and the learner plane — is the space owner's paid `continuity` capability (`403 continuity-required`) in every workspace experience; shared workspaces and invitations use the owner `team` entitlement, retained results the `keep` entitlement. Live sessions, decks and the results recap stay free; a live session admits 50 participants unless the owner holds `largeSessions` at start (`409 session-full` for the next new participant, re-entry always admitted). Invitees do not need their own licence. Deletion, restore and link revocation are never gated, and a deployment without billing (`PADDLE_ENVIRONMENT` unset) holds every capability. Student context links remain separate credentials, with no account or workspace membership.
+- Students of every kind (person, group, class) are free. The teaching loop — Notes (including the next-time sticky and homework published on the record), learners and access links, learner work, practice and feedback, identified sessions and the learner plane — is the space owner's paid `continuity` capability (`403 continuity-required`) in every workspace experience; shared workspaces and invitations use the owner `team` entitlement, retained results the `keep` entitlement. Live sessions, decks and the results recap stay free; a live session admits 50 participants unless the owner holds `largeSessions` at start (`409 session-full` for the next new participant, re-entry always admitted). Invitees do not need their own licence. Deletion, restore and link revocation are never gated, and a deployment without billing (`PADDLE_ENVIRONMENT` unset) holds every capability. Student links remain separate credentials, with no account or workspace membership.
 - **Notes** belong to a session and stay reachable from the Library. A session is started from a deck, never scheduled or filed as a library item.
 
 ### Entity panel, not record inspector
@@ -234,7 +234,7 @@ field dump; the moment a third typed field appears, it is. Rules:
   - **Move** — a filterable tree picker (the same hierarchy as the rail) plus drag-and-drop.
 
   Tags are deleted. Everything else routes to the entity's authoring surface. For a deck that is
-  always the deck editor — never a parallel metadata form. Context link, description,
+  always the deck editor — never a parallel metadata form. Student link, description,
   versioning, and **any typed field of the record** stay out of the panel. This list is closed. Adding a third is a
   rule change, not a judgement call.
 - **Move is not a location field.** It is the drag gesture given a keyboard-reachable form. Location
@@ -255,11 +255,11 @@ Short rules that still apply in review:
 
 - The structured authoring surface is the **deck editor**, and the teacher-facing verb is **“Open”** (into the editor) or **“Edit deck”** where a verb is still needed. Code says the same thing: the component is `DeckEditor`, the routed page is `DeckEditorPage`, and the implementation folder is `packages/editor/src/deck-edit/**`. `Prep` and *Outline Designer* (`OutlineDesigner`) are **retired** — do not reintroduce them in code, comments, or copy, and do not introduce user-facing Session Builder, Builder, or “Edit outline file”. (The verb *prepare* is unaffected.) The route is `#/decks/:id/edit`, and the domain / API / DB / MCP / CLI noun is `deck`.
 - **The deck editor owns the viewport.** `#/decks/:id/edit` hangs off the router root, not the workspace shell: no sidebar, no max-width, no page padding — the same arrangement the live console uses. This is a deliberate exception, not drift. Editing is **not** a nav item: it is reached from a deck.
-- Workspace chrome follows the space's explicit `experience`: **Tutoring** uses Library · Students · Shared · Trash · Settings; **Classroom** uses Classes in place of Students; **Training** has no student/class section. The space switcher reaches every owned or invited space, grouped by experience. This choice affects navigation and starters only, never document tools, credentials, membership, or entitlements. Students and classes are explicit context shortcuts; Shared lists invited spaces. The Library retains URL-owned folder location and selection, immediate folder children, and search results with their location. Use direct product labels, never first-person narrator copy.
-- **“Card” is retired: the word is `context` in UI and in the domain alike.** A context is four light questions and a paragraph, pinned to that person's folder — not a CRM form and not a nav shelf. A space holds one context; a context may be reused across spaces. `Card`/`CardContent` from `@openroom/ui` stay the shadcn layout primitive and never mean a context.
+- Workspace chrome follows the space's explicit `experience`: **Tutoring** uses Library · Students · Shared · Trash · Settings; **Classroom** uses Classes in place of Students; **Training** has no student/class section. The space switcher reaches every owned or invited space, grouped by experience. This choice affects navigation and starters only, never document tools, credentials, membership, or entitlements. Students and classes are explicit student shortcuts; Shared lists invited spaces. The Library retains URL-owned folder location and selection, immediate folder children, and search results with their location. Use direct product labels, never first-person narrator copy.
+- **“Card” is retired: the word is `student` in UI and in the domain alike.** A student is four light questions and a paragraph, pinned to that person's folder — not a CRM form and not a nav shelf. A space holds one student; a student may be reused across spaces. `Card`/`CardContent` from `@openroom/ui` stay the shadcn layout primitive and never mean a student.
 - **Decks and sessions have no collection route**: decks live in folders; a live session is only ever **Live now** in the Library. `routing.ts` must not be able to *emit* a link to a deleted collection, and an unknown hash lands on the Library rather than 404ing.
 - The noun is `deck` in UI, domain, API, DB, MCP and CLI alike; browser hashes are `#/decks/new`, `#/decks/:id`, and `#/decks/:id/edit`.
-- A **session** is an **occurrence**, not a nav peer and not a folder row. There is still **no collection route** for decks, sessions, or Notes (`#/sessions` is not a screen), and **a session exists only because a deck was started** — there is no “New session” and no “Schedule session” form, route, or hash. Notes remain reachable from the Library's timeless write-notes prompt, from a quiet Notes group on the person's folder, and from learner links. Instance routes stay for CRUD, deep links, and agents; `PATCH /api/sessions/{id}` (title, context, folder) remains for agents. Type-filter chips (Decks / Sessions / Notes / …) are deleted.
+- A **session** is an **occurrence**, not a nav peer and not a folder row. There is still **no collection route** for decks, sessions, or Notes (`#/sessions` is not a screen), and **a session exists only because a deck was started** — there is no “New session” and no “Schedule session” form, route, or hash. Notes remain reachable from the Library's timeless write-notes prompt, from a quiet Notes group on the person's folder, and from learner links. Instance routes stay for CRUD, deep links, and agents; `PATCH /api/sessions/{id}` (title, student, folder) remains for agents. Type-filter chips (Decks / Sessions / Notes / …) are deleted.
 
 ## Agent-facing surface (one source per fact)
 

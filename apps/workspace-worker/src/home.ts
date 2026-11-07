@@ -3,7 +3,7 @@
  * already loads.
  *
  * Home builds "Next up" and "Recently touched" from `/api/sessions`,
- * `/api/decks` and `/api/tutoring/contexts`,
+ * `/api/decks` and `/api/tutoring/students`,
  * which it loads anyway. One zone needs a join those endpoints do not do:
  *
  *   * **Needs a record** — sessions that were delivered and never written up.
@@ -50,15 +50,15 @@ export async function homeRoute(request: Request, env: ControlEnv): Promise<Resp
   const needsRecord = await env.DB.prepare(
     `SELECT r.id            AS id,
             r.title         AS title,
-            r.context_id    AS context_id,
-            c.display_name  AS context_name,
+            r.student_id    AS student_id,
+            c.display_name  AS student_name,
             r.space_id      AS space_id,
             sp.owner_user_id AS owner_user_id,
             MAX(ro.created_at) AS delivered_at
        FROM sessions r
        JOIN live_sessions ro ON ro.session_id = r.id
        JOIN spaces sp ON sp.id = r.space_id
-       LEFT JOIN contexts c ON c.id = r.context_id AND c.deleted_at IS NULL
+       LEFT JOIN students c ON c.id = r.student_id AND c.deleted_at IS NULL
       WHERE r.deleted_at IS NULL
         AND NOT EXISTS (SELECT 1 FROM session_records rr WHERE rr.session_id = r.id)
         AND EXISTS (SELECT 1 FROM space_members sm
@@ -72,8 +72,8 @@ export async function homeRoute(request: Request, env: ControlEnv): Promise<Resp
     .all<{
       id: string;
       title: string;
-      context_id: string | null;
-      context_name: string | null;
+      student_id: string | null;
+      student_name: string | null;
       space_id: string;
       owner_user_id: string;
       delivered_at: number;
@@ -90,8 +90,8 @@ export async function homeRoute(request: Request, env: ControlEnv): Promise<Resp
     needsRecord: rows.filter((row) => continuity.get(row.owner_user_id) === true).map((row) => ({
       sessionId: row.id,
       title: row.title,
-      contextId: row.context_id,
-      contextName: row.context_name,
+      studentId: row.student_id,
+      studentName: row.student_name,
       spaceId: row.space_id,
       deliveredAt: row.delivered_at,
     })),

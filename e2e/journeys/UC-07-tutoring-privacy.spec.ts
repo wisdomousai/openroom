@@ -2,7 +2,7 @@
  * UC-07 — Tutoring privacy: identified join and learner allowlist.
  *
  * Identified session → learner joins with an access link → host sees the
- * context name → stage never receives names → session ends → the session
+ * student name → stage never receives names → session ends → the session
  * record's private notes and session code never reach `/api/learner/sessions`.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
@@ -34,28 +34,28 @@ interface Seeded {
   hostToken: string;
   stageToken: string;
   linkToken: string;
-  contextId: string;
+  studentId: string;
 }
 
 async function seedTutoringRoom(api: APIRequestContext): Promise<Seeded> {
   const stamp = Date.now();
 
-  const contextRes = await api.post(`${BASE}/api/tutoring/contexts`, {
+  const studentRes = await api.post(`${BASE}/api/tutoring/students`, {
     headers: CSRF,
     data: {
       displayName: `Léa ${stamp}`,
       kind: 'person',
-      context: { language: 'fr', level: 'B1', goals: ['speaking'] },
+      student: { language: 'fr', level: 'B1', goals: ['speaking'] },
     },
   });
-  expect(contextRes.status()).toBe(201);
-  const { id: contextId, spaceId } = (await contextRes.json()).context as { id: string; spaceId: string };
+  expect(studentRes.status()).toBe(201);
+  const { id: studentId, spaceId } = (await studentRes.json()).student as { id: string; spaceId: string };
 
   const deckRes = await api.post(`${BASE}/api/decks`, {
     headers: CSRF,
     data: {
       title: `Privacy journey ${stamp}`,
-      contextId,
+      studentId,
       spaceId,
       shape: 'tutoring',
       createSession: true,
@@ -100,14 +100,14 @@ async function seedTutoringRoom(api: APIRequestContext): Promise<Seeded> {
     stageToken: string;
   };
 
-  const linkRes = await api.post(`${BASE}/api/tutoring/contexts/${contextId}/links`, {
+  const linkRes = await api.post(`${BASE}/api/tutoring/students/${studentId}/links`, {
     headers: CSRF,
     data: {},
   });
   expect(linkRes.status()).toBe(201);
   const linkToken: string = (await linkRes.json()).token;
 
-  return { sessionId, contextId, linkToken, ...launched };
+  return { sessionId, studentId, linkToken, ...launched };
 }
 
 function participantJoinUrl(code: string, link: string): string {

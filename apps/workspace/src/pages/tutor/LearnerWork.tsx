@@ -3,7 +3,7 @@ import { Link, useBlocker } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { Play, Plus, Trash2 } from 'lucide-react';
 import type { LearnerFeedback } from '@openroom/schema';
-import { ApiError, getContext, getLearnerWork, listLearnerWork, saveLearnerFeedback, type LearnerWork, type LearnerWorkDetail } from '../../api';
+import { ApiError, getStudent, getLearnerWork, listLearnerWork, saveLearnerFeedback, type LearnerWork, type LearnerWorkDetail } from '../../api';
 import { PrivateAudio, audioTime, byTime, type PrivateAudioHandle } from '../../components/PrivateAudio';
 import { Button } from '@openroom/ui/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
@@ -22,15 +22,15 @@ function responseSummary(item: LearnerWork): string {
   return item.audio ? `Voice response · ${audioTime(item.audio.durationMs)}` : 'Voice response';
 }
 
-export function LearnerWorkPage({ contextId }: { contextId: string }) {
-  const context = useQuery({ queryKey: ['contexts', contextId], queryFn: () => getContext(contextId) });
-  const work = useQuery({ queryKey: ['contexts', contextId, 'work'], queryFn: () => listLearnerWork(contextId), staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true });
-  if (!context.data || !work.data) return <LoadState error={context.error || work.error ? (isContinuityRequired(work.error) ? CONTINUITY_REQUIRED : 'Could not load learner work.') : null} />;
+export function LearnerWorkPage({ studentId }: { studentId: string }) {
+  const student = useQuery({ queryKey: ['students', studentId], queryFn: () => getStudent(studentId) });
+  const work = useQuery({ queryKey: ['students', studentId, 'work'], queryFn: () => listLearnerWork(studentId), staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true });
+  if (!student.data || !work.data) return <LoadState error={student.error || work.error ? (isContinuityRequired(work.error) ? CONTINUITY_REQUIRED : 'Could not load learner work.') : null} />;
   return <div className="mx-auto flex max-w-3xl flex-col gap-6">
-    <PageHeading title={`${context.data.displayName} — Learner work`} description="Open a response to read it alongside the task and give private feedback." />
-    <Button asChild variant="outline" className="w-fit"><Link {...to.library({ spaceId: context.data.spaceId, contextId })}>Back to Library</Link></Button>
+    <PageHeading title={`${student.data.displayName} — Learner work`} description="Open a response to read it alongside the task and give private feedback." />
+    <Button asChild variant="outline" className="w-fit"><Link {...to.library({ spaceId: student.data.spaceId, studentId })}>Back to Library</Link></Button>
     {work.isFetching ? <p role="status" className="text-muted-foreground">Loading responses…</p> : work.data.length === 0 ? <p className="text-muted-foreground">Writing and voice responses appear here when a learner sends them.</p> : <ul className="grid gap-3">
-      {work.data.map((item) => <li key={item.id}><Link {...to.studentWorkReview(contextId, item.id)} className="block rounded-xl border border-border bg-card p-5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring">
+      {work.data.map((item) => <li key={item.id}><Link {...to.studentWorkReview(studentId, item.id)} className="block rounded-xl border border-border bg-card p-5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring">
         <h2 className="font-semibold">{item.displayName}</h2><p className="mt-1 text-secondary text-muted-foreground">{item.task.title ?? (item.task.kind === 'writing' || item.task.kind === 'voice' ? item.task.prompt : 'Response')}</p>
         <p className="mt-3 line-clamp-3 whitespace-pre-wrap text-secondary">{responseSummary(item)}</p><span className="mt-3 block text-row-title text-primary">Review response</span>
       </Link></li>)}
@@ -38,10 +38,10 @@ export function LearnerWorkPage({ contextId }: { contextId: string }) {
   </div>;
 }
 
-export function LearnerWorkReviewPage({ contextId, submissionId }: { contextId: string; submissionId: string }) {
-  const detail = useQuery({ queryKey: ['contexts', contextId, 'work', submissionId], queryFn: () => getLearnerWork(contextId, submissionId) });
+export function LearnerWorkReviewPage({ studentId, submissionId }: { studentId: string; submissionId: string }) {
+  const detail = useQuery({ queryKey: ['students', studentId, 'work', submissionId], queryFn: () => getLearnerWork(studentId, submissionId) });
   if (!detail.data) return <LoadState error={detail.error ? (isContinuityRequired(detail.error) ? CONTINUITY_REQUIRED : 'Could not load this response.') : null} />;
-  return <ReviewForm key={submissionId} contextId={contextId} detail={detail.data} />;
+  return <ReviewForm key={submissionId} studentId={studentId} detail={detail.data} />;
 }
 
 /** Field id → the reason it cannot be saved. */
@@ -68,7 +68,7 @@ function FieldIssue({ id, issue }: { id: string; issue: string | undefined }) {
   return issue ? <p id={`${id}-issue`} className="text-secondary text-destructive">{issue}</p> : null;
 }
 
-function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerWorkDetail }) {
+function ReviewForm({ studentId, detail }: { studentId: string; detail: LearnerWorkDetail }) {
   const queryClient = useQueryClient();
   const { work } = detail;
   const [feedback, setFeedback] = useState<LearnerFeedback>(() => {
@@ -120,9 +120,9 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
     if (markIssues(feedbackIssues(feedback, work.body, action))) { setError(action === 'publish' ? 'Fix the marked fields, then share again.' : 'Fix the marked fields, then save again.'); return; }
     setBusy(true);
     try {
-      const saved = await saveLearnerFeedback(contextId, work.id, { feedback, version, action });
+      const saved = await saveLearnerFeedback(studentId, work.id, { feedback, version, action });
       setVersion(saved.version); setPublished(saved.published); setStored(feedback);
-      queryClient.setQueryData(['contexts', contextId, 'work', work.id], { ...detail, feedback: { draft: feedback, published: saved.published, version: saved.version } });
+      queryClient.setQueryData(['students', studentId, 'work', work.id], { ...detail, feedback: { draft: feedback, published: saved.published, version: saved.version } });
       setNotice(action === 'publish' ? `Feedback shared with ${work.displayName}.` : 'Draft saved. Only tutors in this space can see it.');
     } catch (cause) {
       setError(cause instanceof ApiError && cause.status === 409 ? 'Another tutor edited this feedback. Copy your changes before reloading.' : cause instanceof ApiError && cause.message === 'correction-not-in-submission' ? 'Each correction must quote words from this response.' : cause instanceof ApiError && cause.status === 422 ? 'Complete each correction before saving.' : messageOf(cause, 'Could not save feedback.'));
@@ -141,13 +141,13 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
   return <div className="mx-auto flex max-w-5xl flex-col gap-6">
     <ConfirmActionDialog open={leave.status === 'blocked'} onOpenChange={(open) => { if (!open) leave.reset?.(); }} title="Leave without saving?" description={`Your changes to the feedback for ${work.displayName} are not saved.`} confirmLabel="Discard changes" onConfirm={() => leave.proceed?.()} />
     <PageHeading title={`${work.displayName}’s ${work.task.kind === 'voice' ? 'voice response' : 'writing'}`} description="Draft feedback stays private until you share it with the learner." />
-    <Button asChild variant="outline" className="w-fit"><Link {...to.studentWork(contextId)}>Back to learner work</Link></Button>
+    <Button asChild variant="outline" className="w-fit"><Link {...to.studentWork(studentId)}>Back to learner work</Link></Button>
     <div className="grid items-start gap-6 lg:grid-cols-2">
       {/* The player stays in view beside a long list of timed comments; a tall column scrolls on its own. */}
       <div className={`grid gap-4 ${isVoice ? 'lg:sticky lg:top-0 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto' : ''}`}>
         <Card><CardHeader><CardTitle className="text-secondary">{work.task.title ?? 'The task'}</CardTitle></CardHeader><CardContent className="whitespace-pre-wrap text-secondary">{work.task.kind === 'writing' || work.task.kind === 'voice' ? work.task.prompt : ''}</CardContent></Card>
-        <Card><CardHeader><CardTitle className="text-secondary">{work.displayName}’s response</CardTitle></CardHeader><CardContent ref={work.audio ? undefined : responseText} className="whitespace-pre-wrap text-secondary">{work.audio ? <PrivateAudio handle={player} submissionId={work.id} {...work.audio} contextId={contextId} onPosition={setPosition} onChanged={() => void queryClient.invalidateQueries({ queryKey: ['contexts', contextId, 'work'] })} /> : work.body}</CardContent></Card>
-        {detail.earlier.length > 0 ? <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer text-row-title">Other responses to this task</summary><div className="mt-4 grid gap-4">{detail.earlier.map((item) => <div key={item.id} className="border-t border-border pt-4"><p className="whitespace-pre-wrap text-secondary">{responseSummary(item)}</p><Link {...to.studentWorkReview(contextId, item.id)} className="mt-2 inline-block text-secondary text-primary underline">Open response</Link></div>)}</div></details> : null}
+        <Card><CardHeader><CardTitle className="text-secondary">{work.displayName}’s response</CardTitle></CardHeader><CardContent ref={work.audio ? undefined : responseText} className="whitespace-pre-wrap text-secondary">{work.audio ? <PrivateAudio handle={player} submissionId={work.id} {...work.audio} studentId={studentId} onPosition={setPosition} onChanged={() => void queryClient.invalidateQueries({ queryKey: ['students', studentId, 'work'] })} /> : work.body}</CardContent></Card>
+        {detail.earlier.length > 0 ? <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer text-row-title">Other responses to this task</summary><div className="mt-4 grid gap-4">{detail.earlier.map((item) => <div key={item.id} className="border-t border-border pt-4"><p className="whitespace-pre-wrap text-secondary">{responseSummary(item)}</p><Link {...to.studentWorkReview(studentId, item.id)} className="mt-2 inline-block text-secondary text-primary underline">Open response</Link></div>)}</div></details> : null}
       </div>
       <form onSubmit={(event) => { event.preventDefault(); void save('save'); }} className="grid gap-5 rounded-xl border border-border bg-card p-5">
         <div className="grid gap-2"><Label htmlFor="feedback-message">Feedback</Label><Textarea id="feedback-message" rows={6} maxLength={10_000} value={feedback.message} onChange={(event) => change({ ...feedback, message: event.target.value })} placeholder="What worked well? What should they try next?" /></div>

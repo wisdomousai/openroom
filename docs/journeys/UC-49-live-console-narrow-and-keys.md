@@ -18,7 +18,7 @@ through the admin API. Eight tests:
 - "Pickup lesson": an identified tutoring session for "Noor {stamp}", ended,
   with a 12-sentence Next session note, then a second deck presented.
 - "Counter": a choice with `resultVisibility` hidden-until-close.
-- "Short lesson": one title slide, with `/api/sessions/*/context` stubbed to 500.
+- "Short lesson": one title slide, with `/api/sessions/*/student` stubbed to 500.
 - "Keys lesson": a statement "Anfang", a choice "Bist du bereit?" (Ja, Noch
   nicht) and a statement "Danach".
 - A session titled "A rather long lesson title for a narrow header".
@@ -125,7 +125,7 @@ Student place from the console menu (1280 × 800):
 - In an identified tutoring header the student's name "Lina {stamp}" appears
   once, with the deck title "Place lesson".
 - The "Session menu" has no "Copy join link". "Library" goes to a URL with
-  `contextId={id}`.
+  `studentId={id}`.
 
 Visual notes: the spec saves screenshots to the test output without comparing
 them. Geometry checks are the assertions above.

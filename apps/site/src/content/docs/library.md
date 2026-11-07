@@ -3,7 +3,7 @@ title: Library, folders, and decks
 description: Organize files, find material, manage copies, and recover items from Trash.
 section: Workspace
 order: 20
-related: [sharing, deck-editor, contexts, desktop]
+related: [sharing, deck-editor, students, desktop]
 ---
 
 ## Find a deck
@@ -30,7 +30,7 @@ The folder context menu also provides **New folder inside** and **Duplicate**. F
 
 ## Create, rename, and move a deck
 
-Select **New deck** in the intended folder. The new file opens immediately in the editor. If you opened the Library through a selected student or class, the new deck inherits that context. Otherwise the deck starts without a learner context.
+Select **New deck** in the intended folder. The new file opens immediately in the editor. If you opened the Library through a selected student or class, the new deck inherits that student. Otherwise the deck starts without a student.
 
 To rename a deck from the Library:
 

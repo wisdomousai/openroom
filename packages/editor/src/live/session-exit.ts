@@ -4,7 +4,7 @@
  * The policy is a pure function so it can be read and tested on its own: the
  * console, the presenter remote and the Q&A desk all take the same exit, and
  * the one rule that must never bend is the scratchpad rule — a session whose
- * context probe has not resolved hands off nothing, because handing off to a
+ * student probe has not resolved hands off nothing, because handing off to a
  * null session id deletes the tutor's private notes (./scratchpad.ts).
  */
 

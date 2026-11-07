@@ -62,7 +62,7 @@ export function memoryEditorServices(overrides: Partial<EditorServices> = {}): M
     live: {
       fetchHostSnapshot: unavailable('Session state'),
       fetchStageToken: unavailable('Stage token'),
-      fetchSessionContext: unavailable('Session context'),
+      fetchSessionStudent: unavailable('Session student'),
       getSessionItem: unavailable('Session item'),
       downloadExport: unavailable('Export'),
       stageUrl: (sessionCode) => `memory:stage/${sessionCode}`,

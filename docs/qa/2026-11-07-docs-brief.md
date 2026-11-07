@@ -8,7 +8,7 @@ Decisions that apply: D1, D5, D7, D8, LD12 (full text in decisions.md next to th
 
 ## Cluster summary from triage
 
-Update the manual, reference docs, plugin docs and landing page after the code clusters merge, and write the journey contract pages. Replace the hand-built join URL instructions with the outcome of D1, bring live-session, questions, notes, library, contexts, learner-links, learner, media, present, shortcuts and troubleshooting to the real labels, add one chapter that walks a tutor and a student through the first lesson including the paid gate, fix the TUTORING.md route rows to the shipped redirects, rewrite the AGENT.md happy path around personal tokens, and correct tool counts, skill lists and Desktop menu names. The landing page gets plain noun headings and no eyebrows. Add contract pages for UC-44 to UC-49 and the board rows with status from an actual run, correct coverage.md, and edit AGENTS.md and DESIGN.md only where a decision outcome or a verified drift requires it.
+Update the manual, reference docs, plugin docs and landing page after the code clusters merge, and write the journey contract pages. Replace the hand-built join URL instructions with the outcome of D1, bring live-session, questions, notes, library, students, learner-links, learner, media, present, shortcuts and troubleshooting to the real labels, add one chapter that walks a tutor and a student through the first lesson including the paid gate, fix the TUTORING.md route rows to the shipped redirects, rewrite the AGENT.md happy path around personal tokens, and correct tool counts, skill lists and Desktop menu names. The landing page gets plain noun headings and no eyebrows. Add contract pages for UC-44 to UC-49 and the board rows with status from an actual run, correct coverage.md, and edit AGENTS.md and DESIGN.md only where a decision outcome or a verified drift requires it.
 
 ## Verification named by triage
 
@@ -198,14 +198,14 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "agent",
  "kind": "defect",
  "severity": "high",
- "observed": "session_create with defaults.identityMode: identified returns ok and a join code. deck_start of an identified deck that has no contextId does the same (deck 2a355289, code GQ4D36SM). outline_validate says ok for both. POST /api/join for these codes answers 403 context-link-required 'This session is only open to people with an access link' even with a valid orlnk_ link. On the learner join page the student sees 'That access link is not valid for this session.' (blames the link; the real cause is that the session has no student). The prepare-a-language-outline skill tells agents to set identityMode: identified by default, and the only warning is in the run-a-session skill and docs/AGENT.md:122, not in the session_create, deck_start or outline_validate descriptions. Working path that was verified: deck filed under the student context + identified + deck_start with start true + context link.",
- "expected": "The tool that creates or launches an identified session refuses (422) when the session has no student context, naming the fix (file the deck under a student and use deck_start). The tool descriptions state the rule. The join page does not blame a valid link.",
+ "observed": "session_create with defaults.identityMode: identified returns ok and a join code. deck_start of an identified deck that has no studentId does the same (deck 2a355289, code GQ4D36SM). outline_validate says ok for both. POST /api/join for these codes answers 403 student-link-required 'This session is only open to people with an access link' even with a valid orlnk_ link. On the learner join page the student sees 'That access link is not valid for this session.' (blames the link; the real cause is that the session has no student). The prepare-a-language-outline skill tells agents to set identityMode: identified by default, and the only warning is in the run-a-session skill and docs/AGENT.md:122, not in the session_create, deck_start or outline_validate descriptions. Working path that was verified: deck filed under the student + identified + deck_start with start true + student link.",
+ "expected": "The tool that creates or launches an identified session refuses (422) when the session has no student, naming the fix (file the deck under a student and use deck_start). The tool descriptions state the rule. The join page does not blame a valid link.",
  "repro": [
   "Create a token in Settings.",
   "MCP tools/call session_create with outline {version:1, meta:{title:'t'}, defaults:{identityMode:'identified'}, steps:[{id:'a',kind:'title',title:'Hi'}], interactions:[]} -> ok, code F5834B3W.",
-  "POST /api/join {code, link:<valid orlnk_ token>} -> 403 context-link-required.",
+  "POST /api/join {code, link:<valid orlnk_ token>} -> 403 student-link-required.",
   "Open /join/?code=F5834B3W&link=<token> on a phone -> 'That access link is not valid for this session.'",
-  "Alternatively POST /api/decks without contextId + the same content, then deck_start -> live session, same result."
+  "Alternatively POST /api/decks without studentId + the same content, then deck_start -> live session, same result."
  ],
  "evidence": [
   "/private/tmp/claude-501/-Users-uti-Desktop-openroom/be4cdb41-cb1f-4f1f-bc35-860bc387267c/scratchpad/audit/agent-path/learner-dead-identified.png",
@@ -222,7 +222,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "apps/participant/src",
   "plugin/skills/prepare-a-language-outline/SKILL.md"
  ],
- "fix": "Reject an identified session_create outright (it can never have a context) and an identified launch whose session has no context_id, with a 422 that names the fix (file the deck under a student, then deck_start). Run the check after the continuity check, because apps/workspace-worker/test/continuity-access.test.ts:93-94 expects 403 for a free account starting a context-less identified deck. State the rule once in the session_create, deck_start and openroom_api descriptions (AGENTS.md: surface facts belong in tool descriptions). Qualify identityMode: identified in the language skill as 'only when the deck is filed under the student'. Do NOT change the join refusal text for a context-less session: apps/workspace-worker/src/index.ts:496-499 deliberately returns one indistinguishable answer so a probing holder learns nothing about which sessions or contexts exist; a distinct message would be an oracle and violates the credential boundary.",
+ "fix": "Reject an identified session_create outright (it can never have a student) and an identified launch whose session has no student_id, with a 422 that names the fix (file the deck under a student, then deck_start). Run the check after the continuity check, because apps/workspace-worker/test/continuity-access.test.ts:93-94 expects 403 for a free account starting a student-less identified deck. State the rule once in the session_create, deck_start and openroom_api descriptions (AGENTS.md: surface facts belong in tool descriptions). Qualify identityMode: identified in the language skill as 'only when the deck is filed under the student'. Do NOT change the join refusal text for a student-less session: apps/workspace-worker/src/index.ts:496-499 deliberately returns one indistinguishable answer so a probing holder learns nothing about which sessions or students exist; a distinct message would be an oracle and violates the credential boundary.",
  "needsDecision": false,
  "rules": [
   "Credential boundary: identified sessions admit joins only while live",
@@ -230,7 +230,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  ],
  "scenario": "agent-path",
  "verdict": "confirmed",
- "verdictReason": "Reproduced in my instance. MCP session_create with defaults.identityMode identified returned ok with join code P4DMWTB8; POST /api/join with a valid orlnk_ link (body field is contextLink, not link; the learner page maps ?link= to contextLink at apps/participant/src/app.tsx:53-57) answered 403 context-link-invalid 'That access link is not valid for this session.' A deck with no contextId and identityMode identified started through deck_start as 201 live (code 53W2H5CZ) with the same dead end. Cause: apps/workspace-worker/src/index.ts:496-503 requires sessionContextId === link.contextId and a context-less session never has one. Nothing refuses it at creation: createSessionFromOutline (index.ts:217-221) and launchSessionForUser (index.ts:287-291) only check the continuity capability. The tutor console hides the join code for identified sessions (packages/editor/src/live/LiveHost.tsx:358-366), so the tutor has no fallback. Tool text (packages/mcp/src/tools.ts:182, 387) never states the context requirement; the rule exists only in skills and docs/AGENT.md:122, and prepare-a-language-outline/SKILL.md:30-35 sets identified as a default while run-a-session/SKILL.md:65-72 forbids it.",
+ "verdictReason": "Reproduced in my instance. MCP session_create with defaults.identityMode identified returned ok with join code P4DMWTB8; POST /api/join with a valid orlnk_ link (body field is studentLink, not link; the learner page maps ?link= to studentLink at apps/participant/src/app.tsx:53-57) answered 403 student-link-invalid 'That access link is not valid for this session.' A deck with no studentId and identityMode identified started through deck_start as 201 live (code 53W2H5CZ) with the same dead end. Cause: apps/workspace-worker/src/index.ts:496-503 requires sessionStudentId === link.studentId and a student-less session never has one. Nothing refuses it at creation: createSessionFromOutline (index.ts:217-221) and launchSessionForUser (index.ts:287-291) only check the continuity capability. The tutor console hides the join code for identified sessions (packages/editor/src/live/LiveHost.tsx:358-366), so the tutor has no fallback. Tool text (packages/mcp/src/tools.ts:182, 387) never states the student requirement; the rule exists only in skills and docs/AGENT.md:122, and prepare-a-language-outline/SKILL.md:30-35 sets identified as a default while run-a-session/SKILL.md:65-72 forbids it.",
  "reproduced": true
 }
 ```
@@ -242,10 +242,10 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "manual",
  "kind": "gap",
  "severity": "medium",
- "observed": "start.md is a generic create-present-collect flow (its experience table lists Tutoring in one row). The 1:1 path is spread across contexts, learner-links, notes, homework, learner and review, and the order a tutor needs (New space Tutoring, Add student, Set language, Create link, New deck, Start session, End session, Notes, Review) is never written down in one place. On billed deployments Notes, homework, learner links and identified sessions sit behind a 'Homework and Notes' lock with a Plans button (ContinuityLock.tsx, billing/api.ts:56); no chapter mentions that lock, and the account.md plan table has no continuity row, so a tutor who reaches Create link on a free plan meets an unexplained lock. docs/journeys/UC-39-first-tutoring-lesson.md already describes this path but is not linked from the manual.",
+ "observed": "start.md is a generic create-present-collect flow (its experience table lists Tutoring in one row). The 1:1 path is spread across students, learner-links, notes, homework, learner and review, and the order a tutor needs (New space Tutoring, Add student, Set language, Create link, New deck, Start session, End session, Notes, Review) is never written down in one place. On billed deployments Notes, homework, learner links and identified sessions sit behind a 'Homework and Notes' lock with a Plans button (ContinuityLock.tsx, billing/api.ts:56); no chapter mentions that lock, and the account.md plan table has no continuity row, so a tutor who reaches Create link on a free plan meets an unexplained lock. docs/journeys/UC-39-first-tutoring-lesson.md already describes this path but is not linked from the manual.",
  "expected": "One plainly named chapter for the 1:1 flow in the order of use, with the plan requirement stated where each gated step is introduced.",
  "repro": [
-  "Read start.md, then contexts.md, learner-links.md, notes.md in order.",
+  "Read start.md, then students.md, learner-links.md, notes.md in order.",
   "Search the manual for 'Homework and Notes' or 'Plans': no 1:1 chapter mentions the lock."
  ],
  "evidence": [
@@ -257,7 +257,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  ],
  "files": [
   "apps/site/src/content/docs/start.md",
-  "apps/site/src/content/docs/contexts.md",
+  "apps/site/src/content/docs/students.md",
   "apps/site/src/content/docs/learner-links.md",
   "apps/site/src/content/docs/notes.md",
   "apps/site/src/content/docs/account.md",
@@ -314,31 +314,31 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "workspace",
  "kind": "gap",
  "severity": "low",
- "observed": "Adding a student creates a per-student space. The student card then reads 'No language pair set for this space. Word lookup needs one. Set language', for Camille and again for the group 'Leo and Ines' (and in the manual's own library.png). A tutor with ten French students sets the same pair ten times. contexts.md 'Set teaching languages' describes the form but not that it is per student, and the Sample lessons page offers 'Both languages' regardless of the pair.",
+ "observed": "Adding a student creates a per-student space. The student card then reads 'No language pair set for this space. Word lookup needs one. Set language', for Camille and again for the group 'Leo and Ines' (and in the manual's own library.png). A tutor with ten French students sets the same pair ten times. students.md 'Set teaching languages' describes the form but not that it is per student, and the Sample lessons page offers 'Both languages' regardless of the pair.",
  "expected": "The pair set for the first student is offered for the next one, or the manual states plainly that each student has its own.",
  "repro": [
   "Add student 'Camille', then Add student or group 'Leo and Ines'.",
   "Open each student's Library: both cards show the no-language-pair message.",
-  "Read contexts.md 'Set teaching languages'."
+  "Read students.md 'Set teaching languages'."
  ],
  "evidence": [
   "/private/tmp/claude-501/-Users-uti-Desktop-openroom/be4cdb41-cb1f-4f1f-bc35-860bc387267c/scratchpad/audit/site-manual/lib-after-start.png",
   "/private/tmp/claude-501/-Users-uti-Desktop-openroom/be4cdb41-cb1f-4f1f-bc35-860bc387267c/scratchpad/audit/site-manual/second-student.png",
   "/private/tmp/claude-501/-Users-uti-Desktop-openroom/be4cdb41-cb1f-4f1f-bc35-860bc387267c/scratchpad/audit/site-manual/space-edit.png",
-  "apps/site/src/content/docs/contexts.md:29-33"
+  "apps/site/src/content/docs/students.md:29-33"
  ],
  "files": [
-  "apps/workspace/src/pages/tutor/Contexts.tsx",
-  "apps/workspace/src/components/ContextPanel.tsx",
-  "apps/site/src/content/docs/contexts.md"
+  "apps/workspace/src/pages/tutor/Students.tsx",
+  "apps/workspace/src/components/StudentPanel.tsx",
+  "apps/site/src/content/docs/students.md"
  ],
- "fix": "Preselect the language pair of the tutor's most recent student in the Add student form, and add one sentence to contexts.md that the pair belongs to each student.",
+ "fix": "Preselect the language pair of the tutor's most recent student in the Add student form, and add one sentence to students.md that the pair belongs to each student.",
  "needsDecision": false,
  "scenario": "site-manual",
  "verdict": "needs-decision",
- "verdictReason": "Verified. Each student gets its own space (sp_ctx_<id>). The language pair lives on the space by design (control-utils.ts:62-70: it is 'how one student is taught two languages'). Every new student card says 'No language pair set for this space. Word lookup needs one. Set language'. contexts.md:29-33 does not say the pair is per student, so that gap is real, and the one-sentence manual fix is safe. The auditor's code fix is a product choice, not a patch. The Add student form has no language field, so 'preselect the most recent student's pair' means adding a typed field to the create route and guessing which sibling to inherit from, which is wrong for a student taught two languages. Severity is low: it is a one-time setting per student and lookup is optional.",
+ "verdictReason": "Verified. Each student gets its own space (sp_ctx_<id>). The language pair lives on the space by design (control-utils.ts:62-70: it is 'how one student is taught two languages'). Every new student card says 'No language pair set for this space. Word lookup needs one. Set language'. students.md:29-33 does not say the pair is per student, so that gap is real, and the one-sentence manual fix is safe. The auditor's code fix is a product choice, not a patch. The Add student form has no language field, so 'preselect the most recent student's pair' means adding a typed field to the create route and guessing which sibling to inherit from, which is wrong for a student taught two languages. Severity is low: it is a one-time setting per student and lookup is optional.",
  "options": [
-  "Manual only: add a sentence to contexts.md that the language pair belongs to each student and is set once per student.",
+  "Manual only: add a sentence to students.md that the language pair belongs to each student and is set once per student.",
   "Add an optional language pair field to the Add student route, prefilled from the pair last saved on another of the tutor's student spaces and always editable.",
   "Add a tutor-level default pair in Settings that new student spaces start with.",
   "Show the pair of the sample lesson being opened as a one-click 'Set language' suggestion on the student card."
@@ -354,7 +354,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "manual",
  "kind": "copy",
  "severity": "low",
- "observed": "library.md:58 and notes.md:11 say the Library's 'Write the notes' prompt; the link text is 'Write Notes for <deck title>' (WorkspaceUpdates.tsx:26). contexts.md says to read the previous private 'Next step'; the panel and consoles label it 'Next session' (ContextPanel.tsx:42, LiveHost.tsx:602, DeckEditor.tsx:431). The Library shows a 'Student access links' disclosure, while the chapter is titled learner-links and refers to 'learner links'.",
+ "observed": "library.md:58 and notes.md:11 say the Library's 'Write the notes' prompt; the link text is 'Write Notes for <deck title>' (WorkspaceUpdates.tsx:26). students.md says to read the previous private 'Next step'; the panel and consoles label it 'Next session' (StudentPanel.tsx:42, LiveHost.tsx:602, DeckEditor.tsx:431). The Library shows a 'Student access links' disclosure, while the chapter is titled learner-links and refers to 'learner links'.",
  "expected": "The manual uses the label on the screen; TERMINOLOGY.md decides the noun for the person (student in the UI).",
  "repro": [
   "End a session and open the Library: the prompt reads 'Write Notes for Au cafe, A1'.",
@@ -366,19 +366,19 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "apps/site/src/content/docs/library.md:58",
   "apps/site/src/content/docs/notes.md:11",
   "apps/workspace/src/components/WorkspaceUpdates.tsx:26",
-  "apps/workspace/src/components/ContextPanel.tsx:42"
+  "apps/workspace/src/components/StudentPanel.tsx:42"
  ],
  "files": [
   "apps/site/src/content/docs/library.md",
   "apps/site/src/content/docs/notes.md",
-  "apps/site/src/content/docs/contexts.md",
+  "apps/site/src/content/docs/students.md",
   "apps/site/src/content/docs/learner-links.md"
  ],
- "fix": "Edit library.md:58 and notes.md:11 to 'Write Notes for <deck>'. Edit contexts.md:37 to 'Next session'. Do not rename the access-link headings in the manual. If the UI headings should agree, align the two UI strings under TERMINOLOGY.md (access link; learner for the person).",
+ "fix": "Edit library.md:58 and notes.md:11 to 'Write Notes for <deck>'. Edit students.md:37 to 'Next session'. Do not rename the access-link headings in the manual. If the UI headings should agree, align the two UI strings under TERMINOLOGY.md (access link; learner for the person).",
  "needsDecision": false,
  "scenario": "site-manual",
  "verdict": "confirmed",
- "verdictReason": "Two of the three label mismatches are real. The Library prompt is a link reading 'Write Notes for <title>' (WorkspaceUpdates.tsx:26), but library.md:58 and notes.md:11 say 'Write the notes'. contexts.md:37 says private 'Next step' in the context panel, whose label is 'Next session' (ContextPanel.tsx:42; the Notes form field is 'Next step', which is correct). The third is not a manual error. The UI uses both 'Student access links' (SpacePage.tsx:594 disclosure) and 'Learner access links' (ContextLinks.tsx:138 card title), and the manual quotes each correctly. The inconsistency is inside the UI. TERMINOLOGY.md says 'access link' in UI copy and 'learner' for the person reading through it, so the auditor's 'use Student access links everywhere' fix is not supported.",
+ "verdictReason": "Two of the three label mismatches are real. The Library prompt is a link reading 'Write Notes for <title>' (WorkspaceUpdates.tsx:26), but library.md:58 and notes.md:11 say 'Write the notes'. students.md:37 says private 'Next step' in the student panel, whose label is 'Next session' (StudentPanel.tsx:42; the Notes form field is 'Next step', which is correct). The third is not a manual error. The UI uses both 'Student access links' (SpacePage.tsx:594 disclosure) and 'Learner access links' (StudentLinks.tsx:138 card title), and the manual quotes each correctly. The inconsistency is inside the UI. TERMINOLOGY.md says 'access link' in UI copy and 'learner' for the person reading through it, so the auditor's 'use Student access links everywhere' fix is not supported.",
  "reproduced": false
 }
 ```
@@ -472,7 +472,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "kind": "copy",
  "severity": "low",
  "observed": "The Library strip shows 'Write Notes for Au cafe' as a small underlined text link, once per unwritten session. After three lessons on the same deck it showed three identical links. It shows at most three (slice(0,3)) with no sign that more exist. The Notes page heading is also 'Session notes - Au cafe' with no student name, so the tutor cannot tell which lesson a link or page is for. AGENTS.md specifies 'Write the notes for {person}'s session' and the manual (notes.md, library.md) says 'Write the notes', but the UI says 'Write Notes for {title}'. The prompt is No-Ledger compliant (no time, count or status word), and the inspector already disambiguates written Notes with 'Au cafe 2', so the prompt and page are the inconsistent places.",
- "expected": "Prompt reads 'Write the notes for Lea's session' using the context's person name (still timeless), the Notes heading names the student, and docs and UI use the same words.",
+ "expected": "Prompt reads 'Write the notes for Lea's session' using the student's person name (still timeless), the Notes heading names the student, and docs and UI use the same words.",
  "repro": [
   "Start and end the same deck three times for one student, cancelling Notes each time",
   "Open the student's Library: three identical 'Write Notes for Au cafe' links",
@@ -491,7 +491,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "apps/site/src/content/docs/notes.md",
   "apps/site/src/content/docs/library.md"
  ],
- "fix": "Use the context's displayName per AGENTS.md ('Write the notes for Lea's session'); this needs the name resolved from the loaded contexts or added to the /api/my/home row. Name the student in the Notes heading. Do NOT add the ' · 2' ordinal the auditor suggests: a visible session ordinal is a count of how often a deck was taught and sits against the No-Ledger rule next to this prompt. Show a distinct row only per session, and accept that same-student rows may read alike. Update library.md and notes.md to the final wording.",
+ "fix": "Use the student's displayName per AGENTS.md ('Write the notes for Lea's session'); this needs the name resolved from the loaded students or added to the /api/my/home row. Name the student in the Notes heading. Do NOT add the ' · 2' ordinal the auditor suggests: a visible session ordinal is a count of how often a deck was taught and sits against the No-Ledger rule next to this prompt. Show a distinct row only per session, and accept that same-student rows may read alike. Update library.md and notes.md to the final wording.",
  "needsDecision": false,
  "rules": [
   "No-Ledger rule (stays compliant)",
@@ -767,7 +767,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "plugin/skills/run-a-session/SKILL.md",
   "plugin/skills/prepare-a-tutoring-outline/SKILL.md"
  ],
- "fix": "Correct items 1-5 only (tool count, skill list, 'Prepare', 'Card' to student/context in OpenAPI, the `deck start` help text); do not edit the skills for item 6 or 7.",
+ "fix": "Correct items 1-5 only (tool count, skill list, 'Prepare', 'Card' to student in OpenAPI, the `deck start` help text); do not edit the skills for item 6 or 7.",
  "needsDecision": false,
  "rules": [
   "docs/TERMINOLOGY.md vocabulary",
@@ -775,7 +775,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  ],
  "scenario": "agent-path",
  "verdict": "confirmed",
- "verdictReason": "Items 1-5 verified: docs/AGENT.md:187 says 'Twelve focused tools' above a 14-row table and tools/list returns 14 tools; plugin/README.md:15-39 lists two skills but plugin/skills has five; docs/AGENT.md:29 names a 'Prepare' area that the Library, Students, Shared, Trash sidebar does not have; openapi.ts:824 says 'Sticky on the Card' (and :434 'this Card'; AGENTS.md retires Card for context); CLI help says `deck start` will 'open the live console' and it opens nothing. Item 6 is refuted: AGENTS.md explicitly allows token creation as the one route literal in a skill. Item 7 is refuted as taste: run-a-session and the tutoring skill are written for any audience including groups.",
+ "verdictReason": "Items 1-5 verified: docs/AGENT.md:187 says 'Twelve focused tools' above a 14-row table and tools/list returns 14 tools; plugin/README.md:15-39 lists two skills but plugin/skills has five; docs/AGENT.md:29 names a 'Prepare' area that the Library, Students, Shared, Trash sidebar does not have; openapi.ts:824 says 'Sticky on the Card' (and :434 'this Card'; AGENTS.md retires Card for student); CLI help says `deck start` will 'open the live console' and it opens nothing. Item 6 is refuted: AGENTS.md explicitly allows token creation as the one route literal in a skill. Item 7 is refuted as taste: run-a-session and the tutoring skill are written for any audience including groups.",
  "reproduced": true
 }
 ```
@@ -787,7 +787,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "workspace",
  "kind": "copy",
  "severity": "low",
- "observed": "The empty person view shows TUTORING in text-xs font-semibold uppercase tracking-wider above Open a sample and make it yours. DESIGN.md retires tracked caps and the copy rule bans eyebrows and taglines. OpenAPI and CONTRACTS use Card for context in the nextNote description, against TERMINOLOGY.",
+ "observed": "The empty person view shows TUTORING in text-xs font-semibold uppercase tracking-wider above Open a sample and make it yours. DESIGN.md retires tracked caps and the copy rule bans eyebrows and taglines. OpenAPI and CONTRACTS use Card for student in the nextNote description, against TERMINOLOGY.",
  "expected": "Plain label with no eyebrow; the vocabulary matches TERMINOLOGY.",
  "repro": [
   "Add a student and read their empty place",
@@ -804,11 +804,11 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "apps/workspace-worker/src/api-catalog/openapi.ts",
   "docs/CONTRACTS.md"
  ],
- "fix": "Remove the label paragraph and use a plain noun heading such as 'Sample deck'. Replace 'Sticky on the Card' in openapi.ts and 'Card sticky' in CONTRACTS.md with 'student' or 'context'.",
+ "fix": "Remove the label paragraph and use a plain noun heading such as 'Sample deck'. Replace 'Sticky on the Card' in openapi.ts and 'Card sticky' in CONTRACTS.md with 'student' or 'student'.",
  "needsDecision": false,
  "scenario": "gap-second-lesson-pickup-through-ui",
  "verdict": "confirmed",
- "verdictReason": "Reproduced on a new student's empty place. The Getting started label rendered with computed style text-transform uppercase, letter-spacing 0.6px and 12px (SpaceWelcome.tsx:23, raw text-xs font-semibold uppercase tracking-wider). DESIGN.md retires uppercase tracked caps and eyebrow labels, and the user's copy rule bans eyebrows and catchy headings. The heading 'Open a sample and make it yours' is also a tagline-style title. 'Card' for a context in openapi.ts:824 and CONTRACTS.md:398 contradicts TERMINOLOGY.md.",
+ "verdictReason": "Reproduced on a new student's empty place. The Getting started label rendered with computed style text-transform uppercase, letter-spacing 0.6px and 12px (SpaceWelcome.tsx:23, raw text-xs font-semibold uppercase tracking-wider). DESIGN.md retires uppercase tracked caps and eyebrow labels, and the user's copy rule bans eyebrows and catchy headings. The heading 'Open a sample and make it yours' is also a tagline-style title. 'Card' for a student in openapi.ts:824 and CONTRACTS.md:398 contradicts TERMINOLOGY.md.",
  "reproduced": true
 }
 ```
@@ -824,7 +824,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "expected": "Every start/link result carries absolute joinUrl (with the link for an identified session), stageUrl and the learner-page URL, built by the server, so an agent can hand them to the tutor or student without knowing URL formats.",
  "repro": [
   "MCP deck_start {deckId} -> body.joinUrl '/join/?code=...', no stage URL.",
-  "openroom_api POST /api/tutoring/contexts/{id}/links {} -> {token, learnerId, ...} with no url.",
+  "openroom_api POST /api/tutoring/students/{id}/links {} -> {token, learnerId, ...} with no url.",
   "openroom deck start <id> --url ... --token ... -> 'session CODE / code CODE / join /join/?code=CODE'."
  ],
  "evidence": [
@@ -849,7 +849,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  ],
  "scenario": "agent-path",
  "verdict": "confirmed",
- "verdictReason": "Reproduced. MCP deck_start returned joinUrl '/join/?code=D2RDMJ4R' (relative) plus hostToken and stageToken but no stage URL; POST /api/tutoring/contexts/{id}/links returned {id, tokenPrefix, token, learnerId, displayName, expiresAt} with no URL; CLI `deck start` printed the code twice and a relative join path, while `session start` builds a stage URL (packages/cli/src/commands/session.ts:196-218), so the two CLI start commands differ. docs/AGENT.md:381-383 and prepare-a-tutoring-outline step 8 tell the agent to return stage and join URLs to the human, but no tool result lets it do that without knowing /stage/?session=&token= (apps/workspace/src/api/sessions.ts:289) and /host/#/learn?token= (destinations.ts:181) formats.",
+ "verdictReason": "Reproduced. MCP deck_start returned joinUrl '/join/?code=D2RDMJ4R' (relative) plus hostToken and stageToken but no stage URL; POST /api/tutoring/students/{id}/links returned {id, tokenPrefix, token, learnerId, displayName, expiresAt} with no URL; CLI `deck start` printed the code twice and a relative join path, while `session start` builds a stage URL (packages/cli/src/commands/session.ts:196-218), so the two CLI start commands differ. docs/AGENT.md:381-383 and prepare-a-tutoring-outline step 8 tell the agent to return stage and join URLs to the human, but no tool result lets it do that without knowing /stage/?session=&token= (apps/workspace/src/api/sessions.ts:289) and /host/#/learn?token= (destinations.ts:181) formats.",
  "reproduced": true
 }
 ```
@@ -912,7 +912,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  ],
  "files": [
   "apps/workspace/src/pages/tutor/SessionNotes.tsx",
-  "apps/workspace/src/components/ContextPanel.tsx",
+  "apps/workspace/src/components/StudentPanel.tsx",
   "apps/workspace/src/pages/SpacePage.tsx",
   "docs/TUTORING.md",
   "docs/CONTRACTS.md",
@@ -925,7 +925,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  ],
  "scenario": "review-next",
  "verdict": "confirmed",
- "verdictReason": "Narrowed. Confirmed: the Notes form labels the field 'Next step' with no helper text saying where it appears (SessionNotes.tsx:178), while the person view, editor banner and live banner say 'Next session' (ContextPanel.tsx:42, DeckEditor.tsx:431, LiveHost.tsx:602). docs/TUTORING.md:109 still says 'For next time' and docs/CONTRACTS.md:398 says 'Card sticky', which uses a term TERMINOLOGY.md retires. Refuted parts: student vs learner is documented (TERMINOLOGY.md:127-128 and the Students entry), and renaming the person-view Share affects every Share in the workspace (the editor top bar uses the same spaceMembers target), so it is outside this scenario.",
+ "verdictReason": "Narrowed. Confirmed: the Notes form labels the field 'Next step' with no helper text saying where it appears (SessionNotes.tsx:178), while the person view, editor banner and live banner say 'Next session' (StudentPanel.tsx:42, DeckEditor.tsx:431, LiveHost.tsx:602). docs/TUTORING.md:109 still says 'For next time' and docs/CONTRACTS.md:398 says 'Card sticky', which uses a term TERMINOLOGY.md retires. Refuted parts: student vs learner is documented (TERMINOLOGY.md:127-128 and the Students entry), and renaming the person-view Share affects every Share in the workspace (the editor top bar uses the same spaceMembers target), so it is outside this scenario.",
  "reproduced": true
 }
 ```
@@ -1012,32 +1012,32 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "docs",
  "kind": "defect",
  "severity": "low",
- "observed": "Line 65: #/tutor/contexts is 'the one non-folder shelf, grouped by kind'; it only redirects to the Library. Line 67: the context hub shows 'linked decks + sessions, notes secondary'; the route redirects and the student's Library shows decks only, plus Student access links and Review learner work. Line 70: #/decks/:id is a detail route that 'leads with its teaching history'; it renders 'Page not found'. Line 73: Home shows 'upcoming/recent sessions' and a 'Get started' card; #/ is the first space's Library with a Live now row, and 'upcoming' contradicts the no-scheduling rule. Line 76: 'Unknown hashes land on Home'; they render Page not found with a Home link. Line 78: '#/decks/:id* legacy aliases remain reachable'; #/decks/:id does not.",
+ "observed": "Line 65: #/tutor/students is 'the one non-folder shelf, grouped by kind'; it only redirects to the Library. Line 67: the student hub shows 'linked decks + sessions, notes secondary'; the route redirects and the student's Library shows decks only, plus Student access links and Review learner work. Line 70: #/decks/:id is a detail route that 'leads with its teaching history'; it renders 'Page not found'. Line 73: Home shows 'upcoming/recent sessions' and a 'Get started' card; #/ is the first space's Library with a Live now row, and 'upcoming' contradicts the no-scheduling rule. Line 76: 'Unknown hashes land on Home'; they render Page not found with a Home link. Line 78: '#/decks/:id* legacy aliases remain reachable'; #/decks/:id does not.",
  "expected": "The route table lists the routes that exist and what they do now.",
  "repro": [
   "Open #/decks/<existing id>: Page not found.",
-  "Open #/tutor/contexts and #/tutor/contexts/<id>: redirect to the Library with ?contextId=.",
+  "Open #/tutor/students and #/tutor/students/<id>: redirect to the Library with ?studentId=.",
   "Open #/nonsense: Page not found."
  ],
  "evidence": [
   "/private/tmp/claude-501/-Users-uti-Desktop-openroom/be4cdb41-cb1f-4f1f-bc35-860bc387267c/scratchpad/audit/site-manual/deck-detail-404.png",
   "docs/TUTORING.md:65,67,70,73,76,78",
   "apps/workspace/src/app-router.tsx:158-160",
-  "apps/workspace/src/pages/tutor/Contexts.tsx"
+  "apps/workspace/src/pages/tutor/Students.tsx"
  ],
  "files": [
   "docs/TUTORING.md",
   "docs/IA.md"
  ],
- "fix": "Rewrite the route table rows: #/tutor/contexts and #/tutor/contexts/:id redirect to the student's Library; no #/decks/:id detail route; #/ is the Library of the current space with a Live now row; unknown hashes show Page not found. Drop 'upcoming'.",
+ "fix": "Rewrite the route table rows: #/tutor/students and #/tutor/students/:id redirect to the student's Library; no #/decks/:id detail route; #/ is the Library of the current space with a Live now row; unknown hashes show Page not found. Drop 'upcoming'.",
  "needsDecision": false,
  "scenario": "site-manual",
  "verdict": "needs-decision",
- "verdictReason": "The drift is real and reproduced. #/tutor/contexts and #/tutor/contexts/:id redirect to the student's Library with ?contextId=. #/decks/:id and #/nonsense render 'Page not found' with a Home link. #/ is the first space's Library. There is no 'upcoming' sessions list, and the Home guided card is now the Library first-run card. The conflict is that AGENTS.md says 'an unknown hash lands on the Library rather than 404ing' and lists #/decks/:id as a browser hash, so the auditor's rewrite ('unknown hashes show Page not found') would document behaviour that contradicts the repository rules. Either the router or the rules must change. This is internal developer documentation, so severity is low.",
+ "verdictReason": "The drift is real and reproduced. #/tutor/students and #/tutor/students/:id redirect to the student's Library with ?studentId=. #/decks/:id and #/nonsense render 'Page not found' with a Home link. #/ is the first space's Library. There is no 'upcoming' sessions list, and the Home guided card is now the Library first-run card. The conflict is that AGENTS.md says 'an unknown hash lands on the Library rather than 404ing' and lists #/decks/:id as a browser hash, so the auditor's rewrite ('unknown hashes show Page not found') would document behaviour that contradicts the repository rules. Either the router or the rules must change. This is internal developer documentation, so severity is low.",
  "options": [
   "Fix the router so unknown hashes and #/decks/:id land on the Library (as AGENTS.md states), then update the TUTORING.md rows to that behaviour.",
   "Keep the 404 and amend AGENTS.md plus TUTORING.md to say unknown hashes and #/decks/:id show Page not found.",
-  "Rewrite only the unambiguous TUTORING.md rows now (contexts redirects, drop 'upcoming', Home as the Library with Live now, remove the 'Get started' card claim) and leave the two 404 rows until the choice is made."
+  "Rewrite only the unambiguous TUTORING.md rows now (students redirects, drop 'upcoming', Home as the Library with Live now, remove the 'Get started' card claim) and leave the two 404 rows until the choice is made."
  ],
  "reproduced": true
 }
@@ -1157,11 +1157,11 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "agent",
  "kind": "defect",
  "severity": "low",
- "observed": "SERVER_INSTRUCTIONS never mention students/contexts, identified sessions, learner links or records. There is no named tool or CLI subcommand to list or create decks or contexts; everything goes through openroom_api (description 9,770 characters, mixing billing, brand kits, PowerPoint, space invites and the tutoring flow). That description writes 'POST /decks creates a deck', '/decks/{id}/versions', '/decks/{id}/draft', 'POST /sessions/{id}/launch', 'POST /spaces/{spaceId}/assets' without the /api or /api/tutoring prefix; calling GET /decks returns 'path is outside the tutoring API allowlist' with no list of what is allowed (the CLI error does list three prefixes, and `openroom api` help says </api/tutoring/...> although decks and sessions are not under it). Request bodies for POST contexts (displayName, kind, context{language,level,goals}) and POST /api/decks are not in the description. Lead check (one source per fact): confirmed in part. The identified-session constraint, the token recipe (`POST /api/my/tokens` in run-a-session, which an agent without a token cannot call) and session-lifetime facts live only in skills/docs. Refuted for prepare-a-tutoring-outline: it restates no API paths. The iframe/pdf/markdown rules are stated three times (SERVER_INSTRUCTIONS, outline_validate, AGENT.md).",
+ "observed": "SERVER_INSTRUCTIONS never mention students, identified sessions, learner links or records. There is no named tool or CLI subcommand to list or create decks or students; everything goes through openroom_api (description 9,770 characters, mixing billing, brand kits, PowerPoint, space invites and the tutoring flow). That description writes 'POST /decks creates a deck', '/decks/{id}/versions', '/decks/{id}/draft', 'POST /sessions/{id}/launch', 'POST /spaces/{spaceId}/assets' without the /api or /api/tutoring prefix; calling GET /decks returns 'path is outside the tutoring API allowlist' with no list of what is allowed (the CLI error does list three prefixes, and `openroom api` help says </api/tutoring/...> although decks and sessions are not under it). Request bodies for POST students (displayName, kind, student{language,level,goals}) and POST /api/decks are not in the description. Lead check (one source per fact): confirmed in part. The identified-session constraint, the token recipe (`POST /api/my/tokens` in run-a-session, which an agent without a token cannot call) and session-lifetime facts live only in skills/docs. Refuted for prepare-a-tutoring-outline: it restates no API paths. The iframe/pdf/markdown rules are stated three times (SERVER_INSTRUCTIONS, outline_validate, AGENT.md).",
  "expected": "Paths in descriptions are exact and runnable. The tutoring sequence (find or create student, deck under student, identified, start, link, record) is stated once in a tool description, and a tutoring agent is not made to read billing and brand-kit contracts to find it.",
  "repro": [
   "MCP openroom_api {method:'GET', path:'/decks'} -> isError true 'path is outside the tutoring API allowlist'.",
-  "CLI: openroom api GET /decks -> 'error: api path is outside /api/tutoring/contexts, /api/decks, and /api/sessions'.",
+  "CLI: openroom api GET /decks -> 'error: api path is outside /api/tutoring/students, /api/decks, and /api/sessions'.",
   "Read tools/list: openroom_api description length 9770."
  ],
  "evidence": [

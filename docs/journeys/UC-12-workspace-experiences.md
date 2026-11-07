@@ -26,7 +26,7 @@ Acceptance:
   "Add class" for classroom. For training it shows no "Add student" or "Add
   class" link.
 - "Open sample deck" goes to `#/decks/{id}/edit`. The deck belongs to the space,
-  its `contextId` is null and its content has 5 steps.
+  its `studentId` is null and its content has 5 steps.
 - "Back" returns to the same experience and the library lists the sample deck.
 - Space settings shows the heading "Space settings". Choosing another
   experience (tutoring for a training space, otherwise training) and "Save

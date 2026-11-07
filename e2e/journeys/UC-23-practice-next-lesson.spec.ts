@@ -10,8 +10,8 @@ test('tutor chooses original exercises for the next lesson without copying priva
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
-  const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Conversation group', kind: 'group', experience: 'tutoring' } })).json();
-  const createDeck = async (title: string, createSession = false) => (await (await page.request.post('/api/decks', { headers: CSRF, data: { contextId: context.id, spaceId: context.spaceId, createSession,
+  const { student } = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'Conversation group', kind: 'group', experience: 'tutoring' } })).json();
+  const createDeck = async (title: string, createSession = false) => (await (await page.request.post('/api/decks', { headers: CSRF, data: { studentId: student.id, spaceId: student.spaceId, createSession,
     content: { version: 1, meta: { title }, steps: [{ id: 'title', kind: 'title', title }], interactions: [] },
   } })).json());
   const previous = await createDeck('Previous lesson', true);
@@ -21,7 +21,7 @@ test('tutor chooses original exercises for the next lesson without copying priva
   const gap = { id: 'gap', kind: 'quiz', title: 'Das Verb', interaction: { id: 'gap', type: 'fill-the-gaps', prompt: 'Ich {{verb}} aus {{country}}.', gaps: [{ id: 'verb', answers: ['komme'] }, { id: 'country', answers: ['Deutschland', 'Österreich'] }], match: { locale: 'de', accents: 'require' } } };
   const opinion = { id: 'opinion', kind: 'quiz', title: 'Travel plans', interaction: { id: 'opinion', type: 'text', prompt: 'Où aimeriez-vous aller ?' } };
   expect((await page.request.put(`/api/sessions/${sessionId}/record`, { headers: CSRF, data: { homework: [choice, gap, opinion] } })).status()).toBe(200);
-  const mint = async (displayName: string) => (await (await page.request.post(`/api/tutoring/contexts/${context.id}/links`, { headers: CSRF, data: { displayName } })).json());
+  const mint = async (displayName: string) => (await (await page.request.post(`/api/tutoring/students/${student.id}/links`, { headers: CSRF, data: { displayName } })).json());
   const lea = await mint('Léa'); const noor = await mint('Noor');
   const answer = async (token: string, taskId: string, answer: unknown) => {
     expect((await page.request.post('/api/learner/practice', { headers: { authorization: `Bearer ${token}` }, data: { itemId: `${sessionId}:${taskId}`, assignmentRevision: 1, attemptId: crypto.randomUUID(), grade: 'again', answer } })).status()).toBe(200);
@@ -32,7 +32,7 @@ test('tutor chooses original exercises for the next lesson without copying priva
   // Reuse must come from the original answered exercise, even after a tutor edit.
   expect((await page.request.put(`/api/sessions/${sessionId}/record`, { headers: CSRF, data: { homeworkRevision: 1, homework: [{ ...choice, interaction: { ...choice.interaction, prompt: 'NEW QUESTION AFTER ANSWER' } }, gap, opinion] } })).status()).toBe(200);
   const next = await createDeck('Next lesson');
-  await page.route(`**/api/tutoring/contexts/${context.id}/returned`, (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }), { times: 2 });
+  await page.route(`**/api/tutoring/students/${student.id}/returned`, (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }), { times: 2 });
   await page.goto(`/host/#/decks/${next.deck.id}/edit`);
   await page.getByRole('tab', { name: 'Notes', exact: true }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Learner work could not be loaded.' })).toBeVisible();
@@ -80,7 +80,7 @@ test('tutor chooses original exercises for the next lesson without copying priva
   await expect(page).toHaveURL(new RegExp(`/sessions/${nextSessionId}/record`));
   await expect(page.getByLabel('Tutor notes', { exact: true })).toHaveValue('PRIVATE LIVE NOTE: revisit the verb agreement.');
   await page.getByRole('button', { name: 'Save notes', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/space/${context.spaceId}`));
+  await expect(page).toHaveURL(new RegExp(`/space/${student.spaceId}`));
   const learner = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await learner.goto(`/host/#/learn?token=${lea.token}`);
   await expect(learner.getByRole('heading', { name: 'Léa', exact: true })).toBeVisible();

@@ -1,30 +1,30 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import type { ContextKind, SpaceLanguages } from '@openroom/schema';
+import type { StudentKind, SpaceLanguages } from '@openroom/schema';
 
 import {
-  createContext,
-  getContext,
+  createStudent,
+  getStudent,
   listAllSpaces,
-  listContexts,
+  listStudents,
   setSpaceLanguages,
-  trashContext,
-  updateContext,
-  type ContextDetail,
+  trashStudent,
+  updateStudent,
+  type StudentDetail,
   type MySpace,
 } from '../../api';
 import { LanguagePairFields, useLanguagePair } from '../../components/LanguagePairFields';
-import { ContextFieldsEditor } from '../../components/ContextFieldsEditor';
+import { StudentFieldsEditor } from '../../components/StudentFieldsEditor';
 import { ConfirmActionDialog } from '../../components/ManagementTable';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import {
-  contextFromFields,
-  fieldsFromContext,
+  studentFromFields,
+  fieldsFromStudent,
   LEVEL_CHIPS,
-  type ContextFields,
-} from '../../lib/context-fields';
+  type StudentFields,
+} from '../../lib/student-fields';
 import { to, type LinkTarget } from '../../destinations';
 import { invalidateManagementData } from '../../query-client';
 import {
@@ -35,21 +35,21 @@ import {
 } from './shared';
 
 /**
- * `#/tutor/contexts` is a legacy parse alias onto the Who-I-teach folder.
+ * `#/tutor/students` is a legacy parse alias onto the Who-I-teach folder.
  * The rail owns the list; this page just lands you on a person.
  */
-export function ContextsPage() {
+export function StudentsPage() {
   const navigate = useNavigate();
   const { data, cause } = useLoad(
-    ['contexts', 'collection'],
-    () => listContexts(),
+    ['students', 'collection'],
+    () => listStudents(),
     'Could not load students',
   );
 
   useEffect(() => {
     if (!data || data.length === 0) return;
     const first = data[0]!;
-    void navigate({ ...to.library({ spaceId: first.spaceId, contextId: first.id }), replace: true });
+    void navigate({ ...to.library({ spaceId: first.spaceId, studentId: first.id }), replace: true });
   }, [data, navigate]);
 
   if (data === null) return <LoadState error={cause} />;
@@ -67,7 +67,7 @@ export function ContextsPage() {
   return <p className="text-secondary text-muted-foreground">Opening…</p>;
 }
 
-function ContextForm({
+function StudentForm({
   heading,
   initial,
   submitLabel,
@@ -79,19 +79,19 @@ function ContextForm({
   footer,
 }: {
   heading: string;
-  initial?: ContextDetail;
+  initial?: StudentDetail;
   submitLabel: string;
   cancelTo: LinkTarget;
-  onSubmit: (input: { displayName: string; context: Record<string, unknown> }) => Promise<void>;
-  kind?: ContextKind;
+  onSubmit: (input: { displayName: string; student: Record<string, unknown> }) => Promise<void>;
+  kind?: StudentKind;
   onKindChange?: (kind: 'person' | 'group') => void;
-  /** Fields that belong to the new context's space rather than the context. */
+  /** Fields that belong to the new student's space rather than the student. */
   extra?: ReactNode;
   /** Below the form: actions on the record itself, such as Move to trash. */
   footer?: ReactNode;
 }) {
   const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
-  const [fields, setFields] = useState<ContextFields>(() => fieldsFromContext(initial?.context));
+  const [fields, setFields] = useState<StudentFields>(() => fieldsFromStudent(initial?.student));
   /** The empty-name message sits under Name; a failed save is reported by the buttons. */
   const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,9 +111,9 @@ function ContextForm({
     setError(null);
     setBusy(true);
     try {
-      await onSubmit({ displayName: name, context: contextFromFields(fields) });
+      await onSubmit({ displayName: name, student: studentFromFields(fields) });
     } catch (cause) {
-      setError(messageOf(cause, 'Could not save the context'));
+      setError(messageOf(cause, 'Could not save the student'));
       setBusy(false);
     }
   };
@@ -127,21 +127,21 @@ function ContextForm({
 
       {onKindChange ? <fieldset className="flex gap-5"><legend className="mb-2 text-row-title">Who is this for?</legend>
         {(['person', 'group'] as const).map((value) => <label key={value} className="flex items-center gap-2">
-          <input type="radio" name="context-kind" checked={kind === value} onChange={() => onKindChange(value)} />
+          <input type="radio" name="student-kind" checked={kind === value} onChange={() => onKindChange(value)} />
           {value === 'person' ? 'Individual' : 'Small group'}
         </label>)}
       </fieldset> : null}
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="context-name" className="text-row-title">
+        <label htmlFor="student-name" className="text-row-title">
           Name
         </label>
         <Input
           ref={nameField}
-          id="context-name"
+          id="student-name"
           required
           aria-invalid={nameError ? true : undefined}
-          aria-describedby={nameError ? 'context-name-error' : undefined}
+          aria-describedby={nameError ? 'student-name-error' : undefined}
           placeholder="e.g. Camille, Year 9 French, Tuesday group"
           value={displayName}
           onChange={(event) => {
@@ -149,10 +149,10 @@ function ContextForm({
             if (nameError && event.currentTarget.value.trim() !== '') setNameError(null);
           }}
         />
-        {nameError ? <p id="context-name-error" role="alert" className="text-secondary text-destructive">{nameError}</p> : null}
+        {nameError ? <p id="student-name-error" role="alert" className="text-secondary text-destructive">{nameError}</p> : null}
       </div>
 
-      <ContextFieldsEditor value={fields} onChange={setFields} levelSuggestions={kind === 'class' ? LEVEL_CHIPS : undefined} />
+      <StudentFieldsEditor value={fields} onChange={setFields} levelSuggestions={kind === 'class' ? LEVEL_CHIPS : undefined} />
 
       {extra}
 
@@ -188,7 +188,7 @@ export function suggestedLanguages(spaces: readonly MySpace[], sourceSpaceId?: s
   return source?.settings.languages ?? null;
 }
 
-export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify }: { sourceSpaceId?: string; experience?: 'tutoring' | 'classroom'; notify?: Notify }) {
+export function StudentNewPage({ sourceSpaceId, experience = 'tutoring', notify }: { sourceSpaceId?: string; experience?: 'tutoring' | 'classroom'; notify?: Notify }) {
   const navigate = useNavigate();
   const [kind, setKind] = useState<'person' | 'group'>('person');
   const spacesQuery = useQuery({ queryKey: ['spaces', 'all'] as const, queryFn: listAllSpaces });
@@ -206,12 +206,12 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify 
   }, [sourceSpaceId, spacesQuery.data, spacesQuery.isError, spacesQuery.isFetching, suggested]);
   const pair = useLanguagePair(suggested ?? null);
   return (
-    <ContextForm
+    <StudentForm
       extra={
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-row-title">Dictionary languages</legend>
           <p className="text-secondary text-muted-foreground">Optional. Word lookup in these lessons uses this pair.</p>
-          <LanguagePairFields pair={pair} idPrefix="new-context" disabled={suggested === undefined} />
+          <LanguagePairFields pair={pair} idPrefix="new-student" disabled={suggested === undefined} />
         </fieldset>
       }
       heading={experience === 'classroom' ? 'Add class' : 'Add student or group'}
@@ -220,10 +220,10 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify 
       submitLabel="Save"
       cancelTo={to.library({ spaceId: sourceSpaceId })}
       onSubmit={async (input) => {
-        const created = await createContext({
+        const created = await createStudent({
           displayName: input.displayName,
           kind: experience === 'classroom' ? 'class' : kind,
-          context: input.context,
+          student: input.student,
           sourceSpaceId,
           experience,
         });
@@ -243,29 +243,29 @@ export function ContextNewPage({ sourceSpaceId, experience = 'tutoring', notify 
           }
         }
         await invalidateManagementData();
-        await navigate(to.library({ spaceId: created.spaceId, contextId: created.id }));
+        await navigate(to.library({ spaceId: created.spaceId, studentId: created.id }));
       }}
     />
   );
 }
 
-export function ContextEditPage({ contextId }: { contextId: string }) {
+export function StudentEditPage({ studentId }: { studentId: string }) {
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   const [trashing, setTrashing] = useState(false);
   const [trashError, setTrashError] = useState<string | null>(null);
   const { data: detail, cause } = useLoad(
-    ['contexts', contextId, 'edit'],
-    () => getContext(contextId),
-    'Could not load the context',
+    ['students', studentId, 'edit'],
+    () => getStudent(studentId),
+    'Could not load the student',
   );
   if (detail === null) return <LoadState error={cause} what="student" />;
-  const place = to.library({ spaceId: detail.spaceId, contextId });
+  const place = to.library({ spaceId: detail.spaceId, studentId });
   const moveToTrash = async () => {
     setTrashing(true);
     setTrashError(null);
     try {
-      await trashContext(contextId);
+      await trashStudent(studentId);
       await invalidateManagementData();
       setConfirming(false);
       // Their place shows that they are in Trash, with Restore.
@@ -276,7 +276,7 @@ export function ContextEditPage({ contextId }: { contextId: string }) {
     }
   };
   return (
-    <ContextForm
+    <StudentForm
       footer={detail.deletedAt === null ? <>
         <div className="flex justify-end border-t border-hairline pt-3.5">
           <Button type="button" variant="outline" className="text-destructive" onClick={() => setConfirming(true)}>Move to trash</Button>
@@ -298,10 +298,10 @@ export function ContextEditPage({ contextId }: { contextId: string }) {
       submitLabel="Save"
       cancelTo={place}
       onSubmit={async (input) => {
-        await updateContext(contextId, {
+        await updateStudent(studentId, {
           displayName: input.displayName,
           kind: detail.kind,
-          context: input.context,
+          student: input.student,
         });
         await invalidateManagementData();
         await navigate(place);
@@ -310,13 +310,13 @@ export function ContextEditPage({ contextId }: { contextId: string }) {
   );
 }
 
-/** Deep links to a context land on that person’s folder. */
-export function ContextDetailPage({ contextId }: { contextId: string }) {
+/** Deep links to a student land on that person’s folder. */
+export function StudentDetailPage({ studentId }: { studentId: string }) {
   const navigate = useNavigate();
   const { data, cause } = useLoad(
-    ['contexts', contextId, 'redirect'],
-    () => getContext(contextId),
-    'Could not load the context',
+    ['students', studentId, 'redirect'],
+    () => getStudent(studentId),
+    'Could not load the student',
   );
 
   useEffect(() => {
@@ -324,10 +324,10 @@ export function ContextDetailPage({ contextId }: { contextId: string }) {
     void navigate({
       to: '/space/$spaceId',
       params: { spaceId: data.spaceId },
-      search: { folderId: undefined, itemId: undefined, contextId },
+      search: { folderId: undefined, itemId: undefined, studentId },
       replace: true,
     });
-  }, [contextId, data, navigate]);
+  }, [studentId, data, navigate]);
 
   if (data === null) return <LoadState error={cause} what="student" />;
   return <p className="text-secondary text-muted-foreground">Opening…</p>;

@@ -89,8 +89,8 @@ export const FINDINGS: WalkthroughFinding[] = [
     severity: 'high',
     status: 'fixed',
     title: 'Tutor create forms never submit because Save buttons default to type=button',
-    evidence: 'Trace frames show the context form fully filled (name, subject, goals) with Save visible, but no POST /api/tutoring/contexts is sent. Host Button defaults to type="button", and Context, deck and session form primary actions omitted type="submit", so clickRole Save is a no-op.',
-    consequence: 'The tutor workspace collection loads, but context, deck and session creation cannot complete from the browser until submit buttons declare type="submit".',
+    evidence: 'Trace frames show the student form fully filled (name, subject, goals) with Save visible, but no POST /api/tutoring/students is sent. Host Button defaults to type="button", and Student, deck and session form primary actions omitted type="submit", so clickRole Save is a no-op.',
+    consequence: 'The tutor workspace collection loads, but student, deck and session creation cannot complete from the browser until submit buttons declare type="submit".',
     journeys: ['tutor-workspace'],
   },
 ];

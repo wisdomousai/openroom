@@ -16,11 +16,11 @@ import Base from '../layouts/Base.astro';
 
   <h2>What we collect</h2>
   <h3>Host accounts</h3>
-  <p>When you sign in with Google we store your Google subject id, email, and display name, plus the decks, folders, spaces, memberships, presentation contexts, and compact session notes you create. Personal API tokens are stored as SHA-256 hashes; the raw token is shown once.</p>
+  <p>When you sign in with Google we store your Google subject id, email, and display name, plus the decks, folders, spaces, memberships, students, and compact session notes you create. Personal API tokens are stored as SHA-256 hashes; the raw token is shown once.</p>
   <h3>Live sessions</h3>
-  <p>Each live session holds the session outline, a server-generated participant id, a join timestamp, and — depending on identity mode — a generated nickname or the display name the tutor wrote on the context. It also holds the current ballot per participant per question and the recomputed aggregate. Participants are never asked for a name, email, or password.</p>
+  <p>Each live session holds the session outline, a server-generated participant id, a join timestamp, and — depending on identity mode — a generated nickname or the display name the tutor wrote on the student. It also holds the current ballot per participant per question and the recomputed aggregate. Participants are never asked for a name, email, or password.</p>
   <h3>Learner access links</h3>
-  <p>A tutor can mint a link that reaches one context’s learner-visible records. We store a SHA-256 of the token, a visible prefix, and creation, expiry, and revocation timestamps. The raw token is shown once and cannot be read back.</p>
+  <p>A tutor can mint a link that reaches one student’s learner-visible records. We store a SHA-256 of the token, a visible prefix, and creation, expiry, and revocation timestamps. The raw token is shown once and cannot be read back.</p>
   <h3>Public website</h3>
   <p>The landing page, this policy, the terms, and the manual load Umami Cloud to count page views. Umami records the page, referrer, browser, operating system, device type, and country. It does not store personally identifiable information, and it does not receive host accounts, live sessions, answers, or learner records. The workspace, join, and stage apps do not load it.</p>
 
@@ -33,7 +33,7 @@ import Base from '../layouts/Base.astro';
   </ul>
 
   <h2>How we use the data</h2>
-  <p>Host data is used to provide the product: save decks, start sessions, share a space, and recover recent host controls. Live session data is used only to run that session and to show aggregate results. Learner links are used only to show that context’s learner-visible records.</p>
+  <p>Host data is used to provide the product: save decks, start sessions, share a space, and recover recent host controls. Live session data is used only to run that session and to show aggregate results. Learner links are used only to show that student’s learner-visible records.</p>
   <p>When an MCP client or ChatGPT plugin connects, OpenRoom receives an OAuth access token or personal API token for the signed-in host and uses it to run the same tutoring actions the browser can run. OpenRoom does not proxy or bill model tokens.</p>
 
   <h2>How long we keep it</h2>
@@ -45,7 +45,7 @@ import Base from '../layouts/Base.astro';
   </ul>
 
   <h2>Sharing</h2>
-  <p>We do not sell personal data. Hosts share a space with people they invite. A leaked learner link reaches exactly one context. A leaked guest link reaches exactly one session. Google receives the OAuth sign-in for hosts. Stock photographs stay hosted by Pixabay and are embedded by URL.</p>
+  <p>We do not sell personal data. Hosts share a space with people they invite. A leaked learner link reaches exactly one student. A leaked guest link reaches exactly one session. Google receives the OAuth sign-in for hosts. Stock photographs stay hosted by Pixabay and are embedded by URL.</p>
 
   <h2>Contact</h2>
   <p>Questions about this policy: email <a href="mailto:hello@openroom.app">hello@openroom.app</a>.</p>

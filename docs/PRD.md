@@ -121,7 +121,7 @@ Every live session has a short, human-readable session code. The canonical parti
 1. Open the universal participant join page.
 2. Enter the session code shown by the host.
 3. Receive a session-scoped participant capability.
-4. Join the session without creating an account. (In an identified session the participant additionally presents a tutor-issued context access link; that link is a capability, not an account.)
+4. Join the session without creating an account. (In an identified session the participant additionally presents a tutor-issued student access link; that link is a capability, not an account.)
 5. Remain in the same participant session as questions change.
 
 A QR code may encode the join URL and session code as a convenience shortcut. It does not replace the session-code model. Participants who cannot or do not want to scan must always be able to type the code.
@@ -313,7 +313,7 @@ The schema must be able to express:
 
 1. The host starts a session from a published deck version.
 2. The platform creates a session and displays a short code and QR code.
-3. Participants join without creating accounts. An identified session additionally requires the tutor-issued context access link for that context; no other session type accepts one.
+3. Participants join without creating accounts. An identified session additionally requires the tutor-issued student access link for that student; no other session type accepts one.
 4. The host opens an interaction.
 5. Participants submit through an idempotent HTTP command and receive an acknowledgement.
 6. The session Durable Object updates ballots and aggregates.
@@ -367,7 +367,7 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 
 | ID | Priority | Requirement | Acceptance condition |
 | --- | --- | --- | --- |
-| PART-01 | P0 | Every live session shall have a short session code accepted by a universal participant join page. | A participant can enter the displayed code and reach the session without creating an account. A session whose deck selects `identityMode: identified` additionally requires a context access link (403 `context-link-required` without one) and a session the tutor has already started (409 `session-not-started` in the lobby); no account is created in either case. |
+| PART-01 | P0 | Every live session shall have a short session code accepted by a universal participant join page. | A participant can enter the displayed code and reach the session without creating an account. A session whose deck selects `identityMode: identified` additionally requires a student access link (403 `student-link-required` without one) and a session the tutor has already started (409 `session-not-started` in the lobby); no account is created in either case. |
 | PART-02 | P0 | The participant view shall show one dominant active interaction. | Unrelated navigation and host controls are absent. |
 | PART-03 | P0 | Each ballot submission shall receive a clear accepted or rejected acknowledgement. | Network retries never create duplicate counted responses. |
 | PART-04 | P0 | Participants may change an answer until close when the deck permits it. | The final accepted ballot replaces the earlier ballot for aggregation. |
@@ -419,14 +419,14 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | API-08 | P1 | A remote stateless MCP endpoint shall expose outline validation, the user-scoped tutoring control plane, billing, retained archives, shared-session facilitation, presenter handoff, and aggregate results. | Shipped tools map to the same application/domain services as the browser: `outline_validate`, `session_create`, `session_status`, `session_results`, `openroom_api`, `deck_get`, `deck_preview`, `deck_save_version`, `deck_draft_put`, `deck_start`, `session_facilitate`, `session_recap`, `session_command`, `picture_search`. |
 | API-09 | P1 | Canonical agent skills shall be provider-neutral and stored once. | Provider-specific discovery paths reference the canonical skill source. |
 | API-10 | P0 | A small web SDK shall expose session creation, session-code display, session state, commands, and embeddable result primitives. | The summer-camp interaction pattern can be rebuilt without importing the product's host application. |
-| API-11 | P0 | Every tutoring business operation shall be available to browser, API, CLI, and MCP peer clients through the same user-scoped application service. | A PAT integration test creates a context and deck, launches it, and controls the owned session through MCP; CLI wire tests cover the same routes and outline commands. |
+| API-11 | P0 | Every tutoring business operation shall be available to browser, API, CLI, and MCP peer clients through the same user-scoped application service. | A PAT integration test creates a student and deck, launches it, and controls the owned session through MCP; CLI wire tests cover the same routes and outline commands. |
 | API-12 | P0 | Normal deletion shall be recoverable; permanent deletion shall require an expiring signed-in browser confirmation. | MCP/CLI may request and return the confirmation URL but cannot call the purge endpoint; anonymous/PAT confirmation fails. |
 | API-13 | P0 | External preparation agents shall receive original school material directly and OpenRoom shall store only derived typed outlines and curated records. | No source-document upload or model-wrapper route exists; outline provenance contains labels only. |
 | API-14 | P0 | Collection, create, detail, edit, and deck editor surfaces shall be separate routes. | A collection route never renders a create/edit form, CRUD drawer, or modal. A selected row may open an entity panel that edits only the item's identity — rename, tags, filing — and routes every typed field to the item's own route. |
 
 ### Tutor-led sessions
 
-Tutoring is an additional delivery workflow in the same OpenRoom account, not an autonomous AI tutor. An external agent reads last-minute school material, works out what is needed, and produces a constrained `Outline v1`. OpenRoom persists presentation contexts, deck metadata, immutable outline versions, and a compact Notes in D1. It copies the selected outline into a Durable Object only when the tutor launches a synchronized session. Video remains external.
+Tutoring is an additional delivery workflow in the same OpenRoom account, not an autonomous AI tutor. An external agent reads last-minute school material, works out what is needed, and produces a constrained `Outline v1`. OpenRoom persists students, deck metadata, immutable outline versions, and a compact Notes in D1. It copies the selected outline into a Durable Object only when the tutor launches a synchronized session. Video remains external.
 
 The tutor can navigate semantic steps, open existing interaction types, and approve a small generated step for live insertion. OpenRoom owns automatic layout and strips tutor notes from participant/projector views. It does not accept authored CSS or coordinates and does not proxy the heavy model workflow.
 
@@ -494,7 +494,7 @@ Do not build the following as School Pro features in the initial product:
 - Mandatory agent guidance.
 - Per-school deployment or dedicated database.
 - SAML, SCIM, directory synchronization, or attendee-list provisioning.
-- LMS integration, grades, or grade passback. Student *accounts* are no longer excluded — see the participant-data posture — but they stay minimal-collection and never carry a staff role. A context access link remains a revocable capability scoped to one context, and does not silently become an account.
+- LMS integration, grades, or grade passback. Student *accounts* are no longer excluded — see the participant-data posture — but they stay minimal-collection and never carry a staff role. A student access link remains a revocable capability scoped to one student, and does not silently become an account.
 - Bespoke retention policies or customer-specific data residency.
 - Custom domains, custom CSS, design systems, or white-labeling.
 - Department-level access-control hierarchies.
@@ -693,19 +693,19 @@ Queues are optional for session-close processing, export generation, webhooks, a
 
 ### Learner records access - shipped
 
-The first non-staff read path in the product. A tutor mints a **context access link**
-(`orlnk_…`, prefix distinct from the `orpat_` personal API token) for one context and
+The first non-staff read path in the product. A tutor mints a **student access link**
+(`orlnk_…`, prefix distinct from the `orpat_` personal API token) for one student and
 gives it to that student or family. It is a capability, not an account:
 
-- One context-local learner, nothing else. Group learners share published lesson material;
+- One student-local learner, nothing else. Group learners share published lesson material;
   each sees only their own submissions, practice and published feedback. Both learner and
-  context identity come from the credential, never a caller-supplied identifier.
+  student identity come from the credential, never a caller-supplied identifier.
 - A link never resolves to a signed-in user, never grants space membership, and is
   rejected on every `/api/tutoring/*` and `/api/my/*` route.
 - Minting requires `editor` or above on the space. A `presenter` may run a session but
   may not mint a credential.
 - Shown once at mint (only the SHA-256 is stored), default lifetime 180 days, at most
-  10 live links per context, revocable at any time. Revocation sets `revoked_at`; the
+  10 live links per student, revocable at any time. Revocation sets `revoked_at`; the
   row is never hard-deleted, because the record of which capability existed and when it
   was withdrawn is the point of a revocable credential.
 - The learner sees only their own sessions and the curated Notes (outcomes, homework,
@@ -721,19 +721,19 @@ default is unchanged: `nickname`. Identified mode is never a global switch and
 is never reachable by a participant deciding to identify themselves.
 
 - **The identity is authored by the tutor, not by the participant.** The name in an
-  identified session is the context-local learner's display name, authored by the tutor.
+  identified session is the student-local learner's display name, authored by the tutor.
   A stable learner id supplies the seat; credential replacement retains the same seat.
   The `packages/domain/src/participant-names.ts` wordlist is not used.
   No name field is ever shown to a participant, so no self-declared PII enters the
   system in any mode.
-- **Entry requires a context access link.** `POST /api/join` accepts an optional
-  `contextLink`. An identified session without one is `403 context-link-required`; a link
+- **Entry requires a student access link.** `POST /api/join` accepts an optional
+  `studentLink`. An identified session without one is `403 student-link-required`; a link
   offered to a non-identified session is `409 identified-join-unavailable`.
-- **The session must provably belong to the link's context.** The association is the
-  launch chain `sessions.session_id → sessions.context_id`. A session created by bare
-  `POST /api/sessions` filed with no deck has no context, therefore **no link can ever
-  identify into it**. A live link presented to a session belonging to a different context
-  gets the same indistinguishable `403 context-link-invalid` as a revoked or forged
+- **The session must provably belong to the link's student.** The association is the
+  launch chain `sessions.session_id → sessions.student_id`. A session created by bare
+  `POST /api/sessions` filed with no deck has no student, therefore **no link can ever
+  identify into it**. A live link presented to a session belonging to a different student
+  gets the same indistinguishable `403 student-link-invalid` as a revoked or forged
   one.
 - **The tutor's start is the gate.** An identified session is joinable only once its host
   has started the session; a session still in the `lobby` answers `409 session-not-started`
@@ -742,7 +742,7 @@ is never reachable by a participant deciding to identify themselves.
   present for and can see. Anonymous and nickname sessions are unchanged and still
   admit lobby joins.
 - **The learner plane is throttled per client.** `/api/learner/*` is the only route
-  family with no cookie and no session, so `requireContextLink` spends a budget of ten
+  family with no cookie and no session, so `requireStudentLink` spends a budget of ten
   failed authentications per 60 s per client before it examines the credential, and
   answers `429 learner-rate-limited` beyond it. This is cost control on an
   unauthenticated D1-hitting endpoint plus a brake on bulk-validating a leaked batch of
@@ -754,7 +754,7 @@ is never reachable by a participant deciding to identify themselves.
   malformed, unknown, expired or revoked link and is no more of an oracle than the 401.
 - **Still no account.** No `users` row, no session, no space membership, no email,
   no password, no cross-session identity. The link is a revocable bearer capability
-  scoped to exactly one context and is withdrawn by revoking it.
+  scoped to exactly one student and is withdrawn by revoking it.
 - **Re-entry is the link.** Presenting the same link again lands on the same
   participant id, so a page reload does not fork a student into two identities.
 - Retention is unchanged: DATA-04 purge applies, and the identified name dies with
@@ -769,7 +769,7 @@ The product shall not implement browser fingerprinting. Small-group aggregate su
 Anonymous-by-default is a compliance architecture, not only an ethics choice. FERPA, GDPR, and COPPA obligations attach to identifiable personal data; a runtime that never collects participant names, emails, accounts, or cross-session identifiers converts a school's legal review into a short answer. That answer must be written down and published:
 
 - Procurement one-pager: participants join without accounts, no participant PII is collected in the hosted default mode, ballots are purged on a stated schedule, aggregates contain no identities, and no participant data is sold, profiled, or used for advertising.
-- Under-13 participation: because participants have no accounts and provide no personal information, COPPA consent mechanics are not triggered in anonymous or nickname mode. **Identified mode rests on a different argument, deliberately.** The tutor is the controller: they already know the student, they author `contexts.display_name`, and they own the records. OpenRoom collects nothing *from* the child — no name field is ever shown to a participant or student, and no marketing, profiling, or advertising use exists. A student account, where one is issued, requests a provider-anonymised identity and grants read access to records the tutor created; it is not the point of collection.
+- Under-13 participation: because participants have no accounts and provide no personal information, COPPA consent mechanics are not triggered in anonymous or nickname mode. **Identified mode rests on a different argument, deliberately.** The tutor is the controller: they already know the student, they author `students.display_name`, and they own the records. OpenRoom collects nothing *from* the child — no name field is ever shown to a participant or student, and no marketing, profiling, or advertising use exists. A student account, where one is issued, requests a provider-anonymised identity and grants read access to records the tutor created; it is not the point of collection.
 
   > **⚠ Three items still need a human before this is published.** The controller
   > argument above is the product's position; these are the gaps underneath it.
@@ -777,18 +777,18 @@ Anonymous-by-default is a compliance architecture, not only an ethics choice. FE
   > 1. **Retention.** The COPPA answer for anonymous mode is underwritten by the ephemeral
   >    session: ballots purge 30 minutes after end, sessions delete at 24 hours. The durable
   >    tutoring tables have **no retention policy at all** — the only TTL in the control
-  >    plane is the 15-minute deletion-confirmation token. `contexts.display_name`,
-  >    `contexts.context_json` and `session_records.notes` persist until a human trashes *and*
+  >    plane is the 15-minute deletion-confirmation token. `students.display_name`,
+  >    `students.student_json` and `session_records.notes` persist until a human trashes *and*
   >    purges them. A child's records survive indefinitely by default. This is the widest
   >    gap and it is an engineering one, not a legal one.
   > 2. **Age floor on the account path.** Sign in with Apple and Google both effectively
   >    require 13+. An account-based student path therefore cannot serve under-13s at all,
-  >    while a context access link can — which is a reason to keep the link as the primary
+  >    while a student access link can — which is a reason to keep the link as the primary
   >    mechanism rather than a stepping stone to accounts.
   > 3. **Notice text.** The line below already requires identified mode to ship its own
   >    participant notice and retention defaults *before* launch. That text does not exist.
   >
-  > Unexamined free text remains unpreventable by design: `context_json`, `session_records.notes`,
+  > Unexamined free text remains unpreventable by design: `student_json`, `session_records.notes`,
   > `outcomes_json`, `homework_json` and outline `tutorNotes` accept anything a tutor types.
   > OpenRoom does not inspect them, and inspecting them would be worse. What the product
   > controls is reach and lifetime — reach is enforced, lifetime is item 1.
@@ -919,7 +919,7 @@ These targets require validation under load before they become public commitment
 1. **Bring-your-own-Cloudflare (supported now, the primary path).** A single deployment under the operator's own Cloudflare account. This delivers operational independence — the operator's data never touches our instance, their domain, their configuration, effectively free at school scale — but it is not infrastructure sovereignty: the runtime is still a US cloud provider, which matters to exactly the privacy-driven adopters most likely to want this path. Marketing and documentation must call this what it is.
 2. **Single-node sovereign deployment (roadmap, V2 candidate).** Because `packages/domain` is pure TypeScript with no platform APIs and the Durable Object is a thin shell (storage, WebSockets, alarms), a Node adapter — one process, SQLite files for session state, `ws` for sockets, timer-based alarms, serving the same static apps — can host the identical domain on a VPS or on-premises box. This is true self-hosting for the data-sovereignty audience (e.g. European public schools restricted from US cloud providers). It is a deliberate adapter, not a Docker-orchestrated distributed system, and it stays single-node by design.
 
-The account-free identity model independently reduces how much hosting location matters: in the default nickname mode the name is generated by the system, is session-local, and is not a real-world identity. Identified mode is the exception and is opt-in per deck: the name there is the display name the tutor wrote on the context, so a tutor who names a context after a real person is choosing to put that name in the session.
+The account-free identity model independently reduces how much hosting location matters: in the default nickname mode the name is generated by the system, is session-local, and is not a real-world identity. Identified mode is the exception and is opt-in per deck: the name there is the display name the tutor wrote on the student, so a tutor who names a student after a real person is choosing to put that name in the session.
 
 The bring-your-own-Cloudflare path is a single deployment initiated by the CLI:
 
@@ -1124,7 +1124,7 @@ The strongest conversion signal is: enough educators at one school already use t
 8. Hibernating WebSockets are the primary state-change notification channel.
 9. Adaptive HTTP polling is a compatibility fallback.
 10. No D1, Queue, LLM, R2, or content-logging operation occurs per ballot.
-11. Anonymous, session-scoped participation is the hosted default. Identified participation exists, is opt-in per deck, and is reachable only with a tutor-issued context access link — never by self-registration.
+11. Anonymous, session-scoped participation is the hosted default. Identified participation exists, is opt-in per deck, and is reachable only with a tutor-issued student access link — never by self-registration.
 12. Core polling, moderation, and *aggregate* exports are not premium poll-type gates. A per-ballot or named export is paid memory (`rawExport` / guest list), not a locked interaction type.
 13. There is no slide editor or hosted office conversion service.
 14. School Pro is a shared library and membership product, not an institutional policy engine.

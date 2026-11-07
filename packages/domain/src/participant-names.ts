@@ -8,8 +8,8 @@
  *
  * This wordlist serves `identityMode: 'nickname'` only. It is not the sole
  * source of names in the product: `'anonymous'` assigns none, and
- * `'identified'` takes the name from `contexts.display_name` — a name the
- * tutor authored, reached through a context access link. The "participants
+ * `'identified'` takes the name from `students.display_name` — a name the
+ * tutor authored, reached through a student access link. The "participants
  * never type a name" invariant holds in every mode; "the name is
  * system-generated" holds only here.
  */

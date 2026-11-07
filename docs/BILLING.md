@@ -298,21 +298,21 @@ cookies, PATs, connected-client OAuth and MCP requests. The access policy is:
 | Invite or admit a new space member | Space owner, `team` | Denied; pending invitation remains recoverable |
 | Start a new shared session | Space owner, `team` | Denied for collaborators; the same running session can be resumed or retried |
 | Create/edit a brand kit | Space owner, `branding` | Denied; existing kits remain readable, trashable and restorable |
-| List a context's people; mint or list access links; read returned work, learner work and audio; publish feedback | Space owner of the context, `continuity` | Denied with `continuity-required`. Trash, restore, permanent deletion, link revocation and recording trash/restore remain available. Nothing is deleted |
-| Read or write a session's Notes (`/api/sessions/{id}/record`), including the next-time sticky and homework | Space owner of the session, `continuity` | Denied; the record is retained and removed only with the session. Contexts omit `nextNote` until access returns, and the Library stops offering unwritten Notes |
+| List a student's people; mint or list access links; read returned work, learner work and audio; publish feedback | Space owner of the student, `continuity` | Denied with `continuity-required`. Trash, restore, permanent deletion, link revocation and recording trash/restore remain available. Nothing is deleted |
+| Read or write a session's Notes (`/api/sessions/{id}/record`), including the next-time sticky and homework | Space owner of the session, `continuity` | Denied; the record is retained and removed only with the session. Students omit `nextNote` until access returns, and the Library stops offering unwritten Notes |
 | Create an identified session | Space owner, or personal creator outside a space, `continuity` | Denied for new sessions; a session already running continues to admit its learners |
-| Learner access (`/api/learner/*`) through a context link | Space owner of the context, `continuity` | The link answers exactly like a revoked link (`401 unauthorized`); it works again when access returns |
+| Learner access (`/api/learner/*`) through a student link | Space owner of the student, `continuity` | The link answers exactly like a revoked link (`401 unauthorized`); it works again when access returns |
 | Create a named session / mint new named invites | Space owner, or personal creator outside a space | Denied; existing invites remain usable and revocable |
 | Admit more than 50 participants to a live session | Space owner, or personal creator outside a space, `largeSessions`, read at session creation | New sessions admit 50; a session already running keeps the limit it started with. The next new participant receives `409 session-full`; re-entry with a recovery name, access link or guest link always succeeds |
 | Export individual live responses | Space owner, or personal creator outside a space | Requires current `rawExport`, except a session already created with named invites |
 | Capture a session archive | Space owner, or personal creator outside a space, `keep` | New captures stop; already-captured files and failed-pointer recovery remain available |
 | Read a retained archive | Current space membership, or personal ownership | Allowed until retention expires; membership removal still revokes access |
 
-Contexts of every kind (students and classes: create, list, read, edit, file
+Students of every kind (person, group, class: create, list, read, edit, file
 into a space), building and editing decks, anonymous and nickname live
 sessions up to 50 participants, the results recap, listening recordings, Desktop, the CLI, MCP, and the
 shared `/api/tutoring/lookup`, `/dictionary`, `/stock`, `/embed-check` and
-`/embed-import` tools need no capability. A deck never needs a context.
+`/embed-import` tools need no capability. A deck never needs a student.
 
 REST and MCP use the same end-session completion service. An archive has one
 immutable R2 object and one D1 pointer per session. Concurrent writes use a

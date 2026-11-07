@@ -4,7 +4,7 @@ import { ArchiveRestore, Trash2 } from 'lucide-react';
 
 import {
   getSpaceTree,
-  type ContextKind,
+  type StudentKind,
 } from '../../api';
 import { getBreadcrumbTrail } from '../../lib/folder-tree';
 import { Button } from '@openroom/ui/components/button';
@@ -120,8 +120,8 @@ export function LoadState({ error, what }: { error: unknown; what?: string }) {
   );
 }
 
-/** The kinds of “who” a context can describe. Shared by the context form and the gate. */
-export const KIND_OPTIONS: { value: ContextKind; label: string; hint: string }[] = [
+/** The kinds of “who” a student can describe. Shared by the student form and the gate. */
+export const KIND_OPTIONS: { value: StudentKind; label: string; hint: string }[] = [
   { value: 'person', label: 'One person', hint: '1:1 tutoring or coaching' },
   { value: 'group', label: 'Group', hint: 'A team, table, or small set of people' },
   { value: 'class', label: 'Class', hint: 'A class section or period' },
@@ -136,12 +136,12 @@ export const KIND_OPTIONS: { value: ContextKind; label: string; hint: string }[]
 export function ItemLocation({
   spaceId,
   folderId,
-  contextLabel,
+  studentLabel,
 }: {
   spaceId: string | null;
   folderId: string | null;
-  /** Optional “who” line when creating from a context. */
-  contextLabel?: string | null;
+  /** Optional “who” line when creating from a student. */
+  studentLabel?: string | null;
 }) {
   const placeQuery = useQuery({
     queryKey: ['spaces', spaceId, 'tree'] as const,
@@ -167,9 +167,9 @@ export function ItemLocation({
 
   return (
     <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-secondary">
-      {contextLabel ? (
+      {studentLabel ? (
         <p className="text-muted-foreground">
-          For <span className="font-semibold text-foreground">{contextLabel}</span>
+          For <span className="font-semibold text-foreground">{studentLabel}</span>
         </p>
       ) : null}
       <p>

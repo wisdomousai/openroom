@@ -25,16 +25,16 @@
     {
       "name": "prepare-a-tutoring-outline",
       "type": "skill-md",
-      "description": "Prepare, save, revise, launch, and help deliver a tutor-led OpenRoom outline from school material available to the external agent. Use when a tutor has source documents, a person or group context, a test, or a topic to prepare at short notice.",
+      "description": "Prepare, save, revise, launch, and help deliver a tutor-led OpenRoom outline from school material available to the external agent. Use when a tutor has source documents, a student (a person or a group), a test, or a topic to prepare at short notice.",
       "url": "/.well-known/agent-skills/prepare-a-tutoring-outline/SKILL.md",
-      "digest": "sha256:45b32aad52d26411815e3986eb522ce975f4568eabe51547b88829794af356b0"
+      "digest": "sha256:b2885521fa9fc3aad5c4dc919f2512bde55b8a998edd3cdee6a193950b10191a"
     },
     {
       "name": "run-a-session",
       "type": "skill-md",
       "description": "Plan and run a live OpenRoom session: author questions in simple YAML, start a session from that outline, hand participants the join code, drive the questions live, and read aggregate results. Use when the user wants a live poll, quiz, check-in, ranking, or Q&A with an audience.",
       "url": "/.well-known/agent-skills/run-a-session/SKILL.md",
-      "digest": "sha256:cb25098db90092ceac9c21ecb4acb3703448d4ba72ab81363c74dd288389dd38"
+      "digest": "sha256:e2b401cbd833639e11a5918b4b6523af348445580d21812ef4d02ffba3c45a80"
     }
   ]
 }

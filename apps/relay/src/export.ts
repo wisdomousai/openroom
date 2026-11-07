@@ -96,7 +96,7 @@ export function exportAggregateCsv(input: SessionState): string {
 export function exportBallotsCsv(input: SessionState): string {
   const state = ensureQna(input);
   // Nickname sessions carry a session-local name per participant; identified
-  // sessions carry the context display name in the same slot. Anonymous sessions keep
+  // sessions carry the student display name in the same slot. Anonymous sessions keep
   // the original 5-column contract.
   const withNames = sessionOf(state).defaults.identityMode !== 'anonymous' || sessionOf(state).interactions.some((item) => item.responseMode === 'group');
   const lines = [

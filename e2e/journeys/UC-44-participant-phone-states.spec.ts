@@ -660,17 +660,17 @@ function longEntry(word: string) {
 
 async function seedIdentifiedLobby(api: APIRequestContext, outline: typeof OUTLINE | typeof LOOKUP) {
   const stamp = Date.now();
-  const contextRes = await api.post(`${BASE}/api/tutoring/contexts`, {
+  const studentRes = await api.post(`${BASE}/api/tutoring/students`, {
     headers: CSRF,
-    data: { displayName: `Léa ${stamp}`, kind: 'person', context: { language: 'fr' } },
+    data: { displayName: `Léa ${stamp}`, kind: 'person', student: { language: 'fr' } },
   });
-  expect(contextRes.status()).toBe(201);
-  const { id: contextId, spaceId } = (await contextRes.json()).context as { id: string; spaceId: string };
+  expect(studentRes.status()).toBe(201);
+  const { id: studentId, spaceId } = (await studentRes.json()).student as { id: string; spaceId: string };
   const deckRes = await api.post(`${BASE}/api/decks`, {
     headers: CSRF,
     data: {
       title: `Phone states ${stamp}`,
-      contextId,
+      studentId,
       spaceId,
       shape: 'tutoring',
       createSession: true,
@@ -685,7 +685,7 @@ async function seedIdentifiedLobby(api: APIRequestContext, outline: typeof OUTLI
   });
   expect(launchRes.status()).toBe(201);
   const launched = (await launchRes.json()) as { code: string; sessionCode: string; hostToken: string };
-  const linkRes = await api.post(`${BASE}/api/tutoring/contexts/${contextId}/links`, { headers: CSRF, data: {} });
+  const linkRes = await api.post(`${BASE}/api/tutoring/students/${studentId}/links`, { headers: CSRF, data: {} });
   expect(linkRes.status()).toBe(201);
   return { ...launched, linkToken: (await linkRes.json()).token as string };
 }

@@ -6,16 +6,16 @@ import { request } from './client';
  * The one Home zone that needs a join the list endpoints do not do.
  *
  * Everything else on Home is assembled from `listSessions` / `listDecks` /
- * `listContexts`, which the page loads anyway. `needsRecord`
+ * `listStudents`, which the page loads anyway. `needsRecord`
  * hangs off `sessions × live_sessions × session_records`, so it arrives as one
  * route rather than an N+1 of per-session record probes.
  */
 export interface HomeNeedsRecord {
   sessionId: string;
   title: string;
-  contextId: string | null;
+  studentId: string | null;
   /** The person or group the session was taught to; the prompt names them. */
-  contextName: string | null;
+  studentName: string | null;
   spaceId: string;
   deliveredAt: number;
 }

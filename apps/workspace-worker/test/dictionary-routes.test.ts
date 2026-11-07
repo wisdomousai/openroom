@@ -3,7 +3,7 @@
  *
  * The learner route is the interesting one. It is session-scoped rather than on
  * `/api/learner/*` because a learner in a live session holds a session capability
- * token and nothing else — the participant app forgets its context access link
+ * token and nothing else — the participant app forgets its student access link
  * the moment it joins. These tests are what keeps that boundary checkable.
  */
 import { env } from 'cloudflare:test';
@@ -20,8 +20,8 @@ const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 const OUTLINE = {
   version: 1,
   meta: { title: 'Le passé composé', subject: 'French', level: 'B1' },
-  // Nickname so the test can join without minting a context access link.
-  // The route's gate is the session's context, not the identity mode.
+  // Nickname so the test can join without minting a student access link.
+  // The route's gate is the session's student, not the identity mode.
   defaults: { identityMode: 'nickname', resultVisibility: 'hidden-until-close' },
   steps: [
     { id: 'intro', kind: 'title', title: 'Je rate le train' },
@@ -84,16 +84,16 @@ async function tutoringSession(): Promise<{
   spaceId: string;
 }> {
   const cookie = await seedCookie();
-  const contextRes = await asBrowser(cookie, '/api/tutoring/contexts', {
+  const studentRes = await asBrowser(cookie, '/api/tutoring/students', {
     method: 'POST',
-    body: JSON.stringify({ displayName: 'Camille', kind: 'person', context: { level: 'B1' } }),
+    body: JSON.stringify({ displayName: 'Camille', kind: 'person', student: { level: 'B1' } }),
   });
-  expect(contextRes.status).toBe(201);
-  const contextId = ((await contextRes.json()) as { context: { id: string } }).context.id;
+  expect(studentRes.status).toBe(201);
+  const studentId = ((await studentRes.json()) as { student: { id: string } }).student.id;
 
   const deckRes = await asBrowser(cookie, '/api/decks', {
     method: 'POST',
-    body: JSON.stringify({ contextId, outline: OUTLINE, shape: 'tutoring', createSession: true }),
+    body: JSON.stringify({ studentId, outline: OUTLINE, shape: 'tutoring', createSession: true }),
   });
   expect(deckRes.status).toBe(201);
   const sessionId = ((await deckRes.json()) as { session: { id: string } }).session.id;
@@ -152,7 +152,7 @@ describe('POST /api/sessions/:code/dictionary', () => {
    * In a plain anonymous poll session the route does not exist. A 404 rather than
    * a 403 so there is nothing for a phone to discover.
    */
-  it('is absent from a session that was not launched from a context', async () => {
+  it('is absent from a session that was not launched from a student', async () => {
     const plain = await createSessionWithOutline(SMOKE_OUTLINE);
     const res = await lookup(plain.sessionCode, plain.hostToken, { word: 'rate' });
     expect(res.status).toBe(404);

@@ -122,7 +122,7 @@ describe('POST /api/auth/demo/login', () => {
     const meBody = (await me.json()) as { user: { email: string } };
     expect(meBody.user.email).toBe('alice@openroom.dev');
 
-    // Control plane accepts the demo session (create a deck; no context needed).
+    // Control plane accepts the demo session (create a deck; no student needed).
     await call('/api/my/spaces', { headers: { cookie: pair } });
     const deckRes = await call('/api/decks', {
       method: 'POST',

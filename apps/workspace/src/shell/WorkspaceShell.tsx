@@ -3,7 +3,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { RotateCcw, Trash2 } from 'lucide-react';
 
-import { getSessionItem, getSpaceTree, listAllSpaces, listContexts, listDecks, type ContextSummary } from '../api';
+import { getSessionItem, getSpaceTree, listAllSpaces, listStudents, listDecks, type StudentSummary } from '../api';
 import { EXPERIENCES } from './experiences';
 import { SpaceSwitcher } from './SpaceSwitcher';
 import { PersonBadge } from '../components/PersonBadge';
@@ -32,20 +32,20 @@ function asId(value: unknown): string | null {
 }
 
 /** A person is a folder: their decks are the space filtered to them. */
-function personTo(context: ContextSummary) {
-  return to.library({ spaceId: context.spaceId, contextId: context.id });
+function personTo(student: StudentSummary) {
+  return to.library({ spaceId: student.spaceId, studentId: student.id });
 }
 
 /**
  * 244 chrome rail: New deck, Library, Students, Shared, Trash.
  *
- * People are folders. There is no Contexts / People peer nav item.
+ * People are folders. There is no Students / People peer nav item.
  */
 export function WorkspaceShell({ children, signedIn, actions }: Props) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const rawSearch = useRouterState({ select: (state) => state.location.search });
   const search = searchString(rawSearch);
-  const activeContextId = asId(search.contextId);
+  const activeStudentId = asId(search.studentId);
   const activeFolderId = asId(search.folderId);
   const pathSpaceId = pathname.startsWith('/space/') && pathname !== '/space/new'
     ? decodeURIComponent(pathname.slice('/space/'.length).split('/')[0] ?? '')
@@ -61,14 +61,14 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     queryFn: listAllSpaces,
     enabled: signedIn === true,
   });
-  const contextsQuery = useQuery({
-    queryKey: ['contexts', 'all'] as const,
-    queryFn: () => listContexts(),
+  const studentsQuery = useQuery({
+    queryKey: ['students', 'all'] as const,
+    queryFn: () => listStudents(),
     enabled: signedIn === true,
   });
-  const trashedContextsQuery = useQuery({
-    queryKey: ['contexts', 'trashed'] as const,
-    queryFn: () => listContexts({ trash: true }),
+  const trashedStudentsQuery = useQuery({
+    queryKey: ['students', 'trashed'] as const,
+    queryFn: () => listStudents({ trash: true }),
     enabled: signedIn === true,
   });
   const decksQuery = useQuery({
@@ -79,12 +79,12 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
 
   const allSpaces = spacesQuery.data ?? [];
   // A trashed student's own space keeps resolving as the current space, but the nav does not list it.
-  const spaces = navigableSpaces(allSpaces, { trashed: trashedContextsQuery.data, live: contextsQuery.data, decks: decksQuery.data });
+  const spaces = navigableSpaces(allSpaces, { trashed: trashedStudentsQuery.data, live: studentsQuery.data, decks: decksQuery.data });
   const { mine: ownedSpaces, shared: invitedSpaces } = groupSpaces(spaces);
   const personal = ownedSpaces[0] ?? null;
-  const contexts = contextsQuery.data ?? [];
+  const students = studentsQuery.data ?? [];
   const decks = decksQuery.data ?? [];
-  const pathContextId = /^\/tutor\/contexts\/([^/]+)/.exec(pathname)?.[1];
+  const pathStudentId = /^\/tutor\/students\/([^/]+)/.exec(pathname)?.[1];
   const pathSessionId = /^\/sessions\/([^/]+)\/record$/.exec(pathname)?.[1];
   const sessionQuery = useQuery({
     queryKey: ['sessions', pathSessionId, 'workspace'],
@@ -93,20 +93,20 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
   });
   const activeSpaceId = pathSpaceId
     ?? asId(search.sourceSpaceId) ?? asId(search.spaceId)
-    ?? contexts.find((context) => context.id === pathContextId)?.spaceId
+    ?? students.find((student) => student.id === pathStudentId)?.spaceId
     ?? sessionQuery.data?.session.spaceId ?? null;
   const currentSpace = allSpaces.find((space) => space.id === activeSpaceId) ?? personal;
   const experience = currentSpace?.settings.experience ?? 'classroom';
   const profile = EXPERIENCES[experience];
   const mine = ownedSpaces.filter((space) => space.settings.experience === experience);
   const shared = invitedSpaces.filter((space) => space.settings.experience === experience);
-  const visibleContexts = contexts.filter((context) => spaces.some((space) => space.id === context.spaceId && space.settings.experience === experience));
+  const visibleStudents = students.filter((student) => spaces.some((space) => space.id === student.spaceId && space.settings.experience === experience));
 
-  const countByContext = useMemo(() => {
+  const countByStudent = useMemo(() => {
     const counts = new Map<string, number>();
     for (const deck of decks) {
-      if (!deck.contextId) continue;
-      counts.set(deck.contextId, (counts.get(deck.contextId) ?? 0) + 1);
+      if (!deck.studentId) continue;
+      counts.set(deck.studentId, (counts.get(deck.studentId) ?? 0) + 1);
     }
     return counts;
   }, [decks]);
@@ -121,14 +121,14 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
 
   const newDeckTo = useMemo(() => {
     // A student in Trash takes no new decks; the button files into the first own space instead.
-    if (trashedContextsQuery.data?.some((row) => row.id === activeContextId || (row.spaceId === activeSpaceId && row.spaceId.startsWith('sp_ctx_')))) {
+    if (trashedStudentsQuery.data?.some((row) => row.id === activeStudentId || (row.spaceId === activeSpaceId && row.spaceId.startsWith('sp_ctx_')))) {
       return personal ? to.deckNew({ spaceId: personal.id }) : to.deckNew();
     }
-    if (activeContextId) {
-      const context = contexts.find((row) => row.id === activeContextId);
+    if (activeStudentId) {
+      const student = students.find((row) => row.id === activeStudentId);
       return to.deckNew({
-        contextId: activeContextId,
-        spaceId: activeSpaceId ?? context?.spaceId,
+        studentId: activeStudentId,
+        spaceId: activeSpaceId ?? student?.spaceId,
         folderId: activeFolderId,
       });
     }
@@ -137,11 +137,11 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     }
     if (currentSpace) return to.deckNew({ spaceId: currentSpace.id });
     return to.deckNew();
-  }, [activeContextId, activeFolderId, activeSpaceId, contexts, currentSpace, personal, trashedContextsQuery.data]);
+  }, [activeStudentId, activeFolderId, activeSpaceId, students, currentSpace, personal, trashedStudentsQuery.data]);
 
   const libraryTo = currentSpace ? to.library({ spaceId: currentSpace.id }) : to.library();
   const libraryPath = pathname === '/space' || (pathname !== '/space/new' && /^\/space\/[^/]+$/.test(pathname));
-  const libraryActive = libraryPath && activeContextId === null;
+  const libraryActive = libraryPath && activeStudentId === null;
   const flushMain = libraryPath;
   /*
    * Form and Notes pages fit any window, as Settings does: Add student, Space
@@ -149,13 +149,13 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
    * Library and the rest keep the 980 px desktop minimum, with a notice below it.
    */
   const responsivePage = pathname === '/settings' || pathname.startsWith('/settings/')
-    || pathname === '/tutor/contexts/new'
+    || pathname === '/tutor/students/new'
     || /^\/space\/[^/]+\/(edit|samples)$/.test(pathname)
     || /^\/sessions\/[^/]+\/record$/.test(pathname)
-    || /^\/tutor\/contexts\/[^/]+\/work(\/[^/]+\/edit)?$/.test(pathname);
+    || /^\/tutor\/students\/[^/]+\/work(\/[^/]+\/edit)?$/.test(pathname);
 
   const [searchOpen, setSearchOpen] = useState(false);
-  const contextById = useMemo(() => new Map([...(trashedContextsQuery.data ?? []), ...contexts].map((context) => [context.id, context])), [contexts, trashedContextsQuery.data]);
+  const studentById = useMemo(() => new Map([...(trashedStudentsQuery.data ?? []), ...students].map((student) => [student.id, student])), [students, trashedStudentsQuery.data]);
   const searchResults = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return needle ? decks.filter((deck) => deck.title.toLocaleLowerCase().includes(needle)) : [];
@@ -206,9 +206,9 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
           {searchOpen && query.trim() ? <div className="absolute left-0 top-9 z-50 max-h-80 w-[400px] overflow-auto rounded-md border border-border bg-popover p-1 shadow-[var(--shadow-overlay)]" aria-label="Search results">
             {searchResults.length === 0 ? <p className="p-3 text-secondary text-muted-foreground">No decks match</p> : searchResults.map((deck) => {
               // A student's deck opens in that student's place, as the sidebar link does; a trashed student's place shows Restore.
-              const person = deck.contextId ? contextById.get(deck.contextId) : undefined;
+              const person = deck.studentId ? studentById.get(deck.studentId) : undefined;
               return <Link
-                key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: shownFolderId(deck), itemId: deck.id, contextId: person?.id })}
+                key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: shownFolderId(deck), itemId: deck.id, studentId: person?.id })}
                 onClick={() => { setSearchOpen(false); setQuery(''); }} className="block rounded p-2 hover:bg-accent focus:bg-accent">
                 <span className="block text-secondary">{deck.title}</span>
                 <span className="block text-caption text-muted-foreground">{person ? (person.deletedAt != null ? `${person.displayName} · in Trash` : person.displayName) : allSpaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
@@ -255,13 +255,13 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
               Library
             </Link>
 
-            {mine.filter((space) => space.id !== currentSpace?.id && !visibleContexts.some((context) => context.spaceId === space.id)).map((space) => <Link key={space.id} {...to.library({ spaceId: space.id })}
-              className={cn('flex h-8 items-center rounded-md px-2 pl-8 text-secondary hover:bg-desk', activeSpaceId === space.id && !activeContextId && 'bg-desk font-semibold')}>{space.name}</Link>)}
+            {mine.filter((space) => space.id !== currentSpace?.id && !visibleStudents.some((student) => student.spaceId === space.id)).map((space) => <Link key={space.id} {...to.library({ spaceId: space.id })}
+              className={cn('flex h-8 items-center rounded-md px-2 pl-8 text-secondary hover:bg-desk', activeSpaceId === space.id && !activeStudentId && 'bg-desk font-semibold')}>{space.name}</Link>)}
 
-            {profile.contextLabel ? <><p className="mb-1 mt-3.5 px-2 text-caption text-muted-foreground">{profile.contextLabel}</p>
-            {visibleContexts.map((person) => {
-              const active = activeContextId === person.id;
-              const count = countByContext.get(person.id) ?? 0;
+            {profile.studentLabel ? <><p className="mb-1 mt-3.5 px-2 text-caption text-muted-foreground">{profile.studentLabel}</p>
+            {visibleStudents.map((person) => {
+              const active = activeStudentId === person.id;
+              const count = countByStudent.get(person.id) ?? 0;
               return (
                 <Link
                   key={person.id}
@@ -285,7 +285,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
               <span aria-hidden="true" className="w-[22px] text-center text-title-bar font-normal">
                 ＋
               </span>
-              {profile.addContextLabel}
+              {profile.addStudentLabel}
             </Link></> : null}
 
             {shared.length > 0 ? (
@@ -293,7 +293,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
                 <p className="mb-1 mt-4 px-2 text-caption text-muted-foreground">Shared</p>
                 {shared.map((space) => {
                   const active =
-                    activeContextId === null && activeSpaceId === space.id;
+                    activeStudentId === null && activeSpaceId === space.id;
                   return (
                     <Link
                       key={space.id}

@@ -10,7 +10,7 @@ export function recoveryPreparation(now: number): string[] {
     'DELETE FROM deletion_intents',
     `UPDATE api_tokens SET revoked_at=COALESCE(revoked_at,${now})`,
     `UPDATE oauth_connections SET revoked_at=COALESCE(revoked_at,${now})`,
-    `UPDATE context_access_links SET revoked_at=COALESCE(revoked_at,${now})`,
+    `UPDATE student_access_links SET revoked_at=COALESCE(revoked_at,${now})`,
     `UPDATE space_invites SET revoked_at=COALESCE(revoked_at,${now}) WHERE accepted_at IS NULL`,
     // Membership may have been removed after the backup. Owners re-share after recovery.
     'DELETE FROM space_members WHERE user_id NOT IN (SELECT owner_user_id FROM spaces WHERE spaces.id=space_members.space_id)',

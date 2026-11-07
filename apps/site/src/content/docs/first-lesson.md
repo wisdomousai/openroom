@@ -3,7 +3,7 @@ title: Teach a first tutoring lesson
 description: Set up one student, teach a lesson, write the Notes, and review the student's homework, in the order you use them.
 section: Getting started
 order: 11
-related: [start, contexts, learner-links, live-session, notes, review, account]
+related: [start, students, learner-links, live-session, notes, review, account]
 ---
 
 ## Before you start

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { CSRF_HEADER, SESSION_COOKIE } from '../src/auth.js';
 import { signCookieValue } from '../src/cookies.js';
 import worker from '../src/index.js';
-import { BASE, createSmokeContext } from './helpers.js';
+import { BASE, createSmokeStudent } from './helpers.js';
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 
@@ -107,52 +107,52 @@ describe('workspace hierarchy', () => {
     expect((await patch(stranger.cookie, { experience: 'tutoring' })).status).toBe(404);
   });
 
-  it('gives a new context its own space and refuses a second in that space', async () => {
+  it('gives a new student its own space and refuses a second in that space', async () => {
     const { cookie } = await seedSession();
     const homeSpaces = (await (await asUser(cookie, '/api/my/spaces')).json()) as {
       spaces: { id: string }[];
     };
     const homeSpaceId = homeSpaces.spaces[0]!.id;
-    const { contextId, spaceId } = await createSmokeContext((path, init) =>
+    const { studentId, spaceId } = await createSmokeStudent((path, init) =>
       asUser(cookie, path, init ?? {}),
     );
     // Its own space, not the caller's home one.
     expect(spaceId).not.toBe(homeSpaceId);
 
-    const second = await asUser(cookie, '/api/tutoring/contexts', {
+    const second = await asUser(cookie, '/api/tutoring/students', {
       method: 'POST',
       body: JSON.stringify({ displayName: 'Someone else', kind: 'person', spaceId }),
     });
     expect(second.status).toBe(409);
-    expect(((await second.json()) as { error: string }).error).toBe('space-has-context');
+    expect(((await second.json()) as { error: string }).error).toBe('space-has-student');
 
     // The home space is still free, so it takes one.
-    const inHome = await asUser(cookie, '/api/tutoring/contexts', {
+    const inHome = await asUser(cookie, '/api/tutoring/students', {
       method: 'POST',
       body: JSON.stringify({ displayName: 'Housemate', kind: 'person', spaceId: homeSpaceId }),
     });
     expect(inHome.status).toBe(201);
-    expect(((await inHome.json()) as { context: { spaceId: string } }).context.spaceId).toBe(
+    expect(((await inHome.json()) as { student: { spaceId: string } }).student.spaceId).toBe(
       homeSpaceId,
     );
-    expect(contextId).toBeTruthy();
+    expect(studentId).toBeTruthy();
   });
 
-  it('reuses one context in a second space, so each space carries its own pair', async () => {
+  it('reuses one student in a second space, so each space carries its own pair', async () => {
     const { cookie } = await seedSession();
-    const { contextId, spaceId } = await createSmokeContext((path, init) =>
+    const { studentId, spaceId } = await createSmokeStudent((path, init) =>
       asUser(cookie, path, init ?? {}),
     );
 
     const second = await asUser(cookie, '/api/my/spaces', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Camille — German', contextId }),
+      body: JSON.stringify({ name: 'Camille — German', studentId }),
     });
     expect(second.status).toBe(201);
     const secondSpaceId = ((await second.json()) as { id: string }).id;
     expect(secondSpaceId).not.toBe(spaceId);
 
-    // One context, two spaces, each free to carry a different language pair.
+    // One student, two spaces, each free to carry a different language pair.
     for (const [space, languages] of [
       [spaceId, { taught: 'fr', native: 'en' }],
       [secondSpaceId, { taught: 'de', native: 'en' }],
@@ -168,11 +168,11 @@ describe('workspace hierarchy', () => {
     };
     expect(reread.space.settings?.languages?.taught).toBe('de');
 
-    // A context nobody can reach is not reusable.
+    // A student nobody can reach is not reusable.
     const stranger = await seedSession();
     const stolen = await asUser(stranger.cookie, '/api/my/spaces', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Not mine', contextId }),
+      body: JSON.stringify({ name: 'Not mine', studentId }),
     });
     expect(stolen.status).toBe(404);
   });
@@ -180,10 +180,10 @@ describe('workspace hierarchy', () => {
   it('restores trashed folders', async () => {
     const { cookie } = await seedSession();
     /*
-     * A context brings its own space, so everything filed beside it goes
+     * A student brings its own space, so everything filed beside it goes
      * there. The home space is a different space now.
      */
-    const { contextId, spaceId } = await createSmokeContext((path, init) =>
+    const { studentId, spaceId } = await createSmokeStudent((path, init) =>
       asUser(cookie, path, init ?? {}),
     );
     const folder = (await (await asUser(cookie, `/api/my/spaces/${spaceId}/folders`, {
@@ -192,13 +192,13 @@ describe('workspace hierarchy', () => {
     })).json()) as { id: string };
     const deck = (await (await asUser(cookie, '/api/decks', {
       method: 'POST',
-      body: JSON.stringify({ title: 'Filed template', spaceId, folderId: folder.id, contextId }),
+      body: JSON.stringify({ title: 'Filed template', spaceId, folderId: folder.id, studentId }),
     })).json()) as { deck: { id: string } };
 
     // A deck the tutor trashed on its own before the folder stays in Trash after the folder's restore.
     const alreadyTrashed = (await (await asUser(cookie, '/api/decks', {
       method: 'POST',
-      body: JSON.stringify({ title: 'Trashed first', spaceId, folderId: folder.id, contextId }),
+      body: JSON.stringify({ title: 'Trashed first', spaceId, folderId: folder.id, studentId }),
     })).json()) as { deck: { id: string } };
     expect((await asUser(cookie, `/api/decks/${alreadyTrashed.deck.id}`, { method: 'DELETE' })).status).toBe(200);
 
@@ -224,12 +224,12 @@ describe('workspace hierarchy', () => {
 
   it('shows a live deck filed under a trashed folder at the space root', async () => {
     const { cookie } = await seedSession();
-    const { contextId, spaceId } = await createSmokeContext((path, init) => asUser(cookie, path, init ?? {}));
+    const { studentId, spaceId } = await createSmokeStudent((path, init) => asUser(cookie, path, init ?? {}));
     const folder = (await (await asUser(cookie, `/api/my/spaces/${spaceId}/folders`, {
       method: 'POST', body: JSON.stringify({ name: 'Phrases' }),
     })).json()) as { id: string };
     const deck = (await (await asUser(cookie, '/api/decks', {
-      method: 'POST', body: JSON.stringify({ title: 'Stranded', spaceId, folderId: folder.id, contextId }),
+      method: 'POST', body: JSON.stringify({ title: 'Stranded', spaceId, folderId: folder.id, studentId }),
     })).json()) as { deck: { id: string } };
     await asUser(cookie, `/api/my/folders/${folder.id}/trash`, { method: 'POST' });
     // Restored on its own while its folder is still in Trash.
@@ -248,7 +248,7 @@ describe('workspace hierarchy', () => {
 
   it('purges a trashed folder together with its decks', async () => {
     const { cookie } = await seedSession();
-    const { contextId, spaceId } = await createSmokeContext((path, init) => asUser(cookie, path, init ?? {}));
+    const { studentId, spaceId } = await createSmokeStudent((path, init) => asUser(cookie, path, init ?? {}));
     const folder = (await (await asUser(cookie, `/api/my/spaces/${spaceId}/folders`, {
       method: 'POST', body: JSON.stringify({ name: 'Phrases' }),
     })).json()) as { id: string };
@@ -256,10 +256,10 @@ describe('workspace hierarchy', () => {
       method: 'POST', body: JSON.stringify({ name: 'Verbs', parentId: folder.id }),
     })).json()) as { id: string };
     const deck = (await (await asUser(cookie, '/api/decks', {
-      method: 'POST', body: JSON.stringify({ title: 'Nested', spaceId, folderId: child.id, contextId }),
+      method: 'POST', body: JSON.stringify({ title: 'Nested', spaceId, folderId: child.id, studentId }),
     })).json()) as { deck: { id: string } };
     const kept = (await (await asUser(cookie, '/api/decks', {
-      method: 'POST', body: JSON.stringify({ title: 'Restored alone', spaceId, folderId: folder.id, contextId }),
+      method: 'POST', body: JSON.stringify({ title: 'Restored alone', spaceId, folderId: folder.id, studentId }),
     })).json()) as { deck: { id: string } };
     // The subfolder went to Trash first, so its deck carries an older marker than the parent's.
     await asUser(cookie, `/api/my/folders/${child.id}/trash`, { method: 'POST' });
@@ -287,10 +287,10 @@ describe('workspace hierarchy', () => {
   it('lists decks and sessions in a folder tree', async () => {
     const { cookie } = await seedSession();
     /*
-     * A context brings its own space, so everything filed beside it goes
+     * A student brings its own space, so everything filed beside it goes
      * there. The home space is a different space now.
      */
-    const { contextId, spaceId } = await createSmokeContext((path, init) =>
+    const { studentId, spaceId } = await createSmokeStudent((path, init) =>
       asUser(cookie, path, init ?? {}),
     );
 
@@ -308,7 +308,7 @@ describe('workspace hierarchy', () => {
           title: 'Cell division',
           spaceId,
           folderId: folder.id,
-          contextId,
+          studentId,
           createSession: true,
         }),
       })
@@ -325,10 +325,10 @@ describe('workspace hierarchy', () => {
     const body = (await tree.json()) as {
       decks: { id: string; title: string; contents?: { slides: number; askTheClass: number; homework: boolean } }[];
       sessions: { id: string; deckId: string }[];
-      space: { context: { id: string; displayName: string } | null };
+      space: { student: { id: string; displayName: string } | null };
     };
     // A student's own space names its student, for its settings page.
-    expect(body.space.context).toEqual({ id: contextId, displayName: 'Test context' });
+    expect(body.space.student).toEqual({ id: studentId, displayName: 'Test student' });
     const listed = body.decks.find((d) => d.id === created.deck.id);
     expect(listed).toBeTruthy();
     expect(listed?.contents).toEqual({
@@ -344,10 +344,10 @@ describe('workspace hierarchy', () => {
   it('deletes a folder subtree and unfiles what was in it', async () => {
     const { cookie } = await seedSession();
     /*
-     * A context brings its own space, so everything filed beside it goes
+     * A student brings its own space, so everything filed beside it goes
      * there. The home space is a different space now.
      */
-    const { contextId, spaceId } = await createSmokeContext((path, init) =>
+    const { studentId, spaceId } = await createSmokeStudent((path, init) =>
       asUser(cookie, path, init ?? {}),
     );
 
@@ -369,7 +369,7 @@ describe('workspace hierarchy', () => {
         title: 'Filed template',
         spaceId,
         folderId: child.id,
-        contextId,
+        studentId,
       }),
     });
     const deck = (await deckRes.json()) as { deck: { id: string } };
@@ -448,10 +448,10 @@ describe('workspace hierarchy', () => {
   it('copies a folder subtree', async () => {
     const { cookie } = await seedSession();
     /*
-     * A context brings its own space, so everything filed beside it goes
+     * A student brings its own space, so everything filed beside it goes
      * there. The home space is a different space now.
      */
-    const { spaceId } = await createSmokeContext((path, init) =>
+    const { spaceId } = await createSmokeStudent((path, init) =>
       asUser(cookie, path, init ?? {}),
     );
 

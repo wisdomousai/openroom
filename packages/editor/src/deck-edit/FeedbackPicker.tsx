@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { LearnerCorrection } from '@openroom/schema';
-import type { ContextReturned } from '../services';
+import type { StudentReturned } from '../services';
 import { Button } from '@openroom/ui/components/button';
 
-export function FeedbackPicker({ corrections, onInsert }: { corrections: ContextReturned['corrections']; onInsert: (correction: LearnerCorrection) => void }) {
+export function FeedbackPicker({ corrections, onInsert }: { corrections: StudentReturned['corrections']; onInsert: (correction: LearnerCorrection) => void }) {
   // A correction goes into the deck once; adding it again would only duplicate it.
   const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
   if (corrections.length === 0) return null;

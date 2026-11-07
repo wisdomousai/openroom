@@ -13,8 +13,8 @@ import { account, member, subscribe, type Account } from './paid-fixtures';
 
 const OUTLINE = { ...SMOKE_OUTLINE, steps: [{ id: 'question', kind: 'interaction', interactionId: 'warmup' }] };
 
-async function session(tutor: Account, context: { id: string; spaceId: string }, title: string): Promise<string> {
-  const created = await tutor.request('/api/decks', 'POST', { spaceId: context.spaceId, contextId: context.id, content: { ...OUTLINE, meta: { title } }, createSession: true });
+async function session(tutor: Account, student: { id: string; spaceId: string }, title: string): Promise<string> {
+  const created = await tutor.request('/api/decks', 'POST', { spaceId: student.spaceId, studentId: student.id, content: { ...OUTLINE, meta: { title } }, createSession: true });
   expect(created.status, JSON.stringify(created.body)).toBe(201);
   return created.body.session.id as string;
 }
@@ -25,7 +25,7 @@ async function delivered(tutor: Account, sessionId: string, spaceId: string, cre
     .bind(crypto.randomUUID().slice(0, 8).toUpperCase(), tutor.id, 'Live', createdAt, ended ? 1 : 0, sessionId, spaceId).run();
 }
 
-async function prompts(tutor: Account): Promise<{ sessionId: string; title: string; contextName: string | null }[]> {
+async function prompts(tutor: Account): Promise<{ sessionId: string; title: string; studentName: string | null }[]> {
   const home = await tutor.request('/api/my/home');
   expect(home.status).toBe(200);
   return home.body.needsRecord;
@@ -35,29 +35,29 @@ describe('write-notes prompt', () => {
   it('lists ended and settled sessions without Notes, newest first, with the student name', async () => {
     const owner = await account();
     const change = await subscribe(owner);
-    const created = await owner.request('/api/tutoring/contexts', 'POST', { displayName: 'Léa', kind: 'person', context: {} });
+    const created = await owner.request('/api/tutoring/students', 'POST', { displayName: 'Léa', kind: 'person', student: {} });
     expect(created.status).toBe(201);
-    const context = created.body.context as { id: string; spaceId: string };
+    const student = created.body.student as { id: string; spaceId: string };
     const now = Date.now();
-    const ended = await session(owner, context, 'Au café');
-    const settled = await session(owner, context, 'Au marché');
-    const teaching = await session(owner, context, 'En train');
-    const written = await session(owner, context, 'À la gare');
-    await session(owner, context, 'Never started');
-    await delivered(owner, ended, context.spaceId, now - 60_000, true);
-    await delivered(owner, settled, context.spaceId, now - RECOVERY_WINDOW_MS - 60_000, false);
-    await delivered(owner, teaching, context.spaceId, now - 60_000, false);
-    await delivered(owner, written, context.spaceId, now - 30_000, true);
+    const ended = await session(owner, student, 'Au café');
+    const settled = await session(owner, student, 'Au marché');
+    const teaching = await session(owner, student, 'En train');
+    const written = await session(owner, student, 'À la gare');
+    await session(owner, student, 'Never started');
+    await delivered(owner, ended, student.spaceId, now - 60_000, true);
+    await delivered(owner, settled, student.spaceId, now - RECOVERY_WINDOW_MS - 60_000, false);
+    await delivered(owner, teaching, student.spaceId, now - 60_000, false);
+    await delivered(owner, written, student.spaceId, now - 30_000, true);
     expect((await owner.request(`/api/sessions/${written}/record`, 'PUT', { outcomes: [], notes: '', homework: [], artifacts: [] })).status).toBe(200);
 
     expect(await prompts(owner)).toEqual([
-      expect.objectContaining({ sessionId: ended, title: 'Au café', contextName: 'Léa' }),
-      expect.objectContaining({ sessionId: settled, title: 'Au marché', contextName: 'Léa' }),
+      expect.objectContaining({ sessionId: ended, title: 'Au café', studentName: 'Léa' }),
+      expect.objectContaining({ sessionId: settled, title: 'Au marché', studentName: 'Léa' }),
     ]);
 
     // A member of the space sees the same prompt; a lapsed owner plan hides it from both.
     const editor = await account();
-    await member(owner, editor, 'editor', context.spaceId);
+    await member(owner, editor, 'editor', student.spaceId);
     expect((await prompts(editor)).map((row) => row.sessionId)).toEqual([ended, settled]);
     await change('canceled');
     expect(await prompts(owner)).toEqual([]);

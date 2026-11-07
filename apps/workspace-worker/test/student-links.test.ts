@@ -1,8 +1,8 @@
 /**
- * Context access links: the learner-side capability credential.
+ * Student access links: the learner-side capability credential.
  *
  * These are behavioural auth tests. The point of the file is the negative half:
- * a link is scoped to exactly ONE context, is never a `SessionUser`, and never
+ * a link is scoped to exactly ONE student, is never a `SessionUser`, and never
  * reaches the control plane. Everything asserted here is a boundary that, if it
  * moved, would leak one tutoring client's records to another.
  */
@@ -26,7 +26,7 @@ const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 
 type Identity = 'identified' | 'nickname' | 'anonymous';
 
-/** Outline whose session names every participant from their context access link. */
+/** Outline whose session names every participant from their student access link. */
 function outline(identityMode: Identity): Record<string, unknown> {
   return {
     version: 1,
@@ -94,30 +94,30 @@ function asLearner(token: string, path: string, init: RequestInit = {}): Promise
 }
 
 /**
- * `spaceId` names the space to put the context in; omit it and the context
- * brings a new space of its own, since a space holds one context. A test that
+ * `spaceId` names the space to put the student in; omit it and the student
+ * brings a new space of its own, since a space holds one student. A test that
  * grants a second member must name the space it granted them on.
  */
-async function createContext(
+async function createStudent(
   cookie: string,
   displayName: string,
   spaceId?: string,
 ): Promise<string> {
-  const response = await asBrowser(cookie, '/api/tutoring/contexts', {
+  const response = await asBrowser(cookie, '/api/tutoring/students', {
     method: 'POST',
     body: JSON.stringify({
       displayName,
       kind: 'person',
-      context: { level: 'B1' },
+      student: { level: 'B1' },
       ...(spaceId === undefined ? {} : { spaceId }),
     }),
   });
   expect(response.status).toBe(201);
-  return ((await response.json()) as { context: { id: string } }).context.id;
+  return ((await response.json()) as { student: { id: string } }).student.id;
 }
 
-async function mintLink(cookie: string, contextId: string): Promise<string> {
-  const response = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, {
+async function mintLink(cookie: string, studentId: string): Promise<string> {
+  const response = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, {
     method: 'POST',
     body: JSON.stringify({}),
   });
@@ -127,13 +127,13 @@ async function mintLink(cookie: string, contextId: string): Promise<string> {
 
 async function createSession(
   cookie: string,
-  contextId: string,
+  studentId: string,
   identityMode: Identity = 'identified',
 ): Promise<string> {
   const response = await asBrowser(cookie, '/api/decks', {
     method: 'POST',
     body: JSON.stringify({
-      contextId,
+      studentId,
       outline: outline(identityMode),
       shape: 'tutoring',
       createSession: true,
@@ -173,12 +173,12 @@ function joinWith(body: Record<string, unknown>): Promise<Response> {
   );
 }
 
-describe('context access links — tutor side', () => {
+describe('student access links — tutor side', () => {
   it('shows the raw token exactly once and never again', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
+    const studentId = await createStudent(cookie, 'Camille');
 
-    const minted = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const minted = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -194,7 +194,7 @@ describe('context access links — tutor side', () => {
     // Default expiry is 180 days out.
     expect(Math.round((body.expiresAt - Date.now()) / 86_400_000)).toBe(180);
 
-    const listed = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`);
+    const listed = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`);
     expect(listed.status).toBe(200);
     const text = await listed.text();
     expect(text).not.toContain(body.token);
@@ -205,7 +205,7 @@ describe('context access links — tutor side', () => {
 
     // The cleartext token is nowhere in D1 — only its SHA-256 digest.
     const stored = await env.DB.prepare(
-      'SELECT token_hash FROM context_access_links WHERE id = ?1',
+      'SELECT token_hash FROM student_access_links WHERE id = ?1',
     )
       .bind(body.id)
       .first<{ token_hash: string }>();
@@ -214,8 +214,8 @@ describe('context access links — tutor side', () => {
 
   it('revokes without hard-deleting, and the revoked link stops working', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const minted = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const studentId = await createStudent(cookie, 'Camille');
+    const minted = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -224,7 +224,7 @@ describe('context access links — tutor side', () => {
 
     const revoked = await asBrowser(
       cookie,
-      `/api/tutoring/contexts/${contextId}/links/${id}`,
+      `/api/tutoring/students/${studentId}/links/${id}`,
       { method: 'DELETE' },
     );
     expect(revoked.status).toBe(200);
@@ -234,34 +234,34 @@ describe('context access links — tutor side', () => {
 
     // The audit row survives; it is marked, not erased.
     const listed = (await (
-      await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`)
+      await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`)
     ).json()) as { links: { id: string; revokedAt: number | null }[] };
     expect(listed.links).toHaveLength(1);
     expect(listed.links[0]!.revokedAt).toBeGreaterThan(0);
   });
 
-  it('caps live links per context and lets a revoked slot be reused', async () => {
+  it('caps live links per student and lets a revoked slot be reused', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
+    const studentId = await createStudent(cookie, 'Camille');
     const ids: string[] = [];
     for (let i = 0; i < 10; i += 1) {
-      const response = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, {
+      const response = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, {
         method: 'POST',
         body: JSON.stringify({}),
       });
       expect(response.status).toBe(201);
       ids.push(((await response.json()) as { id: string }).id);
     }
-    const overflow = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const overflow = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
     expect(overflow.status).toBe(429);
 
-    await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links/${ids[0]}`, {
+    await asBrowser(cookie, `/api/tutoring/students/${studentId}/links/${ids[0]}`, {
       method: 'DELETE',
     });
-    const retry = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const retry = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -286,26 +286,26 @@ describe('context access links — tutor side', () => {
         .bind(spaceId, member.userId, role, Date.now())
         .run();
     }
-    const contextId = await createContext(owner.cookie, 'Camille', spaceId);
+    const studentId = await createStudent(owner.cookie, 'Camille', spaceId);
 
-    const asPresenter = await asBrowser(presenter.cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const asPresenter = await asBrowser(presenter.cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
     expect(asPresenter.status).toBe(403);
 
-    const asEditor = await asBrowser(editor.cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const asEditor = await asBrowser(editor.cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
     expect(asEditor.status).toBe(201);
   });
 
-  it('refuses to mint for a context in another tutor space', async () => {
+  it('refuses to mint for a student in another tutor space', async () => {
     const owner = await seedSession();
     const stranger = await seedSession();
-    const contextId = await createContext(owner.cookie, 'Camille');
-    const response = await asBrowser(stranger.cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const studentId = await createStudent(owner.cookie, 'Camille');
+    const response = await asBrowser(stranger.cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
@@ -313,11 +313,11 @@ describe('context access links — tutor side', () => {
   });
 });
 
-describe('context access links — learner plane', () => {
-  it('serves only its own context, and never the tutor-private notes', async () => {
+describe('student access links — learner plane', () => {
+  it('serves only its own student, and never the tutor-private notes', async () => {
     const { cookie } = await seedSession();
-    const camille = await createContext(cookie, 'Camille');
-    const other = await createContext(cookie, 'Noor');
+    const camille = await createStudent(cookie, 'Camille');
+    const other = await createStudent(cookie, 'Noor');
 
     const camilleSession = await createSession(cookie, camille);
     const otherSession = await createSession(cookie, other);
@@ -339,7 +339,7 @@ describe('context access links — learner plane', () => {
 
     const me = await asLearner(token, '/api/learner/me');
     expect(me.status).toBe(200);
-    expect(await me.json()).toEqual({ contextId: camille, displayName: 'Camille' });
+    expect(await me.json()).toEqual({ studentId: camille, displayName: 'Camille' });
 
     const sessionsResponse = await asLearner(token, '/api/learner/sessions');
     expect(sessionsResponse.status).toBe(200);
@@ -347,7 +347,7 @@ describe('context access links — learner plane', () => {
 
     // The tutor-private note must not appear anywhere in the body, under any key.
     expect(raw).not.toContain('SECRET-TUTOR-NOTE');
-    // Nor may the payload leak the sibling context's session.
+    // Nor may the payload leak the sibling student's session.
     expect(raw).not.toContain(otherSession);
     // A transient session signal must never appear under any key either: the
     // learner plane is a records surface, not a live-session surface.
@@ -374,15 +374,15 @@ describe('context access links — learner plane', () => {
 
   it('rejects an expired link', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const minted = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const studentId = await createStudent(cookie, 'Camille');
+    const minted = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
     const { id, token } = (await minted.json()) as { id: string; token: string };
     expect((await asLearner(token, '/api/learner/sessions')).status).toBe(200);
 
-    await env.DB.prepare('UPDATE context_access_links SET expires_at = ?1 WHERE id = ?2')
+    await env.DB.prepare('UPDATE student_access_links SET expires_at = ?1 WHERE id = ?2')
       .bind(Date.now() - 1000, id)
       .run();
 
@@ -390,28 +390,28 @@ describe('context access links — learner plane', () => {
     expect((await asLearner(token, '/api/learner/sessions')).status).toBe(401);
   });
 
-  it('dies with its context when the context is trashed', async () => {
+  it('dies with its student when the student is trashed', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const token = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const token = await mintLink(cookie, studentId);
     expect((await asLearner(token, '/api/learner/me')).status).toBe(200);
 
     expect(
-      (await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'DELETE' })).status,
+      (await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'DELETE' })).status,
     ).toBe(200);
     expect((await asLearner(token, '/api/learner/me')).status).toBe(401);
   });
 
   it('never reaches the control plane', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
-    const token = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
+    const token = await mintLink(cookie, studentId);
 
     for (const path of [
-      '/api/tutoring/contexts',
-      `/api/tutoring/contexts/${contextId}`,
-      `/api/tutoring/contexts/${contextId}/links`,
+      '/api/tutoring/students',
+      `/api/tutoring/students/${studentId}`,
+      `/api/tutoring/students/${studentId}/links`,
       '/api/decks',
       '/api/sessions',
       `/api/sessions/${sessionId}`,
@@ -421,7 +421,7 @@ describe('context access links — learner plane', () => {
       '/api/my/spaces',
     ]) {
       const response = await asLearner(token, path);
-      expect([401, 403], `${path} accepted a context link with ${response.status}`).toContain(
+      expect([401, 403], `${path} accepted a student link with ${response.status}`).toContain(
         response.status,
       );
     }
@@ -453,14 +453,14 @@ describe('context access links — learner plane', () => {
 });
 
 describe('identified sessions', () => {
-  it('names the participant from the context and re-entry is the same participant', async () => {
+  it('names the participant from the student and re-entry is the same participant', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     const { code } = await launch(cookie, sessionId);
-    const token = await mintLink(cookie, contextId);
+    const token = await mintLink(cookie, studentId);
 
-    const first = await joinWith({ code, contextLink: token });
+    const first = await joinWith({ code, studentLink: token });
     expect(first.status).toBe(200);
     const joined = (await first.json()) as {
       participantId: string;
@@ -470,7 +470,7 @@ describe('identified sessions', () => {
     expect(joined.identityMode).toBe('identified');
     expect(joined.name).toBe('Camille');
 
-    const again = await joinWith({ code, contextLink: token });
+    const again = await joinWith({ code, studentLink: token });
     expect(again.status).toBe(200);
     const rejoined = (await again.json()) as { participantId: string; name: string };
     expect(rejoined.participantId).toBe(joined.participantId);
@@ -479,48 +479,48 @@ describe('identified sessions', () => {
 
   it('is closed to anyone without a link', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const { code } = await launch(cookie, await createSession(cookie, contextId));
+    const studentId = await createStudent(cookie, 'Camille');
+    const { code } = await launch(cookie, await createSession(cookie, studentId));
 
     const bare = await joinWith({ code });
     expect(bare.status).toBe(403);
-    expect(((await bare.json()) as { error: string }).error).toBe('context-link-required');
+    expect(((await bare.json()) as { error: string }).error).toBe('student-link-required');
   });
 
-  it("rejects another context's link on this session", async () => {
+  it("rejects another student's link on this session", async () => {
     const { cookie } = await seedSession();
-    const camille = await createContext(cookie, 'Camille');
-    const noor = await createContext(cookie, 'Noor');
+    const camille = await createStudent(cookie, 'Camille');
+    const noor = await createStudent(cookie, 'Noor');
     const { code } = await launch(cookie, await createSession(cookie, camille));
     const noorToken = await mintLink(cookie, noor);
 
-    const response = await joinWith({ code, contextLink: noorToken });
+    const response = await joinWith({ code, studentLink: noorToken });
     expect(response.status).toBe(403);
-    expect(((await response.json()) as { error: string }).error).toBe('context-link-invalid');
+    expect(((await response.json()) as { error: string }).error).toBe('student-link-invalid');
   });
 
   it('rejects a revoked link at join even for the right session', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const { code } = await launch(cookie, await createSession(cookie, contextId));
-    const minted = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, {
+    const studentId = await createStudent(cookie, 'Camille');
+    const { code } = await launch(cookie, await createSession(cookie, studentId));
+    const minted = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, {
       method: 'POST',
       body: JSON.stringify({}),
     });
     const { id, token } = (await minted.json()) as { id: string; token: string };
-    expect((await joinWith({ code, contextLink: token })).status).toBe(200);
+    expect((await joinWith({ code, studentLink: token })).status).toBe(200);
 
-    await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links/${id}`, { method: 'DELETE' });
-    expect((await joinWith({ code, contextLink: token })).status).toBe(403);
+    await asBrowser(cookie, `/api/tutoring/students/${studentId}/links/${id}`, { method: 'DELETE' });
+    expect((await joinWith({ code, studentLink: token })).status).toBe(403);
   });
 
   it('refuses a link on a session that does not use one', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const { code } = await launch(cookie, await createSession(cookie, contextId, 'nickname'));
-    const token = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const { code } = await launch(cookie, await createSession(cookie, studentId, 'nickname'));
+    const token = await mintLink(cookie, studentId);
 
-    const response = await joinWith({ code, contextLink: token });
+    const response = await joinWith({ code, studentLink: token });
     expect(response.status).toBe(409);
     expect(((await response.json()) as { error: string }).error).toBe('identified-join-unavailable');
 
@@ -534,35 +534,35 @@ describe('identified sessions', () => {
 describe('identified session URLs', () => {
   it('offers no bare join URL at launch and a link-bearing one at mint', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     const launched = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, { method: 'POST', body: JSON.stringify({ start: true }) });
-    const live = (await launched.json()) as { code: string; stageToken: string; joinUrl?: string; stageUrl?: string; contextId?: string };
+    const live = (await launched.json()) as { code: string; stageToken: string; joinUrl?: string; stageUrl?: string; studentId?: string };
     expect(live.joinUrl).toBeUndefined();
-    expect(live.contextId).toBe(contextId);
+    expect(live.studentId).toBe(studentId);
     expect(live.stageUrl).toBe(`${BASE}/stage/?session=${live.code}&token=${encodeURIComponent(live.stageToken)}`);
 
-    const minted = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: JSON.stringify({ sessionCode: live.code.toLowerCase() }) });
+    const minted = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, { method: 'POST', body: JSON.stringify({ sessionCode: live.code.toLowerCase() }) });
     expect(minted.status).toBe(201);
     const link = (await minted.json()) as { token: string; joinUrl: string; learnerUrl: string };
     expect(link.learnerUrl).toBe(`${BASE}/host/#/learn?token=${encodeURIComponent(link.token)}`);
     // Absolute (new URL would throw on a path), on the deployment's join origin.
     const join = new URL(link.joinUrl);
     expect(join.searchParams.get('link')).toBe(link.token);
-    const joined = await joinWith({ code: join.searchParams.get('code'), contextLink: join.searchParams.get('link') });
+    const joined = await joinWith({ code: join.searchParams.get('code'), studentLink: join.searchParams.get('link') });
     expect(joined.status).toBe(200);
 
-    // A code from another context is refused rather than baked into a dead URL.
-    const other = await createContext(cookie, 'Noor');
-    const elsewhere = await asBrowser(cookie, `/api/tutoring/contexts/${other}/links`, { method: 'POST', body: JSON.stringify({ sessionCode: live.code }) });
+    // A code from another student is refused rather than baked into a dead URL.
+    const other = await createStudent(cookie, 'Noor');
+    const elsewhere = await asBrowser(cookie, `/api/tutoring/students/${other}/links`, { method: 'POST', body: JSON.stringify({ sessionCode: live.code }) });
     expect(elsewhere.status).toBe(422);
-    expect(await elsewhere.json()).toEqual({ error: 'session-not-in-context' });
+    expect(await elsewhere.json()).toEqual({ error: 'session-not-in-student' });
   });
 
   it('gives a nickname launch absolute join and stage URLs', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId, 'nickname');
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId, 'nickname');
     const live = (await (await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, { method: 'POST', body: JSON.stringify({ start: true }) })).json()) as { code: string; joinUrl: string; stageUrl: string };
     expect(new URL(live.joinUrl).searchParams.get('code')).toBe(live.code);
     expect(live.stageUrl.startsWith(`${BASE}/stage/?session=${live.code}&token=`)).toBe(true);
@@ -572,11 +572,11 @@ describe('identified session URLs', () => {
 describe('identified sessions require a started session', () => {
   it('refuses an identified join while the session is still in the lobby', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const { code } = await launch(cookie, await createSession(cookie, contextId), false);
-    const token = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const { code } = await launch(cookie, await createSession(cookie, studentId), false);
+    const token = await mintLink(cookie, studentId);
 
-    const early = await joinWith({ code, contextLink: token });
+    const early = await joinWith({ code, studentLink: token });
     expect(early.status).toBe(409);
     const body = (await early.json()) as { error: string; message: string };
     expect(body.error).toBe('session-not-started');
@@ -585,22 +585,22 @@ describe('identified sessions require a started session', () => {
 
   it('admits the same link once the tutor starts, and again on re-entry', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     const { code, sessionCode, hostToken } = await launch(cookie, sessionId, false);
-    const token = await mintLink(cookie, contextId);
+    const token = await mintLink(cookie, studentId);
 
-    expect((await joinWith({ code, contextLink: token })).status).toBe(409);
+    expect((await joinWith({ code, studentLink: token })).status).toBe(409);
 
     const started = await command(sessionCode, hostToken, { command: 'session.start' });
     expect(started.status).toBe(200);
 
-    const joined = await joinWith({ code, contextLink: token });
+    const joined = await joinWith({ code, studentLink: token });
     expect(joined.status).toBe(200);
     const first = (await joined.json()) as { participantId: string };
 
     // Re-entry mid-session still lands on the same participant.
-    const again = await joinWith({ code, contextLink: token });
+    const again = await joinWith({ code, studentLink: token });
     expect(again.status).toBe(200);
     expect(((await again.json()) as { participantId: string }).participantId).toBe(
       first.participantId,
@@ -609,10 +609,10 @@ describe('identified sessions require a started session', () => {
 
   it('leaves lobby joins alone for nickname and anonymous sessions', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
+    const studentId = await createStudent(cookie, 'Camille');
 
     for (const mode of ['nickname', 'anonymous'] as const) {
-      const sessionId = await createSession(cookie, contextId, mode);
+      const sessionId = await createSession(cookie, studentId, mode);
       const { code } = await launch(cookie, sessionId, false);
       const response = await joinWith({ code });
       expect(response.status, `${mode} lobby join`).toBe(200);
@@ -627,14 +627,14 @@ describe('identified sessions require a started session', () => {
  * session code.
  */
 describe('tutoring privacy — identified join and learner allowlist', () => {
-  it('names the learner from the context, completes the session, and withholds notes and session codes', async () => {
+  it('names the learner from the student, completes the session, and withholds notes and session codes', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     const { code, sessionCode, hostToken, stageToken } = await launch(cookie, sessionId);
-    const link = await mintLink(cookie, contextId);
+    const link = await mintLink(cookie, studentId);
 
-    const joined = await joinWith({ code, contextLink: link });
+    const joined = await joinWith({ code, studentLink: link });
     expect(joined.status).toBe(200);
     const { participantId } = (await joined.json()) as {
       participantId: string;
@@ -714,11 +714,11 @@ describe('learner practice writes', () => {
 
   it('retains original exercises, rejects stale answers and safely replays an accepted attempt', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     await launch(cookie, sessionId);
     await publishHomework(cookie, sessionId);
-    const token = await mintLink(cookie, contextId);
+    const token = await mintLink(cookie, studentId);
     const input = { itemId: `${sessionId}:quiz-1`, grade: 'again', answer: { kind: 'choice', optionIds: ['b'] }, assignmentRevision: 1, attemptId: crypto.randomUUID() };
     const submit = (value = input) => asLearner(token, '/api/learner/practice', { method: 'POST', body: JSON.stringify(value) });
     expect((await submit({ ...input, grade: 'good' })).status).toBe(422);
@@ -733,7 +733,7 @@ describe('learner practice writes', () => {
     expect((await submit()).status).toBe(200); // lost response may be retried after revision
     expect(await state()).toMatchObject({ version: 1, lapses: 1 });
     expect((await submit({ ...input, attemptId: crypto.randomUUID() })).status).toBe(409);
-    const pickup = await (await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/returned`)).json() as { missed: { exercise: { interaction: { prompt: string } }; lastAnswer: unknown }[] };
+    const pickup = await (await asBrowser(cookie, `/api/tutoring/students/${studentId}/returned`)).json() as { missed: { exercise: { interaction: { prompt: string } }; lastAnswer: unknown }[] };
     expect(pickup.missed).toEqual([expect.objectContaining({ exercise: { interaction: quizInteraction }, lastAnswer: input.answer })]);
     const newInput = { ...input, assignmentRevision: 2, grade: 'good', attemptId: crypto.randomUUID() };
     expect((await submit(newInput)).status).toBe(200);
@@ -755,11 +755,11 @@ describe('learner practice writes', () => {
 
   it('binds retry receipts to one learner and respects changed recipients for new attempts', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Language group');
-    await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'PATCH', body: JSON.stringify({ kind: 'group' }) });
-    const mint = async (displayName: string) => (await (await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: JSON.stringify({ displayName }) })).json()) as { token: string; learnerId: string };
+    const studentId = await createStudent(cookie, 'Language group');
+    await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'PATCH', body: JSON.stringify({ kind: 'group' }) });
+    const mint = async (displayName: string) => (await (await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, { method: 'POST', body: JSON.stringify({ displayName }) })).json()) as { token: string; learnerId: string };
     const lea = await mint('Léa'); const noor = await mint('Noor');
-    const sessionId = await createSession(cookie, contextId);
+    const sessionId = await createSession(cookie, studentId);
     await launch(cookie, sessionId);
     await publishHomework(cookie, sessionId);
     const input = { itemId: `${sessionId}:quiz-1`, grade: 'good', answer: { kind: 'choice', optionIds: ['a'] }, assignmentRevision: 1, attemptId: crypto.randomUUID() };
@@ -777,11 +777,11 @@ describe('learner practice writes', () => {
 
   it('checks assignment and practice versions at the write, after concurrent changes', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     await launch(cookie, sessionId);
     await publishHomework(cookie, sessionId);
-    const token = await mintLink(cookie, contextId);
+    const token = await mintLink(cookie, studentId);
     const input = { itemId: `${sessionId}:quiz-1`, grade: 'good', answer: { kind: 'choice', optionIds: ['a'] }, assignmentRevision: 1, attemptId: crypto.randomUUID() };
     const request = () => new Request(`${BASE}/api/learner/practice`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'cf-connecting-ip': crypto.randomUUID() }, body: JSON.stringify(input) });
     const beforeWrite = (change: () => Promise<unknown>) => ({ ...env, DB: {
@@ -802,16 +802,16 @@ describe('learner practice writes', () => {
     expect(await env.DB.prepare('SELECT version, reps, last_attempt_id FROM learner_srs WHERE item_id = ?1').bind(input.itemId).first()).toEqual({ version: 1, reps: 1, last_attempt_id: winningId });
   });
 
-  it.each(['session', 'context'])('purges private attempts with their %s after browser confirmation', async (kind) => {
+  it.each(['session', 'student'])('purges private attempts with their %s after browser confirmation', async (kind) => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     await launch(cookie, sessionId);
     await publishHomework(cookie, sessionId);
-    const token = await mintLink(cookie, contextId);
+    const token = await mintLink(cookie, studentId);
     const input = { itemId: `${sessionId}:quiz-1`, grade: 'good', answer: { kind: 'choice', optionIds: ['a'] }, assignmentRevision: 1, attemptId: crypto.randomUUID() };
     expect((await asLearner(token, '/api/learner/practice', { method: 'POST', body: JSON.stringify(input) })).status).toBe(200);
-    const path = kind === 'context' ? `/api/tutoring/contexts/${contextId}` : `/api/sessions/${sessionId}`;
+    const path = kind === 'student' ? `/api/tutoring/students/${studentId}` : `/api/sessions/${sessionId}`;
     expect((await asBrowser(cookie, path, { method: 'DELETE' })).status).toBe(200);
     const intent = await asBrowser(cookie, `${path}/permanent-deletion`, { method: 'POST' });
     expect(intent.status).toBe(202);
@@ -823,16 +823,16 @@ describe('learner practice writes', () => {
 
   it('lets the link holder write and rehearse, and never leaks the scheduler or tutor notes', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const other = await createContext(cookie, 'Noor');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const other = await createStudent(cookie, 'Noor');
+    const sessionId = await createSession(cookie, studentId);
     const otherSession = await createSession(cookie, other);
     await launch(cookie, sessionId);
     await launch(cookie, otherSession);
     await publishHomework(cookie, sessionId);
     await publishHomework(cookie, otherSession, { nextNote: 'Not for Camille.' });
 
-    const token = await mintLink(cookie, contextId);
+    const token = await mintLink(cookie, studentId);
     const otherToken = await mintLink(cookie, other);
 
     const practice = await asLearner(token, '/api/learner/practice');
@@ -872,7 +872,7 @@ describe('learner practice writes', () => {
     const writing = body.sessions[0]?.record?.homework.find((task) => task.kind === 'writing');
     expect(writing?.submitted).toBe("J'ai raté le train six fois.");
 
-    const returned = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/returned`);
+    const returned = await asBrowser(cookie, `/api/tutoring/students/${studentId}/returned`);
     expect(returned.status).toBe(200);
     const pickup = (await returned.json()) as {
       nextNote: string;
@@ -886,68 +886,68 @@ describe('learner practice writes', () => {
   });
   it('replacement links preserve private writing, practice and the same live seat', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'French group');
-    expect((await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'PATCH', body: JSON.stringify({ kind: 'group' }) })).status).toBe(200);
-    expect((await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: '{}' })).status).toBe(422);
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'French group');
+    expect((await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'PATCH', body: JSON.stringify({ kind: 'group' }) })).status).toBe(200);
+    expect((await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, { method: 'POST', body: '{}' })).status).toBe(422);
+    const sessionId = await createSession(cookie, studentId);
     const live = await launch(cookie, sessionId);
     await publishHomework(cookie, sessionId);
     const mint = async (input: Record<string, unknown>) => {
-      const response = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: JSON.stringify(input) });
+      const response = await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, { method: 'POST', body: JSON.stringify(input) });
       expect(response.status).toBe(201);
       return await response.json() as { id: string; learnerId: string; token: string };
     };
     const first = await mint({ displayName: 'Léa' });
     const second = await mint({ displayName: 'Noor' });
-    const joined = await joinWith({ code: live.code, contextLink: first.token });
+    const joined = await joinWith({ code: live.code, studentLink: first.token });
     expect(joined.status).toBe(200);
     const originalSeat = (await joined.json()) as { participantId: string };
     expect((await asLearner(first.token, '/api/learner/writing', { method: 'PUT', body: JSON.stringify({ sessionId, taskId: 'write-1', assignmentRevision: 1, body: 'Mon travail privé.' }) })).status).toBe(200);
     expect((await asLearner(first.token, '/api/learner/practice', { method: 'POST', body: JSON.stringify({ itemId: `${sessionId}:quiz-1`, grade: 'good', answer: { kind: 'choice', optionIds: ['a'] }, assignmentRevision: 1, attemptId: crypto.randomUUID() }) })).status).toBe(200);
     const replacement = await mint({ learnerId: first.learnerId });
     expect(replacement.learnerId).toBe(first.learnerId);
-    await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links/${first.id}`, { method: 'DELETE' });
+    await asBrowser(cookie, `/api/tutoring/students/${studentId}/links/${first.id}`, { method: 'DELETE' });
     expect((await asLearner(first.token, '/api/learner/sessions')).status).toBe(401);
     const restored = await asLearner(replacement.token, '/api/learner/sessions');
     expect(await restored.text()).toContain('Mon travail privé.');
     expect(await (await asLearner(second.token, '/api/learner/sessions')).text()).not.toContain('Mon travail privé.');
     expect(await (await asLearner(replacement.token, '/api/learner/practice')).json()).toEqual({ items: [] });
     expect((await (await asLearner(second.token, '/api/learner/practice')).json() as { items: unknown[] }).items).toHaveLength(1);
-    const rejoined = await joinWith({ code: live.code, contextLink: replacement.token });
+    const rejoined = await joinWith({ code: live.code, studentLink: replacement.token });
     expect(rejoined.status).toBe(200);
     expect((await rejoined.json() as { participantId: string }).participantId).toBe(originalSeat.participantId);
-    const otherContext = await createContext(cookie, 'Another group');
-    expect((await asBrowser(cookie, `/api/tutoring/contexts/${otherContext}/links`, { method: 'POST', body: JSON.stringify({ learnerId: first.learnerId }) })).status).toBe(404);
-    expect((await asLearner(replacement.token, `/api/tutoring/contexts/${contextId}/learners`)).status).toBe(401);
-    const learners = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/learners`);
+    const otherStudent = await createStudent(cookie, 'Another group');
+    expect((await asBrowser(cookie, `/api/tutoring/students/${otherStudent}/links`, { method: 'POST', body: JSON.stringify({ learnerId: first.learnerId }) })).status).toBe(404);
+    expect((await asLearner(replacement.token, `/api/tutoring/students/${studentId}/learners`)).status).toBe(401);
+    const learners = await asBrowser(cookie, `/api/tutoring/students/${studentId}/learners`);
     expect((await learners.json() as { learners: { id: string }[] }).learners.map((person) => person.id).sort()).toEqual([first.learnerId, second.learnerId].sort());
   });
 
-  it('a person context keeps one identity when renamed and given another link', async () => {
+  it('a student of kind person keeps one identity when renamed and given another link', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Lea');
-    const first = await mintLink(cookie, contextId);
-    expect((await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'PATCH', body: JSON.stringify({ displayName: 'Léa' }) })).status).toBe(200);
-    const replacement = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Lea');
+    const first = await mintLink(cookie, studentId);
+    expect((await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'PATCH', body: JSON.stringify({ displayName: 'Léa' }) })).status).toBe(200);
+    const replacement = await mintLink(cookie, studentId);
     for (const token of [first, replacement]) {
       expect(await (await asLearner(token, '/api/learner/me')).json()).toMatchObject({ displayName: 'Léa' });
     }
-    expect(await (await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/learners`)).json()).toEqual({ learners: [{ id: `person-${contextId}`, displayName: 'Léa' }] });
+    expect(await (await asBrowser(cookie, `/api/tutoring/students/${studentId}/learners`)).json()).toEqual({ learners: [{ id: `person-${studentId}`, displayName: 'Léa' }] });
   });
 
   it('keeps responses immutable, drafts private, published feedback personal, and assignment revisions explicit', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Léa and Noor');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Léa and Noor');
+    const sessionId = await createSession(cookie, studentId);
     await launch(cookie, sessionId);
     await publishHomework(cookie, sessionId);
-    const lea = await mintLink(cookie, contextId);
-    const noor = (await (await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: JSON.stringify({ displayName: 'Noor' }) })).json() as { token: string }).token;
+    const lea = await mintLink(cookie, studentId);
+    const noor = (await (await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, { method: 'POST', body: JSON.stringify({ displayName: 'Noor' }) })).json() as { token: string }).token;
     const write = (submissionId: string, body: string, assignmentRevision = 1) => asLearner(lea, '/api/learner/writing', { method: 'PUT', body: JSON.stringify({ sessionId, taskId: 'write-1', submissionId, body, assignmentRevision }) });
     expect((await write('response-first', 'Je suis allé à Berlin.')).status).toBe(200);
     expect((await write('response-first', 'Je suis allé à Berlin.')).status).toBe(200);
     expect((await write('response-first', 'Overwrite the original')).status).toBe(409);
-    const base = `/api/tutoring/contexts/${contextId}/work`;
+    const base = `/api/tutoring/students/${studentId}/work`;
     const feedback = (version: number, action: string, message: string) => asBrowser(cookie, `${base}/response-first/feedback`, { method: 'PUT', body: JSON.stringify({ version, action, feedback: { message, corrections: [{ original: 'allé', replacement: 'allée', explanation: 'Agree with the speaker.' }] } }) });
     expect((await feedback(0, 'save', 'PRIVATE DRAFT')).status).toBe(200);
     expect(await (await asLearner(lea, '/api/learner/feedback')).json()).toEqual({ feedback: [] });
@@ -984,12 +984,12 @@ describe('learner practice writes', () => {
 describe('individual assignments', () => {
   it('filters all learner reads and writes, preserves restrictions on omission, and versions audience changes', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Conversation group');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Conversation group');
+    const sessionId = await createSession(cookie, studentId);
     await launch(cookie, sessionId);
-    const mint = async (displayName: string) => (await (await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: JSON.stringify({ displayName }) })).json()) as { token: string; learnerId: string };
+    const mint = async (displayName: string) => (await (await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, { method: 'POST', body: JSON.stringify({ displayName }) })).json()) as { token: string; learnerId: string };
     const lea = await mint('Léa'); const noor = await mint('Noor');
-    const people = (await (await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/learners`)).json() as { learners: { id: string; displayName: string }[] }).learners;
+    const people = (await (await asBrowser(cookie, `/api/tutoring/students/${studentId}/learners`)).json() as { learners: { id: string; displayName: string }[] }).learners;
     const leaId = people.find((person) => person.displayName === 'Léa')!.id;
     const noorId = people.find((person) => person.displayName === 'Noor')!.id;
     const tasks = [
@@ -1000,7 +1000,7 @@ describe('individual assignments', () => {
     ];
     const audience = { write: [leaId], voice: [noorId], quiz: [leaId] };
     const record = (extra: Record<string, unknown> = {}) => asBrowser(cookie, `/api/sessions/${sessionId}/record`, { method: 'PUT', body: JSON.stringify({ homework: tasks, ...extra }) });
-    expect((await record({ homeworkAudience: { write: ['wrong-context-person'] } })).status).toBe(422);
+    expect((await record({ homeworkAudience: { write: ['wrong-student-person'] } })).status).toBe(422);
     expect((await record({ homeworkAudience: { missing: [leaId] } })).status).toBe(422);
     expect((await record({ homeworkAudience: { write: [] } })).status).toBe(422);
     expect((await record({ homeworkAudience: audience })).status).toBe(200);
@@ -1036,8 +1036,8 @@ describe('individual assignments', () => {
 describe('session record writes', () => {
   it('keeps every field a PUT leaves out and clears only on an explicit empty value', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     const path = `/api/sessions/${sessionId}/record`;
     const put = (body: Record<string, unknown>) => asBrowser(cookie, path, { method: 'PUT', body: JSON.stringify(body) });
     const read = async () => ((await (await asBrowser(cookie, path)).json()) as { record: Record<string, unknown> }).record;
@@ -1060,8 +1060,8 @@ describe('session record writes', () => {
 
   it('names the task at fault when homework does not compile', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     const put = (homework: unknown) => asBrowser(cookie, `/api/sessions/${sessionId}/record`, { method: 'PUT', body: JSON.stringify({ homework }) });
     const essay = await put(['Read page 4', { kind: 'essay', prompt: 'x' }]);
     expect(essay.status).toBe(422);
@@ -1076,13 +1076,13 @@ describe('session record writes', () => {
 describe('private voice responses', () => {
   it('isolates playback, validates bytes, preserves immutable audio and publishes only bounded comments', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const sessionId = await createSession(cookie, studentId);
     await launch(cookie, sessionId);
     const task = { id: 'voice', kind: 'voice', prompt: 'Parlez de votre voyage.' };
     expect((await asBrowser(cookie, `/api/sessions/${sessionId}/record`, { method: 'PUT', body: JSON.stringify({ homework: [task] }) })).status).toBe(200);
-    const lea = await mintLink(cookie, contextId);
-    const noor = (await (await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/links`, { method: 'POST', body: JSON.stringify({ displayName: 'Noor' }) })).json() as { token: string }).token;
+    const lea = await mintLink(cookie, studentId);
+    const noor = (await (await asBrowser(cookie, `/api/tutoring/students/${studentId}/links`, { method: 'POST', body: JSON.stringify({ displayName: 'Noor' }) })).json() as { token: string }).token;
     const bytes = encodeVoiceWav(new Float32Array(32_000).fill(0.25));
     const upload = (token = lea, id = 'voice-original', data = bytes, revision = 1, headers: Record<string, string> = {}) => asLearner(token,
       `/api/learner/voice?sessionId=${sessionId}&taskId=voice&submissionId=${id}&assignmentRevision=${revision}`,
@@ -1105,7 +1105,7 @@ describe('private voice responses', () => {
     expect(range.headers.get('content-range')).toBe(`bytes 0-43/${bytes.length}`);
     expect(new Uint8Array(await range.arrayBuffer())).toEqual(bytes.slice(0, 44));
     expect((await asLearner(lea, url, { headers: { range: 'bytes=9999999-' } })).status).toBe(416);
-    const base = `/api/tutoring/contexts/${contextId}/work/voice-original`;
+    const base = `/api/tutoring/students/${studentId}/work/voice-original`;
     expect((await asBrowser(cookie, `${base}/audio`)).status).toBe(200);
     expect((await asLearner(lea, `${base}/audio`)).status).toBe(401);
     const pat = await (await asBrowser(cookie, '/api/my/tokens', { method: 'POST', body: JSON.stringify({ name: 'Voice review' }) })).json() as { token: string };
@@ -1143,13 +1143,13 @@ describe('private voice responses', () => {
     expect((await asLearner(lea, '/api/learner/submissions/voice-revised/audio')).status).toBe(410);
     expect((await upload(lea, 'voice-purged', bytes, 2)).status).toBe(200);
     const purged = await env.DB.prepare('SELECT object_key FROM learner_audio WHERE submission_id = ?1').bind('voice-purged').first<{ object_key: string }>();
-    await purgeLearnerAudio(env as never, 'context_id', contextId);
+    await purgeLearnerAudio(env as never, 'student_id', studentId);
     expect(await (env as unknown as { MEDIA: R2Bucket }).MEDIA.get(purged!.object_key)).toBeNull();
     expect(await env.DB.prepare('SELECT submission_id FROM learner_audio WHERE submission_id = ?1').bind('voice-purged').first()).toBeNull();
     for (let i = 0; i < VOICE_MAX_RECORDINGS_PER_TASK; i++) expect((await upload(lea, `voice-budget-${i}`, bytes, 2)).status).toBe(200);
     expect((await upload(lea, 'voice-over-budget', bytes, 2)).status).toBe(429);
     expect(await env.DB.prepare('SELECT id FROM learner_submissions WHERE id = ?1').bind('voice-over-budget').first()).toBeNull();
-    expect((await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/work/voice-budget-0/audio`, { method: 'DELETE' })).status).toBe(200);
+    expect((await asBrowser(cookie, `/api/tutoring/students/${studentId}/work/voice-budget-0/audio`, { method: 'DELETE' })).status).toBe(200);
     expect((await upload(lea, 'voice-after-removal', bytes, 2)).status).toBe(429);
     await env.DB.prepare('UPDATE learner_audio SET removed_at = ?1 WHERE submission_id = ?2').bind(Date.now() - 8 * 86_400_000, 'voice-budget-0').run();
     expect((await asLearner(lea, '/api/learner/submissions/voice-budget-0/audio', { method: 'PATCH' })).status).toBe(410);
@@ -1192,8 +1192,8 @@ describe('learner plane throttle', () => {
   it('cuts a client off after enough failures, and the 429 tells it nothing', async () => {
     const ip = client();
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const good = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const good = await mintLink(cookie, studentId);
 
     for (let i = 0; i < LEARNER_AUTH_FAILURE_LIMIT; i += 1) {
       const response = await asLearnerFrom(ip, garbage, '/api/learner/me');
@@ -1218,8 +1218,8 @@ describe('learner plane throttle', () => {
   it('lets a valid link work indefinitely without spending budget', async () => {
     const ip = client();
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const token = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const token = await mintLink(cookie, studentId);
 
     for (let i = 0; i < LEARNER_AUTH_FAILURE_LIMIT * 2; i += 1) {
       expect((await asLearnerFrom(ip, token, '/api/learner/me')).status, `call ${i}`).toBe(200);
@@ -1238,8 +1238,8 @@ describe('learner plane throttle', () => {
   it('forgets earlier failures once the client authenticates', async () => {
     const ip = client();
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const token = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const token = await mintLink(cookie, studentId);
 
     for (let i = 0; i < LEARNER_AUTH_FAILURE_LIMIT - 1; i += 1) {
       expect((await asLearnerFrom(ip, garbage, '/api/learner/me')).status).toBe(401);
@@ -1256,8 +1256,8 @@ describe('learner plane throttle', () => {
   it('reopens the budget when the window has passed', async () => {
     const ip = client();
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const token = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const token = await mintLink(cookie, studentId);
 
     for (let i = 0; i < LEARNER_AUTH_FAILURE_LIMIT; i += 1) {
       await asLearnerFrom(ip, garbage, '/api/learner/me');
@@ -1278,8 +1278,8 @@ describe('learner plane throttle', () => {
     const noisy = client();
     const quiet = client();
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie, 'Camille');
-    const token = await mintLink(cookie, contextId);
+    const studentId = await createStudent(cookie, 'Camille');
+    const token = await mintLink(cookie, studentId);
 
     for (let i = 0; i < LEARNER_AUTH_FAILURE_LIMIT + 1; i += 1) {
       await asLearnerFrom(noisy, garbage, '/api/learner/me');

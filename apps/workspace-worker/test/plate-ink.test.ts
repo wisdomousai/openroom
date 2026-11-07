@@ -89,16 +89,16 @@ interface InkSession {
 /** A live tutoring session, reached the way the tutor reaches it. */
 async function inkSession(): Promise<InkSession> {
   const cookie = await seedCookie();
-  const contextResponse = await asBrowser(cookie, '/api/tutoring/contexts', {
+  const studentResponse = await asBrowser(cookie, '/api/tutoring/students', {
     method: 'POST',
-    body: JSON.stringify({ displayName: 'Camille', kind: 'person', context: { level: 'B1' } }),
+    body: JSON.stringify({ displayName: 'Camille', kind: 'person', student: { level: 'B1' } }),
   });
-  expect(contextResponse.status).toBe(201);
-  const contextId = ((await contextResponse.json()) as { context: { id: string } }).context.id;
+  expect(studentResponse.status).toBe(201);
+  const studentId = ((await studentResponse.json()) as { student: { id: string } }).student.id;
 
   const deckResponse = await asBrowser(cookie, '/api/decks', {
     method: 'POST',
-    body: JSON.stringify({ contextId, outline: INK_OUTLINE, shape: 'tutoring', createSession: true }),
+    body: JSON.stringify({ studentId, outline: INK_OUTLINE, shape: 'tutoring', createSession: true }),
   });
   expect(deckResponse.status).toBe(201);
   const sessionId = ((await deckResponse.json()) as { session: { id: string } }).session.id;

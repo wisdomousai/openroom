@@ -42,16 +42,16 @@ async function expectNoSidewaysScroll(page: Page, label: string) {
 test('form and Notes pages fit a phone; the Library keeps three columns from 980 px', async ({ page }, testInfo) => {
   const api = await signIn(page);
   const stamp = Date.now();
-  const student = `Noor ${stamp}`;
+  const studentName = `Noor ${stamp}`;
   const title = `Au café ${stamp}`;
-  const created = await api.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: student, kind: 'person', experience: 'tutoring' } });
+  const created = await api.post('/api/tutoring/students', { headers: CSRF, data: { displayName: studentName, kind: 'person', experience: 'tutoring' } });
   expect(created.status()).toBe(201);
-  const { context } = await created.json() as { context: { id: string; spaceId: string } };
+  const { student } = await created.json() as { student: { id: string; spaceId: string } };
   // Two lessons of one deck title, each with saved Notes.
   const sessionIds: string[] = [];
   for (let index = 0; index < 2; index++) {
     const deckRes = await api.post('/api/decks', { headers: CSRF, data: {
-      spaceId: context.spaceId, contextId: context.id, createSession: true,
+      spaceId: student.spaceId, studentId: student.id, createSession: true,
       content: { version: 1, meta: { title }, steps: [{ id: 'one', kind: 'title', title }], interactions: [] },
     } });
     expect(deckRes.status()).toBe(201);
@@ -63,11 +63,11 @@ test('form and Notes pages fit a phone; the Library keeps three columns from 980
 
   await page.setViewportSize({ width: 390, height: 844 });
   const pages: [string, string][] = [
-    ['Add student', '/host/#/tutor/contexts/new?experience=tutoring'],
-    ['Space settings', `/host/#/space/${context.spaceId}/edit`],
-    ['Sample lessons', `/host/#/space/${context.spaceId}/samples?contextId=${context.id}`],
+    ['Add student', '/host/#/tutor/students/new?experience=tutoring'],
+    ['Space settings', `/host/#/space/${student.spaceId}/edit`],
+    ['Sample lessons', `/host/#/space/${student.spaceId}/samples?studentId=${student.id}`],
     ['Notes', `/host/#/sessions/${sessionIds[0]}/record`],
-    ['Review learner work', `/host/#/tutor/contexts/${context.id}/work`],
+    ['Review learner work', `/host/#/tutor/students/${student.id}/work`],
   ];
   for (const [label, url] of pages) {
     await page.goto(url);
@@ -78,14 +78,14 @@ test('form and Notes pages fit a phone; the Library keeps three columns from 980
   }
 
   // The Library keeps its desktop width and says so in one line.
-  await page.goto(`/host/#/space/${context.spaceId}`);
+  await page.goto(`/host/#/space/${student.spaceId}`);
   await expect(page.getByText(NOTICE)).toBeVisible();
   await expect(page.getByText(NOTICE)).toBeInViewport();
 
   // A student's own space opens as the student's view, with their Notes.
   await page.setViewportSize({ width: 1000, height: 800 });
-  await expect(page).toHaveURL(new RegExp(`contextId=${context.id}`));
-  await expect(page.getByRole('heading', { name: student, level: 1, exact: true })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`studentId=${student.id}`));
+  await expect(page.getByRole('heading', { name: studentName, level: 1, exact: true })).toBeVisible();
   await expect(page.getByText(NOTICE)).toBeHidden();
   const notes = page.getByRole('region', { name: 'Notes', exact: true });
   await expect(notes.getByRole('link')).toHaveText([title, `${title} · 2`]);

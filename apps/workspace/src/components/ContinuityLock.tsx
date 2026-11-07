@@ -1,7 +1,7 @@
 /**
  * Locked state for the paid `continuity` capability: the teaching loop of
  * Notes, homework, learner links, learner work and identified sessions.
- * Contexts themselves are free and never show it. Shown in place of the gated
+ * Students themselves are free and never show it. Shown in place of the gated
  * surface — never hidden — with the way to Settings → Billing. Billing follows
  * the space owner, so surfaces react to the worker's 403 rather than to the
  * viewer's own entitlements.

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
-import { contextFromFields, fieldsFromContext, type ContextFields } from '../lib/context-fields';
+import { studentFromFields, fieldsFromStudent, type StudentFields } from '../lib/student-fields';
 import { givenName, possessive } from '../lib/initials';
-import { ContextFieldsEditor } from './ContextFieldsEditor';
+import { StudentFieldsEditor } from './StudentFieldsEditor';
 import { Button } from '@openroom/ui/components/button';
 import {
   Dialog,
@@ -17,44 +17,44 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   displayName: string;
-  context: Record<string, unknown>;
+  student: Record<string, unknown>;
   busy?: boolean;
-  onSave: (context: Record<string, unknown>) => void | Promise<void>;
+  onSave: (student: Record<string, unknown>) => void | Promise<void>;
 }
 
 /**
- * Context fields editor. All fields optional.
+ * Student fields editor. All fields optional.
  * Used as the edit dialog on a person's folder.
  */
-export function ContextDialog({
+export function StudentDialog({
   open,
   onOpenChange,
   displayName,
-  context,
+  student,
   busy = false,
   onSave,
 }: Props) {
-  const [draft, setDraft] = useState<ContextFields>(() => fieldsFromContext(context));
+  const [draft, setDraft] = useState<StudentFields>(() => fieldsFromStudent(student));
 
   useEffect(() => {
-    if (open) setDraft(fieldsFromContext(context));
-  }, [open, context]);
+    if (open) setDraft(fieldsFromStudent(student));
+  }, [open, student]);
 
   const who = givenName(displayName);
 
   const submit = async () => {
-    await onSave(contextFromFields(draft));
+    await onSave(studentFromFields(draft));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100svh-3rem)] w-[min(620px,calc(100vw-2rem))] flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="px-6 pb-0 pt-[18px] pr-12">
-          <DialogTitle>{possessive(who)} context</DialogTitle>
+          <DialogTitle>{possessive(who)} student</DialogTitle>
         </DialogHeader>
 
         <DialogBody className="px-6 pb-5 pt-4">
-          <ContextFieldsEditor value={draft} onChange={setDraft} />
+          <StudentFieldsEditor value={draft} onChange={setDraft} />
         </DialogBody>
 
         <DialogFooter className="-mx-0 -mb-0 px-6">

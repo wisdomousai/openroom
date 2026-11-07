@@ -18,7 +18,7 @@ and deliberately shares comments tied to positions in that response.
   sent as a percentage, and the time taken so far.
 - A failed upload leaves the preview and download available. Retrying the same
   submission is idempotent; it never replaces an earlier recording.
-- Only the submitting learner and context editors can read, trash or restore audio.
+- Only the submitting learner and student editors can read, trash or restore audio.
   Draft feedback remains private; published comments reach only that learner.
 - Comments are bounded by the recording duration and seek to the selected moment.
   They sort by time for the tutor and the learner, each has Listen at, and the
@@ -33,7 +33,7 @@ and deliberately shares comments tied to positions in that response.
 - Up to ten retained recordings per learner/task, including recoverable trash. Cleanup frees space.
 - Trash denies playback and allows restoration for seven days, within the 90-day
   retention limit. Cleanup permanently removes bytes after either deadline.
-  Browser-confirmed context/session purge removes indexed bytes. Feedback remains.
+  Browser-confirmed student/session purge removes indexed bytes. Feedback remains.
 - The 390px view has no horizontal overflow and usable playback/delete controls.
 
 ## Evidence

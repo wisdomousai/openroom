@@ -10,7 +10,7 @@ from the space revokes their access.
 2. Start a saved deck and submit choice/text responses, including one hidden entry
    and one answer that looks like executable HTML.
 3. Enter private notes in the presenter's live console and end the session. The
-   deck has no student context: verify its Notes destination and scratchpad survive
+   deck has no student: verify its Notes destination and scratchpad survive
    a reload, then return to the selected deck. Capture real local R2 results before
    removing the owner's paid flags.
    Presenters see their local scratchpad and saved shared content without a shared

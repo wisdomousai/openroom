@@ -126,9 +126,9 @@ describe('POST /api/join', () => {
     expect(again.participantId).toBe(first.participantId);
   });
 
-  it('refuses context links and guest links', async () => {
+  it('refuses student links and guest links', async () => {
     const created = await createSessionWithOutline(SMOKE_OUTLINE);
-    for (const credential of [{ contextLink: 'cl_x' }, { guestLink: 'ri_x' }]) {
+    for (const credential of [{ studentLink: 'cl_x' }, { guestLink: 'ri_x' }]) {
       const response = await joinBody({ code: created.code, ...credential });
       expect(response.status).toBe(403);
       expect(await response.json()).toMatchObject({ error: 'identified-join-unavailable' });
@@ -148,7 +148,7 @@ describe('POST /api/join', () => {
       });
       return { status: response.status, body: await response.json() };
     };
-    expect(await seat('guest-list', 'context-link')).toMatchObject({ status: 403, body: { error: 'context-link-invalid' } });
+    expect(await seat('guest-list', 'student-link')).toMatchObject({ status: 403, body: { error: 'student-link-invalid' } });
     expect(await seat('identified', 'guest-link')).toMatchObject({ status: 403, body: { error: 'guest-link-invalid' } });
     expect(await seat('guest-list', 'guest-link')).toMatchObject({ status: 200, body: { name: 'Camille' } });
   });

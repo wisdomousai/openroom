@@ -1,7 +1,7 @@
 import { test as base, chromium, webkit, type Browser } from '@playwright/test';
 
 // The tutor keeps Playwright's normal browser. Learners run in another process,
-// with independent contexts for each person. WebKit is an optional local check.
+// with independent students for each person. WebKit is an optional local check.
 export const test = base.extend<{ learnerBrowser: Browser }>({
   learnerBrowser: async ({}, use, testInfo) => {
     const name = process.env.OPENROOM_E2E_LEARNER_ENGINE ?? 'chromium';

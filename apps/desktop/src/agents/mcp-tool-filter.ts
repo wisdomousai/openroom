@@ -77,7 +77,7 @@ export function filterSidebarMcpResponse(
 const CONFIRMED_API_PATHS: ReadonlyArray<{ pattern: RegExp; effect: string }> = [
   { pattern: /^\/api\/my\/spaces\/[^/]+\/(?:members|invites)(?:\/|$)/, effect: 'This changes who can open a space.' },
   { pattern: /^\/api\/my\/invites(?:\/|$)/, effect: 'This accepts or revokes a space invitation.' },
-  { pattern: /^\/api\/tutoring\/contexts\/[^/]+\/links(?:\/|$)/, effect: 'This creates or revokes a student’s access link.' },
+  { pattern: /^\/api\/tutoring\/students\/[^/]+\/links(?:\/|$)/, effect: 'This creates or revokes a student’s access link.' },
   { pattern: /^\/api\/my\/billing(?:\/|$)/, effect: 'This starts or changes billing for the account.' },
 ];
 

@@ -27,18 +27,18 @@ Open the session's **Notes** page. Review **Homework** and adjust each task's ti
 
 Select **Save notes** or **Update notes** to publish the assignment. Learners with valid links receive the tasks through their own page.
 
-A session requires a learner context to publish learner homework. Each assignment supports up to 50 tasks.
+A session requires a student to publish learner homework. Each assignment supports up to 50 tasks.
 
 ## Select recipients
 
-Every task initially uses **Everyone in this context**. For an individual assignment:
+Every task initially uses **Everyone for this student**. For an individual assignment:
 
 1. Open **Who receives this task?** for that task.
 2. Choose **Selected learners**.
 3. Select at least one learner.
 4. Save the Notes.
 
-Create personal learner links first so the intended people exist in the context. Each learner then sees common tasks plus the tasks assigned to them.
+Create personal learner links first so the intended people exist in the student. Each learner then sees common tasks plus the tasks assigned to them.
 
 Recipient selection belongs to this session's assignment. The reusable deck can be used with another group without carrying the previous group's recipient list.
 
@@ -52,6 +52,6 @@ Changing only private Notes keeps assignment recipients intact. If a concurrent 
 
 ## Review the resulting work
 
-Open **Review learner work** from the context's Library to review writing and voice responses. Practice results and corrections selected for reuse appear in a context-linked deck's Notes pane.
+Open **Review learner work** from the student's Library to review writing and voice responses. Practice results and corrections selected for reuse appear in a student-linked deck's Notes pane.
 
 Use [published feedback](/docs/review/) to guide a revision, then select the specific exercise or correction worth revisiting in the next deck.

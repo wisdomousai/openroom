@@ -35,21 +35,24 @@ owner's paid access. Open it from its deck, read captured answers, or download a
 report. It is not a new workspace collection or session-management surface.
 The storage/API term is **archive**; the host document route is `#/results/:id`.
 
-### Context — one word, everywhere
+### Student — one word, everywhere
 
-One word spans UI, API, MCP, CLI and DB: **context**.
+One word spans UI, API, MCP, CLI and DB: **student**. It names every kind of
+student: a person, a group, a class, an event or another kind. The kind is a
+field (`STUDENT_KINDS`: `person`, `group`, `class`, `event`, `other`), not a
+different noun.
 
-- **User-facing:** **context** — the four-question + paragraph thing pinned to a
-  person's folder. Headings name the *person*, not the type. The rail group is
-  **Students**.
-- **Domain/API/MCP/CLI/DB:** `context` / `contexts` / `contextId`.
-- **Browser hashes:** `#/tutor/contexts*`.
+- **User-facing:** **student** — the four-question + paragraph thing pinned to a
+  person's folder. Headings name the *person* (or the group), not the type. The
+  rail group is **Students**.
+- **Domain/API/MCP/CLI/DB:** `student` / `students` / `studentId`.
+- **Browser hashes:** `#/tutor/students*`.
 - `Card` / `CardContent` from `@openroom/ui` are the shadcn layout
-  primitive and keep their names. Do not use them to mean a context.
+  primitive and keep their names. Do not use them to mean a student.
 
-A space holds **one** context. A context may be reused across spaces — the same
-student taught two languages is two contexts, which is why the language pair
-sits on the space and not on the context.
+A space holds **one** student. A student may be reused across spaces — the same
+person taught two languages is two students, which is why the language pair
+sits on the space and not on the student.
 
 ---
 
@@ -83,9 +86,9 @@ Path for humans: **Space → Folder → deck → (optional) session**.
 Membership roles on a space are **`owner` | `editor` | `presenter`**. There is no level
 between space and folder: a space *is* the shared or personal work area.
 
-**Meaning links (required for new work):** Context (who) → Deck (what) →
-**Session** (when). A deck also requires a Context.
-Free-floating creates (no context / no deck where required) are not allowed.
+**Meaning links (required for new work):** Student (who) → Deck (what) →
+**Session** (when). A deck also requires a Student.
+Free-floating creates (no student / no deck where required) are not allowed.
 Place (space/folder) and links are different: place files work; links give it
 meaning.
 
@@ -101,26 +104,26 @@ These are **filed work**, not peer nav apps. Only decks appear as folder rows.
 | UI term | API / code | What it is | Not |
 | --- | --- | --- | --- |
 | **Deck** | deck (`/api/decks*`, D1 `decks` / `deck_versions`) | The file: reusable prepared content + structure (versioned). Browser: `#/decks/:id`. Verbs: New deck · Edit deck · Duplicate · Move to trash · Start session. | Not an “outline” as the entity name. Not a session. |
-| **Context** | presentation context (`/api/tutoring/contexts*`) | Who it is for. Four light questions and a paragraph, nothing required. Shown with that student's decks. One per space. Original school docs stay in the external agent. | Not a folder; not a participant account; not a CRM form; not a nav shelf. |
+| **Student** | student (`/api/tutoring/students*`) | Who it is for. Four light questions and a paragraph, nothing required. Shown with that student's decks. One per space. Original school docs stay in the external agent. | Not a folder; not a participant account; not a CRM form; not a nav shelf. |
 | **Outline** | outline (`deck_versions.content_json`, Outline v1) | The file contents of a deck: steps + interactions. What a live session runs. | Not a third product noun; it is what is *in* the deck. |
 
 ### Access link ↔ learner view
 
 | UI term | API / code | What it is | Not |
 | --- | --- | --- | --- |
-| **Access link** (full: **context access link**) | `orlnk_…` bearer; D1 `context_access_links`; `/api/tutoring/contexts/:id/links*` | A revocable capability the tutor mints for **one** context and hands to that student or family. Shown once at mint; default 180 days; max 10 live per context; revoked, never hard-deleted. | **Not an account** — no user row, no sign-in, no space membership, no email. Not a personal API token (`orpat_…`, tutor-side). Not a session join code. |
+| **Access link** (full: **student access link**) | `orlnk_…` bearer; D1 `student_access_links`; `/api/tutoring/students/:id/links*` | A revocable capability the tutor mints for **one** student and hands to that student or family. Shown once at mint; default 180 days; max 10 live per student; revoked, never hard-deleted. | **Not an account** — no user row, no sign-in, no space membership, no email. Not a personal API token (`orpat_…`, tutor-side). Not a session join code. |
 | **Learner view** | `/api/learner/*` (`me`, `sessions`, practice, writing, voice, feedback, audio trash and restore) | The student-facing surface an access link unlocks: their own sessions and curated session records, and their own work (practice grades, writing, voice responses). | Not the host console, not a second workspace, and never a place tutor-side records are written. |
-| **Guest link** (a session's **guest list**) | `orinv_…` bearer; D1 `guest_links` and `guest_lists`; `identityMode: guest-list`; `/api/sessions/:code/guest-links*`; entitlement `guestList` | A one-session personal link for a guest the host named. Shown once; redeemed into that session as that display name. The job is a named list (club vote, board, training attendance). | **Not** a context access link. **Not** a space invite. No context, no learner page, no account. |
+| **Guest link** (a session's **guest list**) | `orinv_…` bearer; D1 `guest_links` and `guest_lists`; `identityMode: guest-list`; `/api/sessions/:code/guest-links*`; entitlement `guestList` | A one-session personal link for a guest the host named. Shown once; redeemed into that session as that display name. The job is a named list (club vote, board, training attendance). | **Not** a student access link. **Not** a space invite. No student, no learner page, no account. |
 
-Write **access link** in UI copy; say **context access link** in docs and code review where
+Write **access link** in UI copy; say **student access link** in docs and code review where
 the scope matters. Do not call it a "student account", "student login", "invite", or
 "share link" — an invite grants space membership to a colleague, which this deliberately
 never does. Say the tutor **issues** or **revokes** a link, not "adds a student".
 A **guest link** is the only link that names a person in a session; say **guest link** (and
-**guest list** for the set of them) in UI, never "access link" and never "context."
+**guest list** for the set of them) in UI, never "access link" and never "student."
 
 **Credential boundary.** A live session with no durable session row has no
-context. Live join codes and `session_codes` are never exposed through learner
+student. Live join codes and `session_codes` are never exposed through learner
 responses.
 
 Say **learner** (not "student account", not "participant") for the person reading through
@@ -133,7 +136,7 @@ records.
 
 | UI term | API / code | What it is | Primary surfaces |
 | --- | --- | --- | --- |
-| **Session** | session (`/api/sessions*`) | One **deck that was started**: who (context), which deck version, the live plane, the Notes written afterwards. | Nested under deck / context / space folder; `#/sessions/:code`, `#/sessions/:id/record`. |
+| **Session** | session (`/api/sessions*`) | One **deck that was started**: who (student), which deck version, the live plane, the Notes written afterwards. | Nested under deck / student / space folder; `#/sessions/:code`, `#/sessions/:id/record`. |
 | **Live session** | the ephemeral plane (Durable Object + `/api/sessions/:code/*`) | Ephemeral synchronized live state: host, stage, participants, ballots. Lifecycle is driven by the `session.*` commands. Purged on a short TTL. | Host console, remote, stage, participant join. **Live now** · **Rejoin** in the Library and the deck editor. |
 | **Notes** | session record | Compact post-session outcomes (not a transcript). UI word is **Notes**; API/DB word stays `record`. | `#/sessions/:id/record`; a typed row in the session’s folder. |
 
@@ -146,7 +149,7 @@ records.
 - **There is no scheduling and no approvals.** Sessions carry no `startsAt`/`endsAt` and no `scheduled` status — not in the workspace, not in the API. Nothing is booked and nothing waits on an approver.
 - Cross-cutting history (recent, recover live) belongs on **Home**; a session’s own history belongs on **its deck’s page**. The folder row is a way to find a session in the place it was filed, not a second history.
 - Keep dedicated **instance** routes (detail / record) for deep links and agents.
-- `updateSession({folderId})` stays in the API for agents — and a session it files is reachable by place navigation as well as from its deck, Home, its context, or Trash.
+- `updateSession({folderId})` stays in the API for agents — and a session it files is reachable by place navigation as well as from its deck, Home, its student, or Trash.
 
 **No ledger.** Teacher UI never shows timestamps, taught-counts, status or
 version stamps outside the History tab, admin tables, and live counts.
@@ -185,7 +188,7 @@ version stamps outside the History tab, admin tables, and live counts.
 | --- | --- |
 | **Host** (`/host/`) | Host workspace: library, deck editor, live controls. |
 | **Stage** | Projector / shared screen. Reached with `?session=CODE`. |
-| **Participant** | Join by code; no account. An identified session additionally requires a context access link — still no account. |
+| **Participant** | Join by code; no account. An identified session additionally requires a student access link — still no account. |
 | **Site** | Marketing, docs, agent discovery (`llms.txt`, OpenAPI). |
 
 Phone **presenter remote** and **Q&A desk** are host-side tools for a live session, not separate products.
@@ -210,7 +213,7 @@ Host hash routes, in full. An unknown hash lands on the Library.
 | `#/decks/:id/edit` | Deck editor |
 | `#/sessions/:code` | Live host console (`/remote`, `/qna` beneath it) |
 | `#/sessions/:id/record` | Notes |
-| `#/tutor/contexts`, `#/tutor/contexts/:id` | Redirect to the student's place in the Library; `/new` adds a student, `/:id/links/new` creates an access link |
+| `#/tutor/students`, `#/tutor/students/:id` | Redirect to the student's place in the Library; `/new` adds a student, `/:id/links/new` creates an access link |
 | `#/tutor/trash` | Trash |
 | `#/settings*` | Settings |
 | `#/learn` | Learner view |
@@ -225,12 +228,12 @@ Stage and participant take `?session=CODE`; the join code param is `?code=`.
 The rail — nothing that becomes browsable in a folder earns a nav item:
 
 - **Library** `#/space` (also the landing page at `#/`)
-- **Students** in Tutoring, **Classes** in Classroom — folder rows, one per context, with an Explorer-style item count. Training omits this section.
+- **Students** in Tutoring, **Classes** in Classroom — folder rows, one per student, with an Explorer-style item count. Training omits this section.
 - *Shared* — a **section heading** over links to spaces you were invited to, **not a route**
 - **Trash** `#/tutor/trash`
 - **Settings**
 
-People are folders. There is no **Contexts** / **People** peer nav item.
+People are folders. There is no **Students** / **People** peer nav item.
 
 The space switcher groups all accessible spaces under **Tutoring**, **Classroom**,
 and **Training**. An owner chooses the experience on **New space** (`#/space/new`)
@@ -246,11 +249,11 @@ it grants no access and does not change document content or available editing to
 ### Create and present
 
 1. Open a workspace/folder in **Library** and choose **New deck**. The blank file opens in the deck editor with an editable title.
-2. Optionally open a student shortcut before creating; that explicitly links the deck to the student. Standalone decks have no context.
+2. Optionally open a student shortcut before creating; that explicitly links the deck to the student. Standalone decks have no student.
 3. **Present** shows the current content. **Start session** enables participation without changing the current slide/reveal position.
 4. **Edit deck** returns to that slide. **Live now** in the Library reopens a running session; **Notes** stays linked to its session.
 
-Students and classes are free. Paid plans add shared workspaces (`team`), saved results (`keep`), sessions over 50 participants (`largeSessions`, shown as **Sessions over 50 participants**; a full free session says **Session full** to the host and **This session is full.** to the participant), and the teaching loop (`continuity`, shown as **Homework and Notes**): Notes, homework, learner links, learner work and identified sessions, in Tutoring and Classroom alike. Member invitations create workspace membership; student access links only unlock one context's learner-visible records.
+Students and classes are free. Paid plans add shared workspaces (`team`), saved results (`keep`), sessions over 50 participants (`largeSessions`, shown as **Sessions over 50 participants**; a full free session says **Session full** to the host and **This session is full.** to the participant), and the teaching loop (`continuity`, shown as **Homework and Notes**): Notes, homework, learner links, learner work and identified sessions, in Tutoring and Classroom alike. Member invitations create workspace membership; student access links only unlock one student's learner-visible records.
 
 
 ---
@@ -265,7 +268,7 @@ Students and classes are free. Paid plans add shared workspaces (`team`), saved 
 | **Ballot** | One participant’s response; purged after the session ends. |
 | **Session code** | The 8-character code a participant types to join. Also the live-plane path segment `/api/sessions/:code/*`. |
 | **Name** (of a participant) | The participant identity shown in a session (never a global account). In the default nickname mode it is a generated **nickname** ("Amber Fox 4827"); in an identified or guest-list session it is the display name the tutor wrote. In code and API it is `name` (join response, snapshots, ballots CSV column), `recoveryName` and `yourName`. Typed by the participant only to recover a nickname seat (**Rejoin with your name**). |
-| **Identity mode** | Outline-level `anonymous` \| `nickname` \| `identified` \| `guest-list`. Default `nickname`: each participant gets a generated nickname. `identified` sessions are enterable only with a context access link for that session's context. |
+| **Identity mode** | Outline-level `anonymous` \| `nickname` \| `identified` \| `guest-list`. Default `nickname`: each participant gets a generated nickname. `identified` sessions are enterable only with a student access link for that session's student. |
 | **Dictionary** | The full entry for a word in the language being taught: part of speech, headword properties (gender, verb class, auxiliary), and a forms table. Part-of-speech generic — verbs, nouns, adjectives, pronouns and prepositions all render through one tag-driven path. The tutor can project it onto the wall. |
 | **Meaning** | The short translation of one word into the student's own language, attached under the word on the slide. Not "gloss": that is a lexicographer's word and told a tutor nothing. Not "translation" either, which is already taken by whole-sentence translation. |
 | **Language pair** | A space's `{ taught, native }`, set at `#/space/:id/edit`. Closed to pairs the dictionary has a verified source for. Nothing else in the product carries a language. |
@@ -311,7 +314,8 @@ Facts only. Noun labels and bare verbs. No first-person, no narrative, no metaph
 | Project (as a level between space and folder) | **Space** (root + sharing boundary) or **Folder** (filing), whichever is meant |
 | My projects | **My spaces** |
 | Designs / Templates / Rooms (as product nav, label or noun for the file) | **Decks** |
-| Contexts / People (as a nav shelf) | **Students** (the entity is a **context** in UI and API alike) |
+| People (as a nav shelf) | **Students** as folder rows in the rail group; the entity is a **student** in UI and API alike |
+| Context (the tutoring entity), contexts, `contextId`, `context_access_links`, `/api/tutoring/contexts`, "context access link" | **Student** (`student`, `studentId`, `student_access_links`, `/api/tutoring/students`); **student access link** in docs, **access link** in UI |
 | Prep / Outline Designer / Session Builder / Builder / “Edit outline file” | **Open** / **Edit deck**; in code, `DeckEditor` |
 | Schedule / book / “Not scheduled yet” | **Start session** — a session is started, never booked |
 | Run (as a noun for a started teaching) | **Session** |

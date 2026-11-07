@@ -10,9 +10,9 @@ test('phone homework handles every practice format, accents and self-reflection'
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
-  const context = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Camille', kind: 'person', experience: 'tutoring' } })).json();
-  const { id: contextId, spaceId } = context.context;
-  const deck = await page.request.post('/api/decks', { headers: CSRF, data: { contextId, spaceId, createSession: true,
+  const student = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'Camille', kind: 'person', experience: 'tutoring' } })).json();
+  const { id: studentId, spaceId } = student.student;
+  const deck = await page.request.post('/api/decks', { headers: CSRF, data: { studentId, spaceId, createSession: true,
     content: { version: 1, meta: { title: 'Français et allemand' }, steps: [{ id: 'hello', kind: 'title', title: 'Parlons ensemble' }], interactions: [] },
   } });
   expect(deck.status()).toBe(201);
@@ -28,7 +28,7 @@ test('phone homework handles every practice format, accents and self-reflection'
   ];
   const publish = await page.request.put(`/api/sessions/${sessionId}/record`, { headers: CSRF, data: { homework: questions.map((interaction) => ({ id: interaction.id, kind: 'quiz', interaction })) } });
   expect(publish.status()).toBe(200);
-  const { token } = await (await page.request.post(`/api/tutoring/contexts/${contextId}/links`, { headers: CSRF, data: {} })).json();
+  const { token } = await (await page.request.post(`/api/tutoring/students/${studentId}/links`, { headers: CSRF, data: {} })).json();
   const learner = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await learner.goto(`/host/#/learn?token=${token}`);
   await learner.getByRole('tab', { name: 'Practice', exact: true }).click();

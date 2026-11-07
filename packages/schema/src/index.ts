@@ -171,7 +171,7 @@ export {
 } from './openroom-file.js';
 export { isTutoringApiPath, TUTORING_API_PATH_PATTERN } from './tutoring-paths.js';
 export {
-  CONTEXT_KINDS,
+  STUDENT_KINDS,
   DECK_DRAFT_MAX_CHARS,
   DECK_SHAPES,
   MEDIA_ASSET_MAX_BYTES,
@@ -180,7 +180,7 @@ export {
   SESSION_STATUSES_CLIENT_WRITABLE,
   isMediaAssetContentType,
   mediaAssetPath,
-  type ContextKind,
+  type StudentKind,
   type MediaAssetListResponse,
   type MediaAssetSummary,
   type MediaAssetUploadResponse,

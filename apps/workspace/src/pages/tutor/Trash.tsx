@@ -2,13 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   getSessionRecord,
-  listContexts,
+  listStudents,
   listDecks,
   listSessions,
   listTrashedFolders,
   requestFolderPermanentDeletion,
   requestPermanentDeletion,
-  restoreContext,
+  restoreStudent,
   restoreDeck,
   restoreFolder,
   restoreSession,
@@ -27,8 +27,8 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
   const trashQuery = useQuery({
     queryKey: ['trash', 'tutoring'] as const,
     queryFn: async () => {
-      const [contexts, decks, sessions, folders] = await Promise.all([
-        listContexts({ trash: true }),
+      const [students, decks, sessions, folders] = await Promise.all([
+        listStudents({ trash: true }),
         listDecks({ trash: true }),
         listSessions({ trash: true }),
         listTrashedFolders(),
@@ -52,12 +52,12 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
           }),
         )
       ).filter((row): row is { id: string; sessionId: string; title: string } => row !== null);
-      return { contexts, decks, sessions, folders, records };
+      return { students, decks, sessions, folders, records };
     },
   });
   const restoreMutation = useMutation({
-    mutationFn: async ({ type, id }: { type: 'context' | 'deck' | 'session' | 'folder'; id: string }) => {
-      if (type === 'context') return restoreContext(id);
+    mutationFn: async ({ type, id }: { type: 'student' | 'deck' | 'session' | 'folder'; id: string }) => {
+      if (type === 'student') return restoreStudent(id);
       if (type === 'deck') return restoreDeck(id);
       if (type === 'session') return restoreSession(id);
       return restoreFolder(id);
@@ -65,7 +65,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['trash'] }),
-        queryClient.invalidateQueries({ queryKey: ['contexts'] }),
+        queryClient.invalidateQueries({ queryKey: ['students'] }),
         queryClient.invalidateQueries({ queryKey: ['decks'] }),
         queryClient.invalidateQueries({ queryKey: ['sessions'] }),
         queryClient.invalidateQueries({ queryKey: ['spaces'] }),
@@ -77,7 +77,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
     },
   });
 
-  const purge = async (type: 'context' | 'deck' | 'session', id: string) => {
+  const purge = async (type: 'student' | 'deck' | 'session', id: string) => {
     try {
       const intent = await requestPermanentDeletion(type, id);
       location.href = intent.confirmationUrl;
@@ -96,8 +96,8 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
   };
 
   if (!trashQuery.data) return <LoadState error={trashQuery.error ?? null} />;
-  const { contexts, decks, sessions, folders, records } = trashQuery.data;
-  const empty = contexts.length === 0 && decks.length === 0 && sessions.length === 0
+  const { students, decks, sessions, folders, records } = trashQuery.data;
+  const empty = students.length === 0 && decks.length === 0 && sessions.length === 0
     && folders.length === 0;
 
   return (
@@ -123,12 +123,12 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
               onPurge={(id) => void purgeFolder(id)}
             />
           ) : null}
-          {contexts.length > 0 ? (
+          {students.length > 0 ? (
             <TrashList
               title="People"
-              rows={contexts.map((row) => ({ id: row.id, label: row.displayName }))}
-              onRestore={(id) => restoreMutation.mutate({ type: 'context', id })}
-              onPurge={(id) => void purge('context', id)}
+              rows={students.map((row) => ({ id: row.id, label: row.displayName }))}
+              onRestore={(id) => restoreMutation.mutate({ type: 'student', id })}
+              onPurge={(id) => void purge('student', id)}
             />
           ) : null}
           {records.length > 0 ? (

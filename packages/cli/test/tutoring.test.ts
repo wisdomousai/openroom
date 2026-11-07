@@ -28,7 +28,7 @@ describe('tutoring CLI parity', () => {
     const code = await run([
       'api',
       'POST',
-      '/api/tutoring/contexts',
+      '/api/tutoring/students',
       '--url',
       'https://openroom.test',
       '--token',
@@ -39,7 +39,7 @@ describe('tutoring CLI parity', () => {
     ], { io: output.io, fetchImpl });
     expect(code).toBe(0);
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe('https://openroom.test/api/tutoring/contexts');
+    expect(calls[0]?.url).toBe('https://openroom.test/api/tutoring/students');
     expect(new Headers(calls[0]?.init?.headers).get('authorization')).toBe('Bearer orpat_secret');
     expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ displayName: 'Camille' });
     expect(JSON.parse(output.out[0] as string)).toMatchObject({ ok: true, status: 201 });
@@ -48,7 +48,7 @@ describe('tutoring CLI parity', () => {
   it('returns private audio without interpreting binary bytes as UTF-8 text', async () => {
     const bytes = new Uint8Array([82, 73, 70, 70, 0, 128, 255]);
     const output = capture();
-    const code = await run(['api', 'GET', '/api/tutoring/contexts/person/work/response/audio', '--url', 'https://openroom.test', '--token', 'orpat_secret', '--json'], {
+    const code = await run(['api', 'GET', '/api/tutoring/students/person/work/response/audio', '--url', 'https://openroom.test', '--token', 'orpat_secret', '--json'], {
       io: output.io,
       fetchImpl: async (_url, init) => {
         expect(new Headers(init?.headers).get('authorization')).toBe('Bearer orpat_secret');

@@ -24,16 +24,16 @@ export async function seedRecoveryFixture(runtime, now) {
   await db.prepare('UPDATE users SET entitlements=?1 WHERE id=?2').bind(JSON.stringify({ keep: true, team: true }), owner.user.id).run();
   const space = await json(runtime, '/api/my/spaces', owner.cookie, { name: 'Recovery classroom', experience: 'tutoring' }, 201);
   await db.prepare("INSERT INTO space_members (space_id,user_id,role,created_at) VALUES (?1,?2,'editor',?3)").bind(space.id, collaborator.user.id, now).run();
-  const contextId = randomUUID();
-  await db.prepare('INSERT INTO contexts (id,space_id,created_by,display_name,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?5)').bind(contextId, space.id, owner.user.id, 'Camille', now).run();
-  await db.prepare('INSERT INTO space_contexts (space_id,context_id,created_at) VALUES (?1,?2,?3)').bind(space.id, contextId, now).run();
-  const learner = await json(runtime, `/api/tutoring/contexts/${contextId}/links`, owner.cookie, { displayName: 'Camille' }, 201);
+  const studentId = randomUUID();
+  await db.prepare('INSERT INTO students (id,space_id,created_by,display_name,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?5)').bind(studentId, space.id, owner.user.id, 'Camille', now).run();
+  await db.prepare('INSERT INTO space_students (space_id,student_id,created_at) VALUES (?1,?2,?3)').bind(space.id, studentId, now).run();
+  const learner = await json(runtime, `/api/tutoring/students/${studentId}/links`, owner.cookie, { displayName: 'Camille' }, 201);
   const content = { version: 1, meta: { title: 'Français — les projets' }, interactions: [], steps: [{ id: 'opening', kind: 'title', title: 'Demain, je vais…', body: 'Écrire et raconter.' }] };
-  const { deck } = await json(runtime, '/api/decks', owner.cookie, { spaceId: space.id, contextId, content }, 201);
+  const { deck } = await json(runtime, '/api/decks', owner.cookie, { spaceId: space.id, studentId, content }, 201);
   const first = await json(runtime, `/api/decks/${deck.id}/start`, owner.cookie, { requestId: randomUUID() }, 201);
   const end = await recoveryRequest(runtime, `/api/sessions/${first.sessionCode}/commands`, { method: 'POST', headers: { authorization: `Bearer ${first.hostToken}`, 'content-type': 'application/json' }, body: JSON.stringify({ idempotencyKey: randomUUID(), command: { command: 'session.end' } }) });
   assert.equal(end.status, 200);
-  await db.prepare("INSERT INTO session_records (id,session_id,context_id,session_code,deck_version,notes,created_at,updated_at) VALUES (?1,?2,?3,?4,1,'PRIVATE_RECOVERY_NOTE',?5,?5)").bind(randomUUID(), first.sessionId, contextId, first.sessionCode, now).run();
+  await db.prepare("INSERT INTO session_records (id,session_id,student_id,session_code,deck_version,notes,created_at,updated_at) VALUES (?1,?2,?3,?4,1,'PRIVATE_RECOVERY_NOTE',?5,?5)").bind(randomUUID(), first.sessionId, studentId, first.sessionCode, now).run();
   const live = await json(runtime, `/api/decks/${deck.id}/start`, owner.cookie, { requestId: randomUUID() }, 201);
   const imageId = randomUUID(), image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j8XkAAAAASUVORK5CYII=', 'base64');
   const cacheExpiry = new Date(now + 86400000);
@@ -42,7 +42,7 @@ export async function seedRecoveryFixture(runtime, now) {
   const recordings = [];
   for (const [name, expiresAt, removedAt] of [['retained', now + 30 * 86400000, null], ['already-expired', now - 1, null], ['expires-during-recovery', now + 30_000, null], ['trash-expired', now + 30 * 86400000, now - 8 * 86400000]]) {
     const id = randomUUID(), key = `learner-audio/${id}.wav`, bytes = Buffer.from(`RIFF-${name}-fixture`);
-    await db.prepare("INSERT INTO learner_submissions (id,learner_id,context_id,session_id,task_id,task_json,assignment_revision,body,created_at) VALUES (?1,?2,?3,?4,'voice','{\"kind\":\"voice\",\"id\":\"voice\",\"prompt\":\"Parlez\"}',1,'',?5)").bind(id, learner.learnerId, contextId, first.sessionId, now).run();
+    await db.prepare("INSERT INTO learner_submissions (id,learner_id,student_id,session_id,task_id,task_json,assignment_revision,body,created_at) VALUES (?1,?2,?3,?4,'voice','{\"kind\":\"voice\",\"id\":\"voice\",\"prompt\":\"Parlez\"}',1,'',?5)").bind(id, learner.learnerId, studentId, first.sessionId, now).run();
     await db.prepare('INSERT INTO learner_audio (submission_id,object_key,sha256,byte_length,duration_ms,expires_at,removed_at) VALUES (?1,?2,?3,?4,1000,?5,?6)').bind(id, key, hash(bytes), bytes.length, expiresAt, removedAt).run();
     await db.prepare('INSERT INTO learner_feedback (submission_id,draft_json,published_json,version,updated_at) VALUES (?1,?2,?2,1,?3)').bind(id, JSON.stringify({ summary: 'Très bien — gardez le futur proche.' }), now).run();
     await bucket.put(key, bytes, { httpMetadata: { contentType: 'audio/wav' } });
@@ -59,7 +59,7 @@ export async function seedRecoveryFixture(runtime, now) {
   for (const token of [pat, oauth]) assert.equal((await recoveryRequest(runtime, '/api/my/spaces', { headers: { authorization: `Bearer ${token}` } })).status, 200);
   assert.equal((await recoveryRequest(runtime, '/api/learner/me', { headers: { authorization: `Bearer ${learner.token}` } })).status, 200);
   const stored = await db.prepare('SELECT content_json FROM deck_versions WHERE deck_id=?1').bind(deck.id).first();
-  return { owner, collaborator, space, contextId, learner, deck, content, storedContent: JSON.parse(stored.content_json), first, live, imageId, image, cacheExpiry, recordings, pat, oauth, customerId, attemptId, attemptedAt: now };
+  return { owner, collaborator, space, studentId, learner, deck, content, storedContent: JSON.parse(stored.content_json), first, live, imageId, image, cacheExpiry, recordings, pat, oauth, customerId, attemptId, attemptedAt: now };
 }
 
 export async function verifyRecoveredFixture(runtime, fixture) {
@@ -82,7 +82,7 @@ export async function verifyRecoveredFixture(runtime, fixture) {
   assert.equal(record.record.notes, 'PRIVATE_RECOVERY_NOTE');
   const archive = await json(runtime, `/api/my/archives/${fixture.first.sessionCode}`, owner.cookie);
   assert.equal(archive.code, fixture.first.sessionCode);
-  const replacement = await json(runtime, `/api/tutoring/contexts/${fixture.contextId}/links`, owner.cookie, { learnerId: fixture.learner.learnerId }, 201);
+  const replacement = await json(runtime, `/api/tutoring/students/${fixture.studentId}/links`, owner.cookie, { learnerId: fixture.learner.learnerId }, 201);
   for (const recording of fixture.recordings) {
     const response = await recoveryRequest(runtime, `/api/learner/submissions/${recording.id}/audio`, { headers: { authorization: `Bearer ${replacement.token}` } });
     if (recording.name === 'retained') { assert.equal(response.status, 200); assert.deepEqual(Buffer.from(await response.arrayBuffer()), recording.bytes); }

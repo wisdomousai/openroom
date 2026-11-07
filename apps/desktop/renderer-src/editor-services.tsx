@@ -34,7 +34,7 @@ import {
   checkEmbeddable,
   downloadExport,
   fetchHostSnapshot,
-  fetchSessionContext,
+  fetchSessionStudent,
   fetchStageToken,
   getSessionItem,
   importReadingMaterial,
@@ -94,7 +94,7 @@ export function DesktopFileEditorServices({ children }: { children: ReactNode })
     live: {
       fetchHostSnapshot,
       fetchStageToken,
-      fetchSessionContext,
+      fetchSessionStudent,
       getSessionItem,
       downloadExport,
       stageUrl: stageUrlFor,

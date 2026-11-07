@@ -41,8 +41,8 @@ Terminology (UI vs API, library vs instance): **[`docs/TERMINOLOGY.md`](TERMINOL
   panel may edit the item's **identity only** — rename, tags, where it is filed.
   Every typed field still routes to `/:id/edit` or the deck editor.
 - **Place + link**: do not free-float library creates. Decks need
-  `contextId` (+ space when filing). Sessions need `deckId` +
-  `contextId`. Location is place
+  `studentId` (+ space when filing). Sessions need `deckId` +
+  `studentId`. Location is place
   inheritance, not a parent-folder form field.
 - **While presenting:** phone remote `#/sessions/:code/remote` — Start session → Show results → Next → End session, plus a question rail to browse any slide and **Show on stage** (one `interaction.open` jump — not one-at-a-time). Use `interaction.open` to jump to any question; `session.advance` only opens the next pending one.
 
@@ -128,7 +128,7 @@ Do **not** invent these unless the user or the outline explicitly wants them.
 | Theme | Advanced `defaults.theme` or live `session.theme` (Pro styling later) |
 | **Second vote after discussion** | Advanced: `peerInstruction: true` on single-select choice |
 | Nicknames | Default; set `defaults.identityMode: anonymous` to opt out |
-| Students seen under their own name | Advanced: `defaults.identityMode: identified`. The tutor names a stable learner within the context. That learner’s access link supplies the name and live seat; replacing the link retains their work and seat. A live session with no durable session row has no context and cannot admit a learner link. |
+| Students seen under their own name | Advanced: `defaults.identityMode: identified`. The tutor names a stable learner within the student. That learner’s access link supplies the name and live seat; replacing the link retains their work and seat. A live session with no durable session row has no student and cannot admit a learner link. |
 
 Peer instruction is **opt-in and advanced**. Default outlines must not set it.
 
@@ -204,7 +204,7 @@ Fourteen focused tools:
 | Tool | Args | Returns |
 | --- | --- | --- |
 | `outline_validate` | `{ outline }` (YAML/JSON text or object) | typed step and interaction summary, or stable errors |
-| `session_create` | `{ outline }` (text or object) | `{ code, joinUrl, stageUrl, hostToken, stageToken }`; an identified outline is refused with `identified-session-needs-context` |
+| `session_create` | `{ outline }` (text or object) | `{ code, joinUrl, stageUrl, hostToken, stageToken }`; an identified outline is refused with `identified-session-needs-student` |
 | `session_status` | `{ code }` | session status + per-question lifecycle (no results) |
 | `session_results` | `{ code, interactionId? }` | aggregates only — never ballots, never pre-reveal answer keys |
 | `deck_get` | `{ deckId, version? }` | the deck row, its place, `contentVersion`, and the content as Outline v1 |
@@ -223,15 +223,15 @@ classroom poll lists compile to an outline of interaction steps.
 
 `joinUrl` and `stageUrl` are absolute; hand them to the people in the room. An
 identified session admits nobody by code alone, so its start result carries no
-`joinUrl`. Mint the student's link with `POST /api/tutoring/contexts/{id}/links`
+`joinUrl`. Mint the student's link with `POST /api/tutoring/students/{id}/links`
 and body `{ "sessionCode": "…" }` (add `learnerId` or `displayName` for each
 student of a group); the answer's `joinUrl` carries the link, and its
 `learnerUrl` opens the student's own page. Starting an identified deck that is
-not filed under a student answers `422 identified-session-needs-context`.
+not filed under a student answers `422 identified-session-needs-student`.
 
 On openroom.app the teaching loop is the paid `continuity` capability of the
-space owner: context links and people, learner work, session Notes, and creating
-identified sessions answer `403 continuity-required` without it. Contexts of
+space owner: student links and people, learner work, session Notes, and creating
+identified sessions answer `403 continuity-required` without it. Students of
 every kind, trash, restore and permanent deletion never need it. Decks,
 anonymous and nickname sessions, the CLI and MCP are free. A live session
 admits at most 50 participants unless the space owner holds `largeSessions` when
@@ -388,7 +388,7 @@ capability. `@openroom/sdk` wraps this as `assets.upload` / `assets.list`.
 ## Tutoring boundary
 
 The external agent reads original school material and performs the heavy outline
-preparation. OpenRoom receives only a typed outline, a presentation context
+preparation. OpenRoom receives only a typed outline, a student
 (person, group, class, or event), and short provenance labels; it never stores
 the source attachment or wraps the preparation model. Use the provider-neutral
 `prepare-a-tutoring-outline` plugin skill for the full workflow.

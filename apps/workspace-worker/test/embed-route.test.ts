@@ -95,16 +95,16 @@ function post(path: string, body: unknown): Request {
 
 beforeAll(async () => {
   cookie = await seedCookie();
-  const contextRes = await asBrowser(cookie, '/api/tutoring/contexts', {
+  const studentRes = await asBrowser(cookie, '/api/tutoring/students', {
     method: 'POST',
-    body: JSON.stringify({ displayName: 'Camille', kind: 'person', context: { level: 'B1' } }),
+    body: JSON.stringify({ displayName: 'Camille', kind: 'person', student: { level: 'B1' } }),
   });
-  expect(contextRes.status).toBe(201);
-  const contextId = ((await contextRes.json()) as { context: { id: string } }).context.id;
+  expect(studentRes.status).toBe(201);
+  const studentId = ((await studentRes.json()) as { student: { id: string } }).student.id;
 
   const deckRes = await asBrowser(cookie, '/api/decks', {
     method: 'POST',
-    body: JSON.stringify({ contextId, outline: OUTLINE, shape: 'tutoring' }),
+    body: JSON.stringify({ studentId, outline: OUTLINE, shape: 'tutoring' }),
   });
   expect(deckRes.status).toBe(201);
   deckId = ((await deckRes.json()) as { deck: { id: string } }).deck.id;

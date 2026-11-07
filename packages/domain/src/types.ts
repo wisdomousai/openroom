@@ -43,7 +43,7 @@ export interface ParticipantRecord {
   joinedAt: number;
   /**
    * Session-local name. In nickname sessions it is generated; in identified
-   * sessions it is the name forwarded from the context access link. Host-visible
+   * sessions it is the name forwarded from the student access link. Host-visible
    * and shown to the participant themselves; never exposed to other
    * participants or the stage.
    */

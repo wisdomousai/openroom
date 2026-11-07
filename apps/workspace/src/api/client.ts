@@ -46,7 +46,7 @@ const ERROR_SENTENCES: Record<string, string> = {
   'not-found': 'This item no longer exists or is not shared with you.',
   'deck-not-found': 'This deck no longer exists or is not shared with you.',
   'session-not-found': 'This session no longer exists or is not shared with you.',
-  'context-not-found': 'This student no longer exists or is not shared with you.',
+  'student-not-found': 'This student no longer exists or is not shared with you.',
   'folder-not-found': 'This folder no longer exists.',
   'brand-kit-not-found': 'This brand kit no longer exists.',
   forbidden: 'You do not have permission to do this here.',

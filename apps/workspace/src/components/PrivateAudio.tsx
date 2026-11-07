@@ -20,8 +20,8 @@ export function byTime<T extends Pick<AudioComment, 'atMs'>>(comments: readonly 
 }
 
 /** Audio is fetched with the proper credential; the player only receives a temporary blob URL. */
-export function PrivateAudio({ submissionId, available, durationMs, recoverable = false, token, contextId, comments = [], onPosition, onChanged, handle }: {
-  submissionId: string; available: boolean; durationMs: number; recoverable?: boolean; token?: string; contextId?: string;
+export function PrivateAudio({ submissionId, available, durationMs, recoverable = false, token, studentId, comments = [], onPosition, onChanged, handle }: {
+  submissionId: string; available: boolean; durationMs: number; recoverable?: boolean; token?: string; studentId?: string;
   comments?: AudioComment[]; onPosition?: (atMs: number) => void; onChanged?: () => void | Promise<unknown>;
   handle?: Ref<PrivateAudioHandle>;
 }) {
@@ -37,7 +37,7 @@ export function PrivateAudio({ submissionId, available, durationMs, recoverable 
   const mutation = useRef<AbortController | null>(null);
   const seek = useRef<number | null>(null);
   const path = token ? `/api/learner/submissions/${encodeURIComponent(submissionId)}/audio`
-    : `/api/tutoring/contexts/${encodeURIComponent(contextId ?? '')}/work/${encodeURIComponent(submissionId)}/audio`;
+    : `/api/tutoring/students/${encodeURIComponent(studentId ?? '')}/work/${encodeURIComponent(submissionId)}/audio`;
   useEffect(() => () => { request.current?.abort(); mutation.current?.abort(); if (localUrl.current) URL.revokeObjectURL(localUrl.current); }, []);
   useEffect(() => {
     if (!available) { request.current?.abort(); player.current?.pause(); if (localUrl.current) URL.revokeObjectURL(localUrl.current); localUrl.current = null; setSource(null); }

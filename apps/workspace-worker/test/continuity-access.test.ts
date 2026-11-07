@@ -1,7 +1,7 @@
 /**
  * The paid `continuity` capability: who it is read from (the space owner), what
  * it gates (the teaching loop: Notes, links, learner work, identified sessions,
- * the learner plane), what it never gates (contexts of any kind, deletion,
+ * the learner plane), what it never gates (students of any kind, deletion,
  * restore, the shared lookup tools), and that a deployment without billing is
  * unlocked.
  */
@@ -22,22 +22,22 @@ async function learner(token: string, target: Env = configured): Promise<{ statu
   return { status: response.status, body: await response.json() };
 }
 
-/** A context with one session filed against it. Free for every kind. */
-async function contextSetup(tutor: Account, kind: 'person' | 'class' = 'person') {
-  const created = await tutor.request('/api/tutoring/contexts', 'POST', {
-    displayName: kind === 'class' ? 'Year 9 French' : 'Camille', kind, context: {},
+/** A student with one session filed against it. Free for every kind. */
+async function studentSetup(tutor: Account, kind: 'person' | 'class' = 'person') {
+  const created = await tutor.request('/api/tutoring/students', 'POST', {
+    displayName: kind === 'class' ? 'Year 9 French' : 'Camille', kind, student: {},
     ...(kind === 'class' ? { experience: 'classroom' } : {}),
   });
   expect(created.status, JSON.stringify(created.body)).toBe(201);
-  const context = created.body.context as { id: string; spaceId: string };
-  const deck = await tutor.request('/api/decks', 'POST', { spaceId: context.spaceId, contextId: context.id, content: OUTLINE, createSession: true });
+  const student = created.body.student as { id: string; spaceId: string };
+  const deck = await tutor.request('/api/decks', 'POST', { spaceId: student.spaceId, studentId: student.id, content: OUTLINE, createSession: true });
   expect(deck.status, JSON.stringify(deck.body)).toBe(201);
-  return { context, base: `/api/tutoring/contexts/${context.id}`, record: `/api/sessions/${deck.body.session.id}/record`, deckId: deck.body.deck.id as string };
+  return { student, base: `/api/tutoring/students/${student.id}`, record: `/api/sessions/${deck.body.session.id}/record`, deckId: deck.body.deck.id as string };
 }
 
 /** The loop on top: one learner link. Needs `continuity`. */
 async function loopSetup(tutor: Account, kind: 'person' | 'class' = 'person') {
-  const setup = await contextSetup(tutor, kind);
+  const setup = await studentSetup(tutor, kind);
   const link = await tutor.request(`${setup.base}/links`, 'POST', kind === 'class' ? { displayName: 'Noah' } : {});
   expect(link.status, JSON.stringify(link.body)).toBe(201);
   return { ...setup, link: link.body as { id: string; token: string } };
@@ -50,23 +50,23 @@ const loopPaths = (setup: { base: string; record: string }): [string, string, ob
 ];
 
 describe('continuity capability', () => {
-  it('keeps contexts of every kind, decks, live sessions and lookup tools free, and gates the loop', async () => {
+  it('keeps students of every kind, decks, live sessions and lookup tools free, and gates the loop', async () => {
     const free = await account();
     for (const client of clients) {
       for (const kind of ['person', 'class'] as const) {
-        const created = await free.request('/api/tutoring/contexts', 'POST', { displayName: `${client} ${kind}`, kind }, client);
+        const created = await free.request('/api/tutoring/students', 'POST', { displayName: `${client} ${kind}`, kind }, client);
         expect(created.status, `${client} ${kind}`).toBe(201);
-        const base = `/api/tutoring/contexts/${created.body.context.id}`;
+        const base = `/api/tutoring/students/${created.body.student.id}`;
         expect((await free.request(base, 'GET', undefined, client)).status).toBe(200);
-        expect((await free.request(base, 'PATCH', { displayName: `${client} ${kind} renamed` }, client)).body.context.displayName).toBe(`${client} ${kind} renamed`);
+        expect((await free.request(base, 'PATCH', { displayName: `${client} ${kind} renamed` }, client)).body.student.displayName).toBe(`${client} ${kind} renamed`);
       }
     }
-    expect((await free.request('/api/tutoring/contexts')).body.contexts).toHaveLength(clients.length * 2);
-    expect((await free.request('/api/tutoring/contexts?kind=class')).body.contexts).toHaveLength(clients.length);
+    expect((await free.request('/api/tutoring/students')).body.students).toHaveLength(clients.length * 2);
+    expect((await free.request('/api/tutoring/students?kind=class')).body.students).toHaveLength(clients.length);
 
-    const person = await contextSetup(free, 'person'), group = await contextSetup(free, 'class');
-    expect((await free.request(`/api/tutoring/contexts?spaceId=${group.context.spaceId}`)).body.contexts).toHaveLength(1);
-    expect((await free.request('/api/my/spaces', 'POST', { name: 'Spanish', contextId: person.context.id })).status).toBe(201);
+    const person = await studentSetup(free, 'person'), group = await studentSetup(free, 'class');
+    expect((await free.request(`/api/tutoring/students?spaceId=${group.student.spaceId}`)).body.students).toHaveLength(1);
+    expect((await free.request('/api/my/spaces', 'POST', { name: 'Spanish', studentId: person.student.id })).status).toBe(201);
     for (const client of clients) {
       for (const setup of [person, group]) {
         for (const [path, method, body] of loopPaths(setup)) {
@@ -99,30 +99,30 @@ describe('continuity capability', () => {
     expect(link.status).toBe(201);
     expect((await learner(link.body.token)).status).toBe(200);
     expect((await free.request(person.record, 'PUT', NOTES, 'mcp')).status).toBe(200);
-    // With the capability, an identified session still needs a student context:
+    // With the capability, an identified session still needs a student:
     // without one nobody could ever join it, so the start is refused.
-    const needsContext = { status: 422, body: { ok: false, error: 'identified-session-needs-context' } };
-    expect(await free.request('/api/sessions', 'POST', { outline: IDENTIFIED }, 'oauth')).toMatchObject(needsContext);
-    expect((await free.rpc('session_create', { outline: IDENTIFIED })).value.error).toMatch(/^identified-session-needs-context/);
+    const needsStudent = { status: 422, body: { ok: false, error: 'identified-session-needs-student' } };
+    expect(await free.request('/api/sessions', 'POST', { outline: IDENTIFIED }, 'oauth')).toMatchObject(needsStudent);
+    expect((await free.rpc('session_create', { outline: IDENTIFIED })).value.error).toMatch(/^identified-session-needs-student/);
     for (const client of ['cookie', 'mcp'] as const) {
-      expect(await free.request(`/api/decks/${identifiedDeck.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() }, client)).toMatchObject(needsContext);
+      expect(await free.request(`/api/decks/${identifiedDeck.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() }, client)).toMatchObject(needsStudent);
     }
-    const filed = await free.request('/api/decks', 'POST', { spaceId: person.context.spaceId, contextId: person.context.id, content: IDENTIFIED });
+    const filed = await free.request('/api/decks', 'POST', { spaceId: person.student.spaceId, studentId: person.student.id, content: IDENTIFIED });
     expect((await free.request(`/api/decks/${filed.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() })).status).toBe(201);
     // The refused requestId stays usable: filing the deck and retrying starts it.
-    const loose = await free.request('/api/decks', 'POST', { spaceId: person.context.spaceId, content: IDENTIFIED });
+    const loose = await free.request('/api/decks', 'POST', { spaceId: person.student.spaceId, content: IDENTIFIED });
     const retry = crypto.randomUUID();
-    expect(await free.request(`/api/decks/${loose.body.deck.id}/start`, 'POST', { requestId: retry })).toMatchObject(needsContext);
-    expect((await free.request(`/api/decks/${loose.body.deck.id}`, 'PATCH', { contextId: person.context.id })).status).toBe(200);
-    expect(await free.request(`/api/decks/${loose.body.deck.id}/start`, 'POST', { requestId: retry })).toMatchObject({ status: 201, body: { sessionId: retry, contextId: person.context.id } });
+    expect(await free.request(`/api/decks/${loose.body.deck.id}/start`, 'POST', { requestId: retry })).toMatchObject(needsStudent);
+    expect((await free.request(`/api/decks/${loose.body.deck.id}`, 'PATCH', { studentId: person.student.id })).status).toBe(200);
+    expect(await free.request(`/api/decks/${loose.body.deck.id}/start`, 'POST', { requestId: retry })).toMatchObject({ status: 201, body: { sessionId: retry, studentId: person.student.id } });
   });
 
-  it('retains data after a lapse, keeps contexts, deletion and restore open, and answers a lapsed learner link like a revoked one', async () => {
+  it('retains data after a lapse, keeps students, deletion and restore open, and answers a lapsed learner link like a revoked one', async () => {
     const tutor = await account(), change = await subscribe(tutor);
     const setup = await loopSetup(tutor);
     const spare = await tutor.request(`${setup.base}/links`, 'POST', {});
     expect((await tutor.request(setup.record, 'PUT', NOTES)).status).toBe(200);
-    expect((await tutor.request(setup.base)).body.context.nextNote).toBe(NOTES.nextNote);
+    expect((await tutor.request(setup.base)).body.student.nextNote).toBe(NOTES.nextNote);
 
     await change('canceled');
     for (const client of clients) {
@@ -130,13 +130,13 @@ describe('continuity capability', () => {
     }
     expect(await tutor.request('/api/sessions', 'POST', { outline: IDENTIFIED })).toEqual({ status: 403, body: REQUIRED });
 
-    // The context stays usable; only the Notes sticky is withheld.
+    // The student stays usable; only the Notes sticky is withheld.
     const detail = await tutor.request(setup.base);
     expect(detail.status).toBe(200);
-    expect(detail.body.context).not.toHaveProperty('nextNote');
+    expect(detail.body.student).not.toHaveProperty('nextNote');
     expect((await tutor.request(setup.base, 'PATCH', { displayName: 'Camille B.' })).status).toBe(200);
-    const listed = (await tutor.request(`/api/tutoring/contexts?spaceId=${setup.context.spaceId}`)).body.contexts;
-    expect(listed.map((row: { id: string }) => row.id)).toEqual([setup.context.id]);
+    const listed = (await tutor.request(`/api/tutoring/students?spaceId=${setup.student.spaceId}`)).body.students;
+    expect(listed.map((row: { id: string }) => row.id)).toEqual([setup.student.id]);
     expect(listed[0]).not.toHaveProperty('nextNote');
 
     // Lapsed and revoked links are indistinguishable to the holder.
@@ -147,7 +147,7 @@ describe('continuity capability', () => {
 
     // Privacy deletion is never paid.
     expect((await tutor.request(setup.base, 'DELETE', undefined, 'mcp')).status).toBe(200);
-    expect((await tutor.request('/api/tutoring/contexts?trash=1')).body.contexts.map((row: { id: string }) => row.id)).toEqual([setup.context.id]);
+    expect((await tutor.request('/api/tutoring/students?trash=1')).body.students.map((row: { id: string }) => row.id)).toEqual([setup.student.id]);
     expect((await tutor.request(`${setup.base}/restore`, 'POST', {}, 'pat')).status).toBe(200);
     expect((await tutor.request(setup.base, 'DELETE')).status).toBe(200);
     expect((await tutor.request(`${setup.base}/permanent-deletion`, 'POST', {})).status).toBe(202);
@@ -156,17 +156,17 @@ describe('continuity capability', () => {
     expect((await tutor.request(`${setup.base}/restore`, 'POST', {})).status).toBe(200);
     await change('active');
     expect((await tutor.request(setup.record, 'GET')).body.record.notes).toBe('Private');
-    expect((await tutor.request(setup.base)).body.context.nextNote).toBe(NOTES.nextNote);
+    expect((await tutor.request(setup.base)).body.student.nextNote).toBe(NOTES.nextNote);
     expect((await learner(setup.link.token)).status).toBe(200);
   });
 
   it('reads the space owner’s capability for editors, never the editor’s own', async () => {
     const owner = await account(), editor = await account(), change = await subscribe(owner);
     const setup = await loopSetup(owner, 'class');
-    await member(owner, editor, 'editor', setup.context.spaceId);
+    await member(owner, editor, 'editor', setup.student.spaceId);
     expect((await editor.request(`${setup.base}/links`, 'POST', { displayName: 'Lea' }, 'mcp')).status).toBe(201);
     expect((await editor.request(setup.record, 'PUT', NOTES, 'pat')).status).toBe(200);
-    const identified = await editor.request('/api/decks', 'POST', { spaceId: setup.context.spaceId, contextId: setup.context.id, content: IDENTIFIED });
+    const identified = await editor.request('/api/decks', 'POST', { spaceId: setup.student.spaceId, studentId: setup.student.id, content: IDENTIFIED });
     expect((await editor.request(`/api/decks/${identified.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() })).status).toBe(201);
 
     await change('canceled');
@@ -176,7 +176,7 @@ describe('continuity capability', () => {
     expect(await editor.request(`${setup.base}/links`, 'GET')).toEqual({ status: 403, body: REQUIRED });
     expect((await editor.request(`/api/decks/${identified.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() })).status).toBe(403);
     // The editor's own subscription covers the editor's own spaces.
-    const own = await contextSetup(editor);
+    const own = await studentSetup(editor);
     expect((await editor.request(`${own.base}/links`, 'POST', {})).status).toBe(201);
   });
 
@@ -187,7 +187,7 @@ describe('continuity capability', () => {
     const setup = await loopSetup(tutor);
     expect((await learner(setup.link.token, selfHosted)).status).toBe(200);
     expect((await tutor.request(setup.record, 'PUT', NOTES)).status).toBe(200);
-    const identified = await tutor.request('/api/decks', 'POST', { spaceId: setup.context.spaceId, contextId: setup.context.id, content: IDENTIFIED });
+    const identified = await tutor.request('/api/decks', 'POST', { spaceId: setup.student.spaceId, studentId: setup.student.id, content: IDENTIFIED });
     expect((await tutor.request(`/api/decks/${identified.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() })).status).toBe(201);
     expect((await tutor.request('/api/my/billing')).body).toMatchObject({ available: false, selfHosted: true });
     // The same account on the hosted configuration is free.

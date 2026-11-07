@@ -177,7 +177,7 @@ rehearsal and embedded-result screenshots were inspected. It does not prove actu
   Revisiting a question reopens answers and keeps existing responses. The session
   keeps its captured questions and source versions; reconnecting a slide does not edit live content.
 - Start collects every embedded OpenRoom slide in native presentation order. Source
-  decks must belong to one space and share the same optional context and participant
+  decks must belong to one space and share the same optional student and participant
   identity setting. Unconnected PowerPoint slides stay in PowerPoint.
 - The durable session stores a frozen activity composition. Native slide references
   map to session step IDs; matching IDs in different decks and a reconnected copy

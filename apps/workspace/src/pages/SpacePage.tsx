@@ -6,15 +6,15 @@ import {
   copyFolder,
   createFolder,
   facilitateSession,
-  getContext,
+  getStudent,
   getDeckFileLink,
   getSpaceMembers,
   getSpaceTree,
   linkDeckFile,
   listAllSpaces,
-  listContexts,
+  listStudents,
   listMySessions,
-  restoreContext,
+  restoreStudent,
   trashDeck,
   trashFolder,
   updateDeck,
@@ -22,13 +22,13 @@ import {
   type MySession,
   type SpaceTree,
 } from '../api';
-import { ContextLinksCard } from './tutor/ContextLinks';
+import { StudentLinksCard } from './tutor/StudentLinks';
 import { isMissing, NotAvailable } from './tutor/shared';
 import { sessionStartMessage } from '../components/ContinuityLock';
 import { WorkspaceUpdates } from '../components/WorkspaceUpdates';
 import { SpaceWelcome } from '../components/SpaceWelcome';
 import { LiveNow } from '../components/LiveNow';
-import { ContextPanel } from '../components/ContextPanel';
+import { StudentPanel } from '../components/StudentPanel';
 import { ConfirmActionDialog } from '../components/ManagementTable';
 import {
   LibraryList,
@@ -68,8 +68,8 @@ interface Props {
   folderId?: string | null;
   /** Selected item from the URL (`?itemId=`); the kind is resolved by lookup. */
   itemId?: string | null;
-  /** Selected person from the URL (`?contextId=`). */
-  contextId?: string | null;
+  /** Selected person from the URL (`?studentId=`). */
+  studentId?: string | null;
   onOpenSession: (live: StoredSession) => void;
   notify: (message: string, tone?: 'info' | 'error') => void;
 }
@@ -80,14 +80,14 @@ type TrashTarget = { kind: 'deck' | 'folder'; id: string; label: string };
  * The library.
  *
  * Three columns when browsing a space: **tree · list · inspector**.
- * Person view (a Who-I-teach folder): header · context · decks · inspector.
+ * Person view (a Who-I-teach folder): header · student · decks · inspector.
  */
 export function SpacePage({
   session,
   spaceId: spaceIdProp,
   folderId: folderIdProp,
   itemId: itemIdProp,
-  contextId: contextIdProp,
+  studentId: studentIdProp,
   onOpenSession,
   notify,
 }: Props) {
@@ -102,7 +102,7 @@ export function SpacePage({
 
   const signedIn = session.user !== null && session.user !== undefined;
   const currentFolderId = folderIdProp ?? null;
-  const currentContextId = contextIdProp ?? null;
+  const currentStudentId = studentIdProp ?? null;
   const navigate = useNavigate();
 
   const defaultSpaceQuery = useQuery({
@@ -127,29 +127,29 @@ export function SpacePage({
   const records = useMemo(() => tree?.records ?? [], [tree]);
   const spaceName = space?.name ?? 'Space';
 
-  const contextsQuery = useQuery({
-    queryKey: ['contexts', 'all'] as const,
+  const studentsQuery = useQuery({
+    queryKey: ['students', 'all'] as const,
     enabled: signedIn,
-    queryFn: () => listContexts(),
+    queryFn: () => listStudents(),
   });
-  const contextNames = useMemo(
-    () => new Map((contextsQuery.data ?? []).map((c) => [c.id, c.displayName])),
-    [contextsQuery.data],
+  const studentNames = useMemo(
+    () => new Map((studentsQuery.data ?? []).map((c) => [c.id, c.displayName])),
+    [studentsQuery.data],
   );
 
   const personQuery = useQuery({
-    queryKey: ['contexts', currentContextId, 'detail'] as const,
-    enabled: signedIn && currentContextId !== null,
-    queryFn: () => getContext(currentContextId!),
+    queryKey: ['students', currentStudentId, 'detail'] as const,
+    enabled: signedIn && currentStudentId !== null,
+    queryFn: () => getStudent(currentStudentId!),
   });
   const person = personQuery.data ?? null;
   /** A student in Trash keeps their page, read-only, with Restore as the one action. */
-  const personTrashed = currentContextId !== null && person !== null && person.deletedAt !== null;
+  const personTrashed = currentStudentId !== null && person !== null && person.deletedAt !== null;
   const [restoring, setRestoring] = useState(false);
 
   const membersQuery = useQuery({
     queryKey: ['spaces', spaceId, 'members'] as const,
-    enabled: signedIn && spaceId !== null && currentContextId !== null,
+    enabled: signedIn && spaceId !== null && currentStudentId !== null,
     queryFn: () => getSpaceMembers(spaceId!),
   });
   const members = membersQuery.data?.members ?? [];
@@ -161,19 +161,19 @@ export function SpacePage({
   const liveQuery = useQuery({ queryKey: ['sessions', 'live-now'], queryFn: listMySessions, refetchInterval: 15_000, enabled: signedIn });
 
   const goTo = useCallback(
-    (next: { folderId?: string | null; itemId?: string | null; contextId?: string | null }, replace = false) => {
+    (next: { folderId?: string | null; itemId?: string | null; studentId?: string | null }, replace = false) => {
       if (!spaceId) return;
       void navigate({
         ...to.library({
           spaceId,
           folderId: next.folderId === undefined ? currentFolderId : next.folderId,
           itemId: next.itemId === undefined ? activeItemId : next.itemId,
-          contextId: next.contextId === undefined ? currentContextId : next.contextId,
+          studentId: next.studentId === undefined ? currentStudentId : next.studentId,
         }),
         replace,
       });
     },
-    [activeItemId, currentContextId, currentFolderId, navigate, spaceId],
+    [activeItemId, currentStudentId, currentFolderId, navigate, spaceId],
   );
 
   useEffect(() => {
@@ -183,32 +183,32 @@ export function SpacePage({
           spaceId,
           folderId: currentFolderId,
           itemId: activeItemId,
-          contextId: currentContextId,
+          studentId: currentStudentId,
         }),
         replace: true,
       });
     }
-  }, [activeItemId, currentContextId, currentFolderId, navigate, spaceId, spaceIdProp]);
+  }, [activeItemId, currentStudentId, currentFolderId, navigate, spaceId, spaceIdProp]);
 
   /*
    * A student's own space opens as that student's view, so New deck there
    * carries the student (`AGENTS.md`: only an explicit person view supplies
-   * contextId) and no deck of theirs sits outside it.
+   * studentId) and no deck of theirs sits outside it.
    */
-  const ownerContextId = tree?.space.context?.id ?? null;
+  const ownerStudentId = tree?.space.student?.id ?? null;
   useEffect(() => {
-    if (spaceId && ownerContextId && currentContextId === null) {
+    if (spaceId && ownerStudentId && currentStudentId === null) {
       void navigate({
-        ...to.library({ spaceId, folderId: currentFolderId, itemId: activeItemId, contextId: ownerContextId }),
+        ...to.library({ spaceId, folderId: currentFolderId, itemId: activeItemId, studentId: ownerStudentId }),
         replace: true,
       });
     }
-  }, [activeItemId, currentContextId, currentFolderId, navigate, ownerContextId, spaceId]);
+  }, [activeItemId, currentStudentId, currentFolderId, navigate, ownerStudentId, spaceId]);
 
   const refresh = useCallback(async () => {
     await treeQuery.refetch();
-    if (currentContextId) await personQuery.refetch();
-  }, [currentContextId, personQuery, treeQuery]);
+    if (currentStudentId) await personQuery.refetch();
+  }, [currentStudentId, personQuery, treeQuery]);
 
   const navigateFolder = useCallback(
     (nextFolderId: string | null) => {
@@ -221,26 +221,26 @@ export function SpacePage({
   const canManage = space === null || space.role !== 'presenter';
   const canEdit = canManage && !personTrashed;
 
-  const allRows = useMemo((): (LibraryRow & { folderId: string | null; contextId: string | null })[] => {
+  const allRows = useMemo((): (LibraryRow & { folderId: string | null; studentId: string | null })[] => {
     return decks
       // In the student's own space every deck is theirs, linked or not.
-      .filter((d) => currentContextId === null || d.contextId === currentContextId || (!d.contextId && currentContextId === ownerContextId))
+      .filter((d) => currentStudentId === null || d.studentId === currentStudentId || (!d.studentId && currentStudentId === ownerStudentId))
       .map((d) => {
-        const who = contextNames.get(d.contextId ?? '') ?? null;
+        const who = studentNames.get(d.studentId ?? '') ?? null;
         const contents = d.contents;
         const meta = formatContentsMeta(contents) || (who ?? '');
         return {
           id: d.id,
           name: d.title,
           folderId: d.folderId ?? null,
-          contextId: d.contextId ?? null,
+          studentId: d.studentId ?? null,
           searchText: who ?? '',
           meta,
           kind: 'deck' as const,
           asksTheClass: (contents?.askTheClass ?? 0) > 0,
         };
       });
-  }, [decks, contextNames, currentContextId, ownerContextId]);
+  }, [decks, studentNames, currentStudentId, ownerStudentId]);
 
   const idsInFolder = useCallback(
     (folderId: string | null): Set<string> => {
@@ -267,7 +267,7 @@ export function SpacePage({
       kind: 'folder' as const,
       folderCount: itemCountIn(folder.id),
     }));
-  }, [currentContextId, currentFolderId, folders, itemCountIn]);
+  }, [currentStudentId, currentFolderId, folders, itemCountIn]);
 
   const visibleRows = useMemo((): LibraryRow[] => {
     const needle = query.trim().toLocaleLowerCase();
@@ -315,7 +315,7 @@ export function SpacePage({
   const itemRecords = useMemo(() => {
     if (!activePanelItem) return [];
     const deckId = activePanelItem.data.id;
-    const contextId = activePanelItem.data.contextId;
+    const studentId = activePanelItem.data.studentId;
     return records.filter((record) => {
       const session = tree?.sessions?.find((r) => r.id === record.sessionId);
       return session?.deckId === deckId;
@@ -324,8 +324,8 @@ export function SpacePage({
 
   /** The person's quiet Notes group: titles only, most recent first, no dates. */
   const personNotes = useMemo(
-    () => (currentContextId === null ? [] : labelRecords(records.filter((record) => record.contextId === currentContextId))),
-    [currentContextId, records],
+    () => (currentStudentId === null ? [] : labelRecords(records.filter((record) => record.studentId === currentStudentId))),
+    [currentStudentId, records],
   );
 
   const renameItem = async (item: PanelItem, name: string) => {
@@ -409,7 +409,7 @@ export function SpacePage({
   const liveCue = (item: PanelItem | null): LiveNowCue | null => {
     const live = item ? liveSessionOf(liveQuery.data ?? [], item.data) : null;
     return live
-      ? { label: live.shared ? 'Join' : 'Rejoin', who: live.contextName ?? null, onRejoin: () => void rejoin(live), rejoining }
+      ? { label: live.shared ? 'Join' : 'Rejoin', who: live.studentName ?? null, onRejoin: () => void rejoin(live), rejoining }
       : null;
   };
 
@@ -471,7 +471,7 @@ export function SpacePage({
     if (!person) return;
     setRestoring(true);
     try {
-      await restoreContext(person.id);
+      await restoreStudent(person.id);
       // Refetches this page's student and tree with every other list.
       await invalidateManagementData();
       notify(`Restored ${person.displayName}`);
@@ -543,9 +543,9 @@ export function SpacePage({
   const createTo = useMemo(
     () =>
       spaceId
-        ? to.deckNew({ contextId: currentContextId, spaceId, folderId: currentFolderId })
+        ? to.deckNew({ studentId: currentStudentId, spaceId, folderId: currentFolderId })
         : null,
-    [spaceId, currentFolderId, currentContextId],
+    [spaceId, currentFolderId, currentStudentId],
   );
 
   const shareTo = useMemo(() => (spaceId ? to.spaceMembers(spaceId) : null), [spaceId]);
@@ -568,7 +568,7 @@ export function SpacePage({
 
   const loadError = defaultSpaceQuery.error ?? treeQuery.error;
   if (isMissing(loadError)) return <NotAvailable what="space" />;
-  if (currentContextId !== null && isMissing(personQuery.error)) return <NotAvailable what="student" />;
+  if (currentStudentId !== null && isMissing(personQuery.error)) return <NotAvailable what="student" />;
   if (loadError) {
     return (
       <div className="flex flex-col items-start gap-2 p-8 text-secondary text-destructive" role="alert">
@@ -587,7 +587,7 @@ export function SpacePage({
   if (
     (!spaceIdProp && defaultSpaceQuery.isPending) ||
     (spaceId !== null && treeQuery.isPending) ||
-    (currentContextId !== null && personQuery.isPending)
+    (currentStudentId !== null && personQuery.isPending)
   ) {
     return <p className="p-8 text-secondary text-muted-foreground">Loading…</p>;
   }
@@ -622,7 +622,7 @@ export function SpacePage({
     <EmptyInspector />
   );
 
-  const personView = currentContextId !== null && person !== null;
+  const personView = currentStudentId !== null && person !== null;
   const welcome = canEdit && decks.length === 0 && folders.length === 0 && !currentFolderId && !query.trim();
 
   return (
@@ -650,8 +650,8 @@ export function SpacePage({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
           {/* A student's place has a visible h1 with their name; a space or folder names itself for assistive tech. */}
           {personView ? null : <h1 className="sr-only">{folderName}</h1>}
-          <LiveNow onOpen={onOpenSession} contextId={currentContextId} />
-          <WorkspaceUpdates contextId={currentContextId} />
+          <LiveNow onOpen={onOpenSession} studentId={currentStudentId} />
+          <WorkspaceUpdates studentId={currentStudentId} />
           {personView && person ? (
             <div className="flex flex-wrap items-start gap-3.5 px-8 pb-[18px] pt-[26px]">
               <PersonBadge name={person.displayName} id={person.id} size="lg" />
@@ -691,10 +691,10 @@ export function SpacePage({
 
           {personView && person ? (
             <div className="px-8 pb-[22px]">
-              <ContextPanel
+              <StudentPanel
                 displayName={person.displayName}
                 kind={person.kind}
-                context={person.context}
+                student={person.student}
                 nextNote={person.nextNote}
                 onEdit={canEdit ? () => void navigate(to.studentEdit(person.id)) : undefined}
                 languages={space?.settings?.languages}
@@ -709,7 +709,7 @@ export function SpacePage({
           ) : null}
 
           {welcome
-            ? <SpaceWelcome spaceId={spaceId} contextId={currentContextId} experience={space?.settings?.experience ?? 'classroom'} experienceSaved={space?.experienceSaved ?? true} /> : null}
+            ? <SpaceWelcome spaceId={spaceId} studentId={currentStudentId} experience={space?.settings?.experience ?? 'classroom'} experienceSaved={space?.experienceSaved ?? true} /> : null}
 
           <LibraryList
             crumbs={crumbs}
@@ -729,12 +729,12 @@ export function SpacePage({
             shareTo={personView ? null : shareTo}
             settingsTo={personView || !canEdit ? null : settingsTo}
             /* The welcome card carries Sample lessons while it shows. */
-            samplesTo={canEdit && !welcome && space?.settings?.experience === 'tutoring' ? to.lessonExamples(spaceId, { folderId: currentFolderId, contextId: currentContextId }) : null}
+            samplesTo={canEdit && !welcome && space?.settings?.experience === 'tutoring' ? to.lessonExamples(spaceId, { folderId: currentFolderId, studentId: currentStudentId }) : null}
             onDragEnd={() => setDropTarget(null)}
             chrome="browser"
             /* The welcome card is this place's empty state; the list does not add a second one. */
             hideEmpty={welcome}
-            searchLabel={currentContextId === null ? 'Search this space' : person ? `Search decks for ${person.displayName}` : 'Search this student’s decks'}
+            searchLabel={currentStudentId === null ? 'Search this space' : person ? `Search decks for ${person.displayName}` : 'Search this student’s decks'}
             /* On a student's place the page scrolls as one, so the panel and links above do not squeeze the decks into a strip. */
             scroll={personView ? 'page' : 'list'}
             {...(rowActions ? { rowActions } : {})}
@@ -756,10 +756,10 @@ export function SpacePage({
           ) : null}
 
           {/* Below the decks, which are what a tutor opens this page for; open, so a link's state is seen without a click. */}
-          {personView && canEdit && currentContextId ? (
+          {personView && canEdit && currentStudentId ? (
             <div className="mx-8 mb-6 flex flex-col gap-4">
-              <ContextLinksCard contextId={currentContextId} />
-              <Button asChild variant="outline" className="w-fit"><Link {...to.studentWork(currentContextId)}>Review learner work</Link></Button>
+              <StudentLinksCard studentId={currentStudentId} />
+              <Button asChild variant="outline" className="w-fit"><Link {...to.studentWork(currentStudentId)}>Review learner work</Link></Button>
             </div>
           ) : null}
         </div>

@@ -28,7 +28,7 @@ export function workspaceRoute(destination: WorkspaceDestination): string {
       const search = new URLSearchParams();
       if (place.folderId) search.set('folderId', place.folderId);
       if (place.itemId) search.set('itemId', place.itemId);
-      if (place.contextId) search.set('contextId', place.contextId);
+      if (place.studentId) search.set('studentId', place.studentId);
       const query = search.toString();
       return `/space/${segment(place.spaceId)}${query === '' ? '' : `?${query}`}`;
     }

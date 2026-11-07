@@ -13,8 +13,8 @@ import {
   getDeck,
   getSpaceTree,
   listAllSpaces,
-  listContexts,
-  type ContextSummary,
+  listStudents,
+  type StudentSummary,
   type FolderSummary,
   type MySpace,
 } from './api';
@@ -55,10 +55,10 @@ export function DesktopLinkDialog({
   onCancel: () => void;
   onLinked: (next: OpenRoomFileV1, outline: Outline) => Promise<void>;
 }) {
-  const [contexts, setContexts] = useState<ContextSummary[]>([]);
+  const [students, setStudents] = useState<StudentSummary[]>([]);
   const [spaces, setSpaces] = useState<MySpace[]>([]);
   const [folders, setFolders] = useState<FolderSummary[]>([]);
-  const [contextId, setContextId] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState<string | null>(null);
   const [spaceId, setSpaceId] = useState<string | null>(null);
   const [folderId, setFolderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,8 +83,8 @@ export function DesktopLinkDialog({
 
   useEffect(() => {
     if (signedIn !== true) return;
-    void Promise.all([listContexts(), listAllSpaces()]).then(([nextContexts, nextSpaces]) => {
-      setContexts(nextContexts);
+    void Promise.all([listStudents(), listAllSpaces()]).then(([nextStudents, nextSpaces]) => {
+      setStudents(nextStudents);
       setSpaces(nextSpaces.filter((space) => space.role !== 'presenter'));
 
       setSpaceId(nextSpaces.filter((space) => !space.shared).sort((a, b) => a.createdAt - b.createdAt)[0]?.id ?? null);
@@ -116,7 +116,7 @@ export function DesktopLinkDialog({
     try {
       const created = await createDeck({
         title: materialized.outline.meta.title,
-        ...(contextId ? { contextId } : {}),
+        ...(studentId ? { studentId } : {}),
         spaceId,
         folderId,
         content: materialized.outline,
@@ -160,10 +160,10 @@ export function DesktopLinkDialog({
         <section>
           <p className="mb-2 text-caption text-muted-foreground">Student (optional)</p>
           <div className="grid gap-2 sm:grid-cols-2">
-            <Button variant={contextId === null ? 'default' : 'outline'} onClick={() => setContextId(null)}>No student</Button>
-            {contexts.filter((context) => context.spaceId === spaceId).map((context) => (
-              <button key={context.id} type="button" aria-pressed={contextId === context.id} className={`rounded-md border p-3 text-left text-secondary ${contextId === context.id ? 'border-foreground bg-muted' : 'border-border'}`} onClick={() => setContextId(context.id)}>
-                {context.displayName}
+            <Button variant={studentId === null ? 'default' : 'outline'} onClick={() => setStudentId(null)}>No student</Button>
+            {students.filter((student) => student.spaceId === spaceId).map((student) => (
+              <button key={student.id} type="button" aria-pressed={studentId === student.id} className={`rounded-md border p-3 text-left text-secondary ${studentId === student.id ? 'border-foreground bg-muted' : 'border-border'}`} onClick={() => setStudentId(student.id)}>
+                {student.displayName}
               </button>
             ))}
           </div>
@@ -172,7 +172,7 @@ export function DesktopLinkDialog({
           <p className="mb-2 text-caption text-muted-foreground">Online place</p>
           <div className="flex flex-wrap gap-2">
             {spaces.map((space) => (
-              <Button key={space.id} size="sm" variant={spaceId === space.id ? 'default' : 'outline'} onClick={() => { setSpaceId(space.id); setContextId(null); }}>{space.name}</Button>
+              <Button key={space.id} size="sm" variant={spaceId === space.id ? 'default' : 'outline'} onClick={() => { setSpaceId(space.id); setStudentId(null); }}>{space.name}</Button>
             ))}
           </div>
           {spaceId === null ? null : (

@@ -35,7 +35,7 @@ export interface DeckSummary {
   id: string;
   spaceId: string;
   folderId: string | null;
-  contextId: string | null;
+  studentId: string | null;
   title: string;
   shape: string;
   /** Highest stamped version; `0` for a deck with no content yet. */

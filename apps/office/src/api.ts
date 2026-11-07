@@ -18,7 +18,7 @@ export async function request<T>(connection: Connection, path: string, signal?: 
     const code = typeof error?.error === 'string' ? error.error : 'request-failed';
     const messages: Record<string, string> = {
       'presentation-space-mismatch': 'Use slides from one shared space in a session. Move the source decks into the same space before starting.',
-      'presentation-context-mismatch': 'These decks are linked to different groups. Use decks for the same group in one session.',
+      'presentation-student-mismatch': 'These decks are linked to different groups. Use decks for the same group in one session.',
       'presentation-identity-mismatch': 'These decks use different participant identity settings. Match those settings before starting one session.',
       'invalid-presentation-content': 'Complete any unfinished questions in OpenRoom, or reduce the number of embedded slides, then try again.',
       'presentation-too-large': 'The embedded slides are too large for one session. Use fewer slides and try again.',

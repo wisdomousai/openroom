@@ -1,8 +1,8 @@
 import {
   FREQUENCY_CHIPS,
   LANGUAGE_LEVEL_CHIPS,
-  type ContextFields,
-} from '../lib/context-fields';
+  type StudentFields,
+} from '../lib/student-fields';
 import { cn } from '@openroom/ui/utils';
 import { Input } from '@openroom/ui/components/input';
 import { Textarea } from '@openroom/ui/components/textarea';
@@ -34,13 +34,13 @@ function Chip({
 }
 
 interface Props {
-  value: ContextFields;
-  onChange: (next: ContextFields) => void;
+  value: StudentFields;
+  onChange: (next: StudentFields) => void;
   levelSuggestions?: readonly string[];
 }
 
-/** The four questions. Shared by the context dialog and the create page. */
-export function ContextFieldsEditor({ value, onChange, levelSuggestions = LANGUAGE_LEVEL_CHIPS }: Props) {
+/** The four questions. Shared by the student dialog and the create page. */
+export function StudentFieldsEditor({ value, onChange, levelSuggestions = LANGUAGE_LEVEL_CHIPS }: Props) {
   const customLevel = value.level !== '' && !levelSuggestions.includes(value.level);
 
   return (
@@ -86,22 +86,22 @@ export function ContextFieldsEditor({ value, onChange, levelSuggestions = LANGUA
       </fieldset>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="context-goals" className="text-row-title">
+        <label htmlFor="student-goals" className="text-row-title">
           Goal
         </label>
         <Input
-          id="context-goals"
+          id="student-goals"
           value={value.goals}
           onChange={(event) => onChange({ ...value, goals: event.currentTarget.value })}
         />
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="context-notes" className="text-row-title">
+        <label htmlFor="student-notes" className="text-row-title">
           Notes
         </label>
         <Textarea
-          id="context-notes"
+          id="student-notes"
           rows={5}
           value={value.notes}
           onChange={(event) => onChange({ ...value, notes: event.currentTarget.value })}

@@ -13,7 +13,7 @@ inspector. At the end the spec ends the session through the `facilitate`
 endpoint and `session.end`.
 
 Surfaces: Library inspector at
-`/host/#/space/{spaceId}?contextId={id}&itemId={deckId}`, deck editor top bar,
+`/host/#/space/{spaceId}?studentId={id}&itemId={deckId}`, deck editor top bar,
 Presenter dialog.
 
 Lifecycle: open the inspector with nothing live → Start session → return to the

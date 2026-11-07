@@ -89,9 +89,9 @@ export interface DictionaryLookup {
   unsupported?: 'language' | 'meaning-language';
 }
 
-/** What a session was launched for; `context: null` means it is a shared session. */
-export interface SessionContext {
-  context: {
+/** What a session was launched for; `student: null` means it is a shared session. */
+export interface SessionStudent {
+  student: {
     id: string;
     kind: string | null;
     displayName: string | null;
@@ -106,11 +106,11 @@ export interface LibraryPlace {
   spaceId: string | null | undefined;
   folderId?: string | null;
   itemId?: string | null;
-  contextId?: string | null;
+  studentId?: string | null;
 }
 
-/** Learner work returned to a context, offered in the deck editor's pickers. */
-export interface ContextReturned {
+/** Learner work returned to a student, offered in the deck editor's pickers. */
+export interface StudentReturned {
   nextNote: string;
   corrections: Array<LearnerCorrection & { id: string; learnerId: string; displayName: string }>;
   writing: Array<{ learnerId: string; displayName: string; sessionId: string; taskId: string; title?: string; body: string }>;
@@ -205,9 +205,9 @@ export interface EditorSlots {
   drafts?: {
     save(deckId: string, source: string, baseVersion: number): Promise<{ savedAt: number }>;
   };
-  /** Practice and Feedback pickers and the context's next note. */
+  /** Practice and Feedback pickers and the student's next note. */
   learnerWork?: {
-    useReturned(contextId: string | null): EditorQuery<ContextReturned>;
+    useReturned(studentId: string | null): EditorQuery<StudentReturned>;
   };
   /** The space's brand kits in the Theme tab. */
   brandKits?: {
@@ -253,7 +253,7 @@ export interface EditorServices {
   live: {
     fetchHostSnapshot(sessionCode: string, hostToken: string): Promise<unknown>;
     fetchStageToken(sessionCode: string, hostToken: string): Promise<string>;
-    fetchSessionContext(sessionCode: string, hostToken: string): Promise<SessionContext>;
+    fetchSessionStudent(sessionCode: string, hostToken: string): Promise<SessionStudent>;
     getSessionItem(sessionId: string): Promise<{
       session: { spaceId: string; folderId: string | null; deckId: string };
       canEdit: boolean;

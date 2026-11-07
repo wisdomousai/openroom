@@ -3,12 +3,12 @@ title: Issue and replace access links
 description: Give each learner private access to their work and preserve identity when replacing a link.
 section: Teaching and follow-up
 order: 140
-related: [contexts, learner, sharing, limits]
+related: [students, learner, sharing, limits]
 ---
 
 ## Create a link
 
-**Required:** editor or owner access to the context's space, and a plan that includes **Homework and Notes**. Without the plan, the card shows a **Homework and Notes** lock with a **Plans** button.
+**Required:** editor or owner access to the student's space, and a plan that includes **Homework and Notes**. Without the plan, the card shows a **Homework and Notes** lock with a **Plans** button.
 
 1. Open the student's or class's place in the Library and find the **Access links** card below the decks.
 2. Select **Create link**. The page **Create an access link** opens.
@@ -22,9 +22,9 @@ The complete link is shown once. If clipboard access fails, select the displayed
 
 ## Explain what the learner receives
 
-The link opens the learner's page containing their lesson outcomes, assigned homework, practice, writing or voice responses, and published feedback. For an identified live lesson, it also proves that person's identity within the associated context.
+The link opens the learner's page containing their lesson outcomes, assigned homework, practice, writing or voice responses, and published feedback. For an identified live lesson, it also proves that person's identity within the associated student.
 
-Each group member should use their own link. Their writing, recordings, feedback, and practice progress stay associated with that learner. Common outcomes and tasks assigned to everyone are shared within the context.
+Each group member should use their own link. Their writing, recordings, feedback, and practice progress stay associated with that learner. Common outcomes and tasks assigned to everyone are shared within the student.
 
 Possession of the link grants access. Ask learners to keep it private, especially on a shared computer. The issuer controls the display name and expiry.
 
@@ -38,7 +38,7 @@ Choosing the existing learner preserves their writing and practice history. Choo
 
 In **Access links**, find the link by learner, prefix, and expiry. Select **Revoke**, then **Revoke link** to confirm. Further requests through that link are denied.
 
-An expired link is renewed by creating a replacement for the same learner. A context supports at most 10 active links. Revoke an unused active link before creating another when the limit is reached.
+An expired link is renewed by creating a replacement for the same learner. A student supports at most 10 active links. Revoke an unused active link before creating another when the limit is reached.
 
 ## Use named live participation
 

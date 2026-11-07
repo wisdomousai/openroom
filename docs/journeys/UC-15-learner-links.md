@@ -25,7 +25,7 @@ Acceptance:
   error on first load shows "Your page could not be loaded" with Try again; a
   failed Lesson or Feedback tab shows its own sentence with Try again; a rate
   limit on a tab says to wait a minute.
-- Worker tests separately prove stable live-seat identity, context isolation,
+- Worker tests separately prove stable live-seat identity, student isolation,
   cookie/PAT separation and current credential denial.
 
 Visual notes: Lesson, Practice and Feedback use quiet mobile chrome with readable

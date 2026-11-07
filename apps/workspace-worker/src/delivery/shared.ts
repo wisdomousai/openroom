@@ -1,6 +1,6 @@
 /**
  * Folder-scoped decks (content) and sessions (delivery instances).
- * Contexts stay in tutoring.ts. Live sessions are launched from a session.
+ * Students stay in tutoring.ts. Live sessions are launched from a session.
  */
 import {
   canonicalOutlineJson,
@@ -45,7 +45,7 @@ export interface SessionLaunchInput {
   origin?: string;
   sessionId: string;
   deckId: string;
-  contextId: string | null;
+  studentId: string | null;
   title: string;
   version: number;
   outline: Outline;
@@ -88,7 +88,7 @@ export interface DeckRow {
   id: string;
   space_id: string;
   folder_id: string | null;
-  context_id: string | null;
+  student_id: string | null;
   created_by: string;
   title: string;
   shape: string;
@@ -105,7 +105,7 @@ export interface SessionRow {
   folder_id: string | null;
   deck_id: string;
   deck_version: number;
-  context_id: string | null;
+  student_id: string | null;
   created_by: string;
   title: string;
   shape: string;
@@ -169,16 +169,16 @@ export async function sessionAccess(env: ControlEnv, userId: string, sessionId: 
   return (await memberOfSpace(env, userId, row.space_id)) ? row : null;
 }
 
-export async function contextAccess(
+export async function studentAccess(
   env: ControlEnv,
   userId: string,
-  contextId: string,
+  studentId: string,
 ): Promise<{ id: string; space_id: string; deleted_at: number | null } | null> {
   return env.DB.prepare(
-    `SELECT c.id, c.space_id, c.deleted_at FROM contexts c
+    `SELECT c.id, c.space_id, c.deleted_at FROM students c
       JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?2
      WHERE c.id = ?1`,
-  ).bind(contextId, userId).first();
+  ).bind(studentId, userId).first();
 }
 
 /** Editing a deck or session needs `editor` on the space that holds it. */
@@ -192,19 +192,19 @@ export async function mutationAllowed(
 }
 
 /**
- * Space a create request lands in: the folder's space, else the named context's,
+ * Space a create request lands in: the folder's space, else the named student's,
  * else the requested one.
  *
- * The context comes before the requested space because a space holds one
- * context: naming a context names its space, and defaulting to the caller's
- * home space instead would put the item somewhere its own context is not —
+ * The student comes before the requested space because a space holds one
+ * student: naming a student names its space, and defaulting to the caller's
+ * home space instead would put the item somewhere its own student is not —
  * which the cross-boundary check then refuses. Only an explicit `spaceId` that
- * disagrees with the context is still an error, and it is still caught.
+ * disagrees with the student is still an error, and it is still caught.
  */
 export async function targetSpace(
   env: ControlEnv,
   user: SessionUser,
-  input: { folderId?: unknown; spaceId?: unknown; contextId?: unknown },
+  input: { folderId?: unknown; spaceId?: unknown; studentId?: unknown },
 ): Promise<string | null> {
   if (typeof input.folderId === 'string' && input.folderId !== '') {
     const folder = await folderAccess(env, user, input.folderId);
@@ -212,11 +212,11 @@ export async function targetSpace(
   }
   if (
     (typeof input.spaceId !== 'string' || input.spaceId === '') &&
-    typeof input.contextId === 'string' &&
-    input.contextId !== ''
+    typeof input.studentId === 'string' &&
+    input.studentId !== ''
   ) {
-    const context = await contextAccess(env, user.id, input.contextId);
-    if (context !== null) return context.space_id;
+    const student = await studentAccess(env, user.id, input.studentId);
+    if (student !== null) return student.space_id;
   }
   return resolveSpace(env, user, input.spaceId);
 }
@@ -239,7 +239,7 @@ export function deckJson(row: DeckRow): Record<string, unknown> {
     id: row.id,
     spaceId: row.space_id,
     folderId: row.folder_id,
-    contextId: row.context_id,
+    studentId: row.student_id,
     title: row.title,
     shape: row.shape,
     currentVersion: row.current_version,
@@ -257,7 +257,7 @@ export function sessionJson(row: SessionRow): Record<string, unknown> {
     folderId: row.folder_id,
     deckId: row.deck_id,
     deckVersion: row.deck_version,
-    contextId: row.context_id,
+    studentId: row.student_id,
     title: row.title,
     shape: row.shape,
     status: row.status,
@@ -293,15 +293,15 @@ export const SESSION_STATUSES_SERVER_OWNED: ReadonlySet<string> = new Set(
 
 /**
  * An identified session admits only holders of an access link minted for the
- * session's own student context (`resolveJoinIdentity`). Without a context the
+ * session's own student (`resolveJoinIdentity`). Without a student the
  * session can be started but nobody can ever join it, so refuse at the start and
  * name the fix. Join refusals stay one indistinguishable answer; this message is
  * for the tutor who starts the session, never for a joining holder.
  */
-export function identifiedNeedsContext(): Response {
+export function identifiedNeedsStudent(): Response {
   return json({
     ok: false,
-    error: 'identified-session-needs-context',
-    message: 'An identified session needs a student: file the deck under the student (contextId), then start it with deck_start or POST /api/decks/{id}/start.',
+    error: 'identified-session-needs-student',
+    message: 'An identified session needs a student: file the deck under the student (studentId), then start it with deck_start or POST /api/decks/{id}/start.',
   }, 422);
 }

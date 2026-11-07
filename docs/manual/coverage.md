@@ -9,9 +9,9 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | New/rename/move/duplicate decks, folders | library, deck-editor | Library components, `pages/DeckEditorPage.tsx`, `delivery/decks.ts`, `apps/workspace-worker/src/workspace.ts` |
 | Share, accept invite, role editing, removal | sharing | `pages/SpaceMemberPages.tsx`, `components/WorkspaceUpdates.tsx`, `apps/workspace-worker/src/members.ts` |
 | Trash, restore, browser permanent deletion | library, limits | `pages/tutor/Trash.tsx`, `apps/workspace-worker/src/delivery/sessions.ts`, `apps/workspace-worker/src/workspace.ts` |
-| Students/groups/classes and context fields | contexts | `pages/tutor/Contexts.tsx`, `components/ContextFieldsEditor.tsx` |
-| Language pair and lookup | contexts, present | space settings, `live/useMeaningLookup.ts`, `dictionary-route.ts` |
-| Complete sample lessons | start, contexts, slides | `pages/LessonExamplesPage.tsx`, `examples/tutoring/` |
+| Students/groups/classes and student fields | students | `pages/tutor/Students.tsx`, `components/StudentFieldsEditor.tsx` |
+| Language pair and lookup | students, present | space settings, `live/useMeaningLookup.ts`, `dictionary-route.ts` |
+| Complete sample lessons | start, students, slides | `pages/LessonExamplesPage.tsx`, `examples/tutoring/` |
 | Full editor, draft saving, conflicts, history | deck-editor | `packages/editor/src/deck-edit/DeckEditor.tsx`, `useDraftSave.ts`, `pages/DeckEditorPage.tsx` |
 | Structured/freeform text, object manipulation | deck-editor, media | `SlideCanvas.tsx`, `FormatToolbar.tsx`, `ObjectFrame.tsx`, `properties/elements.tsx` |
 | Slide types, galleries, workshop sequences | slides | `TemplateGallery.tsx`, `outline-edit/catalog.ts`, `packages/schema/src/slide-templates.ts` |
@@ -33,7 +33,7 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Group membership, spokesperson, shared responses | facilitation, questions, participant | `live/GroupsPanel.tsx`, domain groups |
 | Co-facilitation, handoff, recovery, revocation | facilitation, sharing | host facilitator strip, `apps/workspace-worker/src/index.ts`, entitlement checks |
 | Anonymous, nickname, identified, guest-list identity | live-session, participant, cli | schema defaults, participant `session.ts`, Worker `index.ts`, `guest-links.ts` |
-| Learner link creation, replacement, expiry, revocation | learner-links | `pages/tutor/ContextLinks.tsx`, `apps/workspace-worker/src/context-links.ts` |
+| Learner link creation, replacement, expiry, revocation | learner-links | `pages/tutor/StudentLinks.tsx`, `apps/workspace-worker/src/student-links.ts` |
 | Outcomes, tutor-private notes, next step, artifacts | notes, limits, learner | `pages/tutor/SessionNotes.tsx`, `apps/workspace-worker/src/learner.ts` |
 | Reading, writing, voice, quiz homework and audiences | homework, learner | `packages/schema/src/homework.ts`, Notes form, learner task views |
 | Practice checks, self-rating, retries, stale assignments | learner, review | `pages/learner/PracticeCard.tsx`, learner APIs, SRS domain |

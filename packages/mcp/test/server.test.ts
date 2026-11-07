@@ -344,7 +344,7 @@ describe('MCP protocol core', () => {
         name: 'openroom_api',
         arguments: {
           method: 'POST',
-          path: '/api/tutoring/contexts',
+          path: '/api/tutoring/students',
           body: { displayName: 'Camille' },
         },
       }),
@@ -358,7 +358,7 @@ describe('MCP protocol core', () => {
     });
     expect(calls).toEqual([{
       method: 'POST',
-      path: '/api/tutoring/contexts',
+      path: '/api/tutoring/students',
       body: { displayName: 'Camille' },
     }]);
 

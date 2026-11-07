@@ -37,12 +37,12 @@ Usage:
 
   openroom api <METHOD> </api/...> --url <base> --token <bearer>
                [--body <json> | --file <json-or-yaml>]
-                                           manage contexts, decks, versions, sessions, records,
+                                           manage students, decks, versions, sessions, records,
                                            launch, trash/restore, or request a browser
                                            confirmation URL for permanent deletion
                                            (links, learner work, records and identified sessions
                                            need the space owner's continuity capability:
-                                           403 continuity-required; contexts and trash/restore
+                                           403 continuity-required; students and trash/restore
                                            never do)
 
   openroom session start <file> --url <base> --token <personal-token>   (or --admin-key <ops-key>)

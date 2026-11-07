@@ -18,7 +18,7 @@ function baseServices(): EditorServices {
     live: {
       fetchHostSnapshot: fail,
       fetchStageToken: fail,
-      fetchSessionContext: fail,
+      fetchSessionStudent: fail,
       getSessionItem: fail,
       downloadExport: fail,
       stageUrl: (code: string) => `base:stage/${code}`,
@@ -50,7 +50,7 @@ describe('relayEditorServices', () => {
   });
 
   it('reads no workspace record for the session', async () => {
-    await expect(relay.live.fetchSessionContext('AB12CD', 'host')).resolves.toEqual({ context: null, session: null });
+    await expect(relay.live.fetchSessionStudent('AB12CD', 'host')).resolves.toEqual({ student: null, session: null });
     await expect(relay.live.getSessionItem('s1')).rejects.toThrow(/no saved record/);
     expect(relay.slots.SavedResults).toBeUndefined();
     expect(relay.slots.scratchpad).toBeDefined();

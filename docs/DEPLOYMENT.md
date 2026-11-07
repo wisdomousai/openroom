@@ -136,6 +136,21 @@ Before deploying a release that contains these migrations:
   changed files back with `wrangler r2 object put <bucket>/<key> --remote --file ...
   --content-type application/json`. Skipping this only leaves the old column header in
   old archived downloads.
+- The tutoring entity is now a student in every API route, field, error code and table. Old
+  bookmarks and external callers that use `/api/tutoring/contexts`, `contextId`,
+  `contextLink`, `?contextId=` on a host space URL, `#/tutor/contexts` or the
+  `context-link-*` error codes stop working; update them. Issued `orlnk_…` access links
+  (and the learner page URL `#/learn?token=…`) stay valid, because only table and column
+  names change, not tokens or ids.
+- `0003_student` renames tables and columns with `ALTER TABLE ... RENAME`, which rewrites the
+  foreign keys in the other tables only while foreign keys are enforced. Cloudflare D1
+  always enforces them, so `wrangler d1 migrations apply` is correct. Do not apply the file
+  through a SQLite shell that has `PRAGMA foreign_keys=OFF`. After a local dry run,
+  `PRAGMA foreign_key_check;` returns no rows.
+- No R2 object or Durable Object carries a context-named key. Archives, media and deck
+  files need no rewrite for `0003_student`, and no script was added for it. A live session
+  asks the Worker for its student on `/api/sessions/:code/student` (it was `/context`); open
+  host tabs from before the deploy fail that one request until reloaded.
 - The join page reads the guest link from `?guest=orinv_…` (the older query parameter is no longer read). Guest
   links already copied or sent with the old query parameter no longer sign the guest in;
   the host copies the link again.
@@ -146,6 +161,7 @@ Before deploying a release that contains these migrations:
 | --- | --- |
 | `0001_guest_list` | The two session guest tables are renamed to `guest_lists` and `guest_links` (indexes recreated, issued `orinv_…` tokens stay valid). The retired `identityMode` value is rewritten to `guest-list` in `deck_versions.content_json`, `sessions.source_outline_json` and `deck_drafts.content_yaml`. The retired entitlement key in `users.entitlements` is rewritten to `guestList`. The plan catalog capability must be changed to `guestList` by hand (see above). |
 | `0002_nickname` | The retired `identityMode` value is rewritten to `nickname` in `deck_versions.content_json`, `sessions.source_outline_json` and `deck_drafts.content_yaml`. No table or column changes. |
+| `0003_student` | Tables `contexts`, `context_learners`, `context_access_links` and `space_contexts` become `students`, `student_learners`, `student_access_links` and `space_students`. Column `context_id` becomes `student_id` in all nine tables that carry it, and `contexts.context_json` becomes `students.student_json` (the JSON inside keeps its keys). The twelve indexes are dropped and recreated with the new names. `item_tags` is rebuilt so its `item_type` check accepts `student` instead of `context`, and stored rows are converted. `deletion_intents.resource_type` `context` becomes `student`. The pinned-item kind `context` in `users.prefs` becomes `student`. |
 
 ## Website pageviews
 

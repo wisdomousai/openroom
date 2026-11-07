@@ -13,7 +13,7 @@ related: [sharing, learner-links, results, homework, account]
 | Space and its folder tree | Current members, according to owner, editor, or presenter role. |
 | Personal API token | The issuing account's control-plane authority. Store it as an account secret. |
 | Live host, stage, and remote links | Their designated role in one live session. Keep host and remote links with the facilitators. |
-| Access link | One named learner's records within one context, including assigned tasks and published feedback. |
+| Access link | One named learner's records within one student, including assigned tasks and published feedback. |
 | Guest link | One personal link for a guest the host named, valid for one session. |
 | Uploaded deck media | Anyone possessing its asset URL. |
 | Learner voice work | The submitting learner and authorized workspace reviewers, through authenticated access. |
@@ -27,8 +27,8 @@ A space shares one Library tree. Put material for a different membership group i
 | Slide presenter notes | Host-side preparation and teaching surfaces. |
 | Live Private notes | The current browser's scratchpad until saved into the teaching record. |
 | Notes: Tutor notes and Next session | Authorized workspace users. |
-| Notes: Outcomes | Learners in the context. |
-| Homework assigned to everyone | Learners in the context. |
+| Notes: Outcomes | Learners in the student. |
+| Homework assigned to everyone | Learners in the student. |
 | Homework assigned to selected learners | The selected learner identities. |
 | Writing, voice work, practice progress | Its learner and authorized reviewers. |
 | Feedback draft | Authorized reviewers. |
@@ -60,7 +60,7 @@ Decks, Notes, assigned homework, and learner work use their own durable records 
 
 Voice work is retained for **90 days**. A trashed recording can be restored for **7 days**, within its original retention period. Up to **10 retained recordings per learner and task** count toward the limit, including recordings in Trash.
 
-Each context supports **10 active access links**. The default link lifetime is **180 days**; choose the expiry shown in the creation form. Replace a link by selecting its existing learner identity to preserve that learner's work.
+Each student supports **10 active access links**. The default link lifetime is **180 days**; choose the expiry shown in the creation form. Replace a link by selecting its existing learner identity to preserve that learner's work.
 
 Revocation or expiry prevents further access through the affected link. A replacement link and a space invitation are separate credentials with separate destinations.
 
@@ -106,7 +106,7 @@ Desktop can present embedded local material offline. Test all external resources
 | Deck | The editable teaching or presentation file. |
 | Space | A shared folder tree and its membership boundary. |
 | Folder | A location within a space. |
-| Context | The teaching information associated with a student, group, or class. |
+| Student | The teaching information kept for a person, group, or class. |
 | Session | One live occurrence started from a deck. |
 | Stage | The audience display. |
 | Notes | A session's saved outcomes, private teaching notes, and follow-up work. |

@@ -38,7 +38,7 @@ interface Session {
   meta: { title: string; description?: string; locale?: string; source?: string };
   defaults?: {
     identityMode?: 'anonymous' | 'nickname' | 'identified' | 'guest-list';
-      // default 'nickname'. 'identified' = context access link (see §Context access links).
+      // default 'nickname'. 'identified' = student access link (see §Student access links).
       // 'guest-list' = host-typed seat + `orinv_…` (see §Guest lists). Guest lists are specified here
       // but not in the shipped JSON Schema until the join path exists — do not author it yet.
     resultVisibility?: 'hidden-until-close' | 'live';  // default 'hidden-until-close'
@@ -262,7 +262,7 @@ Rules: idempotency is handled by the CALLER (DO stores key→result); `applyComm
 
 ### Session Q&A
 
-Session-wide audience Q&A (`SessionState.qna`, session flag `qna: { enabled, maxLength }`, defaults `{ enabled: false, maxLength: 300 }`, hard cap 500): independent of every interaction — open in `lobby` and `live`, untouched by `interaction.open`/`session.advance`, never a rail step. Shape: `interface QnaState { enabled: boolean; stage: { mode: 'off'|'list'|'spotlight'; questionId?: string }; questions: Record<string, QnaQuestion> }`, `interface QnaQuestion { id; participantId; text; hidden; votes; voters: string[]; createdAt }` with `votes === voters.length` always. Every `qna.*` command is `E_FORBIDDEN` while `enabled` is false. `qna.ask`: questionId is CLIENT-minted (crypto.randomUUID, same trust model as idempotency keys; validated 1-64 chars), text trimmed, non-empty, ≤ the session's maxLength, through `applyBlocklist`; a participant may ask MANY questions; re-asking the identical (id, text) is a no-op success; same id + new text by the OWNER is an edit that keeps voters/votes/createdAt; another actor's id is `E_FORBIDDEN`. `qna.upvote`: unknown id `E_INVALID_ANSWER`, repeat vote `E_FORBIDDEN` (voters ledger is the one-vote authority; self-vote allowed). `qna.hide`/`qna.unhide` (host): flip `hidden`; hiding the spotlighted question resets `stage` to `{ mode: 'list' }`; already-in-state is a documented no-op. `qna.stage` (host): spotlight requires an existing, visible question (`E_INVALID_ANSWER` otherwise); identical placement is a documented no-op. Snapshots — participant: `qna` present only when enabled, `{ maxLength, questions: { id, text, votes, own, votedByYou, hidden, name? }[] }`, visible questions plus the participant's OWN hidden ones; stage: `{ stage, questions: { id, text, votes, name? }[] }`, visible only; host: always `{ enabled, stage, questions: { id, participantId, text, hidden, votes, createdAt }[] }` (attribution via the top-level `names` map). In sessions that assign names each question carries the asker's `name` on participant and stage views — public attribution is a deliberate product decision, and in the nickname default the name is system-assigned and not PII; this is the ONE exception to "peers' names are never sent". **In an identified session that same slot carries the context's display name**, so audience Q&A there is attributed under the name the tutor authored. That follows from choosing identified mode and is not a separate opt-in; anonymous Q&A in an identified session is not available. Purged sessions drop the attribution automatically (the rewritten `purged-<n>` participantId no longer resolves to a participant record). `voters` never leaves domain snapshots, any role. Order everywhere: votes desc, `createdAt` asc, id. Frozen empties participant/stage question lists (host unaffected); ended blocks all qna commands. Purge anonymizes `participantId` to `purged-<n>` (display order) and empties voter ledgers, keeping text/hidden/votes/createdAt. Back-compat: session states stored before the region existed are patched to `{ enabled: false, stage: { mode: 'off' }, questions: {} }` at every load boundary (`ensureQna`). Host surfaces: LiveHost section + `#/sessions/:id/qna` co-host Q&A desk (same bearer host token; multi-host fan-out already role-tagged); CLI/MCP parity deliberately deferred.
+Session-wide audience Q&A (`SessionState.qna`, session flag `qna: { enabled, maxLength }`, defaults `{ enabled: false, maxLength: 300 }`, hard cap 500): independent of every interaction — open in `lobby` and `live`, untouched by `interaction.open`/`session.advance`, never a rail step. Shape: `interface QnaState { enabled: boolean; stage: { mode: 'off'|'list'|'spotlight'; questionId?: string }; questions: Record<string, QnaQuestion> }`, `interface QnaQuestion { id; participantId; text; hidden; votes; voters: string[]; createdAt }` with `votes === voters.length` always. Every `qna.*` command is `E_FORBIDDEN` while `enabled` is false. `qna.ask`: questionId is CLIENT-minted (crypto.randomUUID, same trust model as idempotency keys; validated 1-64 chars), text trimmed, non-empty, ≤ the session's maxLength, through `applyBlocklist`; a participant may ask MANY questions; re-asking the identical (id, text) is a no-op success; same id + new text by the OWNER is an edit that keeps voters/votes/createdAt; another actor's id is `E_FORBIDDEN`. `qna.upvote`: unknown id `E_INVALID_ANSWER`, repeat vote `E_FORBIDDEN` (voters ledger is the one-vote authority; self-vote allowed). `qna.hide`/`qna.unhide` (host): flip `hidden`; hiding the spotlighted question resets `stage` to `{ mode: 'list' }`; already-in-state is a documented no-op. `qna.stage` (host): spotlight requires an existing, visible question (`E_INVALID_ANSWER` otherwise); identical placement is a documented no-op. Snapshots — participant: `qna` present only when enabled, `{ maxLength, questions: { id, text, votes, own, votedByYou, hidden, name? }[] }`, visible questions plus the participant's OWN hidden ones; stage: `{ stage, questions: { id, text, votes, name? }[] }`, visible only; host: always `{ enabled, stage, questions: { id, participantId, text, hidden, votes, createdAt }[] }` (attribution via the top-level `names` map). In sessions that assign names each question carries the asker's `name` on participant and stage views — public attribution is a deliberate product decision, and in the nickname default the name is system-assigned and not PII; this is the ONE exception to "peers' names are never sent". **In an identified session that same slot carries the student's display name**, so audience Q&A there is attributed under the name the tutor authored. That follows from choosing identified mode and is not a separate opt-in; anonymous Q&A in an identified session is not available. Purged sessions drop the attribution automatically (the rewritten `purged-<n>` participantId no longer resolves to a participant record). `voters` never leaves domain snapshots, any role. Order everywhere: votes desc, `createdAt` asc, id. Frozen empties participant/stage question lists (host unaffected); ended blocks all qna commands. Purge anonymizes `participantId` to `purged-<n>` (display order) and empties voter ledgers, keeping text/hidden/votes/createdAt. Back-compat: session states stored before the region existed are patched to `{ enabled: false, stage: { mode: 'off' }, questions: {} }` at every load boundary (`ensureQna`). Host surfaces: LiveHost section + `#/sessions/:id/qna` co-host Q&A desk (same bearer host token; multi-host fan-out already role-tagged); CLI/MCP parity deliberately deferred.
 
 Retention (PRD DATA-04), also in domain and equally pure:
 
@@ -283,9 +283,9 @@ and memberships are removed by the existing ballot purge. Answer counts and prog
 group seats for group questions; joined counts still count people. Private notes and
 pedagogy are stripped from participant/stage wire interactions. Peer-instruction round one
 stays hidden during discussion in multi-slide decks as well as poll-only decks.
-- participant: revision, status, frozen, active interaction (via `participantView`), own current answer, answered-flag; results ONLY if interaction revealed or (`resultVisibility === 'live'` and open/closed). Never notes/correct pre-reveal. Peer instruction adds `round`, `round1Aggregate` (null until revealed) and `ownRound1Answer`. Sessions that assign names (nickname, and identified where the name is the context display name) add `yourName` (own name only — peers' names are never sent, EXCEPT as `name` attribution on session Q&A questions, see §Session Q&A). While the active interaction is open with a session `timerSec`, snapshots include `closesAt` (absolute ms auto-close deadline).
+- participant: revision, status, frozen, active interaction (via `participantView`), own current answer, answered-flag; results ONLY if interaction revealed or (`resultVisibility === 'live'` and open/closed). Never notes/correct pre-reveal. Peer instruction adds `round`, `round1Aggregate` (null until revealed) and `ownRound1Answer`. Sessions that assign names (nickname, and identified where the name is the student display name) add `yourName` (own name only — peers' names are never sent, EXCEPT as `name` attribution on session Q&A questions, see §Session Q&A). While the active interaction is open with a session `timerSec`, snapshots include `closesAt` (absolute ms auto-close deadline).
 - stage: revision, status, code, join URL path, participant count, answered count, active interaction (participantView), aggregate only when revealable (same rule as participant), text entries excluding `hidden`, everything text-hidden when frozen. Peer instruction adds `round` and `round1Aggregate` (null until revealed). Same `closesAt` rule as participant.
-- host: everything — the session document, notes, and per-interaction status, joined and answered counts, correct answers, hidden entries, and — for peer instruction — `round` plus `round1Aggregate` with no reveal gating. Per-interaction summaries and the active snapshot also carry `closesAt` while armed. Sessions that assign names add `names: Record<participantId, name>`; the stage sees names only as session-Q&A question attribution, and the CSV export gains a `name` column (header `interactionId,prompt,participantId,name,answer,hidden`) in every non-anonymous session — nickname sessions put the session-local name in that slot, identified sessions put the context display name there. Names die with the purge (`participants` → `{}`). Retention is unchanged from DATA-04: ballots purged 30 min after end, session deleted at 24 h — the participant-facing notice states this.
+- host: everything — the session document, notes, and per-interaction status, joined and answered counts, correct answers, hidden entries, and — for peer instruction — `round` plus `round1Aggregate` with no reveal gating. Per-interaction summaries and the active snapshot also carry `closesAt` while armed. Sessions that assign names add `names: Record<participantId, name>`; the stage sees names only as session-Q&A question attribution, and the CSV export gains a `name` column (header `interactionId,prompt,participantId,name,answer,hidden`) in every non-anonymous session — nickname sessions put the session-local name in that slot, identified sessions put the student display name there. Names die with the purge (`participants` → `{}`). Retention is unchanged from DATA-04: ballots purged 30 min after end, session deleted at 24 h — the participant-facing notice states this.
 
 ## HTTP API (worker)
 
@@ -306,19 +306,19 @@ POST /api/sessions                          host-auth'd (session cookie + CSRF h
                                          plane's filed-session create (see GET|POST /api/sessions below)
 PUT  /api/sessions/:sessionCode/assets/:resourceId  host token; raw image/audio/PDF bytes + SHA-256 before session.start
 GET|HEAD /api/sessions/:sessionCode/assets/:resourceId  session-scoped ephemeral bytes; single byte ranges supported
-POST /api/join                           body { code, recoveryName?, contextLink? } → { sessionCode, participantToken, participantId, identityMode, name? }
+POST /api/join                           body { code, recoveryName?, studentLink? } → { sessionCode, participantToken, participantId, identityMode, name? }
                                          name in nickname sessions: a random session-local "Adjective Animal 1234",
                                          unique per session, assigned by the DO at join — never chosen by the participant.
                                          A matching recoveryName reuses the participantId without increasing joined count;
                                          unknown names do not create participants and failed recovery is rate-limited per session.
                                          recoveryName in a non-nickname session → 409 name-recovery-unavailable.
-                                         contextLink (`orlnk_…`) is for identified sessions only: the name is then the
-                                         context's display_name. The Worker verifies the link AND that the session's
-                                         originating context matches (sessions.session_id → sessions.context_id) before forwarding
+                                         studentLink (`orlnk_…`) is for identified sessions only: the name is then the
+                                         student's display_name. The Worker verifies the link AND that the session's
+                                         originating student matches (sessions.session_id → sessions.student_id) before forwarding
                                          only the display name to the DO — the link never reaches the Durable Object.
-                                         identified session without contextLink → 403 context-link-required;
-                                         contextLink to a non-identified session → 409 identified-join-unavailable;
-                                         invalid / revoked / expired / wrong-context link → 403 context-link-invalid
+                                         identified session without studentLink → 403 student-link-required;
+                                         studentLink to a non-identified session → 409 identified-join-unavailable;
+                                         invalid / revoked / expired / wrong-student link → 403 student-link-invalid
                                          (one indistinguishable answer, so probing reveals nothing).
                                          identified session still in lobby → 409 session-not-started
                                          (the tutor pressing start is the gate; anonymous / nickname
@@ -327,7 +327,7 @@ POST /api/join                           body { code, recoveryName?, contextLink
                                          A new participant past the session's participantLimit (50 unless the
                                          owner held largeSessions at creation) → 409 session-full; re-entry by
                                          name, link or guest link is never refused for size.
-                                         A live session with no durable session row has no context, hence NO link
+                                         A live session with no durable session row has no student, hence NO link
                                          can ever identify into it.
 POST /api/mcp                            stateless MCP endpoint (Streamable HTTP, JSON only, no SSE/sessions)
                                          auth `Authorization: Bearer <orpat_… | ADMIN_KEY | mcp-access>`
@@ -337,20 +337,20 @@ POST /api/mcp                            stateless MCP endpoint (Streamable HTTP
                                          session_facilitate / session_recap / session_command / picture_search
                                          PAT / user-scoped OAuth: tutoring records and owned sessions only;
                                          ADMIN_KEY cannot access user tutoring records
-GET|POST /api/tutoring/contexts          list or create presentation contexts (person|group|class|event|other)
-GET|PATCH|DELETE /api/tutoring/contexts/:id
+GET|POST /api/tutoring/students          list or create students (person|group|class|event|other)
+GET|PATCH|DELETE /api/tutoring/students/:id
                                          detail, edit, or recoverable trash
-GET|POST /api/tutoring/contexts/:id/links
-                                         learner credentials for ONE context; session auth, space member, editor or above
+GET|POST /api/tutoring/students/:id/links
+                                         learner credentials for ONE student; session auth, space member, editor or above
                                          (a presenter may run a session but may not mint a credential)
                                          POST body { expiresInDays? } (default 180, min 1, max 365)
                                            → 201 { id, token, tokenPrefix, createdAt, expiresAt }  raw token shown ONCE
                                            422 invalid-expiry | 409 resource-in-trash | 429 { error:"link-limit", max:10 }
                                          GET → { links: [{ id, tokenPrefix, createdAt, expiresAt, revokedAt }] }  prefixes only
-DELETE /api/tutoring/contexts/:id/links/:linkId
+DELETE /api/tutoring/students/:id/links/:linkId
                                          → { ok: true }; sets revoked_at, never hard-deletes (the audit trail is the point)
                                          404 when unknown or already revoked
-GET /api/learner/me                      Authorization: Bearer orlnk_… ONLY → { contextId, displayName }
+GET /api/learner/me                      Authorization: Bearer orlnk_… ONLY → { studentId, displayName }
 GET /api/learner/sessions                    Authorization: Bearer orlnk_… ONLY
                                          → { sessions: [{ id, title, status, record?: { outcomes, homework, artifacts } }] }
                                          homework is typed tasks; writing may include submitted. Never notes / nextNote.
@@ -358,17 +358,17 @@ GET /api/learner/practice                GET → { items: [{ itemId, assignmentR
                                          locale: canonical BCP 47 from a typed answer's match.locale, when valid
 POST /api/learner/practice               { itemId, grade: again|good, answer? } → { done:true } | { item }
 PUT  /api/learner/writing                { sessionId, taskId, body }
-GET /api/tutoring/contexts/:id/returned  editor+ → { nextNote, writing, missed }  no dates or scores
+GET /api/tutoring/students/:id/returned  editor+ → { nextNote, writing, missed }  no dates or scores
   (all learner routes)                   per-client budget: 10 failed auths / 60 s → 429 { error:"learner-rate-limited" }
                                          keyed by salted SHA-256 of CF-Connecting-IP (raw IP never stored);
                                          checked before the credential, so 429 is identical for absent / malformed /
                                          unknown / expired / revoked and reveals nothing; success spends nothing and resets
-POST /api/tutoring/contexts/:id/restore  restore from trash
-POST /api/tutoring/contexts/:id/permanent-deletion
+POST /api/tutoring/students/:id/restore  restore from trash
+POST /api/tutoring/students/:id/permanent-deletion
                                          create 15-minute browser confirmation URL; does not purge
 GET|POST /api/decks           list or create decks (reusable content); optional validated first version;
                                          createSession:true opts into also filing a draft session (default: none);
-                                         current clients send contextId; omission keeps the legacy shape and links "Needs context"
+                                         current clients send studentId; omission keeps the legacy shape and links "Needs student"
 GET|PATCH|DELETE /api/decks/:id
                                          detail {deck, spaceName, folderName, contentVersion, content}, metadata edit, or recoverable trash
 GET|POST /api/decks/:id/versions
@@ -385,7 +385,7 @@ GET|PUT|DELETE /api/decks/:id/draft
                                          PUT caps source at 256K chars (413); editor+ to write, member to read
 POST /api/decks/:id/restore   restore from trash
 POST /api/decks/:id/start     start the current saved deck with {requestId: UUID, stepId?};
-                                         422 identified-session-needs-context when the outline is identified and the deck
+                                         422 identified-session-needs-student when the outline is identified and the deck
                                          is not filed under a student (session_create refuses an identified outline the same way);
                                          requestId becomes the durable session id; same creator/deck retries
                                          reuse the session and keep answers, position and reveals;
@@ -394,7 +394,7 @@ POST /api/decks/:id/start     start the current saved deck with {requestId: UUID
 POST /api/decks/:id/permanent-deletion
                                          create browser confirmation URL; MCP/CLI cannot confirm it
 GET|POST /api/sessions              list or create sessions (one delivery of a deck); POST requires deckId;
-                                         context defaults to the deck link for legacy compatibility;
+                                         student defaults to the deck link for legacy compatibility;
                                          live/completed statuses are server-owned (422 status-server-owned)
 GET|PATCH|DELETE /api/sessions/:id
                                          detail, metadata edit, or recoverable trash
@@ -467,7 +467,7 @@ Tokens: HMAC-SHA256 signed via WebCrypto, format `base64url(payload).base64url(s
 
 SessionDO: SQLite-backed Durable Object named `SessionDO`, id = `idFromName(sessionCode)`. Session code mapping in KV-less MVP: sessionCode IS derived — `sessionCode = code` (the code is the session id), `idFromName(code)`. Persists `state` as JSON in one SQLite row (MVP simplification; measured normalization later), `idempotency` table (key, resultJson, ts), and optional live-only embedded resources in `session_assets` plus 1 MiB `session_asset_chunks`. Start refuses a session whose referenced resources are missing. Single-range GET/HEAD serves those bytes inline; the existing 24-hour session `deleteAll()` removes them with all other session state. The alarm prunes idempotency rows older than 1h. Uses `ctx.acceptWebSocket()` hibernation API + `setWebSocketAutoResponse` for pings. Coalesced notify runs on two channels (broadcast immediately if that channel's last broadcast is older than its interval, else `ctx.storage.setAlarm` — no `setTimeout`): lifecycle (host commands → all sockets, 250ms) and results (ballots/joins → `getWebSockets('host'|'stage')`, 1s, plus `'participant'` sockets only when `resultsVisible(state, activeInteractionId)`; audience computed at send time). A lifecycle broadcast clears any pending results tick — everyone just refetched. This keeps per-round work linear in participants: without it every ballot notified every participant and each notified participant refetched a snapshot (quadratic). Session auto-expiry: alarm ends sessions idle 12h. Optional countdown: when an open interaction has `closesAt` (from the session's `timerSec`), the same multiplexed alarm applies host `interaction.close` at that deadline — no speed scoring.
 
-Presentation contexts, decks (content metadata), immutable deck versions, sessions (delivery instances), Notes, trash state, and deletion intents are ordinary multi-tenant D1 business data. Only the active synchronized session is a Durable Object. Launch copies one selected deck version into the session so the session hot path never reads D1 or calls an AI provider.
+Students, decks (content metadata), immutable deck versions, sessions (delivery instances), Notes, trash state, and deletion intents are ordinary multi-tenant D1 business data. Only the active synchronized session is a Durable Object. Launch copies one selected deck version into the session so the session hot path never reads D1 or calls an AI provider.
 
 Retention (PRD DATA-04), served by the same multiplexed alarm: `PURGE_AFTER_MS = 30 * 60 * 1000` and `DELETE_AFTER_MS = 24 * 60 * 60 * 1000`, both measured from `meta.endedAt` — recorded when a session reaches `ended` by command OR by the idle auto-end. At `endedAt + PURGE_AFTER_MS` the DO applies `purgeBallots`, persists and broadcasts `session.changed` once. At `endedAt + DELETE_AFTER_MS` it closes remaining WebSockets and calls `ctx.storage.deleteAll()`, dropping the in-memory state copy too, so join/state/export take the same 404 path as an uninitialized session. The alarm always re-arms to the nearest remaining deadline (pending broadcast, housekeeping, active `closesAt`, purge, delete); after the wipe there is none.
 
@@ -490,7 +490,7 @@ POST /api/sessions                        Authorization: Bearer <RELAY_KEY>
                                          422 identity-mode-unavailable (identified or guest-list outline)
                                          no participant limit unless the body sets one
 POST /api/join                            body { code, recoveryName? } — anonymous and nickname sessions, as above
-                                         contextLink or guestLink → 403 identified-join-unavailable
+                                         studentLink or guestLink → 403 identified-join-unavailable
                                          409 session-full when participantLimit is reached
 GET  /api/sessions/:code/state            as above
 POST /api/sessions/:code/commands         as above; the host may run every host command
@@ -611,13 +611,13 @@ users(id PK, google_sub UNIQUE NOT NULL, email NOT NULL, name, created_at, entit
 auth_sessions(id PK, user_id → users(id), created_at, expires_at)      idx: user_id, expires_at
 spaces(id PK, owner_user_id, name, created_at, updated_at, settings DEFAULT '{}')
 folders(id PK, space_id, parent_id?, name, sort_order, created_at, deleted_at?)
-decks(id PK, space_id, folder_id?, context_id?, created_by, title, shape, current_version, metadata_json, created_at, updated_at, deleted_at?)
+decks(id PK, space_id, folder_id?, student_id?, created_by, title, shape, current_version, metadata_json, created_at, updated_at, deleted_at?)
 deck_versions(id PK, deck_id → decks(id), version, content_json, created_at, created_by, content_hash?, source_kind, source_file_id?, source_local_revision?, UNIQUE(deck_id, version))
-sessions(id PK, space_id, folder_id?, deck_id → decks(id), deck_version, context_id?, created_by, title, shape, status, metadata_json, created_at, updated_at, deleted_at?)
+sessions(id PK, space_id, folder_id?, deck_id → decks(id), deck_version, student_id?, created_by, title, shape, status, metadata_json, created_at, updated_at, deleted_at?)
 live_sessions(code PK, user_id?, title?, created_at, ended, deck_id?, deck_version?, session_id?, space_id?)
 space_members(space_id, user_id, role owner|editor|presenter, invited_by?, created_at, PK (space_id, user_id))
 space_invites(id PK, space_id, email lowercase, role editor|presenter, invited_by, created_at, accepted_at?, accepted_by?, revoked_at?)
-item_tags(space_id, item_type deck|session|record|context, item_id, tag, created_at, created_by?)
+item_tags(space_id, item_type deck|session|record|student, item_id, tag, created_at, created_by?)
 ```
 
 `sessions` is the **filed** session — a row in a space, made by starting a deck. `live_sessions` is the **running** session directory: one row per join code, pointing back at `session_id` and at the `deck_id`/`deck_version` it was started from. `auth_sessions` is the sign-in cookie table and has nothing to do with either.
@@ -644,7 +644,7 @@ access. Interface preferences live separately in `users.prefs`. Closed allowlist
 | `rawExport` | Per-ballot / named CSV (and ballots inside a `keep` snapshot) |
 | `branding` | Create and edit shared brand kits; existing kits and designs remain readable after downgrade |
 | `team` | Invite and admit new space members; start new shared sessions. Existing paid session collaboration continues while membership remains valid |
-| `continuity` | The teaching loop: session Notes (`/api/sessions/{id}/record`, including `nextNote` and homework), context people and access links, returned and learner work, creating identified sessions, and `/api/learner/*`. Read from the space owner. Denied as `403 continuity-required` (learner routes: the revoked-link `401`). Contexts themselves, trash, restore, permanent deletion and link revocation are never gated |
+| `continuity` | The teaching loop: session Notes (`/api/sessions/{id}/record`, including `nextNote` and homework), learners and access links, returned and learner work, creating identified sessions, and `/api/learner/*`. Read from the space owner. Denied as `403 continuity-required` (learner routes: the revoked-link `401`). Students themselves, trash, restore, permanent deletion and link revocation are never gated |
 | `largeSessions` | A live session admits more than `FREE_SESSION_PARTICIPANT_LIMIT` (50) participants. Read from the space owner (the personal creator outside a space) once, at session creation, and carried into the DO; joins never read D1 and a later lapse changes nothing for that session. Admin-key sessions have no owner and no limit. Without it, a new participant past the limit receives `409 session-full` from `POST /api/join`; re-entry by an admitted participant (recovery name, access link or guest link) is always admitted. The host snapshot carries `participantLimit` when one applies |
 | `connectors` | Reserved, unimplemented archive delivery workflows; rejected in Paddle price catalogs |
 
@@ -703,10 +703,10 @@ ledger or results navigation shelf is introduced. The account API supports exact
 deck/session filters and bounded cursor pagination under the same access check.
 
 A saved deck's durable session identity exists independently of its optional
-student context. The host bootstrap returns that identity even when context is
+student. The host bootstrap returns that identity even when student is
 null, preserving the private scratchpad's handoff to Notes and the deck's Library
 location. A temporary session with no durable row returns neither identity nor
-context. This bootstrap remains unavailable to participants and learners.
+student. This bootstrap remains unavailable to participants and learners.
 
 Session details expose `canEdit` from the current space role and trash state.
 Shared Notes remain readable to presenters, while editor access permits direct
@@ -750,7 +750,7 @@ Session lookup is **exactly one D1 read per request and nothing is cached** — 
 
 **CSRF.** Every cookie-authenticated *mutating* route requires the header `x-openroom-csrf: 1` (403 `{error:"csrf-required"}` otherwise). `SameSite=Lax` already prevents a cross-site form or `fetch` from carrying the cookie on a POST; the header is defence in depth — a simple cross-origin form cannot set it, so the protection survives a SameSite regression or a lax browser. Identity is checked *before* the header, so an anonymous caller gets 401, not a confusing 403. Browser clients send `credentials: 'same-origin'` on every control-plane call.
 
-### Context access links and the learner surface
+### Student access links and the learner surface
 
 **Five credential families now coexist, and none is ever accepted where another belongs.**
 
@@ -759,25 +759,25 @@ Session lookup is **exactly one D1 read per request and nothing is cached** — 
 | Sign-in session | `or_session` cookie (+ `x-openroom-csrf: 1` on writes) | who the tutor is | control plane only |
 | Personal API token | `Authorization: Bearer orpat_…` | the same tutor, headless | control plane minus final purge |
 | Deck capability token | `Authorization: Bearer <signed>` | a seat in one live session | exactly that session |
-| **Context access link** | `Authorization: Bearer orlnk_…` | possession of one context's learner credential | exactly that context's learner-visible records |
+| **Student access link** | `Authorization: Bearer orlnk_…` | possession of one student's learner credential | exactly that student's learner-visible records |
 | **Guest link** | `orinv_…` | this named guest on one session's guest list | join that one session as that host-authored name |
 
-`orlnk_<id>_<secret>` (id 16 bytes, secret 32 bytes, both base64url) deliberately mirrors `orpat_` so the two are distinguishable in logs and cannot be confused by a shape check. Only `sha256Hex(token)` is stored; `token_prefix` (first 12 chars) is what the listing shows. Liveness is entirely in the SQL — the row must exist, be unrevoked, be unexpired, and point at a context that is not trashed — so there is no code path where a dead link resolves. Purging a context deletes its links outright.
+`orlnk_<id>_<secret>` (id 16 bytes, secret 32 bytes, both base64url) deliberately mirrors `orpat_` so the two are distinguishable in logs and cannot be confused by a shape check. Only `sha256Hex(token)` is stored; `token_prefix` (first 12 chars) is what the listing shows. Liveness is entirely in the SQL — the row must exist, be unrevoked, be unexpired, and point at a student that is not trashed — so there is no code path where a dead link resolves. Purging a student deletes its links outright.
 
 **The boundary — an invariant, in the same voice as the session-token rule in `apps/workspace-worker/src/auth.ts`:**
 
-A context access link resolves to a `VerifiedContextLink` (`{ linkId, contextId, displayName }`) and **never to a `SessionUser`**. It therefore physically cannot be handed to `requireControlUser`, to `/api/tutoring/*`, or to `/api/my/*`. It creates no `users` row, no session, no space membership, and nothing derived from a space role. It grants exactly one context's learner-visible data — ten students in one space cannot read each other. **The blast radius of a leaked link is exactly one context.**
+A student access link resolves to a `VerifiedStudentLink` (`{ linkId, studentId, displayName }`) and **never to a `SessionUser`**. It therefore physically cannot be handed to `requireControlUser`, to `/api/tutoring/*`, or to `/api/my/*`. It creates no `users` row, no session, no space membership, and nothing derived from a space role. It grants exactly one student's learner-visible data — ten students in one space cannot read each other. **The blast radius of a leaked link is exactly one student.**
 
 Two structural consequences that a later change must not erode:
 
-- **`/api/learner/*` is dispatched before the control plane.** No learner path can fall through to cookie or PAT auth; an unknown `/api/learner/*` path returns 404 from the learner router rather than continuing down the chain. `requireContextLink` never reads the cookie jar, so no amount of browser state can promote a request into a learner response.
-- **The context id comes from the credential, never from the request** — no path parameter, no query string, no body field. A caller has no vocabulary in which to *ask* for another context, so cross-context reads fail by absence of a request shape rather than by an access check that a later refactor could mis-order.
-- **The throttle lives in the guard, not in the routes.** `requireContextLink` spends a per-client budget (10 failures / 60 s, `learner_auth_attempts`) before it looks at the credential, so every learner route — including ones not written yet — is budgeted by construction, and `429 learner-rate-limited` is reachable identically for an absent, malformed, unknown, expired or revoked link. It is cost control on the only cookie-less route family plus a brake on bulk-validating a leaked batch; against a 256-bit secret it is not, and is not claimed to be, anti-brute-force. Clients are keyed by a salted SHA-256 of `CF-Connecting-IP` — a raw-IP column would contradict the data-minimisation posture, so there isn't one.
-- **Identified sessions require a started session.** `POST /api/join` with a `contextLink` is `409 session-not-started` while the session is in `lobby`; the tutor pressing start is the gate, so a leaked link cannot be used against an unattended lobby. Anonymous and nickname joins are unchanged.
+- **`/api/learner/*` is dispatched before the control plane.** No learner path can fall through to cookie or PAT auth; an unknown `/api/learner/*` path returns 404 from the learner router rather than continuing down the chain. `requireStudentLink` never reads the cookie jar, so no amount of browser state can promote a request into a learner response.
+- **The student id comes from the credential, never from the request** — no path parameter, no query string, no body field. A caller has no vocabulary in which to *ask* for another student, so cross-student reads fail by absence of a request shape rather than by an access check that a later refactor could mis-order.
+- **The throttle lives in the guard, not in the routes.** `requireStudentLink` spends a per-client budget (10 failures / 60 s, `learner_auth_attempts`) before it looks at the credential, so every learner route — including ones not written yet — is budgeted by construction, and `429 learner-rate-limited` is reachable identically for an absent, malformed, unknown, expired or revoked link. It is cost control on the only cookie-less route family plus a brake on bulk-validating a leaked batch; against a 256-bit secret it is not, and is not claimed to be, anti-brute-force. Clients are keyed by a salted SHA-256 of `CF-Connecting-IP` — a raw-IP column would contradict the data-minimisation posture, so there isn't one.
+- **Identified sessions require a started session.** `POST /api/join` with a `studentLink` is `409 session-not-started` while the session is in `lobby`; the tutor pressing start is the gate, so a leaked link cannot be used against an unattended lobby. Anonymous and nickname joins are unchanged.
 
-**Withheld from every learner response** (the query is a **column allowlist**, not `SELECT *` with deletions, so a future migration cannot leak by default): `session_records.notes` (tutor-private assessment prose); `session_records.session_code` (a live-session join code — handing it over would convert a records credential into a session credential); `sessions.deck_id` / `deck_version` and `session_records.deck_version` (tutor IP, shared across contexts); `sessions.space_id` / `folder_id` (someone else's filing structure); `sessions.created_by` (the tutor's user id); `sessions.metadata_json` (internal tutor metadata, no learner contract); and draft or trashed sessions (unpublished tutor planning).
+**Withheld from every learner response** (the query is a **column allowlist**, not `SELECT *` with deletions, so a future migration cannot leak by default): `session_records.notes` (tutor-private assessment prose); `session_records.session_code` (a live-session join code — handing it over would convert a records credential into a session credential); `sessions.deck_id` / `deck_version` and `session_records.deck_version` (tutor IP, shared across students); `sessions.space_id` / `folder_id` (someone else's filing structure); `sessions.created_by` (the tutor's user id); `sessions.metadata_json` (internal tutor metadata, no learner contract); and draft or trashed sessions (unpublished tutor planning).
 
-**Tutor-side authorization** for `/api/tutoring/contexts/:id/links*` is space member **and `editor` or above**. Minting a credential is a privilege-escalation primitive, so a `presenter` — who may run a live session but may not change the library — must not be able to. Defaults: 180-day expiry (≈ one school year; long enough that nobody re-mints mid-term, which is the failure mode that gets links pasted into group chats), bounds 1–365 days, and at most **10 live links per context**.
+**Tutor-side authorization** for `/api/tutoring/students/:id/links*` is space member **and `editor` or above**. Minting a credential is a privilege-escalation primitive, so a `presenter` — who may run a live session but may not change the library — must not be able to. Defaults: 180-day expiry (≈ one school year; long enough that nobody re-mints mid-term, which is the failure mode that gets links pasted into group chats), bounds 1–365 days, and at most **10 live links per student**.
 
 ### Live-session creation, quota and recovery
 
@@ -789,10 +789,10 @@ Two structural consequences that a later change must not erode:
 Neither credential ⇒ 401, as before.
 
 ```
-GET /api/my/sessions   → { sessions: [{ code, sessionCode, title, deckId, contextId, contextName, createdAt, ended, recoverable, shared?, hostToken?, stageToken? }] }
+GET /api/my/sessions   → { sessions: [{ code, sessionCode, title, deckId, studentId, studentName, createdAt, ended, recoverable, shared?, hostToken?, stageToken? }] }
 ```
 
-Session-auth'd. The list holds the caller's own sessions and those of spaces they are a member of. `deckId`, `contextId` and `contextName` say which deck and which student a session is for (null when it has none); the Library and the editor use them for **Live now** and **Rejoin**. Live sessions of the caller's own **younger than 12h and not marked ended** are `recoverable: true` and come back with a **freshly minted host + stage token**; a member's session comes back with `shared: true` and no tokens — this completes LIVE-11 cross-device recovery: sign in on the second device, click reconnect, keep running the session.
+Session-auth'd. The list holds the caller's own sessions and those of spaces they are a member of. `deckId`, `studentId` and `studentName` say which deck and which student a session is for (null when it has none); the Library and the editor use them for **Live now** and **Rejoin**. Live sessions of the caller's own **younger than 12h and not marked ended** are `recoverable: true` and come back with a **freshly minted host + stage token**; a member's session comes back with `shared: true` and no tokens — this completes LIVE-11 cross-device recovery: sign in on the second device, click reconnect, keep running the session.
 
 Tokens are minted **optimistically**. The listing does not ask the SessionDO whether each session is still alive: that would be one cross-DO round trip per session on every page load, and cross-DO chatter is exactly what this design avoids. `sessions.ended` is therefore **advisory only** — nothing writes it back from the DO. A session that has ended, auto-expired or been wiped simply 404s the moment the console uses its token, which is the same path an uninitialised session already takes. The DO remains the single authority on liveness.
 
@@ -803,8 +803,8 @@ All session-auth'd; all writes require the CSRF header. The **deck library itsel
 ```
 GET      /api/my/spaces                  → { spaces: [{id,name,role,shared,createdAt,updatedAt}] }  owned + shared
 POST     /api/my/spaces                  body { name } → 201
-GET      /api/my/spaces/:id              → { space:{…,role,settings,experienceSaved,context}, itemTags, folders, decks, sessions, records, liveSessions }  (?folderId=)
-                                         space.context = { id, displayName } for a student's own space, else null
+GET      /api/my/spaces/:id              → { space:{…,role,settings,experienceSaved,student}, itemTags, folders, decks, sessions, records, liveSessions }  (?folderId=)
+                                         space.student = { id, displayName } for a student's own space, else null
                                          decks = filed decks, each with contents (a summary of the draft when there is one, else the saved version);
                                          sessions = filed sessions; liveSessions = running join codes
                                          liveSessions[] = { code, sessionCode, title, createdAt, ended }
@@ -824,7 +824,7 @@ Folder copy duplicates **only the folder subtree** — names and nesting. No ite
 The authoring CRUD that used to be listed here is `/api/decks` and `/api/sessions` in the delivery plane:
 
 ```
-GET|POST     /api/decks                    ?spaceId=&folderId=&contextId=&trash=1 · POST editor+ · 201
+GET|POST     /api/decks                    ?spaceId=&folderId=&studentId=&trash=1 · POST editor+ · 201
 GET|PATCH|DELETE /api/decks/:id            detail (?version=N) · rename/move · recoverable trash
 GET|POST     /api/decks/:id/versions       POST body { content|outline, baseVersion } → 201 { version }
                                            400 base-version-required · 409 version-conflict { latestVersion }
@@ -852,7 +852,7 @@ The console uses the recoverable trash routes for decks, sessions and folders. H
 remains available on decks, sessions and folders for API clients that want it; permanent purge in
 the console always requires the short-lived signed-in browser confirmation page. A permanent
 deletion is confirmed in the browser only — MCP and the CLI can create the intent but cannot
-confirm it. Deletion-intent resource types are `context | deck | session | folder`, and trash
+confirm it. Deletion-intent resource types are `student | deck | session | folder`, and trash
 covers the same four.
 
 ### Space collaboration
@@ -977,7 +977,7 @@ unchanged. The MCP tool description owns its callable contract.
 
 ## Frozen PowerPoint slide composition
 
-A composed session belongs to one space and one optional context, using the same
+A composed session belongs to one space and one optional student, using the same
 start permission and owner-paid collaboration as a saved deck. Its durable session
 row anchors Notes/results to the first connected source deck. It stores the frozen
 outline separately from list metadata; learner responses never include that

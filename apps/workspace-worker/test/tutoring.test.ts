@@ -82,34 +82,34 @@ async function mcpTool(
 }
 
 /**
- * `spaceId` names the space to put the context in; omit it and the context
- * brings a new space of its own, since a space holds one context.
+ * `spaceId` names the space to put the student in; omit it and the student
+ * brings a new space of its own, since a space holds one student.
  *
  * A test that shares work with a second member must pass the space it granted
- * membership on — otherwise the context lands somewhere that member cannot see.
+ * membership on — otherwise the student lands somewhere that member cannot see.
  */
-async function createContext(cookie: string, spaceId?: string): Promise<string> {
-  const response = await asBrowser(cookie, '/api/tutoring/contexts', {
+async function createStudent(cookie: string, spaceId?: string): Promise<string> {
+  const response = await asBrowser(cookie, '/api/tutoring/students', {
     method: 'POST',
     body: JSON.stringify({
       displayName: 'Camille',
       kind: 'person',
-      context: { language: 'French', level: 'B1', goals: ['Friday test'] },
+      student: { language: 'French', level: 'B1', goals: ['Friday test'] },
       ...(spaceId === undefined ? {} : { spaceId }),
     }),
   });
   expect(response.status).toBe(201);
-  const body = await response.json() as { context: { id: string } };
-  return body.context.id;
+  const body = await response.json() as { student: { id: string } };
+  return body.student.id;
 }
 
 async function createDeckWithSession(
   cookie: string,
-  contextId: string,
+  studentId: string,
 ): Promise<{ deckId: string; sessionId: string }> {
   const response = await asBrowser(cookie, '/api/decks', {
     method: 'POST',
-    body: JSON.stringify({ contextId, outline: SAMPLE_CONTENT, shape: 'tutoring', createSession: true }),
+    body: JSON.stringify({ studentId, outline: SAMPLE_CONTENT, shape: 'tutoring', createSession: true }),
   });
   expect(response.status).toBe(201);
   const body = await response.json() as {
@@ -130,7 +130,7 @@ describe('folder-scoped decks and sessions', () => {
     await env.DB.prepare(
       'INSERT INTO space_members (space_id, user_id, role, created_at) VALUES (?1, ?2, ?3, ?4)',
     ).bind(spaceId, editor.userId, 'editor', Date.now()).run();
-    const { deckId } = await createDeckWithSession(owner.cookie, await createContext(owner.cookie, spaceId));
+    const { deckId } = await createDeckWithSession(owner.cookie, await createStudent(owner.cookie, spaceId));
     const fileId = crypto.randomUUID();
 
     const linked = await asBrowser(owner.cookie, `/api/decks/${deckId}/file-link`, {
@@ -173,7 +173,7 @@ describe('folder-scoped decks and sessions', () => {
 
   it('records desktop version provenance only for the linked file', async () => {
     const owner = await seedSession();
-    const { deckId } = await createDeckWithSession(owner.cookie, await createContext(owner.cookie));
+    const { deckId } = await createDeckWithSession(owner.cookie, await createStudent(owner.cookie));
     const fileId = crypto.randomUUID();
     expect((await asBrowser(owner.cookie, `/api/decks/${deckId}/file-link`, {
       method: 'POST', body: JSON.stringify({ fileId }),
@@ -224,7 +224,7 @@ describe('folder-scoped decks and sessions', () => {
         .bind(spaceId, member.userId, role, Date.now())
         .run();
     }
-    const { deckId, sessionId } = await createDeckWithSession(owner.cookie, await createContext(owner.cookie, spaceId));
+    const { deckId, sessionId } = await createDeckWithSession(owner.cookie, await createStudent(owner.cookie, spaceId));
 
     // Both roles read; only the editor writes, even though neither created it.
     for (const member of [editor, presenter]) {
@@ -243,7 +243,7 @@ describe('folder-scoped decks and sessions', () => {
     expect((await asBrowser(editor.cookie, `/api/sessions/${sessionId}`, { method: 'DELETE' })).status).toBe(200);
   });
 
-  it('lets a presenter read a context but not change, trash, restore or purge it', async () => {
+  it('lets a presenter read a student but not change, trash, restore or purge it', async () => {
     const owner = await seedSession();
     const presenter = await seedSession();
     const spaces = (await (await asBrowser(owner.cookie, '/api/my/spaces')).json()) as { spaces: { id: string }[] };
@@ -251,8 +251,8 @@ describe('folder-scoped decks and sessions', () => {
     await env.DB.prepare(
       "INSERT INTO space_members (space_id, user_id, role, created_at) VALUES (?1, ?2, 'presenter', ?3)",
     ).bind(spaceId, presenter.userId, Date.now()).run();
-    const contextId = await createContext(owner.cookie, spaceId);
-    const path = `/api/tutoring/contexts/${contextId}`;
+    const studentId = await createStudent(owner.cookie, spaceId);
+    const path = `/api/tutoring/students/${studentId}`;
 
     expect((await asBrowser(presenter.cookie, path)).status).toBe(200);
     expect((await asBrowser(presenter.cookie, path, {
@@ -278,14 +278,14 @@ describe('folder-scoped decks and sessions', () => {
     expect((await asBrowser(owner.cookie, path)).status).toBe(200);
   });
 
-  it('stores contexts, deck content versions, and a draft session', async () => {
+  it('stores students, deck content versions, and a draft session', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie);
-    const { deckId } = await createDeckWithSession(cookie, contextId);
+    const studentId = await createStudent(cookie);
+    const { deckId } = await createDeckWithSession(cookie, studentId);
 
-    const ctxRes = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`);
-    const ctxBody = await ctxRes.json() as { context: { context: { level: string } } };
-    expect(ctxBody.context.context.level).toBe('B1');
+    const ctxRes = await asBrowser(cookie, `/api/tutoring/students/${studentId}`);
+    const ctxBody = await ctxRes.json() as { student: { student: { level: string } } };
+    expect(ctxBody.student.student.level).toBe('B1');
 
     const deck = await asBrowser(cookie, `/api/decks/${deckId}`);
     const deckBody = await deck.json() as {
@@ -314,7 +314,7 @@ describe('folder-scoped decks and sessions', () => {
 
   it('launches a session through the live session runtime', async () => {
     const { cookie } = await seedSession();
-    const { sessionId, deckId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { sessionId, deckId } = await createDeckWithSession(cookie, await createStudent(cookie));
     const launch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
       method: 'POST',
       body: JSON.stringify({ start: true }),
@@ -352,8 +352,8 @@ describe('folder-scoped decks and sessions', () => {
 
   it('names the student and deck of each live lesson on /api/my/sessions', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie);
-    const { sessionId, deckId } = await createDeckWithSession(cookie, contextId);
+    const studentId = await createStudent(cookie);
+    const { sessionId, deckId } = await createDeckWithSession(cookie, studentId);
     const launch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
       method: 'POST',
       body: JSON.stringify({ start: true }),
@@ -361,18 +361,18 @@ describe('folder-scoped decks and sessions', () => {
     const { sessionCode } = await launch.json() as { sessionCode: string };
     const listed = await asBrowser(cookie, '/api/my/sessions');
     const { sessions } = await listed.json() as {
-      sessions: { code: string; deckId: string | null; contextId: string | null; contextName: string | null }[];
+      sessions: { code: string; deckId: string | null; studentId: string | null; studentName: string | null }[];
     };
     expect(sessions.find((row) => row.code === sessionCode)).toMatchObject({
       deckId,
-      contextId,
-      contextName: 'Camille',
+      studentId,
+      studentName: 'Camille',
     });
   });
 
   it('stores a compact session record and rejects writes on trashed sessions', async () => {
     const { cookie } = await seedSession();
-    const { sessionId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { sessionId } = await createDeckWithSession(cookie, await createStudent(cookie));
     const put = await asBrowser(cookie, `/api/sessions/${sessionId}/record`, {
       method: 'PUT',
       body: JSON.stringify({
@@ -395,10 +395,10 @@ describe('folder-scoped decks and sessions', () => {
 
   it('allows a session record when deck has no content version yet', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie);
+    const studentId = await createStudent(cookie);
     const created = await asBrowser(cookie, '/api/decks', {
       method: 'POST',
-      body: JSON.stringify({ contextId, title: 'Empty deck', createSession: true }),
+      body: JSON.stringify({ studentId, title: 'Empty deck', createSession: true }),
     });
     expect(created.status).toBe(201);
     const body = await created.json() as { deck: { id: string }; session: { id: string } };
@@ -409,18 +409,18 @@ describe('folder-scoped decks and sessions', () => {
     expect(put.status).toBe(200);
   });
 
-  it('uses recoverable trash and browser permanent purge for contexts', async () => {
+  it('uses recoverable trash and browser permanent purge for students', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie);
+    const studentId = await createStudent(cookie);
 
-    const trash = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'DELETE' });
+    const trash = await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'DELETE' });
     expect(trash.status).toBe(200);
 
-    const restore = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/restore`, { method: 'POST' });
+    const restore = await asBrowser(cookie, `/api/tutoring/students/${studentId}/restore`, { method: 'POST' });
     expect(restore.status).toBe(200);
-    await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'DELETE' });
+    await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'DELETE' });
 
-    const intent = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/permanent-deletion`, { method: 'POST' });
+    const intent = await asBrowser(cookie, `/api/tutoring/students/${studentId}/permanent-deletion`, { method: 'POST' });
     expect(intent.status).toBe(202);
     const intentBody = await intent.json() as { confirmationUrl: string };
 
@@ -432,7 +432,7 @@ describe('folder-scoped decks and sessions', () => {
     expect(page).toContain('Permanently delete this student?');
     expect(page).toContain('access links');
     expect(page).toContain('learner work');
-    expect(page).not.toMatch(/template|context and/);
+    expect(page).not.toMatch(/template/);
     const stranger = await seedSession();
     const wrongAccount = await asBrowser(stranger.cookie, new URL(intentBody.confirmationUrl).pathname);
     expect(wrongAccount.status).toBe(410);
@@ -446,7 +446,7 @@ describe('folder-scoped decks and sessions', () => {
     expect(again.headers.get('content-type')).toContain('text/html');
     expect(await again.text()).toContain('This confirmation link no longer works.');
 
-    const missing = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`);
+    const missing = await asBrowser(cookie, `/api/tutoring/students/${studentId}`);
     expect(missing.status).toBe(404);
   });
 
@@ -458,18 +458,18 @@ describe('folder-scoped decks and sessions', () => {
     });
     const token = (await minted.json() as { token: string }).token;
 
-    const contextResult = await mcpTool(token, 'openroom_api', {
+    const studentResult = await mcpTool(token, 'openroom_api', {
       method: 'POST',
-      path: '/api/tutoring/contexts',
-      body: { displayName: 'MCP person', kind: 'person', context: { language: 'French', level: 'B1' } },
+      path: '/api/tutoring/students',
+      body: { displayName: 'MCP person', kind: 'person', student: { language: 'French', level: 'B1' } },
     });
-    expect(contextResult.value.status).toBe(201);
-    const contextId = contextResult.value.body.context.id as string;
+    expect(studentResult.value.status).toBe(201);
+    const studentId = studentResult.value.body.student.id as string;
 
     const deckResult = await mcpTool(token, 'openroom_api', {
       method: 'POST',
       path: '/api/decks',
-      body: { contextId, outline: SAMPLE_CONTENT, createSession: true },
+      body: { studentId, outline: SAMPLE_CONTENT, createSession: true },
     });
     expect(deckResult.value.status).toBe(201);
     const sessionId = deckResult.value.body.session.id as string;
@@ -487,10 +487,10 @@ describe('folder-scoped decks and sessions', () => {
 describe('control plane hardening', () => {
   it('creates no session by default; sessions are created explicitly', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie);
+    const studentId = await createStudent(cookie);
     const created = await asBrowser(cookie, '/api/decks', {
       method: 'POST',
-      body: JSON.stringify({ contextId, outline: SAMPLE_CONTENT }),
+      body: JSON.stringify({ studentId, outline: SAMPLE_CONTENT }),
     });
     expect(created.status).toBe(201);
     const body = await created.json() as { deck: { id: string }; session: unknown };
@@ -521,8 +521,8 @@ describe('control plane hardening', () => {
       })
     ).json()) as { id: string };
 
-    const ctxA = await createContext(cookieA);
-    // Legacy context omission is accepted, but an inaccessible folder is still hidden.
+    const ctxA = await createStudent(cookieA);
+    // Legacy student omission is accepted, but an inaccessible folder is still hidden.
     const missingCtx = await asBrowser(cookieA, '/api/decks', {
       method: 'POST',
       body: JSON.stringify({ title: 'A deck', folderId: folderB.id }),
@@ -530,11 +530,11 @@ describe('control plane hardening', () => {
     expect(missingCtx.status).toBe(404);
     const postDeck = await asBrowser(cookieA, '/api/decks', {
       method: 'POST',
-      body: JSON.stringify({ title: 'A deck', contextId: ctxA, folderId: folderB.id }),
+      body: JSON.stringify({ title: 'A deck', studentId: ctxA, folderId: folderB.id }),
     });
     expect(postDeck.status).toBe(404);
 
-    const { deckId, sessionId } = await createDeckWithSession(cookieA, await createContext(cookieA));
+    const { deckId, sessionId } = await createDeckWithSession(cookieA, await createStudent(cookieA));
     const patchDeck = await asBrowser(cookieA, `/api/decks/${deckId}`, {
       method: 'PATCH',
       body: JSON.stringify({ folderId: folderB.id }),
@@ -568,7 +568,7 @@ describe('control plane hardening', () => {
 
   it('keeps live/completed statuses server-owned and rejects double launch', async () => {
     const { cookie } = await seedSession();
-    const { deckId, sessionId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { deckId, sessionId } = await createDeckWithSession(cookie, await createStudent(cookie));
 
     const liveCreate = await asBrowser(cookie, '/api/sessions', {
       method: 'POST',
@@ -595,7 +595,7 @@ describe('control plane hardening', () => {
 
   it('permanent purge of a deck detaches sessions that recorded it', async () => {
     const { cookie } = await seedSession();
-    const { deckId, sessionId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { deckId, sessionId } = await createDeckWithSession(cookie, await createStudent(cookie));
     const launch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
       method: 'POST',
       body: JSON.stringify({ start: true }),
@@ -623,36 +623,36 @@ describe('control plane hardening', () => {
     expect(after?.deck_version).toBeNull();
   });
 
-  it('context purge detaches sessions that re-linked the context from other decks', async () => {
+  it('student purge detaches sessions that re-linked the student from other decks', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie);
-    // Deck B belongs to a different context, in its own space.
-    const otherCtx = await createContext(cookie);
+    const studentId = await createStudent(cookie);
+    // Deck B belongs to a different student, in its own space.
+    const otherCtx = await createStudent(cookie);
     const created = await asBrowser(cookie, '/api/decks', {
       method: 'POST',
-      body: JSON.stringify({ title: 'Standalone', outline: SAMPLE_CONTENT, contextId: otherCtx }),
+      body: JSON.stringify({ title: 'Standalone', outline: SAMPLE_CONTENT, studentId: otherCtx }),
     });
     expect(created.status).toBe(201);
     const deckB = (await created.json() as { deck: { id: string } }).deck.id;
     const sessionRes = await asBrowser(cookie, '/api/sessions', {
       method: 'POST',
-      body: JSON.stringify({ deckId: deckB, contextId: otherCtx }),
+      body: JSON.stringify({ deckId: deckB, studentId: otherCtx }),
     });
     expect(sessionRes.status).toBe(201);
     const sessionB = (await sessionRes.json() as { session: { id: string } }).session.id;
 
     /*
-     * Re-linked in the table, not through the API: a session's context must now be
+     * Re-linked in the table, not through the API: a session's student must now be
      * the one its deck's space holds, so the route refuses to build this
      * state. Rows that predate that rule still exist, and detaching them is
      * exactly what purge is for — so the fixture writes what the API will not.
      */
-    await env.DB.prepare('UPDATE sessions SET context_id = ?1 WHERE id = ?2')
-      .bind(contextId, sessionB)
+    await env.DB.prepare('UPDATE sessions SET student_id = ?1 WHERE id = ?2')
+      .bind(studentId, sessionB)
       .run();
 
-    await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'DELETE' });
-    const intent = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/permanent-deletion`, { method: 'POST' });
+    await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'DELETE' });
+    const intent = await asBrowser(cookie, `/api/tutoring/students/${studentId}/permanent-deletion`, { method: 'POST' });
     expect(intent.status).toBe(202);
     const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
     const confirmed = await asBrowser(cookie, new URL(confirmationUrl).pathname, { method: 'POST' });
@@ -660,24 +660,24 @@ describe('control plane hardening', () => {
 
     const sessionAfter = await asBrowser(cookie, `/api/sessions/${sessionB}`);
     expect(sessionAfter.status).toBe(200);
-    expect((await sessionAfter.json() as { session: { contextId: string | null } }).session.contextId).toBeNull();
+    expect((await sessionAfter.json() as { session: { studentId: string | null } }).session.studentId).toBeNull();
   });
 
-  it('context purge removes the student space when nothing else is filed in it', async () => {
+  it('student purge removes the student space when nothing else is filed in it', async () => {
     const { cookie } = await seedSession();
-    const purge = async (contextId: string) => {
-      await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'DELETE' });
-      const intent = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}/permanent-deletion`, { method: 'POST' });
+    const purge = async (studentId: string) => {
+      await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'DELETE' });
+      const intent = await asBrowser(cookie, `/api/tutoring/students/${studentId}/permanent-deletion`, { method: 'POST' });
       const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
       expect((await asBrowser(cookie, new URL(confirmationUrl).pathname, { method: 'POST' })).status).toBe(200);
     };
     const listed = async () => ((await (await asBrowser(cookie, '/api/my/spaces')).json()) as { spaces: { id: string }[] }).spaces.map((space) => space.id);
 
     // Only folders and the student's decks: the space goes too.
-    const emptied = await createContext(cookie);
+    const emptied = await createStudent(cookie);
     const emptiedSpace = `sp_ctx_${emptied}`;
     expect((await asBrowser(cookie, `/api/my/spaces/${emptiedSpace}/folders`, { method: 'POST', body: JSON.stringify({ name: 'Week 1' }) })).status).toBe(201);
-    expect((await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Theirs', outline: SAMPLE_CONTENT, contextId: emptied }) })).status).toBe(201);
+    expect((await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Theirs', outline: SAMPLE_CONTENT, studentId: emptied }) })).status).toBe(201);
     // A lesson run there: its saved results must stay reachable once the space is gone.
     await env.DB.prepare("INSERT INTO live_sessions (code, user_id, title, created_at, ended, space_id) VALUES ('LIVE01', NULL, 'Lesson', 0, 1, ?1)")
       .bind(emptiedSpace).run();
@@ -688,7 +688,7 @@ describe('control plane hardening', () => {
     expect(live?.space_id).toBeNull();
 
     // A deck filed there without the student keeps the space and the deck.
-    const kept = await createContext(cookie);
+    const kept = await createStudent(cookie);
     const keptSpace = `sp_ctx_${kept}`;
     const loose = await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Loose', outline: SAMPLE_CONTENT, spaceId: keptSpace }) });
     expect(loose.status).toBe(201);
@@ -700,8 +700,8 @@ describe('control plane hardening', () => {
 
   it('PAT cannot confirm a permanent purge', async () => {
     const { cookie } = await seedSession();
-    const contextId = await createContext(cookie);
-    await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`, { method: 'DELETE' });
+    const studentId = await createStudent(cookie);
+    await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'DELETE' });
 
     const minted = await asBrowser(cookie, '/api/my/tokens', {
       method: 'POST',
@@ -714,20 +714,20 @@ describe('control plane hardening', () => {
     }), env as never);
 
     // The agent may request the intent; only a signed-in browser may confirm it.
-    const intent = await asPat(`/api/tutoring/contexts/${contextId}/permanent-deletion`, { method: 'POST' });
+    const intent = await asPat(`/api/tutoring/students/${studentId}/permanent-deletion`, { method: 'POST' });
     expect(intent.status).toBe(202);
     const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
 
     const patConfirm = await asPat(new URL(confirmationUrl).pathname, { method: 'POST' });
     expect(patConfirm.status).toBe(401);
 
-    const stillThere = await asBrowser(cookie, `/api/tutoring/contexts/${contextId}`);
+    const stillThere = await asBrowser(cookie, `/api/tutoring/students/${studentId}`);
     expect(stillThere.status).toBe(200);
   });
 
   it('session record contains no ballot data', async () => {
     const { cookie } = await seedSession();
-    const { sessionId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { sessionId } = await createDeckWithSession(cookie, await createStudent(cookie));
     const put = await asBrowser(cookie, `/api/sessions/${sessionId}/record`, {
       method: 'PUT',
       body: JSON.stringify({ outcomes: ['Done'], notes: '', homework: [], ballots: [{ secret: 'vote' }] }),
@@ -737,8 +737,8 @@ describe('control plane hardening', () => {
       record: Record<string, unknown>;
     };
     expect(Object.keys(record.record).sort()).toEqual([
-      'artifacts', 'contextId', 'createdAt', 'deckVersion', 'homework', 'homeworkAudience', 'homeworkRevision', 'id',
-      'nextNote', 'notes', 'outcomes', 'sessionCode', 'sessionId', 'updatedAt',
+      'artifacts', 'createdAt', 'deckVersion', 'homework', 'homeworkAudience', 'homeworkRevision', 'id',
+      'nextNote', 'notes', 'outcomes', 'sessionCode', 'sessionId', 'studentId', 'updatedAt',
     ]);
   });
 });
@@ -752,7 +752,7 @@ describe('control plane hardening', () => {
 describe('deck drafts', () => {
   it('upserts one draft per deck, accepts unparseable YAML, and 404s when absent', async () => {
     const { cookie } = await seedSession();
-    const { deckId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { deckId } = await createDeckWithSession(cookie, await createStudent(cookie));
 
     expect((await asBrowser(cookie, `/api/decks/${deckId}/draft`)).status).toBe(404);
 
@@ -785,7 +785,7 @@ describe('deck drafts', () => {
 
   it('summarises the draft in the Library row, and the saved version when the draft does not parse', async () => {
     const { cookie } = await seedSession();
-    const { deckId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { deckId } = await createDeckWithSession(cookie, await createStudent(cookie));
     const { deck } = await (await asBrowser(cookie, `/api/decks/${deckId}`)).json() as { deck: { spaceId: string } };
     const row = async () => {
       const tree = await (await asBrowser(cookie, `/api/my/spaces/${deck.spaceId}`)).json() as {
@@ -816,7 +816,7 @@ describe('deck drafts', () => {
 
   it('stamping a version clears the draft and never feeds delivery', async () => {
     const { cookie } = await seedSession();
-    const { deckId, sessionId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { deckId, sessionId } = await createDeckWithSession(cookie, await createStudent(cookie));
     await asBrowser(cookie, `/api/decks/${deckId}/draft`, {
       method: 'PUT',
       body: JSON.stringify({ source: 'not: [an, outline', baseVersion: 1 }),
@@ -853,7 +853,7 @@ describe('deck drafts', () => {
     ).bind(spaces.spaces[0]!.id, presenter.userId, 'presenter', Date.now()).run();
     const { deckId } = await createDeckWithSession(
       owner.cookie,
-      await createContext(owner.cookie, spaces.spaces[0]!.id),
+      await createStudent(owner.cookie, spaces.spaces[0]!.id),
     );
     const path = `/api/decks/${deckId}/draft`;
     const body = JSON.stringify({ source: 'meta:\n', baseVersion: 1 });
@@ -881,13 +881,13 @@ describe('standalone decks', () => {
     const created = await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Standalone', content: SAMPLE_CONTENT }) });
     expect(created.status).toBe(201);
     const { deck } = await created.json() as any;
-    expect(deck.contextId).toBeNull();
-    const patched = await asBrowser(cookie, `/api/decks/${deck.id}`, { method: 'PATCH', body: JSON.stringify({ contextId: null }) });
+    expect(deck.studentId).toBeNull();
+    const patched = await asBrowser(cookie, `/api/decks/${deck.id}`, { method: 'PATCH', body: JSON.stringify({ studentId: null }) });
     expect(patched.status).toBe(200);
     const sessionResponse = await asBrowser(cookie, '/api/sessions', { method: 'POST', body: JSON.stringify({ deckId: deck.id }) });
     expect(sessionResponse.status).toBe(201);
     const { session } = await sessionResponse.json() as any;
-    expect(session.contextId).toBeNull();
+    expect(session.studentId).toBeNull();
     const bad = await asBrowser(cookie, `/api/sessions/${session.id}/launch`, { method: 'POST', body: JSON.stringify({ start: true, cursor: { stepId: 'missing', shown: 1 } }) });
     expect(bad.status).toBe(422);
     const launched = await asBrowser(cookie, `/api/sessions/${session.id}/launch`, { method: 'POST', body: JSON.stringify({ start: true, cursor: { stepId: 'phrase', shown: 1 } }) });
@@ -896,12 +896,12 @@ describe('standalone decks', () => {
     expect(live.started).toBe(true);
     const state = await worker.fetch(new Request(`${BASE}/api/sessions/${live.sessionCode}/state?role=host`, { headers: { authorization: `Bearer ${live.hostToken}` } }), env as never);
     expect((await state.json() as any).outline).toMatchObject({ currentStepIndex: 1, shownGroups: 1 });
-    const contexts = await env.DB.prepare('SELECT COUNT(*) AS n FROM contexts WHERE created_by = ?1').bind(userId).first<{ n: number }>();
-    expect(contexts?.n).toBe(0);
+    const students = await env.DB.prepare('SELECT COUNT(*) AS n FROM students WHERE created_by = ?1').bind(userId).first<{ n: number }>();
+    expect(students?.n).toBe(0);
   });
   it('rejects a stale draft without overwriting acknowledged content', async () => {
     const { cookie } = await seedSession();
-    const { deckId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { deckId } = await createDeckWithSession(cookie, await createStudent(cookie));
     const path = `/api/decks/${deckId}/draft`;
     const first = await asBrowser(cookie, path, { method: 'PUT', body: JSON.stringify({ source: 'work in progress', baseVersion: 1 }) });
     expect(first.status).toBe(200);

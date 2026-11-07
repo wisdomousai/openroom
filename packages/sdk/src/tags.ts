@@ -35,7 +35,7 @@ export const MAX_TAGS_PER_ITEM = 24;
  * see `docs/TERMINOLOGY.md`. A UI translating kind ids onto these owns the
  * translation; the wire never carries the UI word.
  */
-export const TAGGABLE_ITEM_TYPES = ['deck', 'session', 'record', 'context'] as const;
+export const TAGGABLE_ITEM_TYPES = ['deck', 'session', 'record', 'student'] as const;
 export type TaggableItemType = (typeof TAGGABLE_ITEM_TYPES)[number];
 
 /** One row of the space-wide facet list. */

@@ -1,6 +1,6 @@
 /**
  * Folder-scoped decks (content) and sessions (delivery instances).
- * Contexts stay in tutoring.ts. Live sessions are launched from a session.
+ * Students stay in tutoring.ts. Live sessions are launched from a session.
  */
 import {
   canonicalOutlineJson,
@@ -35,7 +35,7 @@ import {
   resolveFolder,
   deckAccess,
   sessionAccess,
-  contextAccess,
+  studentAccess,
   mutationAllowed,
   targetSpace,
   requestedLocationEditable,
@@ -67,7 +67,7 @@ export async function sessionsCollectionRoute(
     await ensureWorkspace(env, guard.user);
     const trashed = url.searchParams.get('trash') === '1';
     const deckId = url.searchParams.get('deckId');
-    const contextId = url.searchParams.get('contextId');
+    const studentId = url.searchParams.get('studentId');
     const folderId = url.searchParams.get('folderId');
     const spaceId = url.searchParams.get('spaceId');
     const binds: string[] = [guard.user.id];
@@ -78,9 +78,9 @@ export async function sessionsCollectionRoute(
       binds.push(deckId);
       n += 1;
     }
-    if (contextId !== null) {
-      where += ` AND r.context_id = ?${n}`;
-      binds.push(contextId);
+    if (studentId !== null) {
+      where += ` AND r.student_id = ?${n}`;
+      binds.push(studentId);
       n += 1;
     }
     if (spaceId !== null && spaceId !== '') {
@@ -116,14 +116,14 @@ export async function sessionsCollectionRoute(
     return json({ error: 'forbidden' }, 403);
   }
 
-  let contextId = deck.context_id;
-  if (body.contextId === null) contextId = null;
-  if (typeof body.contextId === 'string') {
-    const ctx = await contextAccess(env, guard.user.id, body.contextId);
+  let studentId = deck.student_id;
+  if (body.studentId === null) studentId = null;
+  if (typeof body.studentId === 'string') {
+    const ctx = await studentAccess(env, guard.user.id, body.studentId);
     if (ctx === null || ctx.deleted_at !== null || ctx.space_id !== deck.space_id) {
-      return json({ error: 'context-not-found' }, 404);
+      return json({ error: 'student-not-found' }, 404);
     }
-    contextId = ctx.id;
+    studentId = ctx.id;
   }
 
   const deckVersion = typeof body.deckVersion === 'number' && Number.isInteger(body.deckVersion)
@@ -148,12 +148,12 @@ export async function sessionsCollectionRoute(
   const now = Date.now();
   await env.DB.prepare(
     `INSERT INTO sessions
-       (id, space_id, folder_id, deck_id, deck_version, context_id,
+       (id, space_id, folder_id, deck_id, deck_version, student_id,
         created_by, title, shape, status,
         metadata_json, created_at, updated_at, deleted_at)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'draft', '{}', ?10, ?10, NULL)`,
   ).bind(
-    id, deck.space_id, folderId, deck.id, deckVersion, contextId,
+    id, deck.space_id, folderId, deck.id, deckVersion, studentId,
     guard.user.id, title, shape, now,
   ).run();
   return json({ session: sessionJson((await sessionAccess(env, guard.user.id, id))!) }, 201);
@@ -189,14 +189,14 @@ export async function sessionItemRoute(
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
 
-  let contextId = row.context_id;
-  if (body.contextId === null) contextId = null;
-  if (typeof body.contextId === 'string') {
-    const ctx = await contextAccess(env, guard.user.id, body.contextId);
+  let studentId = row.student_id;
+  if (body.studentId === null) studentId = null;
+  if (typeof body.studentId === 'string') {
+    const ctx = await studentAccess(env, guard.user.id, body.studentId);
     if (ctx === null || ctx.deleted_at !== null || ctx.space_id !== row.space_id) {
-      return json({ error: 'context-not-found' }, 404);
+      return json({ error: 'student-not-found' }, 404);
     }
-    contextId = ctx.id;
+    studentId = ctx.id;
   }
   const title = body.title === undefined
     ? row.title
@@ -213,13 +213,13 @@ export async function sessionItemRoute(
   if (!location.ok) return location.response;
   const now = Date.now();
   await env.DB.prepare(
-    `UPDATE sessions SET context_id = ?1, title = ?2, status = ?3,
+    `UPDATE sessions SET student_id = ?1, title = ?2, status = ?3,
        folder_id = ?4, updated_at = ?5 WHERE id = ?6`,
-  ).bind(contextId, title, status, location.folderId, now, sessionId).run();
+  ).bind(studentId, title, status, location.folderId, now, sessionId).run();
   return json({
     session: sessionJson({
       ...row,
-      context_id: contextId,
+      student_id: studentId,
       title,
       status,
       folder_id: location.folderId,
@@ -300,7 +300,7 @@ export async function sessionRecordRoute(
       record: {
         id: row['id'],
         sessionId,
-        contextId: row['context_id'],
+        studentId: row['student_id'],
         sessionCode: row['session_code'],
         deckVersion: row['deck_version'],
         outcomes: parseJson(String(row['outcomes_json']), []),
@@ -376,7 +376,7 @@ export async function sessionRecordRoute(
   // Omitting this field preserves restrictions on surviving tasks. Sharing is deliberate.
   const audienceInput = body.homeworkAudience === undefined
     ? Object.fromEntries(Object.entries(storedAudience as Record<string, unknown>).filter(([id]) => taskIds.includes(id))) : body.homeworkAudience;
-  const people = session.context_id === null ? [] : (await env.DB.prepare('SELECT id FROM context_learners WHERE context_id = ?1').bind(session.context_id).all<{ id: string }>()).results ?? [];
+  const people = session.student_id === null ? [] : (await env.DB.prepare('SELECT id FROM student_learners WHERE student_id = ?1').bind(session.student_id).all<{ id: string }>()).results ?? [];
   const audience = parseHomeworkAudience(audienceInput, taskIds, people.map((person) => person.id));
   if (audience === null) return json({ error: 'invalid-homework-audience' }, 422);
   const homeworkJson = provided('homework') || existing === null ? JSON.stringify(homework) : existing.homework_json;
@@ -394,22 +394,22 @@ export async function sessionRecordRoute(
   ].filter(([key]) => provided(key as string)).map(([, column]) => `${column as string} = excluded.${column as string}`);
   const saved = await env.DB.prepare(
     `INSERT INTO session_records
-       (id, session_id, context_id, session_code, deck_version, outcomes_json, notes, next_note, homework_json, artifacts_json, created_at, updated_at, homework_revision, homework_audience_json)
+       (id, session_id, student_id, session_code, deck_version, outcomes_json, notes, next_note, homework_json, artifacts_json, created_at, updated_at, homework_revision, homework_audience_json)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?15)
      ON CONFLICT(session_id) DO UPDATE SET
-       ${[...updated, 'context_id = excluded.context_id', 'homework_json = excluded.homework_json',
+       ${[...updated, 'student_id = excluded.student_id', 'homework_json = excluded.homework_json',
          'updated_at = excluded.updated_at', 'homework_revision = excluded.homework_revision',
          'homework_audience_json = excluded.homework_audience_json'].join(', ')}
      WHERE session_records.homework_revision = ?14`,
   ).bind(
-    existing?.id ?? randomId(), sessionId, session.context_id, sessionCode, deckVersion,
+    existing?.id ?? randomId(), sessionId, session.student_id, sessionCode, deckVersion,
     JSON.stringify(outcomes), notes, storedNextNote, homeworkJson, JSON.stringify(artifacts),
     existing?.created_at ?? now, now, homeworkRevision, existing?.homework_revision ?? 0, audienceJson,
   ).run();
   if (!saved.meta.changes) return json({ error: 'homework-revision-conflict' }, 409);
-  if (nextNote !== null && session.context_id) {
-    await env.DB.prepare('UPDATE contexts SET next_note = ?1, updated_at = ?2 WHERE id = ?3')
-      .bind(nextNote, now, session.context_id)
+  if (nextNote !== null && session.student_id) {
+    await env.DB.prepare('UPDATE students SET next_note = ?1, updated_at = ?2 WHERE id = ?3')
+      .bind(nextNote, now, session.student_id)
       .run();
   }
   return json({ ok: true, sessionId, updatedAt: now, homeworkRevision });
@@ -481,7 +481,7 @@ export async function launchSessionRoute(
     origin: new URL(request.url).origin,
     sessionId: session.id,
     deckId: session.deck_id,
-    contextId: session.context_id,
+    studentId: session.student_id,
     title: session.title,
     version: content.version,
     outline: content.outline,

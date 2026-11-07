@@ -9,8 +9,8 @@ test('tutor publishes shared and individual tasks without exposing other learner
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
-  const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Conversation en français', kind: 'group', experience: 'tutoring' } })).json();
-  const { deck, session } = await (await page.request.post('/api/decks', { headers: CSRF, data: { contextId: context.id, spaceId: context.spaceId, createSession: true,
+  const { student } = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'Conversation en français', kind: 'group', experience: 'tutoring' } })).json();
+  const { deck, session } = await (await page.request.post('/api/decks', { headers: CSRF, data: { studentId: student.id, spaceId: student.spaceId, createSession: true,
     content: { version: 1, meta: { title: 'Le prochain voyage' }, steps: [{ id: 'title', kind: 'title', title: 'Le prochain voyage' }],
       interactions: [{ id: 'practice', type: 'text', prompt: 'Complétez : je ___ à Paris.', correctAnswers: ['vais'], match: { locale: 'fr', accents: 'require' } }],
       homework: { tasks: [
@@ -22,7 +22,7 @@ test('tutor publishes shared and individual tasks without exposing other learner
     },
   } })).json();
   expect((await page.request.post(`/api/sessions/${session.id}/launch`, { headers: CSRF, data: { start: true } })).status()).toBe(201);
-  const mint = async (displayName: string) => (await (await page.request.post(`/api/tutoring/contexts/${context.id}/links`, { headers: CSRF, data: { displayName } })).json()).token as string;
+  const mint = async (displayName: string) => (await (await page.request.post(`/api/tutoring/students/${student.id}/links`, { headers: CSRF, data: { displayName } })).json()).token as string;
   const lea = await mint('Léa'); const noor = await mint('Noor');
   const notesUrl = `/host/#/sessions/${session.id}/record`;
   await page.goto(notesUrl);
@@ -80,13 +80,13 @@ test('tutor publishes shared and individual tasks without exposing other learner
   await expect(writing.getByRole('checkbox', { name: 'Léa', exact: true })).toBeChecked();
   await expect(writing.getByRole('checkbox', { name: 'Noor', exact: true })).not.toBeChecked();
   await writing.getByRole('combobox').click();
-  await page.getByRole('option', { name: 'Everyone in this context', exact: true }).click();
+  await page.getByRole('option', { name: 'Everyone for this student', exact: true }).click();
   await writing.getByLabel('Instructions', { exact: true }).fill('Décrivez votre prochain voyage en train.');
   await page.getByRole('button', { name: 'Update notes', exact: true }).click();
   await expect(page).toHaveURL(/#\/space\//);
   await learner.reload();
   await expect(learner.getByRole('heading', { name: 'Écrire', exact: true })).toBeVisible();
-  const work = (await (await page.request.get(`/api/tutoring/contexts/${context.id}/work`)).json()).work;
+  const work = (await (await page.request.get(`/api/tutoring/students/${student.id}/work`)).json()).work;
   expect(work[0].task.prompt).toBe('Décrivez votre prochain voyage.');
   expect(work[0].body).toBe('Je vais visiter Paris.');
   const source = await (await page.request.get(`/api/decks/${deck.id}`)).text();

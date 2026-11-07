@@ -18,11 +18,11 @@ with a session and a saved record. A second test creates a two-slide deck,
 Surfaces: five workspace pages at 390 × 844, then the Library at 390 and at
 1000 × 800:
 
-- Add student: `/host/#/tutor/contexts/new?experience=tutoring`
+- Add student: `/host/#/tutor/students/new?experience=tutoring`
 - Space settings: `/host/#/space/{spaceId}/edit`
-- Sample lessons: `/host/#/space/{spaceId}/samples?contextId={id}`
+- Sample lessons: `/host/#/space/{spaceId}/samples?studentId={id}`
 - Notes: `/host/#/sessions/{sessionId}/record`
-- Review learner work: `/host/#/tutor/contexts/{id}/work`
+- Review learner work: `/host/#/tutor/students/{id}/work`
 - Library: `/host/#/space/{spaceId}`
 
 Lifecycle: create the student and two decks with records → visit each page at
@@ -37,7 +37,7 @@ Acceptance:
   980 px wide. Widen the window to see all of it." and the notice is in the
   viewport.
 - At 1000 × 800 the student's space opens as the student's view: the URL has
-  `contextId={id}`, the level 1 heading is the student's name, and the notice is
+  `studentId={id}`, the level 1 heading is the student's name, and the notice is
   hidden.
 - The region "Notes" lists two links, in order: "Au café {stamp}" and "Au café
   {stamp} · 2". The second title is told apart by its ordinal.

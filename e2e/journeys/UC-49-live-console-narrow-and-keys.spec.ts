@@ -242,11 +242,11 @@ test('long match pairs and long pie or radial labels stay inside the Stage plate
 test('a long Next session note takes two lines above the console until Show all', async ({ page }, testInfo) => {
   await signIn(page);
   const stamp = Date.now();
-  const contextRes = await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: `Noor ${stamp}`, kind: 'person', context: { language: 'de', level: 'A2' } } });
-  expect(contextRes.status()).toBe(201);
-  const { id: contextId, spaceId } = (await contextRes.json()).context as { id: string; spaceId: string };
+  const studentRes = await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: `Noor ${stamp}`, kind: 'person', student: { language: 'de', level: 'A2' } } });
+  expect(studentRes.status()).toBe(201);
+  const { id: studentId, spaceId } = (await studentRes.json()).student as { id: string; spaceId: string };
   const content = { version: 1, meta: { title: 'Pickup lesson' }, defaults: { identityMode: 'identified' }, steps: [{ id: 'welcome', kind: 'title', title: 'Willkommen' }], interactions: [] };
-  const first = await page.request.post('/api/decks', { headers: CSRF, data: { title: `First ${stamp}`, contextId, spaceId, shape: 'tutoring', createSession: true, content } });
+  const first = await page.request.post('/api/decks', { headers: CSRF, data: { title: `First ${stamp}`, studentId, spaceId, shape: 'tutoring', createSession: true, content } });
   expect(first.status()).toBe(201);
   const firstSession = (await first.json()).session.id as string;
   const launched = await page.request.post(`/api/sessions/${firstSession}/launch`, { headers: CSRF, data: { start: true } });
@@ -257,7 +257,7 @@ test('a long Next session note takes two lines above the console until Show all'
   const record = await page.request.put(`/api/sessions/${firstSession}/record`, { headers: CSRF, data: { outcomes: [], notes: '', homework: [], artifacts: [], nextNote: note } });
   expect(record.status(), await record.text()).toBe(200);
 
-  const second = await page.request.post('/api/decks', { headers: CSRF, data: { title: `Second ${stamp}`, contextId, spaceId, shape: 'tutoring', content } });
+  const second = await page.request.post('/api/decks', { headers: CSRF, data: { title: `Second ${stamp}`, studentId, spaceId, shape: 'tutoring', content } });
   expect(second.status()).toBe(201);
   const { deck } = await second.json();
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -306,8 +306,8 @@ test('the hidden-results counter fits the console mirror and the wall', async ({
 test('when the notes cannot open after a session, the console says so and offers a way back', async ({ page }, testInfo) => {
   const session = await createSession({ version: 1, meta: { title: 'Short lesson' }, steps: [{ id: 'welcome', kind: 'title', title: 'Hello' }], interactions: [] });
   await command(session.sessionCode, session.hostToken, { command: 'session.start' });
-  // The session's context cannot be read, before and after the end.
-  await page.route('**/api/sessions/*/context', (route) => route.fulfill({ status: 500, body: '{}' }));
+  // The session's student cannot be read, before and after the end.
+  await page.route('**/api/sessions/*/student', (route) => route.fulfill({ status: 500, body: '{}' }));
   await page.goto(hostUrl(session));
   await page.getByRole('button', { name: 'End session', exact: true }).first().click();
   await page.getByRole('dialog').getByRole('button', { name: /^End/ }).click();
@@ -475,11 +475,11 @@ test('the console header keeps End session and the Session menu on a phone', asy
 test('Library from the console menu of a tutoring session opens the student place', async ({ page }, testInfo) => {
   await signIn(page);
   const stamp = Date.now();
-  const contextRes = await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: `Lina ${stamp}`, kind: 'person', context: { language: 'de', level: 'A2' } } });
-  expect(contextRes.status()).toBe(201);
-  const { id: contextId, spaceId } = (await contextRes.json()).context as { id: string; spaceId: string };
+  const studentRes = await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: `Lina ${stamp}`, kind: 'person', student: { language: 'de', level: 'A2' } } });
+  expect(studentRes.status()).toBe(201);
+  const { id: studentId, spaceId } = (await studentRes.json()).student as { id: string; spaceId: string };
   const content = { version: 1, meta: { title: 'Place lesson' }, defaults: { identityMode: 'identified' }, steps: [{ id: 'welcome', kind: 'title', title: 'Willkommen' }], interactions: [] };
-  const created = await page.request.post('/api/decks', { headers: CSRF, data: { title: `Place ${stamp}`, contextId, spaceId, shape: 'tutoring', createSession: true, content } });
+  const created = await page.request.post('/api/decks', { headers: CSRF, data: { title: `Place ${stamp}`, studentId, spaceId, shape: 'tutoring', createSession: true, content } });
   expect(created.status()).toBe(201);
   const sessionId = (await created.json()).session.id as string;
   const launched = await page.request.post(`/api/sessions/${sessionId}/launch`, { headers: CSRF, data: { start: true } });
@@ -495,6 +495,6 @@ test('Library from the console menu of a tutoring session opens the student plac
   await page.getByRole('button', { name: 'Session menu', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: 'Copy join link', exact: true })).toHaveCount(0);
   await page.getByRole('menuitem', { name: 'Library', exact: true }).click();
-  await expect.poll(() => page.url()).toContain(`contextId=${contextId}`);
+  await expect.poll(() => page.url()).toContain(`studentId=${studentId}`);
   await page.screenshot({ path: testInfo.outputPath('library-student-place.png') });
 });

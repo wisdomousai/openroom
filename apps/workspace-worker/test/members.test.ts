@@ -55,31 +55,31 @@ async function homeSpace(user: Seeded): Promise<string> {
 }
 
 /**
- * The context a space holds, making it if the space has none.
+ * The student a space holds, making it if the space has none.
  *
- * A space holds one context, so a second create in the same space is a 409 and
- * the answer is the context already there — not a new one.
+ * A space holds one student, so a second create in the same space is a 409 and
+ * the answer is the student already there — not a new one.
  */
-async function contextForSpace(user: Seeded, spaceId: string, displayName: string): Promise<string> {
-  const res = await asUser(user, '/api/tutoring/contexts', {
+async function studentForSpace(user: Seeded, spaceId: string, displayName: string): Promise<string> {
+  const res = await asUser(user, '/api/tutoring/students', {
     method: 'POST',
-    body: JSON.stringify({ displayName, kind: 'class', context: {}, spaceId }),
+    body: JSON.stringify({ displayName, kind: 'class', student: {}, spaceId }),
   });
   if (res.status === 409) {
     const listed = (await (
-      await asUser(user, `/api/tutoring/contexts?spaceId=${encodeURIComponent(spaceId)}`)
-    ).json()) as { contexts: { id: string }[] };
-    return listed.contexts[0]!.id;
+      await asUser(user, `/api/tutoring/students?spaceId=${encodeURIComponent(spaceId)}`)
+    ).json()) as { students: { id: string }[] };
+    return listed.students[0]!.id;
   }
   expect(res.status).toBe(201);
-  return ((await res.json()) as { context: { id: string } }).context.id;
+  return ((await res.json()) as { student: { id: string } }).student.id;
 }
 
 async function createDelivery(user: Seeded, spaceId: string): Promise<{ deckId: string; sessionId: string }> {
-  const contextId = await contextForSpace(user, spaceId, 'Shared class');
+  const studentId = await studentForSpace(user, spaceId, 'Shared class');
   const deckRes = await asUser(user, '/api/decks', {
     method: 'POST',
-    body: JSON.stringify({ title: 'Shared template', spaceId, contextId, createSession: true }),
+    body: JSON.stringify({ title: 'Shared template', spaceId, studentId, createSession: true }),
   });
   expect(deckRes.status).toBe(201);
   const body = (await deckRes.json()) as { deck: { id: string }; session: { id: string } };

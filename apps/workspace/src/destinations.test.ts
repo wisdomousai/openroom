@@ -12,23 +12,23 @@ describe('destinations', () => {
     expect(to.library({ spaceId: 'p1' })).toEqual({
       to: '/space/$spaceId',
       params: { spaceId: 'p1' },
-      search: { folderId: undefined, itemId: undefined, contextId: undefined },
+      search: { folderId: undefined, itemId: undefined, studentId: undefined },
     });
-    expect(to.library({ spaceId: 'p1', folderId: 'f2', itemId: 'd3', contextId: 'c4' })).toEqual({
+    expect(to.library({ spaceId: 'p1', folderId: 'f2', itemId: 'd3', studentId: 'c4' })).toEqual({
       to: '/space/$spaceId',
       params: { spaceId: 'p1' },
-      search: { folderId: 'f2', itemId: 'd3', contextId: 'c4' },
+      search: { folderId: 'f2', itemId: 'd3', studentId: 'c4' },
     });
   });
 
   it('gives a deck one create route and one editor', () => {
     expect(to.deckNew()).toEqual({
       to: '/decks/new',
-      search: { contextId: undefined, spaceId: undefined, folderId: undefined },
+      search: { studentId: undefined, spaceId: undefined, folderId: undefined },
     });
-    expect(to.deckNew({ contextId: 'l1', spaceId: 'p1', folderId: 'f1' })).toEqual({
+    expect(to.deckNew({ studentId: 'l1', spaceId: 'p1', folderId: 'f1' })).toEqual({
       to: '/decks/new',
-      search: { contextId: 'l1', spaceId: 'p1', folderId: 'f1' },
+      search: { studentId: 'l1', spaceId: 'p1', folderId: 'f1' },
     });
     expect(to.deckEditor('d1')).toEqual({ to: '/decks/$deckId/edit', params: { deckId: 'd1' } });
   });
@@ -63,8 +63,8 @@ describe('destinations', () => {
   });
 
   it('gives a space its own edit route, distinct from its members list', () => {
-    expect(to.lessonExamples('sp-1', { folderId: 'folder-1', contextId: 'learner-1' })).toEqual({
-      to: '/space/$spaceId/samples', params: { spaceId: 'sp-1' }, search: { folderId: 'folder-1', contextId: 'learner-1' },
+    expect(to.lessonExamples('sp-1', { folderId: 'folder-1', studentId: 'learner-1' })).toEqual({
+      to: '/space/$spaceId/samples', params: { spaceId: 'sp-1' }, search: { folderId: 'folder-1', studentId: 'learner-1' },
     });
     expect(to.spaceEdit('sp-1')).toEqual({ to: '/space/$spaceId/edit', params: { spaceId: 'sp-1' } });
     expect(to.spaceMembers('sp-1')).toEqual({
@@ -82,19 +82,19 @@ describe('destinations', () => {
   });
 
   it('keeps the student surfaces on their own routes', () => {
-    expect(to.students()).toEqual({ to: '/tutor/contexts' });
-    expect(to.studentNew('sp-1', 'classroom')).toEqual({ to: '/tutor/contexts/new', search: { sourceSpaceId: 'sp-1', experience: 'classroom' } });
+    expect(to.students()).toEqual({ to: '/tutor/students' });
+    expect(to.studentNew('sp-1', 'classroom')).toEqual({ to: '/tutor/students/new', search: { sourceSpaceId: 'sp-1', experience: 'classroom' } });
     expect(to.student('ctx-1')).toEqual({
-      to: '/tutor/contexts/$contextId',
-      params: { contextId: 'ctx-1' },
+      to: '/tutor/students/$studentId',
+      params: { studentId: 'ctx-1' },
     });
     expect(to.studentEdit('ctx-1')).toEqual({
-      to: '/tutor/contexts/$contextId/edit',
-      params: { contextId: 'ctx-1' },
+      to: '/tutor/students/$studentId/edit',
+      params: { studentId: 'ctx-1' },
     });
     expect(to.studentLinkNew('ctx-1')).toEqual({
-      to: '/tutor/contexts/$contextId/links/new',
-      params: { contextId: 'ctx-1' },
+      to: '/tutor/students/$studentId/links/new',
+      params: { studentId: 'ctx-1' },
     });
     expect(to.trash('sp-1')).toEqual({ to: '/tutor/trash', search: { spaceId: 'sp-1' } });
     expect(to.settings('sp-1')).toEqual({ to: '/settings', search: { spaceId: 'sp-1' } });

@@ -7,12 +7,12 @@ import type { MySession } from '../api/tokens';
  */
 export function liveSessionOf(
   sessions: readonly MySession[],
-  deck: { id: string; contextId?: string | null },
+  deck: { id: string; studentId?: string | null },
 ): MySession | null {
-  const contextId = deck.contextId || null;
+  const studentId = deck.studentId || null;
   return sessions.find((session) =>
     session.deckId === deck.id
-    && (session.contextId || null) === contextId
+    && (session.studentId || null) === studentId
     && !session.ended
     && session.recoverable) ?? null;
 }

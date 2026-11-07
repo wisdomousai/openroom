@@ -72,7 +72,7 @@ export function SpaceEditPage({ spaceId }: { spaceId: string }) {
   if (space === null) return <LoadState error={treeQuery.error ?? null} />;
 
   const canEdit = space.role === 'owner' || space.role === 'editor';
-  const student = space.context ?? null;
+  const student = space.student ?? null;
   const experienceUnchanged = experience === space.settings?.experience;
   const languagesUnsaveable = !pair.complete || !pair.changed;
 
@@ -83,7 +83,7 @@ export function SpaceEditPage({ spaceId }: { spaceId: string }) {
         description={student ? 'Space settings' : space.name}
         action={
           <Button asChild variant="outline">
-            <Link {...to.library(student ? { spaceId, contextId: student.id } : { spaceId })}>Library</Link>
+            <Link {...to.library(student ? { spaceId, studentId: student.id } : { spaceId })}>Library</Link>
           </Button>
         }
       />

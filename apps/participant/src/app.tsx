@@ -9,7 +9,7 @@ import {
   forgetSessionInUrl,
   loadSession,
   loadSessionByCode,
-  readContextLink,
+  readStudentLink,
   readGuestLink,
   readQuery,
   rememberSessionInUrl,
@@ -45,7 +45,7 @@ export function App() {
     joiningRef.current = true;
     setJoining(true);
     setError(null);
-    const contextLink = readContextLink();
+    const studentLink = readStudentLink();
     const guestLink = readGuestLink();
     try {
       const normalizedCode = code.trim().toUpperCase();
@@ -68,10 +68,10 @@ export function App() {
        */
       const result = await joinSession(BASE_URL, normalizedCode, {
         ...(recoveryName === undefined ? {} : { recoveryName }),
-        ...(contextLink === null ? {} : { contextLink }),
+        ...(studentLink === null ? {} : { studentLink }),
         ...(guestLink === null ? {} : { guestLink }),
       });
-      if (contextLink !== null) forgetLinkInUrl();
+      if (studentLink !== null) forgetLinkInUrl();
       const next: StoredSession = {
         sessionCode: result.sessionCode,
         code: normalizedCode,
@@ -89,7 +89,7 @@ export function App() {
       // the retry below joins once the session is live. The gate itself is
       // unchanged — the session keeps refusing until then. A dropped
       // connection or a server fault while waiting keeps waiting too.
-      const byLink = contextLink !== null || guestLink !== null;
+      const byLink = studentLink !== null || guestLink !== null;
       if (byLink && (isNotStarted(err) || (waitingRef.current && isTransient(err)))) {
         setWaitingForStart(true);
       } else {
@@ -118,7 +118,7 @@ export function App() {
     }
     // Arriving on an access link: the learner has nothing to choose here — the
     // link already says who they are — so the join screen is skipped entirely.
-    if ((readContextLink() !== null || readGuestLink() !== null) && !autoJoined.current) {
+    if ((readStudentLink() !== null || readGuestLink() !== null) && !autoJoined.current) {
       autoJoined.current = true;
       void doJoin(code);
     }

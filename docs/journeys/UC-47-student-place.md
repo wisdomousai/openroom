@@ -16,7 +16,7 @@ with no decks, and a student "Inès {stamp}" with goals and notes, eight decks
 "Leçon 1" to "Leçon 8", and a Next session note of about 1,500 characters
 saved to the first session's record.
 
-Surfaces: Library at `/host/#/space/{spaceId}?contextId={id}`: Live now, folder
+Surfaces: Library at `/host/#/space/{spaceId}?studentId={id}`: Live now, folder
 tree rail, Library list, row menus, deck toolbar, student header, Edit student,
 Trash dialogs, the purge confirmation page.
 
@@ -31,7 +31,7 @@ Test 1, addresses, menus, rename, folder trash and purge:
 - `/host/#/nonsense` leaves the nonsense address and shows the Library list or
   the "Sample deck" heading, never "Page not found".
 - `/host/#/decks/{id}` redirects to `#/decks/{id}/edit`.
-- An unknown `contextId` shows the heading "This student is not available" and
+- An unknown `studentId` shows the heading "This student is not available" and
   no "Retry" button.
 - Live now shows the button "Rejoin {student}, Au marché".
 - Right-click on the deck row opens a menu with Open, Start session, Duplicate,
@@ -72,7 +72,7 @@ Test 2, laptop sizes:
   match" and not "No decks in this folder". "Clear search" empties the box,
   focuses it and restores 8 rows.
 - Searching the top box "Search decks" for "Leçon 3" and choosing the result
-  "Leçon 3 … {student}" opens the student's place (URL has `contextId`) and
+  "Leçon 3 … {student}" opens the student's place (URL has `studentId`) and
   clears the top search.
 - "Edit" opens the heading "Edit {student}". An empty "Name" with Enter shows
   the alert "Enter a name.", focuses the field and sets `aria-invalid` true.

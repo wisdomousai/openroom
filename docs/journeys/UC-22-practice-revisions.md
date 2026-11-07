@@ -4,7 +4,7 @@
 
 A learner answers French and German exercises on a phone while the tutor revises
 homework. Failed network responses and changes must not reinterpret or duplicate work.
-The fixture starts a deck with a learner context and publishes a keyed text exercise
+The fixture starts a deck with a student and publishes a keyed text exercise
 (`practice`). Later tasks exercise withdrawal and continuation (`removed`, `remaining`).
 
 ## Surfaces and lifecycle
@@ -36,8 +36,8 @@ The phone revision screenshot was inspected without clipping or horizontal overf
 Green in Chromium on 2026-09-18:
 `e2e/journeys/UC-22-practice-revisions.spec.ts` (3.4 seconds).
 UC-16, UC-19 and both UC-20 journeys also passed in the same run (five tests total).
-Worker context-link suite: 36 passed, including deliberate write interleavings and purge.
-The broader Worker context-link/tutoring/workspace run passed 64 before those final
+Worker student-link suite: 36 passed, including deliberate write interleavings and purge.
+The broader Worker student-link/tutoring/workspace run passed 64 before those final
 three tests were added. Host suite: 345 passed. Focused schema/package tests: 22 passed.
 Host/Worker typechecks, schema/host build and Worker asset collection passed.
 This is local Chromium evidence; no deployment or other-browser claim is implied.

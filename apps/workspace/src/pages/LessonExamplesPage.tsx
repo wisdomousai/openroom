@@ -10,13 +10,13 @@ import { invalidateManagementData } from '../query-client';
 import { SlideThumbnail } from '@openroom/editor';
 import { LoadState, PageHeading, messageOf } from './tutor/shared';
 
-export default function LessonExamplesPage({ spaceId, folderId, contextId }: { spaceId: string; folderId: string | null; contextId: string | null }) {
+export default function LessonExamplesPage({ spaceId, folderId, studentId }: { spaceId: string; folderId: string | null; studentId: string | null }) {
   const navigate = useNavigate();
   const [language, setLanguage] = useState('all');
   const [level, setLevel] = useState('all');
   const tree = useQuery({ queryKey: ['spaces', spaceId, 'tree', 'all'], queryFn: () => getSpaceTree(spaceId) });
   const open = useMutation({
-    mutationFn: (id: string) => createDeck({ spaceId, folderId, ...(contextId ? { contextId } : {}), content: lessonExample(id) }),
+    mutationFn: (id: string) => createDeck({ spaceId, folderId, ...(studentId ? { studentId } : {}), content: lessonExample(id) }),
     onSuccess: async ({ deck }) => { await invalidateManagementData(); await navigate(to.deckEditor(deck.id)); },
   });
   if (!tree.data) return <LoadState error={tree.error ?? null} />;
@@ -26,7 +26,7 @@ export default function LessonExamplesPage({ spaceId, folderId, contextId }: { s
   const path = [space.name, ...getBreadcrumbTrail(folders, folderId).map((folder) => folder.name)].join(' › ');
   const examples = LESSON_EXAMPLES.filter(({ outline }) => (language === 'all' || outline.meta.locale === language) && (level === 'all' || outline.meta.level === level));
   return <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-    <PageHeading title="Sample lessons" description="Complete French and German lessons to adapt for your learners." action={<Button asChild variant="outline"><Link {...to.library({ spaceId, folderId, contextId })}>Back to Library</Link></Button>} />
+    <PageHeading title="Sample lessons" description="Complete French and German lessons to adapt for your learners." action={<Button asChild variant="outline"><Link {...to.library({ spaceId, folderId, studentId })}>Back to Library</Link></Button>} />
     <p className="text-secondary text-muted-foreground">Each lesson includes teaching notes, questions, speaking activities and homework. Opening a sample creates your own editable deck.</p>
     <p className="text-secondary">Saving in: <span className="font-semibold">{path}</span></p>
     {!validFolder ? <p role="alert" className="text-secondary text-destructive">This folder is no longer available. Return to the Library and choose a folder.</p> : null}

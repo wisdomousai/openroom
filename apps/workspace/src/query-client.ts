@@ -18,7 +18,7 @@ export const queryClient = new QueryClient({
 });
 
 const MANAGEMENT_QUERY_ROOTS = new Set([
-  'contexts',
+  'students',
   'dashboard',
   'decks',
   'spaces',

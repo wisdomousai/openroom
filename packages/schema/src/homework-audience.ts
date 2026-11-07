@@ -1,6 +1,6 @@
 import { HOMEWORK_TASK_MAX, type PublishedHomeworkTask } from './homework.js';
 
-/** An omitted task is shared with the context. An explicit list names its recipients. */
+/** An omitted task is shared with the student. An explicit list names its recipients. */
 export type HomeworkAudience = Record<string, string[]>;
 
 export function parseHomeworkAudience(value: unknown, taskIds: readonly string[], learnerIds?: readonly string[]): HomeworkAudience | null {

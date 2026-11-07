@@ -35,7 +35,7 @@ export function DeckEditorTopBar({
   title: string;
   onRename?: (title: string) => void;
   fileStatus?: ReactNode;
-  /** The student the deck is linked to. Read-only here; absent without a context. */
+  /** The student the deck is linked to. Read-only here; absent without a student. */
   studentName?: string | null;
   /** Null while the deck sits at the root of its space. */
   folderName: string | null;

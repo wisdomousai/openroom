@@ -7,7 +7,7 @@ import { isWorkspaceExperience, parseOutline, parseSpaceSettings, readSpaceSetti
 import { sha256Hex } from './api-tokens.js';
 import { json, requireSession, type ControlEnv, type SessionUser } from './auth.js';
 import { requireControlUser } from './control-auth.js';
-import { DELETION_INTENT_TTL_MS, linkContext } from './control-utils.js';
+import { DELETION_INTENT_TTL_MS, linkStudent } from './control-utils.js';
 import { folderAccess, spaceRole, roleAtLeast } from './members.js';
 import { readSpaceItemTags } from './tags.js';
 
@@ -144,23 +144,23 @@ export async function createSpaceRoute(request: Request, env: ControlEnv): Promi
   const spaceId = randomId();
 
   /*
-   * `contextId` reuses an existing context in the new space — the other half of
-   * "a space holds one context". The same student taught a second language is
-   * one context in two spaces, because the language pair is a space setting;
+   * `studentId` reuses an existing student in the new space — the other half of
+   * "a space holds one student". The same student taught a second language is
+   * one student in two spaces, because the language pair is a space setting;
    * duplicating the person to carry a second pair would make two people out of
    * one, and their goals and notes would drift apart.
    *
-   * Membership on a space the context is already in is the gate: reuse must not
-   * be a way to reach a context you could not otherwise see.
+   * Membership on a space the student is already in is the gate: reuse must not
+   * be a way to reach a student you could not otherwise see.
    */
   let reuse: string | null = null;
-  if (typeof body.contextId === 'string' && body.contextId !== '') {
+  if (typeof body.studentId === 'string' && body.studentId !== '') {
     const row = await env.DB.prepare(
-      `SELECT c.id AS id FROM contexts c
+      `SELECT c.id AS id FROM students c
         JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?2
        WHERE c.id = ?1 AND c.deleted_at IS NULL`,
     )
-      .bind(body.contextId, guard.user.id)
+      .bind(body.studentId, guard.user.id)
       .first<{ id: string }>();
     if (row === null) return json({ ok: false, error: 'not-found' }, 404);
     reuse = row.id;
@@ -176,8 +176,8 @@ export async function createSpaceRoute(request: Request, env: ControlEnv): Promi
        VALUES (?1, ?2, 'owner', NULL, ?3)`,
     ).bind(spaceId, guard.user.id, now),
   ]);
-  if (reuse !== null) await linkContext(env, spaceId, reuse, now);
-  return json({ id: spaceId, name, settings, ...(reuse === null ? {} : { contextId: reuse }) }, 201);
+  if (reuse !== null) await linkStudent(env, spaceId, reuse, now);
+  return json({ id: spaceId, name, settings, ...(reuse === null ? {} : { studentId: reuse }) }, 201);
 }
 
 /**
@@ -296,7 +296,7 @@ export async function getSpaceRoute(
   // Folder-scoped decks (content) and sessions (when/who/launch).
   let deckQuery = `
     SELECT d.id AS id, d.title AS title, d.shape AS shape, d.current_version AS current_version,
-           ${SHOWN_FOLDER('d')} AS folder_id, d.context_id AS context_id, d.updated_at AS updated_at,
+           ${SHOWN_FOLDER('d')} AS folder_id, d.student_id AS student_id, d.updated_at AS updated_at,
            v.content_json AS content_json, dd.content_yaml AS draft_yaml
       FROM decks d
       LEFT JOIN deck_versions v ON v.deck_id = d.id AND v.version = d.current_version
@@ -318,14 +318,14 @@ export async function getSpaceRoute(
       shape: string;
       current_version: number;
       folder_id: string | null;
-      context_id: string | null;
+      student_id: string | null;
       updated_at: number;
       content_json: string | null;
       draft_yaml: string | null;
     }>();
 
   let sessionQuery = `
-    SELECT id, title, shape, status, deck_id, deck_version, ${SHOWN_FOLDER('sessions')} AS folder_id, context_id,
+    SELECT id, title, shape, status, deck_id, deck_version, ${SHOWN_FOLDER('sessions')} AS folder_id, student_id,
            updated_at
       FROM sessions
      WHERE space_id = ?1 AND deleted_at IS NULL`;
@@ -347,7 +347,7 @@ export async function getSpaceRoute(
       deck_id: string;
       deck_version: number;
       folder_id: string | null;
-      context_id: string | null;
+      student_id: string | null;
       updated_at: number;
     }>();
 
@@ -359,7 +359,7 @@ export async function getSpaceRoute(
    * has no use for it.
    */
   let recordQuery = `
-    SELECT rr.id AS id, rr.session_id AS session_id, rr.context_id AS context_id,
+    SELECT rr.id AS id, rr.session_id AS session_id, rr.student_id AS student_id,
            rr.deck_version AS deck_version, rr.created_at AS created_at,
            rr.updated_at AS updated_at, r.title AS session_title, ${SHOWN_FOLDER('r')} AS folder_id
       FROM session_records rr
@@ -378,7 +378,7 @@ export async function getSpaceRoute(
     .all<{
       id: string;
       session_id: string;
-      context_id: string | null;
+      student_id: string | null;
       deck_version: number;
       created_at: number;
       updated_at: number;
@@ -407,22 +407,22 @@ export async function getSpaceRoute(
   const [{ settings, experienceSaved }, owner] = await Promise.all([
     storedSpaceSettings(env, spaceId),
     env.DB.prepare(
-      `SELECT c.id AS id, c.display_name AS display_name FROM space_contexts sc
-         JOIN contexts c ON c.id = sc.context_id WHERE sc.space_id = ?1`,
+      `SELECT c.id AS id, c.display_name AS display_name FROM space_students sc
+         JOIN students c ON c.id = sc.student_id WHERE sc.space_id = ?1`,
     ).bind(spaceId).first<{ id: string; display_name: string }>(),
   ]);
 
   return json({
     space: {
       id: space.id, name: space.name, role: access.role, settings, experienceSaved,
-      context: owner === null ? null : { id: owner.id, displayName: owner.display_name },
+      student: owner === null ? null : { id: owner.id, displayName: owner.display_name },
     },
     itemTags,
     records: (records ?? []).map((r) => ({
       id: r.id,
       sessionId: r.session_id,
       title: r.session_title,
-      contextId: r.context_id,
+      studentId: r.student_id,
       deckVersion: r.deck_version,
       folderId: r.folder_id,
       createdAt: r.created_at,
@@ -441,7 +441,7 @@ export async function getSpaceRoute(
       shape: d.shape,
       currentVersion: d.current_version,
       folderId: d.folder_id,
-      contextId: d.context_id,
+      studentId: d.student_id,
       updatedAt: d.updated_at,
       contents: summarizeDeckContents(d.content_json, d.draft_yaml),
     })),
@@ -453,7 +453,7 @@ export async function getSpaceRoute(
       deckId: r.deck_id,
       deckVersion: r.deck_version,
       folderId: r.folder_id,
-      contextId: r.context_id,
+      studentId: r.student_id,
       updatedAt: r.updated_at,
     })),
     liveSessions: (liveSessions ?? []).map((r) => ({

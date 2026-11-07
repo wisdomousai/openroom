@@ -45,9 +45,9 @@ describe('continuity lock', () => {
     const locked = render(<LoadState error="continuity-required" />);
     expect(locked).toContain('data-or-lock="continuity"');
     expect(locked).not.toContain('role="alert"');
-    const failed = render(<LoadState error="Could not load the context" />);
+    const failed = render(<LoadState error="Could not load the student" />);
     expect(failed).not.toContain('data-or-lock');
-    expect(failed).toContain('Could not load the context');
+    expect(failed).toContain('Could not load the student');
   });
 
   it('shows a missing item as not available, with the Library and no Retry', () => {

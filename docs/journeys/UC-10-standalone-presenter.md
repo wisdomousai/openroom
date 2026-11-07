@@ -22,7 +22,7 @@ mirror → Edit deck → File tab, Save a copy → Back to the library.
 Acceptance:
 
 - Opening `#/decks/new` redirects to `#/decks/{id}/edit`. The "Slides" list
-  has one button. The deck's `contextId` is null.
+  has one button. The deck's `studentId` is null.
 - After "Rename deck" and Enter on "Deck title", the draft status is `saved`.
 - The draft write returns 200.
 - Present opens the dialog "Presenter". Two ArrowRight presses show "reveal 2/4".

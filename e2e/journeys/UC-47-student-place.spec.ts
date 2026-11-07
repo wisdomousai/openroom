@@ -38,18 +38,18 @@ async function json<T>(response: Promise<{ status(): number; json(): Promise<unk
 test('a student place: addresses, menus, rename, folder trash and purge', async ({ page }) => {
   const api = await signIn(page);
   const stamp = Date.now();
-  const student = `Mara ${stamp}`;
-  const { context } = await json<{ context: { id: string; spaceId: string } }>(
-    api.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: student, kind: 'person', experience: 'tutoring' } }), 201);
-  const { id: contextId, spaceId } = context;
+  const studentName = `Mara ${stamp}`;
+  const { student } = await json<{ student: { id: string; spaceId: string } }>(
+    api.post('/api/tutoring/students', { headers: CSRF, data: { displayName: studentName, kind: 'person', experience: 'tutoring' } }), 201);
+  const { id: studentId, spaceId } = student;
   const folder = await json<{ id: string }>(api.post(`/api/my/spaces/${spaceId}/folders`, { headers: CSRF, data: { name: 'Verbs' } }), 201);
   await json(api.post(`/api/my/spaces/${spaceId}/folders`, { headers: CSRF, data: { name: 'New folder' } }), 201);
   const filed = await json<{ deck: { id: string } }>(api.post('/api/decks', { headers: CSRF, data: {
-    spaceId, contextId, folderId: folder.id,
+    spaceId, studentId, folderId: folder.id,
     content: { version: 1, meta: { title: 'Le passé composé' }, steps: [{ id: 'one', kind: 'title', title: 'Le passé composé' }], interactions: [] },
   } }), 201);
   const loose = await json<{ deck: { id: string }; session: { id: string } }>(api.post('/api/decks', { headers: CSRF, data: {
-    spaceId, contextId, createSession: true,
+    spaceId, studentId, createSession: true,
     content: { version: 1, meta: { title: 'Au marché' }, steps: [{ id: 'one', kind: 'title', title: 'Au marché' }], interactions: [] },
   } }), 201);
   await json(api.post(`/api/sessions/${loose.session.id}/launch`, { headers: CSRF, data: { start: true } }), 201);
@@ -63,13 +63,13 @@ test('a student place: addresses, menus, rename, folder trash and purge', async 
   await expect(page).toHaveURL(new RegExp(`#/decks/${filed.deck.id}/edit`));
 
   // A student that does not exist says so, with a way back.
-  await page.goto(`/host/#/space/${spaceId}?contextId=ctx_doesnotexist`);
+  await page.goto(`/host/#/space/${spaceId}?studentId=ctx_doesnotexist`);
   await expect(page.getByRole('heading', { name: 'This student is not available' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0);
 
-  await page.goto(`/host/#/space/${spaceId}?contextId=${contextId}`);
+  await page.goto(`/host/#/space/${spaceId}?studentId=${studentId}`);
   const live = page.getByRole('region', { name: 'Live now' });
-  await expect(live.getByRole('button', { name: `Rejoin ${student}, Au marché` })).toBeVisible();
+  await expect(live.getByRole('button', { name: `Rejoin ${studentName}, Au marché` })).toBeVisible();
 
   const library = page.getByRole('listbox', { name: 'Library' });
   const verbs = library.getByRole('option', { name: /^Verbs/ });
@@ -151,22 +151,22 @@ test('a student place at laptop sizes: open links, whole group name, page-length
 
   // A group keeps its whole name in the panel heading, not its first word.
   const groupName = `Noor and Léa ${stamp}`;
-  const { context: group } = await json<{ context: { id: string; spaceId: string } }>(
-    api.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: groupName, kind: 'group', experience: 'tutoring' } }), 201);
-  await page.goto(`/host/#/space/${group.spaceId}?contextId=${group.id}`);
+  const { student: group } = await json<{ student: { id: string; spaceId: string } }>(
+    api.post('/api/tutoring/students', { headers: CSRF, data: { displayName: groupName, kind: 'group', experience: 'tutoring' } }), 201);
+  await page.goto(`/host/#/space/${group.spaceId}?studentId=${group.id}`);
   await expect(page.getByRole('heading', { level: 2, name: groupName, exact: true })).toBeVisible();
   // An empty place shows the sample card as its one empty state.
   await expect(page.getByRole('heading', { name: 'Sample deck', exact: true })).toBeVisible();
   await expect(page.getByText('No decks in this folder')).toHaveCount(0);
 
-  const student = `Inès ${stamp}`;
-  const { context } = await json<{ context: { id: string; spaceId: string } }>(
-    api.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: student, kind: 'person', experience: 'tutoring', context: { goals: 'Order at a café', notes: 'Prefers speaking. Slow on the subjunctive.' } } }), 201);
-  const { id: contextId, spaceId } = context;
+  const studentName = `Inès ${stamp}`;
+  const { student } = await json<{ student: { id: string; spaceId: string } }>(
+    api.post('/api/tutoring/students', { headers: CSRF, data: { displayName: studentName, kind: 'person', experience: 'tutoring', student: { goals: 'Order at a café', notes: 'Prefers speaking. Slow on the subjunctive.' } } }), 201);
+  const { id: studentId, spaceId } = student;
   let sessionId = '';
   for (let index = 1; index <= 8; index++) {
     const created = await json<{ session?: { id: string } }>(api.post('/api/decks', { headers: CSRF, data: {
-      spaceId, contextId, createSession: index === 1,
+      spaceId, studentId, createSession: index === 1,
       content: { version: 1, meta: { title: `Leçon ${index}` }, steps: [{ id: 'one', kind: 'title', title: `Leçon ${index}` }], interactions: [] },
     } }), 201);
     if (created.session) sessionId = created.session.id;
@@ -174,8 +174,8 @@ test('a student place at laptop sizes: open links, whole group name, page-length
   const longNote = `Start with the café role-play. ${'Then review the subjunctive with the drills from last week and ask for three examples of her own. '.repeat(14)}`;
   await json(api.put(`/api/sessions/${sessionId}/record`, { headers: CSRF, data: { outcomes: [], notes: '', homework: [], artifacts: [], nextNote: longNote } }), 200);
 
-  await page.goto(`/host/#/space/${spaceId}?contextId=${contextId}`);
-  await expect(page.getByRole('heading', { name: student, exact: true, level: 1 })).toBeVisible();
+  await page.goto(`/host/#/space/${spaceId}?studentId=${studentId}`);
+  await expect(page.getByRole('heading', { name: studentName, exact: true, level: 1 })).toBeVisible();
 
   // The access links are on the page, under one name, without opening anything.
   await expect(page.getByRole('heading', { name: 'Access links', exact: true })).toBeVisible();
@@ -201,7 +201,7 @@ test('a student place at laptop sizes: open links, whole group name, page-length
 
   // At 1024 the header's buttons wrap instead of covering the name.
   await page.setViewportSize({ width: 1024, height: 768 });
-  const title = await page.getByRole('heading', { name: student, exact: true, level: 1 }).boundingBox();
+  const title = await page.getByRole('heading', { name: studentName, exact: true, level: 1 }).boundingBox();
   const share = await page.getByRole('main').getByRole('link', { name: 'Share', exact: true }).first().boundingBox();
   expect(title && share).toBeTruthy();
   const overlaps = title!.x < share!.x + share!.width && share!.x < title!.x + title!.width
@@ -217,7 +217,7 @@ test('a student place at laptop sizes: open links, whole group name, page-length
   expect(Math.abs(toolbarNewDeck!.y - samples!.y)).toBeLessThan(2);
 
   // A search with no match says so and clears; it is not an empty folder.
-  const spaceSearch = page.getByRole('searchbox', { name: `Search decks for ${student}`, exact: true });
+  const spaceSearch = page.getByRole('searchbox', { name: `Search decks for ${studentName}`, exact: true });
   await spaceSearch.fill('zzz-no-such-deck');
   await expect(page.getByText('No decks match', { exact: true })).toBeVisible();
   await expect(page.getByText('No decks in this folder')).toHaveCount(0);
@@ -232,44 +232,44 @@ test('a student place at laptop sizes: open links, whole group name, page-length
   await page.reload();
   const topSearch = page.getByRole('textbox', { name: 'Search decks', exact: true });
   await topSearch.fill('Leçon 3');
-  await page.getByLabel('Search results').getByRole('link', { name: new RegExp(`Leçon 3.*${student}`) }).click();
-  await expect(page.getByRole('heading', { name: student, exact: true, level: 1 })).toBeVisible();
-  await expect(page).toHaveURL(new RegExp(`contextId=${contextId}`));
+  await page.getByLabel('Search results').getByRole('link', { name: new RegExp(`Leçon 3.*${studentName}`) }).click();
+  await expect(page.getByRole('heading', { name: studentName, exact: true, level: 1 })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`studentId=${studentId}`));
   await expect(topSearch).toHaveValue('');
-  await page.goto(`/host/#/space/${spaceId}?contextId=${contextId}`);
+  await page.goto(`/host/#/space/${spaceId}?studentId=${studentId}`);
 
   // Edit student is a real form: Enter submits, an empty name is reported on the field.
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.getByRole('heading', { name: `Edit ${student}`, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: `Edit ${studentName}`, exact: true })).toBeVisible();
   const name = page.getByLabel('Name', { exact: true });
   await name.fill('');
   await name.press('Enter');
   await expect(page.getByRole('alert')).toHaveText('Enter a name.');
   await expect(name).toBeFocused();
   await expect(name).toHaveAttribute('aria-invalid', 'true');
-  await name.fill(student);
+  await name.fill(studentName);
 
   // Move to trash names what goes with the student.
   await page.getByRole('button', { name: 'Move to trash', exact: true }).click();
-  const dialog = page.getByRole('alertdialog', { name: `Move ${student} to trash` });
+  const dialog = page.getByRole('alertdialog', { name: `Move ${studentName} to trash` });
   await expect(dialog).toContainText('decks, access links and learner work');
   await dialog.getByRole('button', { name: 'Move to trash', exact: true }).click();
 
   // The place says the student is in Trash, offers Restore, and nothing that would fail.
-  await expect(page.getByText(`${student} is in Trash.`)).toBeVisible();
+  await expect(page.getByText(`${studentName} is in Trash.`)).toBeVisible();
   await expect(main.getByRole('link', { name: 'New deck', exact: true })).toHaveCount(0);
   // The sidebar's New deck does not file into the trashed student.
   const sidebarNewDeck = page.getByRole('link', { name: 'New deck', exact: true });
   await expect(sidebarNewDeck).toHaveCount(1);
-  expect(await sidebarNewDeck.getAttribute('href')).not.toContain(contextId);
+  expect(await sidebarNewDeck.getAttribute('href')).not.toContain(studentId);
   await expect(page.getByRole('heading', { name: 'Access links', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
   // The nav lists neither the student nor their space.
   const nav = page.getByRole('navigation', { name: 'Workspace' });
-  await expect(nav.getByRole('link', { name: new RegExp(student) })).toHaveCount(0);
+  await expect(nav.getByRole('link', { name: new RegExp(studentName) })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Restore', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Access links', exact: true })).toBeVisible();
-  await expect(page.getByText(`${student} is in Trash.`)).toHaveCount(0);
-  await expect(nav.getByRole('link', { name: new RegExp(student) })).toHaveCount(1);
+  await expect(page.getByText(`${studentName} is in Trash.`)).toHaveCount(0);
+  await expect(nav.getByRole('link', { name: new RegExp(studentName) })).toHaveCount(1);
 });

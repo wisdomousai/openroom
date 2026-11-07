@@ -13,7 +13,7 @@ const BASE = (process.env.OPENROOM_URL ?? 'http://127.0.0.1:8787').replace(/\/$/
 
 const CSRF = { 'x-openroom-csrf': '1', 'content-type': 'application/json' };
 
-/** Sign in through the demo account and keep the cookie on the page context. */
+/** Sign in through the demo account and keep the cookie on the page student. */
 async function signIn(page: Page): Promise<APIRequestContext> {
   const api = page.request;
   const res = await api.post(`${BASE}/api/auth/demo/login`, {

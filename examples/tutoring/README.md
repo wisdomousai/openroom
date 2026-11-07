@@ -13,7 +13,7 @@ to the learner in front of them.
 
 In a Tutoring space, open **Sample lessons** from the current folder. Filter by
 language and level, then **Open lesson** to create an editable copy there. An
-explicitly selected student/context is inherited; opening a sample never selects a
+explicitly selected student is inherited; opening a sample never selects a
 student for you or changes the space's language settings. The YAML files are also
 available to the teacher's own agent and CLI.
 

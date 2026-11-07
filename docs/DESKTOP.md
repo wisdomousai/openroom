@@ -58,7 +58,7 @@ Starting on the relay: the renderer hands the file's outline to the main process
 
 ## Link and sync
 
-The first **Save to workspace…** action requires a context, space, and optional folder. It creates the deck through the normal control-plane API while binding the existing `fileId`.
+The first **Save to workspace…** action requires a student, space, and optional folder. It creates the deck through the normal control-plane API while binding the existing `fileId`.
 
 A linked file checks the deck on focus and every 30 seconds with `If-None-Match`. No sync Durable Object exists. D1 stores immutable deck versions and the link/location metadata; `SessionDO` remains only for a live session.
 

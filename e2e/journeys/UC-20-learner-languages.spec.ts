@@ -11,9 +11,9 @@ async function chooseLanguage(page: Page, name: string) {
 
 test('French and German controls preserve writing, practice and audio while lesson content stays authored', async ({ page, browser }, testInfo) => {
   await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
-  const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Français A2', kind: 'group', experience: 'tutoring' } })).json();
+  const { student } = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'Français A2', kind: 'group', experience: 'tutoring' } })).json();
   const content = { version: 1, meta: { title: 'Le prochain voyage' }, steps: [{ id: 'title', kind: 'title', title: 'Le prochain voyage' }], interactions: [] };
-  const { deck, session } = await (await page.request.post('/api/decks', { headers: CSRF, data: { contextId: context.id, spaceId: context.spaceId, createSession: true, content } })).json();
+  const { deck, session } = await (await page.request.post('/api/decks', { headers: CSRF, data: { studentId: student.id, spaceId: student.spaceId, createSession: true, content } })).json();
   expect((await page.request.post(`/api/sessions/${session.id}/launch`, { headers: CSRF, data: { start: true } })).status()).toBe(201);
   const homework = [
     { id: 'writing', kind: 'writing', prompt: 'Décrivez votre prochain voyage.' },
@@ -21,7 +21,7 @@ test('French and German controls preserve writing, practice and audio while less
     { id: 'practice', kind: 'quiz', interaction: { id: 'gap', type: 'fill-the-gaps', prompt: 'Je {{aller}} à Paris.', gaps: [{ id: 'aller', answers: ['vais'] }] } },
   ];
   expect((await page.request.put(`/api/sessions/${session.id}/record`, { headers: CSRF, data: { homework } })).status()).toBe(200);
-  const { token } = await (await page.request.post(`/api/tutoring/contexts/${context.id}/links`, { headers: CSRF, data: { displayName: 'Léa' } })).json();
+  const { token } = await (await page.request.post(`/api/tutoring/students/${student.id}/links`, { headers: CSRF, data: { displayName: 'Léa' } })).json();
   const learner = await browser.newPage({ viewport: { width: 390, height: 844 }, locale: 'fr-CH' });
   await learner.addInitScript(() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Denied', 'NotAllowedError'); }; });
   await learner.goto(`/host/#/learn?token=${token}`);
@@ -62,9 +62,9 @@ test('French and German controls preserve writing, practice and audio while less
   await expect(learner.getByLabel('Deine Antwort anhören', { exact: true })).toHaveJSProperty('duration', 1);
   await learner.getByRole('button', { name: 'Antwort senden', exact: true }).click();
   await expect(learner.getByText('Antwort gesendet', { exact: true })).toBeVisible();
-  const { work } = await (await page.request.get(`/api/tutoring/contexts/${context.id}/work`)).json();
+  const { work } = await (await page.request.get(`/api/tutoring/students/${student.id}/work`)).json();
   const response = work.find((row: { task: { kind: string } }) => row.task.kind === 'writing');
-  expect((await page.request.put(`/api/tutoring/contexts/${context.id}/work/${response.id}/feedback`, { headers: CSRF, data: {
+  expect((await page.request.put(`/api/tutoring/students/${student.id}/work/${response.id}/feedback`, { headers: CSRF, data: {
     version: 0, action: 'publish', feedback: { message: 'Votre phrase est claire.', corrections: [] },
   } })).status()).toBe(200);
   await learner.getByRole('tab', { name: 'Feedback', exact: true }).click();

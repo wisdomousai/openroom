@@ -47,7 +47,7 @@ export async function startPresentationRoute(request: Request, env: ControlEnv, 
     }
     const anchor = decks.get(sources[0]!.deckId)!;
     // One session cannot represent several students or silently adopt the first one.
-    if ([...decks.values()].some((deck) => deck.context_id !== anchor.context_id)) return json({ error: 'presentation-context-mismatch' }, 422);
+    if ([...decks.values()].some((deck) => deck.student_id !== anchor.student_id)) return json({ error: 'presentation-student-mismatch' }, 422);
     const access = await spaceRole(env, guard.user, anchor.space_id);
     if (!access) return json({ error: 'deck-not-found' }, 404);
     if (access.space.owner_user_id !== guard.user.id && !(await readEntitlements(env, access.space.owner_user_id)).team) return json({ error: 'team-required' }, 403);
@@ -60,9 +60,9 @@ export async function startPresentationRoute(request: Request, env: ControlEnv, 
     const metadata = JSON.stringify({ presentation: { id: body.presentationId, activities: composed.activities } });
     const now = Date.now();
     await env.DB.prepare(`INSERT OR IGNORE INTO sessions
-      (id,space_id,folder_id,deck_id,deck_version,context_id,created_by,title,shape,status,metadata_json,source_outline_json,created_at,updated_at)
+      (id,space_id,folder_id,deck_id,deck_version,student_id,created_by,title,shape,status,metadata_json,source_outline_json,created_at,updated_at)
       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,'draft',?10,?11,?12,?12)`)
-      .bind(body.requestId, anchor.space_id, anchor.folder_id, anchor.id, sources[0]!.deckVersion, anchor.context_id, guard.user.id, composed.outline.meta.title, anchor.shape, metadata, source, now).run();
+      .bind(body.requestId, anchor.space_id, anchor.folder_id, anchor.id, sources[0]!.deckVersion, anchor.student_id, guard.user.id, composed.outline.meta.title, anchor.shape, metadata, source, now).run();
     session = await sessionAccess(env, guard.user.id, body.requestId);
   }
   if (!session || session.deleted_at !== null) return json({ error: 'session-not-found' }, 404);
@@ -71,7 +71,7 @@ export async function startPresentationRoute(request: Request, env: ControlEnv, 
   const outline = JSON.parse(session.source_outline_json!) as Outline;
   const selected = presentation.activities.find((activity) => activity.slideId === body.slideId) ?? presentation.activities[0]!;
   const step = outline.steps.find((item) => item.id === selected.sessionStepId)!;
-  const response = await launch({ sessionId: session.id, deckId: session.deck_id, contextId: session.context_id, title: session.title,
+  const response = await launch({ sessionId: session.id, deckId: session.deck_id, studentId: session.student_id, title: session.title,
     version: session.deck_version, outline, start: true,
     cursor: { stepId: step.id, shown: resolveRevealOrder(step, outline.interactions).length },
     ...(guard.connectionId ? { connectionId: guard.connectionId } : {}),

@@ -26,12 +26,12 @@ import { BillingPage } from './pages/BillingPage';
 import { ApiTokenNewPage, SettingsPage } from './pages/SettingsPage';
 import { SignInPage } from './pages/SignInPage';
 import {
-  ContextDetailPage,
-  ContextEditPage,
-  ContextNewPage,
-  ContextsPage,
-} from './pages/tutor/Contexts';
-import { ContextLinkNewPage } from './pages/tutor/ContextLinks';
+  StudentDetailPage,
+  StudentEditPage,
+  StudentNewPage,
+  StudentsPage,
+} from './pages/tutor/Students';
+import { StudentLinkNewPage } from './pages/tutor/StudentLinks';
 import { LearnerWorkPage, LearnerWorkReviewPage } from './pages/tutor/LearnerWork';
 import { DeckNewPage } from './pages/tutor/Decks';
 import { SessionNotesPage } from './pages/tutor/SessionNotes';
@@ -191,19 +191,19 @@ const spaceRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/space/$spaceId',
   // Both optional so callers that only set a folder need not clear `itemId`.
-  validateSearch: (search: Record<string, unknown>): { folderId?: string; itemId?: string; contextId?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { folderId?: string; itemId?: string; studentId?: string } => ({
     folderId: optionalStringSearch(search.folderId),
     itemId: optionalStringSearch(search.itemId),
-    contextId: optionalStringSearch(search.contextId),
+    studentId: optionalStringSearch(search.studentId),
   }),
   component: SpaceScreen,
 });
 
 function SpaceScreen() {
   const { spaceId } = spaceRoute.useParams();
-  const { folderId, itemId, contextId } = spaceRoute.useSearch();
+  const { folderId, itemId, studentId } = spaceRoute.useSearch();
   const { session, openSession, notify } = useAppServices();
-  return <SpacePage session={session} spaceId={spaceId} folderId={folderId} itemId={itemId} contextId={contextId} onOpenSession={openSession} notify={notify} />;
+  return <SpacePage session={session} spaceId={spaceId} folderId={folderId} itemId={itemId} studentId={studentId} onOpenSession={openSession} notify={notify} />;
 }
 
 /*
@@ -228,13 +228,13 @@ const brandKitEditRoute = createRoute({ getParentRoute: () => workspaceRoute, pa
 const lessonExamplesRoute = createRoute({
   getParentRoute: () => workspaceRoute,
   path: '/space/$spaceId/samples',
-  validateSearch: (search: Record<string, unknown>): { folderId?: string; contextId?: string } => ({
-    folderId: optionalStringSearch(search.folderId), contextId: optionalStringSearch(search.contextId),
+  validateSearch: (search: Record<string, unknown>): { folderId?: string; studentId?: string } => ({
+    folderId: optionalStringSearch(search.folderId), studentId: optionalStringSearch(search.studentId),
   }),
   component: () => {
     const { spaceId } = lessonExamplesRoute.useParams();
-    const { folderId, contextId } = lessonExamplesRoute.useSearch();
-    return <Suspense fallback={<p role="status">Loading lessons…</p>}><LessonExamplesPage spaceId={spaceId} folderId={folderId ?? null} contextId={contextId ?? null} /></Suspense>;
+    const { folderId, studentId } = lessonExamplesRoute.useSearch();
+    return <Suspense fallback={<p role="status">Loading lessons…</p>}><LessonExamplesPage spaceId={spaceId} folderId={folderId ?? null} studentId={studentId ?? null} /></Suspense>;
   },
 });
 
@@ -259,32 +259,32 @@ const spaceMemberEditRoute = createRoute({
   },
 });
 
-const contextsRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/tutor/contexts', component: ContextsPage });
-const contextNewRoute = createRoute({
-  getParentRoute: () => workspaceRoute, path: '/tutor/contexts/new',
+const studentsRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/tutor/students', component: StudentsPage });
+const studentNewRoute = createRoute({
+  getParentRoute: () => workspaceRoute, path: '/tutor/students/new',
   validateSearch: (search: Record<string, unknown>): { sourceSpaceId?: string; experience?: 'tutoring' | 'classroom' } => ({
     sourceSpaceId: optionalStringSearch(search.sourceSpaceId),
     experience: search.experience === 'classroom' ? 'classroom' as const : 'tutoring' as const,
   }),
-  component: () => <ContextNewPage {...contextNewRoute.useSearch()} notify={useAppServices().notify} />,
+  component: () => <StudentNewPage {...studentNewRoute.useSearch()} notify={useAppServices().notify} />,
 });
 const spaceNewRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/space/new', component: SpaceNewPage });
-const contextDetailRoute = createRoute({
+const studentDetailRoute = createRoute({
   getParentRoute: () => workspaceRoute,
-  path: '/tutor/contexts/$contextId',
-  component: () => <ContextDetailPage contextId={contextDetailRoute.useParams().contextId} />,
+  path: '/tutor/students/$studentId',
+  component: () => <StudentDetailPage studentId={studentDetailRoute.useParams().studentId} />,
 });
-const contextEditRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/tutor/contexts/$contextId/edit', component: () => <ContextEditPage contextId={contextEditRoute.useParams().contextId} /> });
-const learnerWorkRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/tutor/contexts/$contextId/work', component: () => <LearnerWorkPage contextId={learnerWorkRoute.useParams().contextId} /> });
-const learnerWorkReviewRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/tutor/contexts/$contextId/work/$submissionId/edit', component: () => <LearnerWorkReviewPage {...learnerWorkReviewRoute.useParams()} /> });
-const contextLinkNewRoute = createRoute({
+const studentEditRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/tutor/students/$studentId/edit', component: () => <StudentEditPage studentId={studentEditRoute.useParams().studentId} /> });
+const learnerWorkRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/tutor/students/$studentId/work', component: () => <LearnerWorkPage studentId={learnerWorkRoute.useParams().studentId} /> });
+const learnerWorkReviewRoute = createRoute({ getParentRoute: () => workspaceRoute, path: '/tutor/students/$studentId/work/$submissionId/edit', component: () => <LearnerWorkReviewPage {...learnerWorkReviewRoute.useParams()} /> });
+const studentLinkNewRoute = createRoute({
   getParentRoute: () => workspaceRoute,
-  path: '/tutor/contexts/$contextId/links/new',
-  component: () => <ContextLinkNewPage contextId={contextLinkNewRoute.useParams().contextId} />,
+  path: '/tutor/students/$studentId/links/new',
+  component: () => <StudentLinkNewPage studentId={studentLinkNewRoute.useParams().studentId} />,
 });
 
 const deckNewSearch = (search: Record<string, unknown>) => ({
-  contextId: optionalStringSearch(search.contextId),
+  studentId: optionalStringSearch(search.studentId),
   spaceId: optionalStringSearch(search.spaceId),
   folderId: optionalStringSearch(search.folderId),
 });
@@ -294,8 +294,8 @@ const deckNewRoute = createRoute({
   path: '/decks/new',
   validateSearch: deckNewSearch,
   component: () => {
-    const { contextId, spaceId, folderId } = deckNewRoute.useSearch();
-    return <SignedInGate><DeckNewPage contextId={contextId ?? null} spaceId={spaceId ?? null} folderId={folderId ?? null} /></SignedInGate>;
+    const { studentId, spaceId, folderId } = deckNewRoute.useSearch();
+    return <SignedInGate><DeckNewPage studentId={studentId ?? null} spaceId={spaceId ?? null} folderId={folderId ?? null} /></SignedInGate>;
   },
 });
 
@@ -429,13 +429,13 @@ const routeTree = rootRoute.addChildren([
     spaceMembersRoute,
     spaceInviteRoute,
     spaceMemberEditRoute,
-    contextsRoute,
-    contextNewRoute,
-    contextDetailRoute,
-    contextEditRoute,
+    studentsRoute,
+    studentNewRoute,
+    studentDetailRoute,
+    studentEditRoute,
     learnerWorkRoute,
     learnerWorkReviewRoute,
-    contextLinkNewRoute,
+    studentLinkNewRoute,
     sessionRecordRoute,
     trashRoute,
     settingsRoute,

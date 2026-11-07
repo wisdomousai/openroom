@@ -65,7 +65,7 @@ import {
   revokeOAuthRoute,
   connectionActive,
 } from './mcp-oauth.js';
-import { contextIdForSessionCode, verifyContextLink } from './context-links.js';
+import { studentIdForSessionCode, verifyStudentLink } from './student-links.js';
 import {
   listGuestLinks,
   mintGuestLink,
@@ -112,7 +112,7 @@ import { handleAssetApi } from './assets.js';
 import { homeRoute } from './home.js';
 import { prefsRoute } from './prefs.js';
 import { endSessionForCode, type SessionLaunchInput } from './delivery/index.js';
-import { identifiedNeedsContext } from './delivery/shared.js';
+import { identifiedNeedsStudent } from './delivery/shared.js';
 import {
   archivedBallotsCsv,
   downloadArchiveRoute,
@@ -120,7 +120,7 @@ import {
   maybeArchiveEndedSession,
 } from './archives.js';
 import { readEntitlements, sessionEntitlementOwner, sessionParticipantLimit } from './entitlements.js';
-import { contextOwnerId, ownerHasContinuity, requireIdentifiedSessionAccess } from './continuity-access.js';
+import { studentOwnerId, ownerHasContinuity, requireIdentifiedSessionAccess } from './continuity-access.js';
 import { requireControlUser } from './control-auth.js';
 import { paddleWebhookRoute } from './billing/webhook';
 import { reconcileBilling } from './billing/reconcile';
@@ -206,7 +206,7 @@ function authenticate(
  *
  * An identified session admits nobody by code alone, so its result carries no
  * joinUrl at all; the usable join URL is the one the link mint returns with the
- * student's link in it (`mintContextLinkRoute` with a sessionCode).
+ * student's link in it (`mintStudentLinkRoute` with a sessionCode).
  */
 function sessionShareUrls(
   session: CreatedSession,
@@ -242,8 +242,8 @@ export async function createSessionFromOutline(
     const blocked = await requireIdentifiedSessionAccess(env, options.entitlementOwnerId ?? options.user?.id ?? null);
     if (blocked) return { ok: false, response: blocked };
     // A session created straight from an outline has no durable session, so no
-    // student context, so no access link can ever admit anyone to it.
-    return { ok: false, response: identifiedNeedsContext() };
+    // student, so no access link can ever admit anyone to it.
+    return { ok: false, response: identifiedNeedsStudent() };
   }
   const sessionCode = options.reservedCode ?? generateSessionCode();
   // Read once here and carried into the DO, so joins never touch D1. A retried
@@ -316,7 +316,7 @@ export async function launchSessionForUser(
       // identified sessions are paid before it learns what else they need.
       const blocked = await requireIdentifiedSessionAccess(env, entitlementOwnerId);
       if (blocked) return blocked;
-      if (input.contextId === null) return identifiedNeedsContext();
+      if (input.studentId === null) return identifiedNeedsStudent();
     }
     if (await sessionQuotaExceeded(env, user.id, now)) return json({ error: 'session-quota' }, 429);
     // The unique session_id index chooses one code even for competing start requests.
@@ -384,7 +384,7 @@ export async function launchSessionForUser(
   return json({
     ...created.session,
     ...sessionShareUrls(created.session, input.origin, validation.outline.defaults?.identityMode === 'identified'),
-    ...(input.contextId === null ? {} : { contextId: input.contextId }),
+    ...(input.studentId === null ? {} : { studentId: input.studentId }),
     sessionId: input.sessionId,
     deckId: input.deckId,
     deckVersion: input.version,
@@ -482,24 +482,24 @@ async function resolveJoinIdentity(
   code: string,
 ): Promise<{ ok: true; identity?: JoinIdentity } | { ok: false; response: Response }> {
   /*
-   * Optional context access link. Two independent checks, both required:
+   * Optional student access link. Two independent checks, both required:
    *
-   *  1. the link is live (unrevoked, unexpired, context not trashed), and
-   *  2. the link's context is *this* session's originating context.
+   *  1. the link is live (unrevoked, unexpired, student not trashed), and
+   *  2. the link's student is *this* session's originating student.
    *
    * (2) is the security requirement: without it any live link would identify
    * its holder into every session in the deployment. The association is proved
-   * through the launch record (`live_sessions.session_id` → `sessions.context_id`); see
-   * `contextIdForSessionCode`. A live session with no durable-session edge has no context and
+   * through the launch record (`live_sessions.session_id` → `sessions.student_id`); see
+   * `studentIdForSessionCode`. A live session with no durable-session edge has no student and
    * therefore never enterable with a link.
    *
    * The link never leaves this function. Only the resolved display name and
    * the link id (a stable seat key, not the token) are forwarded to the
    * Durable Object, so a leaked session capability token can never be walked
-   * back into a context credential.
+   * back into a student credential.
    */
   if (
-    Object.prototype.hasOwnProperty.call(body, 'contextLink') &&
+    Object.prototype.hasOwnProperty.call(body, 'studentLink') &&
     Object.prototype.hasOwnProperty.call(body, 'guestLink')
   ) {
     return { ok: false, response: json({ error: 'conflicting-credentials', message: 'Use one kind of invite.' }, 400) };
@@ -518,38 +518,38 @@ async function resolveJoinIdentity(
     }
     return { ok: true, identity: { displayName: seat.displayName, seatKey: seat.linkId, kind: 'guest-link' } };
   }
-  if (Object.prototype.hasOwnProperty.call(body, 'contextLink')) {
-    if (typeof body.contextLink !== 'string' || body.contextLink === '') {
-      return { ok: false, response: json({ error: 'invalid-context-link', message: 'That access link is not valid.' }, 400) };
+  if (Object.prototype.hasOwnProperty.call(body, 'studentLink')) {
+    if (typeof body.studentLink !== 'string' || body.studentLink === '') {
+      return { ok: false, response: json({ error: 'invalid-student-link', message: 'That access link is not valid.' }, 400) };
     }
-    const link = await verifyContextLink(env, body.contextLink);
-    const sessionContextId = await contextIdForSessionCode(env, code);
-    if (link === null || sessionContextId === null || sessionContextId !== link.contextId) {
+    const link = await verifyStudentLink(env, body.studentLink);
+    const sessionStudentId = await studentIdForSessionCode(env, code);
+    if (link === null || sessionStudentId === null || sessionStudentId !== link.studentId) {
       // One indistinguishable answer for "bad link", "revoked link", "expired
       // link", and "right link, wrong session": a probing holder learns nothing
-      // about which sessions exist or which context a code belongs to.
+      // about which sessions exist or which student a code belongs to.
       return {
         ok: false,
-        response: json({ error: 'context-link-invalid', message: 'That access link is not valid for this session.' }, 403),
+        response: json({ error: 'student-link-invalid', message: 'That access link is not valid for this session.' }, 403),
       };
     }
-    return { ok: true, identity: { displayName: link.displayName, seatKey: link.learnerId, kind: 'context-link' } };
+    return { ok: true, identity: { displayName: link.displayName, seatKey: link.learnerId, kind: 'student-link' } };
   }
   return { ok: true };
 }
 
 /**
- * GET /api/sessions/:code/context — what this session was launched for.
+ * GET /api/sessions/:code/student — what this session was launched for.
  *
- * A saved deck has a durable session even without a student context. Return that
+ * A saved deck has a durable session even without a student. Return that
  * identity independently so Notes and the Library handoff retain their destination.
- * Context still comes only from the durable session's context_id; it never controls
+ * Student still comes only from the durable session's student_id; it never controls
  * which document tools the console exposes.
  *
  * Host token only: this is the console's own bootstrap, and the answer names a
  * person. It is never on a participant, stage or learner surface.
  */
-async function sessionContextRoute(
+async function sessionStudentRoute(
   request: Request,
   url: URL,
   env: Env,
@@ -560,45 +560,45 @@ async function sessionContextRoute(
 
   const row = await env.DB.prepare(
     `SELECT session.id AS session_id, session.title AS session_title,
-            ctx.id AS context_id, ctx.kind AS kind, ctx.display_name AS display_name,
-            ctx.context_json AS context_json, ctx.next_note AS next_note
+            ctx.id AS student_id, ctx.kind AS kind, ctx.display_name AS display_name,
+            ctx.student_json AS student_json, ctx.next_note AS next_note
        FROM live_sessions ro
        JOIN sessions session ON session.id = ro.session_id
-       LEFT JOIN contexts ctx ON ctx.id = session.context_id
+       LEFT JOIN students ctx ON ctx.id = session.student_id
       WHERE ro.code = ?1`,
   )
     .bind(sessionCode)
     .first<{
       session_id: string;
       session_title: string;
-      context_id: string | null;
+      student_id: string | null;
       kind: string | null;
       display_name: string | null;
-      context_json: string | null;
+      student_json: string | null;
       next_note: string | null;
     }>();
 
-  if (row === null) return json({ context: null, session: null });
+  if (row === null) return json({ student: null, session: null });
 
   const session = { id: row.session_id, title: row.session_title };
-  if (row.context_id === null) return json({ context: null, session });
+  if (row.student_id === null) return json({ student: null, session });
 
   let level: string | null = null;
   try {
-    const parsed = JSON.parse(row.context_json ?? '{}') as { level?: unknown };
+    const parsed = JSON.parse(row.student_json ?? '{}') as { level?: unknown };
     if (typeof parsed.level === 'string' && parsed.level !== '') level = parsed.level;
   } catch {
-    /* a context with unparseable JSON simply has no level to show */
+    /* a student with unparseable JSON simply has no level to show */
   }
 
   // The "for next time" sticky is written from Notes, so it follows `continuity`.
   const nextNote = row.next_note && row.next_note !== ''
-    && (await ownerHasContinuity(env, await contextOwnerId(env, row.context_id)))
+    && (await ownerHasContinuity(env, await studentOwnerId(env, row.student_id)))
     ? row.next_note : null;
 
   return json({
-    context: {
-      id: row.context_id,
+    student: {
+      id: row.student_id,
       kind: row.kind,
       displayName: row.display_name,
       level,
@@ -994,7 +994,7 @@ export default {
     }
 
     const sessionMatch =
-      /^\/api\/sessions\/([^/]+)\/(state|commands|export|recap|ws|stage-token|context|dictionary)$/.exec(path);
+      /^\/api\/sessions\/([^/]+)\/(state|commands|export|recap|ws|stage-token|student|dictionary)$/.exec(path);
     if (sessionMatch !== null) {
       const sessionCode = normalizeSessionCode(decodeURIComponent(sessionMatch[1] as string));
       const leaf = sessionMatch[2];
@@ -1018,8 +1018,8 @@ export default {
       if (leaf === 'ws') {
         return liveWsRoute(live, request, url, sessionCode);
       }
-      if (leaf === 'context' && request.method === 'GET') {
-        return sessionContextRoute(request, url, env, sessionCode);
+      if (leaf === 'student' && request.method === 'GET') {
+        return sessionStudentRoute(request, url, env, sessionCode);
       }
       /*
        * The learner's own lookup. Any role holding this session's token reaches

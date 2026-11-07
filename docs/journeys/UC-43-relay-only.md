@@ -36,7 +36,7 @@ journey is skipped.
 - `GET /api/health` is `{ status: 'ok' }`.
 - Session creation without the key or with a wrong key → 401; with the key → 201 and join link `/join/?code=…`.
 - The relay has no host app (`/host/` → 404) and no workspace API (`/api/me` → 404).
-- `POST /api/join` with a context link → 403 `identified-join-unavailable`.
+- `POST /api/join` with a student link → 403 `identified-join-unavailable`.
 - Stage: `3 answers` and no bars before reveal; two bars and the correct mark after.
 - Participant: Results region with both option labels after reveal.
 - Ballots export: three rows for `myth-great-idea`.

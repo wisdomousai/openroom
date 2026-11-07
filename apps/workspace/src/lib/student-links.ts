@@ -1,14 +1,14 @@
 /**
- * Pure helpers for context access links (the student's capability credential)
+ * Pure helpers for student access links (the student's capability credential)
  * and for rendering what a link holder sees.
  *
  * A link is not an account and not a password: it is a bearer capability scoped
- * to exactly one context, so the whole of its state is (expiry, revocation) and
+ * to exactly one student, so the whole of its state is (expiry, revocation) and
  * the whole of its blast radius is one student's records. The UI only ever gets
  * a `tokenPrefix` back from the server — the secret exists in the browser for
  * exactly one render, on the mint screen.
  */
-import type { ContextLinkSummary } from '../api';
+import type { StudentLinkSummary } from '../api';
 import { learnerShareUrl } from '../destinations';
 
 export type LinkState = 'active' | 'expired' | 'revoked';
@@ -19,7 +19,7 @@ export type LinkState = 'active' | 'expired' | 'revoked';
  * is looking for. `expiresAt: null` is a link with no clock.
  */
 export function linkState(
-  link: Pick<ContextLinkSummary, 'expiresAt' | 'revokedAt'>,
+  link: Pick<StudentLinkSummary, 'expiresAt' | 'revokedAt'>,
   now: number = Date.now(),
 ): LinkState {
   if (link.revokedAt !== null) return 'revoked';
@@ -38,16 +38,16 @@ export function linkStateLabel(state: LinkState): string {
   }
 }
 
-/** Live links are the ones that count against the per-context cap. */
+/** Live links are the ones that count against the per-student cap. */
 export function liveLinkCount(
-  links: readonly Pick<ContextLinkSummary, 'expiresAt' | 'revokedAt'>[],
+  links: readonly Pick<StudentLinkSummary, 'expiresAt' | 'revokedAt'>[],
   now: number = Date.now(),
 ): number {
   return links.filter((link) => linkState(link, now) === 'active').length;
 }
 
 /** The server refuses an eleventh live link with 429. */
-export const MAX_LINKS_PER_CONTEXT = 10;
+export const MAX_LINKS_PER_STUDENT = 10;
 
 /**
  * The URL the learner route consumes — built by the same module the app

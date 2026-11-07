@@ -39,7 +39,7 @@ and themes are document content and may use the saved design system's gradients.
 | UC-04 | Ranking Borda | `examples/ranking.yaml` | — | planned |
 | UC-05 | Session-wide audience Q&A (ask, upvote, moderate, spotlight) | `examples/seg-camp.yaml` + `qna.enabled` | `e2e/journeys/UC-05-session-qna.spec.ts` | green |
 | UC-06 | Library: tree → select → rename → move → Open | demo space + seeded session | `e2e/journeys/UC-06-library.spec.ts` | green |
-| UC-07 | Tutoring privacy: identified join + learner allowlist | identified session + context link | `e2e/journeys/UC-07-tutoring-privacy.spec.ts` | green |
+| UC-07 | Tutoring privacy: identified join + learner allowlist | identified session + student link | `e2e/journeys/UC-07-tutoring-privacy.spec.ts` | green |
 | UC-08 | Deck editor: insert → layout → type → reveal → breakout → draft | tutoring outline | `e2e/journeys/UC-08-deck-editor.spec.ts` | green |
 | UC-09 | Private dictionary lookup, selected forms and atomic word cards | delayed lookup + retry + projector/phone | `e2e/journeys/UC-09-dictionary.spec.ts` | green in Chromium; upstream dictionary fixture |
 | UC-10 | Standalone presenter and portable download | new deck | `e2e/journeys/UC-10-standalone-presenter.spec.ts` | green |
@@ -53,7 +53,7 @@ and themes are document content and may use the saved design system's gradients.
 | UC-18 | Voice recording and timed feedback | private audio + retry + removal | `e2e/journeys/UC-18-voice-homework.spec.ts` | green in Chromium; physical devices pending |
 | UC-19 | Shared and individual assignments | group homework + private recipients | `e2e/journeys/UC-19-individual-assignments.spec.ts` | green |
 | UC-20 | English/French/German learner interface | preserved drafts + private audio + errors | `e2e/journeys/UC-20-learner-languages.spec.ts` | green in Chromium |
-| UC-21 | Complete French/German sample lessons | folder/context + slides + self-contained homework | `e2e/journeys/UC-21-language-lessons.spec.ts` | green for French B1 and German B2 |
+| UC-21 | Complete French/German sample lessons | folder/student + slides + self-contained homework | `e2e/journeys/UC-21-language-lessons.spec.ts` | green for French B1 and German B2 |
 | UC-22 | Practice retries and revised assignments | original answers + explicit refresh + withdrawal | `e2e/journeys/UC-22-practice-revisions.spec.ts` | green in Chromium |
 | UC-23 | Selected practice in the next lesson | complete exercise keys + private work + presenter-to-Notes | `e2e/journeys/UC-23-practice-next-lesson.spec.ts` | green in Chromium |
 | UC-24 | Listening, transcript release and presenter handoff | cloud upload + room/individual playback + retry + phone remote | `e2e/journeys/UC-24-listening.spec.ts` | green in Chromium |

@@ -37,7 +37,7 @@ export const MAX_PINS = 12;
  * user goes, so places belong in the list even though they are not library
  * kinds.
  */
-export const PIN_KINDS = ['template', 'run', 'session', 'record', 'context', 'folder', 'space'] as const;
+export const PIN_KINDS = ['template', 'run', 'session', 'record', 'student', 'folder', 'space'] as const;
 export type PinKind = (typeof PIN_KINDS)[number];
 
 /**

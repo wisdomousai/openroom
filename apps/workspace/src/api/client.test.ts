@@ -26,7 +26,7 @@ describe('API errors', () => {
   });
 
   it('keeps a message that is already a sentence, and codes screens still match', () => {
-    const sentence = 'This context is in the trash. Restore it before sharing anything.';
+    const sentence = 'This student is in the trash. Restore it before sharing anything.';
     expect(responseError(409, { error: sentence }).message).toBe(sentence);
     expect(responseError(403, { error: 'continuity-required' }).message).toBe('continuity-required');
   });

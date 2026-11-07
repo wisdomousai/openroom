@@ -20,7 +20,7 @@ import type {
   DictionaryLookupInput,
   EmbedCheck,
   ExportFormat,
-  SessionContext,
+  SessionStudent,
   SessionError,
   StockSearch,
   StoredSession,
@@ -157,7 +157,7 @@ export interface DeckSummary {
   id: string;
   spaceId: string;
   folderId: string | null;
-  contextId: string | null;
+  studentId: string | null;
   title: string;
   shape: DeckShape;
   currentVersion: number;
@@ -209,7 +209,7 @@ export async function getDeckIfChanged(
 
 export function createDeck(input: {
   title?: string;
-  contextId?: string;
+  studentId?: string;
   folderId?: string | null;
   spaceId?: string | null;
   content?: Outline;
@@ -269,7 +269,7 @@ export interface FolderSummary {
   createdAt: number;
 }
 
-export interface ContextSummary {
+export interface StudentSummary {
   id: string;
   spaceId: string;
   displayName: string;
@@ -286,9 +286,9 @@ export async function getSpaceTree(spaceId: string): Promise<{ folders: FolderSu
   return { folders: body.folders ?? [] };
 }
 
-export async function listContexts(): Promise<ContextSummary[]> {
-  const body = await request<{ contexts: ContextSummary[] }>('/api/tutoring/contexts');
-  return body.contexts ?? [];
+export async function listStudents(): Promise<StudentSummary[]> {
+  const body = await request<{ students: StudentSummary[] }>('/api/tutoring/students');
+  return body.students ?? [];
 }
 
 /* ---------------------------------------------------------------- sessions */
@@ -299,7 +299,7 @@ export interface SessionSummary {
   folderId: string | null;
   deckId: string;
   deckVersion: number;
-  contextId: string | null;
+  studentId: string | null;
   title: string;
   shape: DeckShape;
   status: SessionStatus;
@@ -316,7 +316,7 @@ async function createSession(input: {
   deckId: string;
   deckVersion?: number;
   title?: string;
-  contextId?: string;
+  studentId?: string;
   folderId?: string | null;
   spaceId?: string | null;
 }): Promise<SessionSummary> {
@@ -351,7 +351,7 @@ function launchSession(id: string, options: { start?: boolean; version?: number;
  * session for the stamped version and launch it in the same call.
  */
 export async function startSessionFromDeck(
-  deck: Pick<DeckSummary, 'id' | 'title' | 'contextId' | 'currentVersion'>,
+  deck: Pick<DeckSummary, 'id' | 'title' | 'studentId' | 'currentVersion'>,
   place: { spaceId: string | null; folderId: string | null },
   cursor: PresentationPosition,
 ): Promise<StoredSession> {
@@ -359,7 +359,7 @@ export async function startSessionFromDeck(
     deckId: deck.id,
     deckVersion: deck.currentVersion,
     title: deck.title,
-    ...(deck.contextId ? { contextId: deck.contextId } : {}),
+    ...(deck.studentId ? { studentId: deck.studentId } : {}),
     spaceId: place.spaceId,
     folderId: place.folderId,
   });
@@ -450,12 +450,12 @@ export async function fetchStageToken(sessionCode: string, hostToken: string): P
 }
 
 /** What the session was launched for. Host token only — the answer names a person. */
-export async function fetchSessionContext(sessionCode: string, hostToken: string): Promise<SessionContext> {
-  const res = await fetch(`${baseUrl}/api/sessions/${encodeURIComponent(sessionCode)}/context`, {
+export async function fetchSessionStudent(sessionCode: string, hostToken: string): Promise<SessionStudent> {
+  const res = await fetch(`${baseUrl}/api/sessions/${encodeURIComponent(sessionCode)}/student`, {
     headers: { authorization: `Bearer ${hostToken}` },
   });
-  if (!res.ok) throw new ApiError(res.status, `Could not load the session's context (HTTP ${res.status})`);
-  return (await res.json()) as SessionContext;
+  if (!res.ok) throw new ApiError(res.status, `Could not load the session's student (HTTP ${res.status})`);
+  return (await res.json()) as SessionStudent;
 }
 
 /** Download the export with the host bearer token, via blob + synthetic anchor. */

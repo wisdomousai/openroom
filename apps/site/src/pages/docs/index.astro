@@ -4,7 +4,7 @@ import { manual, docUrl } from '../../lib/docs';
 const pages = await manual();
 const groups = [...new Set(pages.map((page) => page.data.section))];
 const legacy = [
-  ['quickstart', 'start', 'Start here'], ['tutoring', 'contexts', 'Students and classes'],
+  ['quickstart', 'start', 'Start here'], ['tutoring', 'students', 'Students and classes'],
   ['session-format', 'cli', 'Files and command-line workflows'], ['full-example', 'cli', 'A working file example'],
   ['cli', 'agents', 'Connect an agent'], ['http-api', 'cli', 'API and schema references'],
   ['live-behavior', 'live-session', 'Run a live session'], ['privacy', 'limits', 'Privacy and retention'],

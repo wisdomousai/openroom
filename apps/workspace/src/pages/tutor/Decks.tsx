@@ -7,8 +7,8 @@ import { blankDeck } from '@openroom/editor';
 import { invalidateManagementData } from '../../query-client';
 
 /** Creating is an entry into the editor, never a metadata form. */
-export function DeckNewPage({ contextId, spaceId, folderId }: {
-  contextId: string | null; spaceId: string | null; folderId: string | null;
+export function DeckNewPage({ studentId, spaceId, folderId }: {
+  studentId: string | null; spaceId: string | null; folderId: string | null;
 }) {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export function DeckNewPage({ contextId, spaceId, folderId }: {
     let active = true;
     creation.current ??= createDeck({
       title: 'Untitled', content: blankDeck(), spaceId, folderId,
-      ...(contextId ? { contextId } : {}),
+      ...(studentId ? { studentId } : {}),
     });
     void creation.current.then(async ({ deck }) => {
       await invalidateManagementData();
@@ -27,7 +27,7 @@ export function DeckNewPage({ contextId, spaceId, folderId }: {
       if (active) setError(cause instanceof Error ? cause.message : 'Could not create the deck.');
     });
     return () => { active = false; };
-  }, [contextId, spaceId, folderId, navigate, attempt]);
+  }, [studentId, spaceId, folderId, navigate, attempt]);
   return (
     <main className="flex h-svh flex-col items-center justify-center gap-4 bg-background">
       <p role={error ? 'alert' : 'status'}>{error ?? 'Opening new deck…'}</p>

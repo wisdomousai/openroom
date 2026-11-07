@@ -28,12 +28,12 @@ export const SESSION_THEME_IDS = [
  * - `anonymous`     — no name at all.
  * - `nickname`      — a system-assigned session-local name (`@openroom/domain`
  *   wordlist). The default.
- * - `identified`    — the participant arrives holding a context access link and
- *   is named by that context's `displayName`. There is still no participant
- *   account: the link is a revocable, context-scoped capability, nothing more.
+ * - `identified`    — the participant arrives holding a student access link and
+ *   is named by that student's `displayName`. There is still no participant
+ *   account: the link is a revocable, student-scoped capability, nothing more.
  *
  * - `guest-list`    — host-typed named guests. Enterable only with the guest
- *   link (`orinv_…`) issued for that session. Not a context access link. Lobby join is allowed.
+ *   link (`orinv_…`) issued for that session. Not a student access link. Lobby join is allowed.
  */
 export type IdentityMode = 'anonymous' | 'nickname' | 'identified' | 'guest-list';
 

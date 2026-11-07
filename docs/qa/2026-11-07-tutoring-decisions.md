@@ -13,7 +13,7 @@ Findings: start-join-01, editor-authoring-04, site-manual-01
 - Identified stays an agent-door feature: The prepared outline sets identityMode and deck_start or the CLI return the finished join URL that already carries the student link (agent-path-04). The manual says the browser has no named-join control. No credential-boundary impact; a browser-only tutor runs nickname lessons.
 - Console action Copy student link: In identified sessions the Session menu offers Copy student link: the tutor pastes the student orlnk_ link once and the console builds /join/?code=..&link=.. locally without storing it. Gives browser-only tutors a path with no server change, but the presenter then handles a credential, which needs a credential-boundary review.
 - Deck-level identified switch: A continuity-gated switch writes defaults.identityMode through outline-edit.ts, classified in outline-fuzz.ts, exposed as an EditorServices slot (absent slot means no switch). Adds a new deck-level setting, still needs a link-composing step, and free accounts get 403 at start.
-- Link-only join resolved by the Worker: /join/?link=orlnk_.. resolves the live session through sessions.context_id and returns only a participant token. Creates a second association path, which AGENTS.md forbids, and is ambiguous when a context has several live sessions; needs a credential-boundary review.
+- Link-only join resolved by the Worker: /join/?link=orlnk_.. resolves the live session through sessions.student_id and returns only a participant token. Creates a second association path, which AGENTS.md forbids, and is ambiguous when a student has several live sessions; needs a credential-boundary review.
 
 ### D2 (workspace-library): What should Start session do when the same deck is already live for the same student?
 
@@ -22,7 +22,7 @@ Chosen: Keep Start, add the quiet Rejoin cue and a single confirmation. It follo
 Findings: start-join-02, second-lesson-09, live-console-01, agent-path-05
 
 - Replace Start with Rejoin while the deck is live: Stops a second concurrent session of one deck in the inspector, editor top bar and Presenter. Acts as a lock and bends the file model, where a deck can be started more than once.
-- Keep Start, add a quiet Live now - Rejoin cue and one confirmation: The inspector, editor top bar and Presenter show Live now - Rejoin beside Start session; pressing Start while a recoverable live session of this deck and student exists asks once: rejoin it, or start another. Needs deckId and context on MySession. Escape stays the documented exit after armed lookup is cancelled first.
+- Keep Start, add a quiet Live now - Rejoin cue and one confirmation: The inspector, editor top bar and Presenter show Live now - Rejoin beside Start session; pressing Start while a recoverable live session of this deck and student exists asks once: rejoin it, or start another. Needs deckId and student on MySession. Escape stays the documented exit after armed lookup is cancelled first.
 - Leave Start as is and only disambiguate Live now rows: Rows name the student (second-lesson-01, which ships regardless). Silent double starts remain possible.
 
 ### D3 (live-console): Does the teacher UI keep its classroom phrasing in one-to-one lessons?
@@ -99,11 +99,11 @@ Findings: onboarding-02, site-manual-06, onboarding-05
 
 ### D10 (workspace-library): How does a student own space present experience and language pair?
 
-Chosen: Show only what applies in a student space. It fixes the move-out-of-Students bug, keeps the documented one-space-per-context model, and removes the surprise of a blank pair.
+Chosen: Show only what applies in a student space. It fixes the move-out-of-Students bug, keeps the documented one-space-per-student model, and removes the surprise of a blank pair.
 
 Findings: onboarding-04, onboarding-11, site-manual-07
 
-- Show only what applies in a student space: Space settings in a student own space is titled with the student name and shows Dictionary languages and brand kits only; Choose experience is not rendered. Add student gets an optional language-pair field prefilled from the pair last saved on another student, and the panel says No language pair for Camille. Keeps one space per context and the per-student pair.
+- Show only what applies in a student space: Space settings in a student own space is titled with the student name and shows Dictionary languages and brand kits only; Choose experience is not rendered. Add student gets an optional language-pair field prefilled from the pair last saved on another student, and the panel says No language pair for Camille. Keeps one space per student and the per-student pair.
 - Show the experience read-only: Inherited experience is displayed but not editable; stops the student moving out of Students but leaves a settings page with little to change.
 - Drop student spaces from the switcher: Students appear only under Students; needs the AGENTS.md switcher sentence changed and a check that invited spaces still list.
 - Copy only: Replace the word space with the student name and say in the manual that the pair is per student; the experience control can still move a student to Classes.
@@ -115,8 +115,8 @@ Chosen: Add Move to trash to the Edit student page with the confirm. Trash and r
 Findings: student-place-01, site-manual-03
 
 - Move to trash on the Edit student page: A confirm names the student decks, access links and learner work; trash and restore routes already exist. The trashed person URL shows a trashed state with Restore and the space is hidden from the nav while trashed. Edit student is a typed-record route, not a CRUD drawer.
-- Demoted action in the context panel: Same dialog, banner and nav behaviour, reachable from the panel beside Edit; the Edit page stays fields-only.
-- Keep trashing agent, CLI and MCP only: Delete the manual sentence in contexts.md; the trashed-URL rendering and nav fixes still ship.
+- Demoted action in the student panel: Same dialog, banner and nav behaviour, reachable from the panel beside Edit; the Edit page stays fields-only.
+- Keep trashing agent, CLI and MCP only: Delete the manual sentence in students.md; the trashed-URL rendering and nav fixes still ship.
 
 ### D12 (workspace-library): What happens to a folder decks when the folder is trashed?
 
@@ -134,8 +134,8 @@ Chosen: Open a student space Library as the Students view and name the student i
 
 Findings: editor-authoring-03
 
-- Inherit the space single context: Every New deck in a student space gets contextId. Simplest for tutors, but AGENTS.md says only an explicitly selected student supplies contextId and an implicit choice is never made.
-- Open the student space Library as the Students view: One New deck behaviour: contextId comes only from the explicit person view, and the editor top bar names the linked student read-only (an optional prop, absent without a context).
+- Inherit the space single student: Every New deck in a student space gets studentId. Simplest for tutors, but AGENTS.md says only an explicitly selected student supplies studentId and an implicit choice is never made.
+- Open the student space Library as the Students view: One New deck behaviour: studentId comes only from the explicit person view, and the editor top bar names the linked student read-only (an optional prop, absent without a student).
 - Mark unlinked decks: The editor top bar and Library rows show which decks are not linked; two New deck behaviours remain.
 
 ### D14 (workspace-library): Do Library rows and the inspector summarise the saved version or the draft?

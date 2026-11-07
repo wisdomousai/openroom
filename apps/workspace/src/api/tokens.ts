@@ -42,8 +42,8 @@ export interface MySession {
   /** The deck the session was started from; null for an outline-only session. */
   deckId?: string | null;
   /** The student the session belongs to, when it has one. */
-  contextId?: string | null;
-  contextName?: string | null;
+  studentId?: string | null;
+  studentName?: string | null;
   createdAt: number;
   ended: boolean;
   recoverable: boolean;

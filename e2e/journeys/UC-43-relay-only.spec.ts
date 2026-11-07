@@ -76,7 +76,7 @@ test.describe('UC-43 relay-only session', () => {
     expect((await relay('/api/me')).status).toBe(404);
 
     // Identified joins verify workspace invites; the relay has none.
-    const identified = await joinApi(session.code, { contextLink: 'any' });
+    const identified = await joinApi(session.code, { studentLink: 'any' });
     expect(identified.status).toBe(403);
     expect(await identified.json()).toMatchObject({ error: 'identified-join-unavailable' });
   });

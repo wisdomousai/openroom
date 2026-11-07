@@ -86,14 +86,14 @@ export function readQuery(): { code: string | null; session: string | null } {
 }
 
 /**
- * The context access link a tutoring learner arrives with (`?link=orlnk_…`).
+ * The student access link a tutoring learner arrives with (`?link=orlnk_…`).
  *
  * Same discipline as the learner records page: it is read, used once for the
  * join, and never stored. `forgetLinkInUrl` takes it back out of the address
  * bar the moment the join succeeds, so a shared screenshot of the URL is not a
  * credential.
  */
-export function readContextLink(): string | null {
+export function readStudentLink(): string | null {
   const value = new URLSearchParams(location.search).get('link');
   return value !== null && value.trim() !== '' ? value.trim() : null;
 }

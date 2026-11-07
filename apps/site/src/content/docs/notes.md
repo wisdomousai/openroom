@@ -18,7 +18,7 @@ Session Notes and homework need a plan that includes **Homework and Notes**. Wit
 
 | Field | Content and audience |
 | --- | --- |
-| Outcomes (one per line) | Short statements of what was achieved. Shared through learner links when the session has a learner context. |
+| Outcomes (one per line) | Short statements of what was achieved. Shared through learner links when the session has a student. |
 | Next session | A note for tutors only. For a student, it is shown with that student in the Library and at the top of their next deck. |
 | Tutor notes / Private notes | Private teaching observations, available to authorized colleagues in the space. |
 | Homework | Published tasks and their learner recipients for this session. |
@@ -29,7 +29,7 @@ Enter outcomes on separate lines. Keep **Next session** actionable. Review the h
 
 *Outcomes are shared with learners; Next session and Tutor notes remain on the teaching side.*
 
-Sessions without a learner context retain their Notes in the space. A context-linked session shares only its learner-facing fields and the tasks each learner is entitled to receive.
+Sessions without a student retain their Notes in the space. A student-linked session shares only its learner-facing fields and the tasks each learner is entitled to receive.
 
 ## Carry over notes from presenting
 

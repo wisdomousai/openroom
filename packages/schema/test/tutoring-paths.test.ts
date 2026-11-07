@@ -3,16 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { isTutoringApiPath } from '../src/tutoring-paths.js';
 
 describe('isTutoringApiPath', () => {
-  it('accepts contexts, decks, and sessions paths', () => {
-    expect(isTutoringApiPath('/api/tutoring/contexts')).toBe(true);
-    expect(isTutoringApiPath('/api/tutoring/contexts/c1/restore')).toBe(true);
-    expect(isTutoringApiPath('/api/tutoring/contexts/c1/learners')).toBe(true);
-    expect(isTutoringApiPath('/api/tutoring/contexts/c1/returned')).toBe(true);
-    expect(isTutoringApiPath('/api/tutoring/contexts/c1/work')).toBe(true);
-    expect(isTutoringApiPath('/api/tutoring/contexts/c1/work/w1')).toBe(true);
-    expect(isTutoringApiPath('/api/tutoring/contexts/c1/work/w1/feedback')).toBe(true);
-    expect(isTutoringApiPath('/api/tutoring/contexts/c1/links')).toBe(true);
-    expect(isTutoringApiPath('/api/tutoring/contexts/c1/links/l1')).toBe(true);
+  it('accepts students, decks, and sessions paths', () => {
+    expect(isTutoringApiPath('/api/tutoring/students')).toBe(true);
+    expect(isTutoringApiPath('/api/tutoring/students/c1/restore')).toBe(true);
+    expect(isTutoringApiPath('/api/tutoring/students/c1/learners')).toBe(true);
+    expect(isTutoringApiPath('/api/tutoring/students/c1/returned')).toBe(true);
+    expect(isTutoringApiPath('/api/tutoring/students/c1/work')).toBe(true);
+    expect(isTutoringApiPath('/api/tutoring/students/c1/work/w1')).toBe(true);
+    expect(isTutoringApiPath('/api/tutoring/students/c1/work/w1/feedback')).toBe(true);
+    expect(isTutoringApiPath('/api/tutoring/students/c1/links')).toBe(true);
+    expect(isTutoringApiPath('/api/tutoring/students/c1/links/l1')).toBe(true);
     expect(isTutoringApiPath('/api/presentations/start')).toBe(true);
     expect(isTutoringApiPath('/api/presentations/start/other')).toBe(false);
     expect(isTutoringApiPath('/api/decks')).toBe(true);

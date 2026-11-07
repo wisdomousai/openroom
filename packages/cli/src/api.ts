@@ -232,7 +232,7 @@ export class ApiClient {
   ): Promise<{ status: number; body: unknown }> {
     // Keep allowlist in lockstep with @openroom/schema isTutoringApiPath / worker router.
     if (!isTutoringApiPath(path)) {
-      throw new CliError('api path is outside the tutoring API allowlist; paths start with /api/decks, /api/sessions, /api/presentations/start, /api/tutoring/contexts, /api/tutoring/spaces/{spaceId}/brand-kits, /api/tutoring/brand-kits, /api/my/spaces, /api/my/invites, /api/my/archives or /api/my/billing', {
+      throw new CliError('api path is outside the tutoring API allowlist; paths start with /api/decks, /api/sessions, /api/presentations/start, /api/tutoring/students, /api/tutoring/spaces/{spaceId}/brand-kits, /api/tutoring/brand-kits, /api/my/spaces, /api/my/invites, /api/my/archives or /api/my/billing', {
         code: 'E_API_PATH',
         path,
       });

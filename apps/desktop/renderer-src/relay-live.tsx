@@ -19,7 +19,7 @@ export function relayEditorServices(base: EditorServices, origin: string): Edito
     ...base,
     live: {
       ...base.live,
-      fetchSessionContext: () => Promise.resolve({ context: null, session: null }),
+      fetchSessionStudent: () => Promise.resolve({ student: null, session: null }),
       getSessionItem: () => Promise.reject(new Error('This session has no saved record.')),
       stageUrl: (sessionCode, stageToken) =>
         new URL(`stage/?session=${encodeURIComponent(sessionCode)}&token=${encodeURIComponent(stageToken)}`, relay).toString(),

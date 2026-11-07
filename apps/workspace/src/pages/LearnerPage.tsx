@@ -38,7 +38,7 @@ import {
 import { Button } from '@openroom/ui/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
 import { Textarea } from '@openroom/ui/components/textarea';
-import { recordItemLabel, recordItemUrl } from '../lib/context-links';
+import { recordItemLabel, recordItemUrl } from '../lib/student-links';
 import { VoiceTask } from './learner/VoiceTask';
 import { PrivateAudio } from '../components/PrivateAudio';
 import { PracticeCard } from './learner/PracticeCard';

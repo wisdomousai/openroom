@@ -64,8 +64,8 @@ deck stores.
 - Decks auto-end after 12 h idle; ballots are purged 30 min after a session ends
   and the session is deleted entirely after 24 h — export results promptly.
 - Never set `defaults.identityMode: identified` on an outline you start
-  without a filed deck. Identified sessions are enterable only with a context
-  access link, and a live session with no durable session row has no context —
+  without a filed deck. Identified sessions are enterable only with a student
+  access link, and a live session with no durable session row has no student —
   nobody could join it. Identified delivery belongs to a launched tutoring
   session; see `prepare-a-tutoring-outline`. For named participants in a
   directly created session, use a guest-list session instead: the host types the

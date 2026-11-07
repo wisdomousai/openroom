@@ -144,7 +144,7 @@ export interface Session {
   meta: SessionMeta;
   defaults?: {
     // Mirrors `IdentityMode` in @openroom/schema; `identified` is the mode a
-    // participant reaches by holding a context access link.
+    // participant reaches by holding a student access link.
     identityMode?: 'anonymous' | 'nickname' | 'identified';
     resultVisibility?: ResultVisibility;
     allowAnswerChange?: boolean;

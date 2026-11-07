@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { HOMEWORK_TASK_MAX, type HomeworkAudience, type PublishedHomeworkTask } from '@openroom/schema';
-import type { ContextLearner } from '../../api';
+import type { StudentLearner } from '../../api';
 import { Button } from '@openroom/ui/components/button';
 import { Checkbox } from '@openroom/ui/components/checkbox';
 import { Input } from '@openroom/ui/components/input';
@@ -11,7 +11,7 @@ import { Textarea } from '@openroom/ui/components/textarea';
 const names = { reading: 'Reading', writing: 'Writing', voice: 'Voice response', quiz: 'Practice' };
 
 export function HomeworkAssignments({ tasks, audience, learners, onTasks, onAudience, disabled }: {
-  tasks: PublishedHomeworkTask[]; audience: HomeworkAudience; learners: ContextLearner[];
+  tasks: PublishedHomeworkTask[]; audience: HomeworkAudience; learners: StudentLearner[];
   onTasks: (tasks: PublishedHomeworkTask[]) => void; onAudience: (audience: HomeworkAudience) => void; disabled: boolean;
 }) {
   const update = (task: PublishedHomeworkTask) => onTasks(tasks.map((row) => row.id === task.id ? task : row));
@@ -30,7 +30,7 @@ export function HomeworkAssignments({ tasks, audience, learners, onTasks, onAudi
       <div className="grid gap-2">
         <Label htmlFor={`task-audience-${task.id}`}>Who receives this task?</Label>
         <Select disabled={disabled} value={Object.hasOwn(audience, task.id) ? 'selected' : 'everyone'} onValueChange={(value) => { if (value === 'everyone') share(task.id); else onAudience({ ...audience, [task.id]: [] }); }}>
-          <SelectTrigger id={`task-audience-${task.id}`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="everyone">Everyone in this context</SelectItem><SelectItem value="selected" disabled={learners.length === 0}>Selected learners</SelectItem></SelectContent>
+          <SelectTrigger id={`task-audience-${task.id}`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="everyone">Everyone for this student</SelectItem><SelectItem value="selected" disabled={learners.length === 0}>Selected learners</SelectItem></SelectContent>
         </Select>
         {Object.hasOwn(audience, task.id) ? <div className="grid gap-1 rounded-lg bg-muted/40 p-2">
           {learners.map((person) => <label key={person.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 hover:bg-muted"><Checkbox checked={audience[task.id]!.includes(person.id)} onCheckedChange={(checked) => onAudience({ ...audience, [task.id]: checked ? [...audience[task.id]!, person.id] : audience[task.id]!.filter((id) => id !== person.id) })} />{person.displayName}</label>)}

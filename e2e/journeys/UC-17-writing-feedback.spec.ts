@@ -10,13 +10,13 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
-  const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'French conversation', kind: 'group', experience: 'tutoring' } })).json();
-  const { session, deck } = await (await page.request.post('/api/decks', { headers: CSRF, data: { contextId: context.id, spaceId: context.spaceId, createSession: true,
+  const { student } = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'French conversation', kind: 'group', experience: 'tutoring' } })).json();
+  const { session, deck } = await (await page.request.post('/api/decks', { headers: CSRF, data: { studentId: student.id, spaceId: student.spaceId, createSession: true,
     content: { version: 1, meta: { title: 'Un voyage en train' }, steps: [{ id: 'title', kind: 'title', title: 'Un voyage en train' }], interactions: [] },
   } })).json();
   expect((await page.request.post(`/api/sessions/${session.id}/launch`, { headers: CSRF, data: { start: true } })).status()).toBe(201);
   expect((await page.request.put(`/api/sessions/${session.id}/record`, { headers: CSRF, data: { homework: [{ id: 'writing', kind: 'writing', title: 'Votre voyage', prompt: 'Racontez votre voyage.' }] } })).status()).toBe(200);
-  const mint = async (displayName: string) => (await (await page.request.post(`/api/tutoring/contexts/${context.id}/links`, { headers: CSRF, data: { displayName } })).json()).token as string;
+  const mint = async (displayName: string) => (await (await page.request.post(`/api/tutoring/students/${student.id}/links`, { headers: CSRF, data: { displayName } })).json()).token as string;
   const lea = await mint('Léa');
   const noor = await mint('Noor');
   const learner = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -32,7 +32,7 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeFocused();
   await expect(learner.getByRole('status').filter({ hasText: /^Saved$/ })).toHaveCount(1);
 
-  await page.goto(`/host/#/space/${context.spaceId}?contextId=${context.id}`);
+  await page.goto(`/host/#/space/${student.spaceId}?studentId=${student.id}`);
   await page.getByRole('link', { name: 'Review learner work', exact: true }).click();
   await page.getByRole('link', { name: /Léa.*Review response/s }).click();
   await expect(page.getByRole('heading', { name: 'Léa’s writing', exact: true })).toBeVisible();

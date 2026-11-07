@@ -24,7 +24,7 @@ export interface LibraryRow {
   /** Contents line under the name (`6 slides · 2 ask the class`), or empty. */
   meta: string;
   location?: string;
-  /** Extra plain text folded into the search, such as a linked context. */
+  /** Extra plain text folded into the search, such as a linked student. */
   searchText?: string;
   kind?: 'deck' | 'folder';
   asksTheClass?: boolean;

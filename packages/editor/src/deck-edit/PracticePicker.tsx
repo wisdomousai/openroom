@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { assessHomework, type HomeworkPracticeAnswer, type HomeworkPracticeInteraction } from '@openroom/schema';
-import type { ContextReturned } from '../services';
+import type { StudentReturned } from '../services';
 import { Button } from '@openroom/ui/components/button';
 
-type Exercise = ContextReturned['missed'][number]['exercise'];
+type Exercise = StudentReturned['missed'][number]['exercise'];
 
 export function PracticePicker({ missed, onAddSlide, onAddHomework }: {
-  missed: ContextReturned['missed'];
+  missed: StudentReturned['missed'];
   onAddSlide: (exercise: Exercise) => boolean;
   onAddHomework: (exercise: Exercise) => boolean;
 }) {

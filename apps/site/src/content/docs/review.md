@@ -3,7 +3,7 @@ title: Review work and share feedback
 description: Read original submissions, publish corrections and audio comments, and choose material to revisit.
 section: Teaching and follow-up
 order: 170
-related: [learner, homework, notes, contexts]
+related: [learner, homework, notes, students]
 ---
 
 ## Open a response
@@ -12,7 +12,7 @@ Open the learner or class Library and select **Review learner work**. Choose **R
 
 Read the original task alongside the learner's response. The task shown with a submission is the version used when that response was sent, including when the current homework has since changed.
 
-Reviewing and publishing feedback requires editor or owner access to the context.
+Reviewing and publishing feedback requires editor or owner access to the student.
 
 ## Review writing
 
@@ -40,7 +40,7 @@ The learner reads published feedback in their **Feedback** tab. They can revise 
 
 ## Bring selected work into the next deck
 
-Open a deck linked to the learner's context and select **Notes** in the task pane.
+Open a deck linked to the learner's student and select **Notes** in the task pane.
 
 Under **Practice to revisit**, expand an exercise to inspect the learner's answer and the answer key. Select **Add as a slide** or **Add to homework** for that exercise. The copy retains its question format, options, and keys and can be edited independently. The learner's identity and submitted answer stay in the private review view.
 

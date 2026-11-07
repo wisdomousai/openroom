@@ -63,7 +63,7 @@ describe('scratchpad hand-off', () => {
   it('hands off once the durable id is known, and only after the session ends', () => {
     expect(shouldHandOffNotes({ ended: false, probe: resolved('s1') })).toBe(false);
     expect(shouldHandOffNotes({ ended: true, probe: resolved('s1') })).toBe(true);
-    // A session that genuinely has no context still resolves: the notes are
+    // A session that genuinely has no student still resolves: the notes are
     // dropped deliberately, not because a request failed.
     expect(shouldHandOffNotes({ ended: true, probe: resolved(null) })).toBe(true);
   });

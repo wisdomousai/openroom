@@ -49,7 +49,7 @@ describe('RFC 9727 API catalog', () => {
     expect(body.paths['/api/sessions']).toBeTruthy();
     expect(body.paths['/api/mcp']).toBeTruthy();
     expect(body.paths['/api/a2a']).toBeTruthy();
-    expect(body.paths['/api/tutoring/contexts']).toBeTruthy();
+    expect(body.paths['/api/tutoring/students']).toBeTruthy();
     expect(body.paths['/api/decks']).toBeTruthy();
     expect(body.paths['/api/decks/{deckId}/versions']).toBeTruthy();
     expect(body.paths['/api/sessions']).toBeTruthy();

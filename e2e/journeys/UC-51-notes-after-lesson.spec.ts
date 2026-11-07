@@ -23,18 +23,18 @@ test('notes after a lesson: Library prompt, student name, device notes and the N
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
-  const student = `Lou ${Date.now()}`;
-  const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: student, kind: 'person', experience: 'tutoring' } })).json();
-  const createDeck = async (title: string, createSession = false) => (await (await page.request.post('/api/decks', { headers: CSRF, data: { contextId: context.id, spaceId: context.spaceId, createSession,
+  const studentName = `Lou ${Date.now()}`;
+  const { student } = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: studentName, kind: 'person', experience: 'tutoring' } })).json();
+  const createDeck = async (title: string, createSession = false) => (await (await page.request.post('/api/decks', { headers: CSRF, data: { studentId: student.id, spaceId: student.spaceId, createSession,
     content: { version: 1, meta: { title }, steps: [{ id: 'title', kind: 'title', title }], interactions: [] },
   } })).json());
   await createDeck('Au café');
-  const prompt = page.getByRole('link', { name: `Write the notes for ${student}’s session, Au café`, exact: true });
+  const prompt = page.getByRole('link', { name: `Write the notes for ${studentName}’s session, Au café`, exact: true });
 
   // Starting from the Library loads its Live now list while the lesson runs;
   // after the lesson that cached list must not offer to rejoin it.
-  await page.goto(`/host/#/space/${context.spaceId}?contextId=${context.id}`);
-  await expect(page.getByRole('heading', { name: student, exact: true })).toBeVisible();
+  await page.goto(`/host/#/space/${student.spaceId}?studentId=${student.id}`);
+  await expect(page.getByRole('heading', { name: studentName, exact: true })).toBeVisible();
   await expect(prompt).toHaveCount(0);
   const launched = page.waitForResponse((response) => /\/api\/sessions\/[^/]+\/launch$/.test(response.url()) && response.request().method() === 'POST');
   await page.getByRole('listbox', { name: 'Library' }).getByRole('option', { name: /^Au café/ }).click({ button: 'right' });
@@ -43,20 +43,20 @@ test('notes after a lesson: Library prompt, student name, device notes and the N
   await page.getByRole('banner').getByRole('button', { name: 'End session', exact: true }).click();
   await page.getByRole('dialog', { name: 'End this session?', exact: true }).getByRole('button', { name: 'End session', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}/record`));
-  await expect(page.getByRole('heading', { level: 1, name: `Session notes — ${student}, Au café`, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: `Session notes — ${studentName}, Au café`, exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Cancel', exact: true }).click();
   await expect(prompt).toBeVisible();
-  await expect(page.getByRole('button', { name: new RegExp(`^Rejoin ${student}`) })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: new RegExp(`^Rejoin ${studentName}`) })).toHaveCount(0);
 
   await prompt.click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}/record`));
   const nextSession = page.getByLabel('Next session', { exact: true });
-  await expect(nextSession).toHaveAccessibleDescription(`Tutors only. Shown with ${student} in the Library and at the top of their next deck.`);
+  await expect(nextSession).toHaveAccessibleDescription(`Tutors only. Shown with ${studentName} in the Library and at the top of their next deck.`);
   await nextSession.fill('NEXT FROM THE FIRST LESSON');
   await page.getByLabel('Tutor notes', { exact: true }).fill('SAVED NOTE');
   await page.screenshot({ path: testInfo.outputPath('notes-first-lesson.png'), fullPage: true });
   await page.getByRole('button', { name: 'Save notes', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/space/${context.spaceId}`));
+  await expect(page).toHaveURL(new RegExp(`/space/${student.spaceId}`));
   await expect(prompt).toHaveCount(0);
 
   // A later lesson writes its own Next session note.
@@ -76,12 +76,12 @@ test('notes after a lesson: Library prompt, student name, device notes and the N
   await expect(page.getByLabel('Tutor notes', { exact: true })).toHaveValue('SAVED NOTE\n\nDEVICE NOTE');
   await expect(nextSession).toHaveValue('NEXT FROM THE FIRST LESSON');
   await page.getByRole('button', { name: 'Update notes', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/space/${context.spaceId}`));
+  await expect(page).toHaveURL(new RegExp(`/space/${student.spaceId}`));
 
   const saved = (await (await page.request.get(`/api/sessions/${sessionId}/record`)).json()).record;
   expect(saved.notes).toBe('SAVED NOTE\n\nDEVICE NOTE');
   expect(saved.nextNote).toBe('NEXT FROM THE FIRST LESSON');
-  const current = (await (await page.request.get(`/api/tutoring/contexts/${context.id}`)).json()).context;
+  const current = (await (await page.request.get(`/api/tutoring/students/${student.id}`)).json()).student;
   expect(current.nextNote).toBe('NEXT FROM THE SECOND LESSON');
 
   // When shared saving is refused, the alert names what stays on this device and the download carries every text field.
