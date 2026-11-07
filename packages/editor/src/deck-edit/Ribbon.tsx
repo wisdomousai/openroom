@@ -60,7 +60,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@openroom/ui/components/toggle-group';
 import { cn } from '@openroom/ui/utils';
-import { PLAN_FILE, deckGetCommand, outlineValidateCommand } from './agent-commands';
+import {
+  PLAN_FILE,
+  deckGetCommand,
+  deckSaveCommand,
+  deckStartCommand,
+  deckToolLine,
+  outlineValidateCommand,
+} from './agent-commands';
 import { ElementLayoutThumb, LayoutThumb, LAYOUT_WORDS } from './LayoutThumb';
 import {
   elementLayoutsFor,
@@ -98,7 +105,7 @@ const INSERT_ICONS: Record<InsertKind, LucideIcon> = {
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-none flex-col items-center justify-between gap-1 px-3.5">
+    <div className="flex flex-none flex-col items-center justify-between gap-1 px-2.5">
       <div className="flex flex-1 items-center gap-1">{children}</div>
       <span className="text-caption text-muted-foreground">{label}</span>
     </div>
@@ -107,6 +114,17 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
 
 function Rule() {
   return <span aria-hidden="true" className="my-1.5 w-px shrink-0 self-stretch bg-hairline" />;
+}
+
+/** Consecutive catalog entries with the same starter, in catalog order. */
+function starterRuns<T extends { starter: string }>(items: readonly T[]): T[][] {
+  const runs: T[][] = [];
+  for (const item of items) {
+    const last = runs[runs.length - 1];
+    if (last !== undefined && last[0]!.starter === item.starter) last.push(item);
+    else runs.push([item]);
+  }
+  return runs;
 }
 
 function Row({ children }: { children: ReactNode }) {
@@ -191,6 +209,13 @@ export type RibbonTab = 'file' | 'home' | 'slide' | 'insert' | 'ask' | 'reveal' 
 
 export interface RibbonProps {
   deckId: string;
+  /**
+   * The origin the hosted deck lives on, for the plan.yaml commands. Null for
+   * a deck with no hosted copy (a local Desktop file): the menu is not shown.
+   */
+  cliOrigin: string | null;
+  /** The base version a CLI save would name. */
+  currentVersion: number;
   tab: RibbonTab;
   onTabChange: (tab: RibbonTab) => void;
   selected: OutlineStep | null;
@@ -279,7 +304,9 @@ export function Ribbon(props: RibbonProps) {
           <TabsTrigger value="view">View</TabsTrigger>
         </TabsList>
         <span className="flex-1" />
-        <PlanYamlChip deckId={props.deckId} />
+        {props.cliOrigin === null ? null : (
+          <PlanYamlChip deckId={props.deckId} origin={props.cliOrigin} currentVersion={props.currentVersion} />
+        )}
       </div>
 
       <div className="border-b border-border bg-card">
@@ -476,47 +503,53 @@ export function Ribbon(props: RibbonProps) {
               <div key={group.group} className="flex">
                 {index > 0 ? <Rule /> : null}
                 <Group label={group.group}>
-                  {group.items.map((item, itemIndex) => {
-                    const Icon = INSERT_ICONS[item.kind];
-                    // Freeform inserts lead each group; the rule marks where
-                    // boxed compositions end and wired layouts begin.
-                    const previous = group.items[itemIndex - 1];
-                    return (
-                      <Fragment key={item.kind}>
-                      {previous !== undefined && previous.starter !== item.starter ? <Rule /> : null}
-                      <Button
-                        key={item.kind}
-                        type="button"
-                        size="sm"
-                        variant="subtle"
-                        disabled={noBlock}
-                        onClick={() => {
-                          if (item.kind === 'question') props.onOpenAsk();
-                          else props.onInsert(item.kind);
-                        }}
-                      >
-                        <Icon aria-hidden="true" />
-                        {item.label}
-                      </Button>
-                      </Fragment>
-                    );
-                  })}
+                  {/* Freeform inserts lead each group; the rule marks where
+                      boxed compositions end and wired layouts begin. Each run
+                      stacks two buttons per column, so the tab fits a laptop. */}
+                  {starterRuns(group.items).map((run, runIndex, runs) => (
+                    <Fragment key={run[0]!.kind}>
+                      {runIndex > 0 ? <Rule /> : null}
+                      <div className="grid grid-flow-col grid-rows-2 gap-x-1 gap-y-px">
+                        {run.map((item) => {
+                          const Icon = INSERT_ICONS[item.kind];
+                          return (
+                            <Button
+                              key={item.kind}
+                              type="button"
+                              size="sm"
+                              variant="subtle"
+                              className="h-7 justify-start"
+                              disabled={noBlock}
+                              onClick={() => {
+                                if (item.kind === 'question') props.onOpenAsk();
+                                else props.onInsert(item.kind);
+                              }}
+                            >
+                              <Icon aria-hidden="true" />
+                              {item.label}
+                            </Button>
+                          );
+                        })}
+                        {/* Breakout fills the free slot under Break. */}
+                        {group.group === 'Classroom' && run === runs[runs.length - 1] ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="subtle"
+                            className="h-7 justify-start"
+                            disabled={noBlock || isBreakout}
+                            onClick={() => props.onInsert('statement', { asBreakout: true })}
+                          >
+                            <UsersRound aria-hidden="true" />
+                            Breakout
+                          </Button>
+                        ) : null}
+                      </div>
+                    </Fragment>
+                  ))}
                 </Group>
               </div>
             ))}
-            <Rule />
-            <Group label="Breakout">
-              <Button
-                type="button"
-                size="sm"
-                variant="subtle"
-                disabled={noBlock || isBreakout}
-                onClick={() => props.onInsert('statement', { asBreakout: true })}
-              >
-                <UsersRound aria-hidden="true" />
-                Breakout
-              </Button>
-            </Group>
           </Row>
         </TabsContent>
 
@@ -710,8 +743,14 @@ export function Ribbon(props: RibbonProps) {
   );
 }
 
-function PlanYamlChip({ deckId }: { deckId: string }) {
-  const [copied, setCopied] = useState(false);
+function PlanYamlChip({ deckId, origin, currentVersion }: { deckId: string; origin: string; currentVersion: number }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const commands = [
+    { label: `Read the deck into ${PLAN_FILE}`, line: deckGetCommand(deckId, origin) },
+    { label: `Check ${PLAN_FILE}`, line: outlineValidateCommand() },
+    { label: `Save ${PLAN_FILE} as a new version`, line: deckSaveCommand(deckId, currentVersion, origin) },
+    { label: 'Start a session', line: deckStartCommand(deckId, origin) },
+  ];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -723,19 +762,32 @@ function PlanYamlChip({ deckId }: { deckId: string }) {
           {PLAN_FILE}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>Open YAML</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-[26rem]">
+        <DropdownMenuLabel className="text-caption font-normal">
+          Copy a command. Set OPENROOM_TOKEN to a personal token from Settings first.
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={() => {
-            void navigator.clipboard.writeText(deckGetCommand(deckId));
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 1500);
-          }}
-        >
-          {copied ? 'Copied' : `Copy ${deckGetCommand(deckId)}`}
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled>{outlineValidateCommand()}</DropdownMenuItem>
+        {commands.map((command) => (
+          <DropdownMenuItem
+            key={command.label}
+            className="flex-col items-start gap-0.5"
+            onSelect={(event) => {
+              // Stay open so the item can say it was copied.
+              event.preventDefault();
+              void navigator.clipboard.writeText(command.line);
+              setCopied(command.line);
+              window.setTimeout(() => setCopied((current) => (current === command.line ? null : current)), 1500);
+            }}
+          >
+            <span className="text-secondary">{copied === command.line ? 'Copied' : command.label}</span>
+            <code className="break-all font-mono text-caption text-muted-foreground">{command.line}</code>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="grid gap-0.5 text-caption font-normal">
+          <span>MCP tools for the same steps</span>
+          <code className="break-all font-mono">{deckToolLine(currentVersion)}</code>
+        </DropdownMenuLabel>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -21,6 +21,8 @@ next deck, present its question, write a private live note, end and publish home
 
 - The preparation view shows the original question, answer and complete key.
 - Each exercise is selected explicitly for a slide or homework; no bulk import.
+- After a copy, its button reads Added as a slide or Added to homework and is
+  disabled, so a second press does not duplicate it.
 - Slides use the appropriate template; their question remains visible as the heading.
 - Copies retain type, options, keys, gaps, accepted variants and text-matching rules.
 - Copies have distinct IDs, can be edited independently, and survive YAML saves.

@@ -159,6 +159,8 @@ export function DesktopFileEditor() {
     void desktopLiveRoute(signedIn, relayBridge).then(setLiveRoute);
   }, [relayBridge, signedIn]);
   useEffect(() => { refreshLiveRoute(); }, [refreshLiveRoute]);
+  // The window takes the page title, so each file window is named after its file.
+  useEffect(() => { document.title = displayName; }, [displayName]);
   // A sign-in finishes in the browser and another window; this window reads the route again.
   useEffect(() => {
     if (bridge === null) return;
@@ -520,7 +522,7 @@ export function DesktopFileEditor() {
       folderName={null} libraryTo={{ kind: 'library' }} shareTo={null}
       status={{ state: saving ? 'saving' : dirty ? 'dirty' : 'saved', label: saving ? 'Saving…' : dirty ? 'Unsaved changes' : 'Saved', retrying: false, savedAt: null }}
       fileStatus={<>
-        <span className="text-caption text-muted-foreground">{file.remote ? syncStatus === 'synced' ? 'Synced' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'checking' ? 'Syncing…' : 'Offline' : 'Local file'}</span>
+        <span className="max-w-60 truncate text-caption text-muted-foreground" title={path ?? undefined}>{displayName} · {file.remote ? syncStatus === 'synced' ? 'Synced' : syncStatus === 'conflict' ? 'Sync conflict' : syncStatus === 'checking' ? 'Syncing…' : 'Offline' : 'Local file'}</span>
         <Button size="sm" variant="subtle" aria-pressed={agentOpen} className={agentOpen ? 'bg-background' : undefined} onClick={() => showAgent(!agentOpen)}>
           <PanelRight aria-hidden="true" />
           Agent
@@ -561,6 +563,8 @@ export function DesktopFileEditor() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <DeckEditor
             deckId={file.remote?.deckId ?? file.fileId}
+            cliOrigin={file.remote?.origin ?? null}
+            currentVersion={file.remote?.baseVersion ?? 0}
             activeStepId={activeStepId}
             spaceId={null}
             source={source}

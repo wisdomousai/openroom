@@ -20,6 +20,9 @@ test('local file uses the shared editor and preserves presentation position on r
     await app.context().tracing.start({ screenshots: true, snapshots: true });
     const page = await app.firstWindow();
     await expect(page.locator('[data-deck-title]')).toHaveText('Desktop presentation');
+    // One file per student: the window and the deck bar name the file.
+    await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((window) => window.getTitle()))).toEqual(['presentation.openroom']);
+    await expect(page.getByText('presentation.openroom · Local file', { exact: true })).toBeVisible();
     await page.getByRole('tab', { name: 'Theme', exact: true }).click();
     await page.getByRole('button', { name: 'paper', exact: true }).click();
     await page.getByRole('button', { name: '4:3', exact: true }).click();

@@ -16,6 +16,7 @@ import { Input } from '@openroom/ui/components/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
 import { cn } from '@openroom/ui/utils';
 import { isServiceError, useEditorServices, type StockHit } from '../services';
+import { mediaLabelFromFileName } from './media-label';
 
 type PictureTab = 'computer' | 'stock' | 'space' | 'upload' | 'link';
 
@@ -159,7 +160,7 @@ export function PictureDialog({
                     assetId: asset.id,
                     url: assets.url(asset.id),
                     // A recording or a video is named by its label; a still picture's alt starts empty.
-                    alt: asset.alt ?? (asset.kind === 'image' ? '' : asset.name),
+                    alt: asset.alt ?? (asset.kind === 'image' ? '' : mediaLabelFromFileName(asset.name)),
                   });
                 }}
               />
@@ -298,13 +299,28 @@ function SpaceGrid({
   onPick: (asset: MediaAssetSummary) => void;
 }) {
   const service = useEditorServices().assets;
-  const [assets, setAssets] = useState<MediaAssetSummary[]>([]);
+  const [assets, setAssets] = useState<MediaAssetSummary[] | 'loading' | 'failed'>('loading');
+  const [attempt, setAttempt] = useState(0);
+  /** Tiles whose picture did not decode; they show the file name instead. */
+  const [broken, setBroken] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
     if (spaceId === null) return;
-    void service.list(spaceId, '').then(setAssets).catch(() => setAssets([]));
-  }, [service, spaceId]);
+    let current = true;
+    setAssets('loading');
+    service.list(spaceId, '').then(
+      (list) => { if (current) setAssets(list); },
+      () => { if (current) setAssets('failed'); },
+    );
+    return () => { current = false; };
+  }, [service, spaceId, attempt]);
   if (spaceId === null) {
     return <p className="text-caption text-muted-foreground">No space open to read files from yet.</p>;
+  }
+  if (assets === 'loading') {
+    return <p className="text-caption text-muted-foreground">Loading this space’s files…</p>;
+  }
+  if (assets === 'failed') {
+    return <Problem text="This space’s files could not be loaded. Check the connection and try again." onRetry={() => setAttempt((value) => value + 1)} />;
   }
   if (assets.length === 0) {
     return <p className="text-caption text-muted-foreground">Nothing uploaded in this space yet.</p>;
@@ -314,21 +330,31 @@ function SpaceGrid({
       {assets.map((asset) => {
         const url = service.url(asset.id);
         const selected = selectedUrl === url;
+        const picture = asset.kind === 'image' && !broken.has(asset.id);
         return (
           <button
             key={asset.id}
             type="button"
             aria-pressed={selected}
+            title={asset.name}
             onClick={() => onPick(asset)}
             className={cn(
               'relative aspect-[4/3] overflow-hidden rounded-lg bg-muted',
               selected ? 'outline outline-2 -outline-offset-2 outline-primary' : 'hover:outline hover:outline-2 hover:outline-primary',
             )}
           >
-            {asset.kind === 'image' ? (
-              <img src={url} alt={asset.alt ?? asset.name} className="size-full object-cover" />
+            {picture ? (
+              <img
+                src={url}
+                alt={asset.alt ?? asset.name}
+                className="size-full object-cover"
+                onError={() => setBroken((current) => new Set(current).add(asset.id))}
+              />
             ) : (
-              <span className="grid size-full place-items-center text-caption text-muted-foreground">Video</span>
+              <span className="grid size-full content-center gap-0.5 p-2 text-center">
+                <span className="text-caption font-semibold text-muted-foreground">{ASSET_KIND_WORDS[asset.kind]}</span>
+                <span className="line-clamp-2 break-all text-caption text-muted-foreground">{asset.name}</span>
+              </span>
             )}
           </button>
         );
@@ -336,6 +362,14 @@ function SpaceGrid({
     </div>
   );
 }
+
+/** What a space file tile says it is when it shows no picture. */
+const ASSET_KIND_WORDS: Record<MediaAssetSummary['kind'], string> = {
+  image: 'Picture',
+  video: 'Video',
+  audio: 'Recording',
+  pdf: 'PDF',
+};
 
 function Problem({ text, onRetry }: { text: string; onRetry?: () => void }) {
   return (

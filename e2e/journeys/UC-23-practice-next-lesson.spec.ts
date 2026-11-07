@@ -46,6 +46,8 @@ test('tutor chooses original exercises for the next lesson without copying priva
   await expect(page.getByRole('list', { name: 'Slides' }).getByRole('button')).toHaveCount(2);
   await expect(page.locator('.slide-canvas__frame [data-part="header"]')).toContainText(choice.interaction.prompt);
   await expect(choiceItem.getByRole('status')).toHaveText('Exercise added as a slide.');
+  // A second press would only duplicate the slide.
+  await expect(choiceItem.getByRole('button', { name: 'Added as a slide', exact: true })).toBeDisabled();
   await choiceItem.getByRole('button', { name: 'Add to homework', exact: true }).click();
   await expect(choiceItem.getByRole('status')).toHaveText('Exercise added to homework.');
   const gapItem = picker.locator('details').filter({ has: page.getByText('Léa · Das Verb', { exact: true }) });

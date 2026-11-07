@@ -15,8 +15,9 @@ material. The test account has its own ordinary session-start quota.
 
 ## Lifecycle and acceptance
 
-1. Upload the WAV through the editor, change its label, write the transcript and
-   verify the saved draft.
+1. Upload the WAV through the editor. Its label starts as the file name without
+   the extension. Change the label, write the transcript and verify the saved
+   draft.
 2. Play the editor preview. Enter Present and confirm the preview stops.
 3. Select individual listening and show the transcript. Start participation;
    the first live view retains both choices and each learner player starts paused.

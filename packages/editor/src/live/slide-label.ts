@@ -18,6 +18,7 @@ export function slideLabel(
     term?: string;
     body?: string;
     interactionId?: string;
+    elements?: Parameters<typeof stepLabel>[0]['elements'];
   },
   interactions?: readonly { id: string; prompt?: string }[],
 ): string {

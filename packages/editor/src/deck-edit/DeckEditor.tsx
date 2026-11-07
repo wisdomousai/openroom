@@ -136,6 +136,7 @@ export type DeckEditorDialog =
  */
 export function DeckEditor({
   deckId,
+  cliOrigin = null,
   activeStepId,
   spaceId,
   contextId = null,
@@ -157,6 +158,11 @@ export function DeckEditor({
   recipient,
 }: {
   deckId: string;
+  /**
+   * The origin the hosted deck lives on, named in the plan.yaml commands.
+   * Null (the default) for a deck with no hosted copy: the menu is not shown.
+   */
+  cliOrigin?: string | null;
   activeStepId?: string;
   spaceId: string | null;
   contextId?: string | null;
@@ -233,12 +239,20 @@ export function DeckEditor({
   /** What the open picture dialog is choosing a picture for. */
   const [pictureTarget, setPictureTarget] = useState<PictureTarget>({ kind: 'new' });
   const [placing, setPlacing] = useState<'text' | null>(null);
-  const [pickupDismissed, setPickupDismissed] = useState(false);
 
   const { learnerWork, VersionHistory } = useEditorServices().slots;
   const useReturned = learnerWork?.useReturned ?? useIdleQuery<ContextReturned>;
   const pickupQuery = useReturned(contextId);
   const nextNote = pickupQuery.data?.nextNote ?? '';
+  // Hide holds for this note on this device; a new note shows again.
+  const hiddenKey = contextId === null ? null : `or.next-note-hidden.${contextId}`;
+  const [hiddenNote, setHiddenNote] = useState<string | null>(() => readHiddenNote(hiddenKey));
+  useEffect(() => { setHiddenNote(readHiddenNote(hiddenKey)); }, [hiddenKey]);
+  const hideNextNote = () => {
+    setHiddenNote(nextNote);
+    if (hiddenKey === null) return;
+    try { localStorage.setItem(hiddenKey, nextNote); } catch { /* the banner stays hidden until the editor closes */ }
+  };
   const missed = pickupQuery.data?.missed ?? [];
 
   const outline = validation?.ok === true ? validation.outline : null;
@@ -427,6 +441,8 @@ export function DeckEditor({
   const ribbon = (
     <Ribbon
       deckId={deckId}
+      cliOrigin={cliOrigin}
+      currentVersion={currentVersion}
       aside={aside}
       tab={ribbonTab}
       onTabChange={(next) => { setRibbonTab(next); setPlayIndex(null); }}
@@ -522,16 +538,16 @@ export function DeckEditor({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {ribbon}
-      {nextNote !== '' && !pickupDismissed ? (
+      {nextNote !== '' && hiddenNote !== nextNote ? (
         <div className="flex items-start justify-between gap-3 border-b border-hairline bg-card px-6 py-2.5">
-          <p className="text-secondary">
+          <p className="max-h-[6em] min-w-0 overflow-y-auto whitespace-pre-wrap text-secondary">
             <span className="text-caption text-muted-foreground">Next session · </span>
             {nextNote}
           </p>
           <button
             type="button"
             className="text-caption text-muted-foreground hover:text-foreground"
-            onClick={() => setPickupDismissed(true)}
+            onClick={hideNextNote}
           >
             Hide
           </button>
@@ -1089,4 +1105,10 @@ function asideStatus(kind: 'homework' | 'recap', outline: Outline): string {
   const tasks = outline.homework?.tasks?.length ?? 0;
   if (tasks === 0) return 'Homework';
   return `Homework · ${tasks === 1 ? 'one task' : `${String(tasks)} tasks`}`;
+}
+
+/** The Next session note the tutor hid for this student on this device. */
+function readHiddenNote(key: string | null): string | null {
+  if (key === null) return null;
+  try { return localStorage.getItem(key); } catch { return null; }
 }

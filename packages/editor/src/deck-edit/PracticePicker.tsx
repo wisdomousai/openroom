@@ -11,6 +11,8 @@ export function PracticePicker({ missed, onAddSlide, onAddHomework }: {
   onAddHomework: (exercise: Exercise) => boolean;
 }) {
   const [notice, setNotice] = useState<{ key: string; text: string } | null>(null);
+  // An exercise goes in once per target; a second press would only duplicate it.
+  const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
   if (missed.length === 0) return null;
   return <section className="grid gap-3 border-t border-hairline px-[18px] py-4">
     <h3 className="text-row-title">Practice to revisit</h3>
@@ -21,6 +23,7 @@ export function PracticePicker({ missed, onAddSlide, onAddHomework }: {
       const assessment = assessHomework(interaction, item.lastAnswer);
       const add = (target: 'slide' | 'homework') => {
         const ok = target === 'slide' ? onAddSlide(item.exercise) : onAddHomework(item.exercise);
+        if (ok) setAdded((current) => new Set(current).add(`${key}:${target}`));
         setNotice({ key, text: ok ? target === 'slide' ? 'Exercise added as a slide.' : 'Exercise added to homework.' : 'The exercise could not be added. Check the deck and try again.' });
       };
       return <details key={key} className="rounded-lg border border-border p-3">
@@ -30,7 +33,7 @@ export function PracticePicker({ missed, onAddSlide, onAddHomework }: {
           <div><p className="text-caption font-semibold text-muted-foreground">Learner’s answer</p><ul className="mt-1 grid gap-1 whitespace-pre-wrap text-secondary">{answerLines(interaction, item.lastAnswer).map((line, index) => <li key={index}>{line}</li>)}</ul></div>
           {assessment.answers.length > 0 ? <div><p className="text-caption font-semibold text-muted-foreground">Answer key</p><ul className="mt-1 grid gap-1 whitespace-pre-wrap text-secondary">{assessment.answers.map((line, index) => <li key={index}>{line}</li>)}</ul></div> : <p className="text-secondary text-muted-foreground">Open answer, with no fixed answer key.</p>}
           <p className="text-caption text-muted-foreground">The learner’s name and response stay private here.</p>
-          <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => add('slide')}>Add as a slide</Button><Button variant="outline" size="sm" onClick={() => add('homework')}>Add to homework</Button></div>
+          <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={added.has(`${key}:slide`)} onClick={() => add('slide')}>{added.has(`${key}:slide`) ? 'Added as a slide' : 'Add as a slide'}</Button><Button variant="outline" size="sm" disabled={added.has(`${key}:homework`)} onClick={() => add('homework')}>{added.has(`${key}:homework`) ? 'Added to homework' : 'Add to homework'}</Button></div>
           {notice?.key === key ? <p role="status" className="text-secondary">{notice.text}</p> : null}
         </div>
       </details>;

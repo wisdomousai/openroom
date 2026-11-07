@@ -103,6 +103,25 @@ test('live overflow leads to editable text and clears after repair', async ({ pa
   await expect(page.locator('[data-slide-overflow]')).toHaveCount(0);
 });
 
+test('a term, a stat and a blank slide heading that fit raise no overflow notice', async ({ page }) => {
+  // Their tight line-height makes the scroll height taller than the box while every glyph shows.
+  const outline = base();
+  outline.steps = [
+    { id: 'term', kind: 'term', term: 'la correspondance', meaning: 'the connection between two trains' },
+    { id: 'stat', kind: 'statement', stat: '87%', title: 'Passed first time', body: 'Most learners pass the oral exam at the first attempt.' },
+    { id: 'blank', kind: 'blank', title: 'Bienvenue à la gare' },
+  ];
+  await openDeck(page, outline);
+  const slides = page.getByRole('list', { name: 'Slides', exact: true }).getByRole('button');
+  for (let index = 0; index < 3; index += 1) {
+    await slides.nth(index).click();
+    await expect(slides.nth(index)).toHaveAttribute('aria-current', 'true');
+    // The notice is measured after fonts load, one frame after layout.
+    await page.evaluate(() => document.fonts.ready.then(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))));
+    await expect(page.locator('[data-slide-overflow]'), `slide ${String(index + 1)}`).toHaveCount(0);
+  }
+});
+
 test('a single gap can be typed or use a word bank without extras', async ({ page }) => {
   await openDeck(page, base());
   await page.getByRole('tab', { name: 'Questions', exact: true }).click();

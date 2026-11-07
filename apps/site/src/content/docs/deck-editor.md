@@ -51,7 +51,7 @@ For structured lists, select a card, step, term, answer, or other part and use i
 | Reveal | Reveal mode, playback, Show all, and Edit order. |
 | View | **Start from here** to rehearse the selected slide. |
 
-The **plan.yaml** menu copies the command for reading the current deck through the CLI. Follow [command-line setup](/docs/cli/) before using it.
+The **plan.yaml** menu copies the command-line commands that read this deck into `plan.yaml`, check it, save it as a new version and start a session, each with the deck's address and `--token "$OPENROOM_TOKEN"`. It also names the MCP tools for the same steps. Follow [command-line setup](/docs/cli/) before using it. A Desktop file that is not saved to the workspace has no such menu.
 
 ## Save changes
 

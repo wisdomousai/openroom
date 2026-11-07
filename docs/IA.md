@@ -97,7 +97,7 @@ The teacher-facing action is **Edit deck**; `deck` is the domain noun and
 - **Full-bleed.** The editor hangs off the router root, not the workspace shell — no
   sidebar, no max-width, no page padding, the same as the live console. It is
   reached from a session, never from nav.
-- **Three panes**: thumbnail rail · desk · task pane (Deck / Notes / History).
+- **Three panes**: thumbnail rail · desk · task pane (Design / Theme / Notes / History).
   All three edit one outline.
 - The top bar's live-orange primary is **Start session**: stamp the version,
   file the session, launch it, and land in the live console. Starting is the only

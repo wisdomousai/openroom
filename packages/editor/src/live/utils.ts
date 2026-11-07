@@ -1,3 +1,4 @@
+import { freeformSlideName } from '../slide-name';
 import type { Aggregate, QnaEntry, TextEntry } from '../types';
 
 export function answeredKey(sessionCode: string): string {
@@ -21,13 +22,14 @@ export function stepLabel(step: {
   title?: string;
   term?: string;
   body?: string;
+  elements?: Parameters<typeof freeformSlideName>[0];
 }): string {
   if (typeof step.title === 'string' && step.title.trim() !== '') return step.title;
   if (step.kind === 'term' && step.term) return step.term;
   if (step.kind === 'statement' && step.body) return step.body;
   if (step.kind === 'timer') return 'Timer';
   if (step.kind === 'join') return 'Join the session';
-  if (step.kind === 'blank') return 'Slide';
+  if (step.kind === 'blank') return freeformSlideName(step.elements);
   if (step.kind === 'interaction') return 'Question';
   return step.kind;
 }

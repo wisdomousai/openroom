@@ -8,6 +8,9 @@
  * its close and reveal controls have names. Room audio and Individual
  * listening show which is on. A list slide that does not fit can move its
  * hidden items to a new slide. Filled material lines carry no placeholder.
+ * Up and Down move through the rail, an html slide is drawn and named there,
+ * the Slide tab fits at 1440 px, and the master logo and background have
+ * headings.
  */
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { parse } from 'yaml';
@@ -261,4 +264,34 @@ test('filled material lines show their text without the placeholder', async ({ p
   await expect(lines.first()).toHaveText('Worksheet A');
   for (const line of await lines.all()) await expect(line).not.toHaveAttribute('data-empty', 'true');
   await page.screenshot({ path: testInfo.outputPath('material-lines.png') });
+});
+
+test('the rail moves with Up and Down, draws and names an html slide, and the Slide tab fits at 1440', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openDeck(page, deckOf([
+    { id: 'opening', kind: 'title', title: 'Opening' },
+    { id: 'drawing', kind: 'blank', elements: [{ id: 'sun', type: 'html', html: '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>', box: { x: 10, y: 10, w: 40, h: 40 } }] },
+    { id: 'closing', kind: 'title', title: 'Closing' },
+  ]));
+  const rows = page.getByRole('list', { name: 'Slides', exact: true }).getByRole('button');
+  await expect(rows.nth(1)).toContainText('Drawing');
+  await expect(rows.nth(1).locator('.outline-step__element--html')).toHaveCount(1);
+  await rows.nth(0).click();
+  await page.keyboard.press('ArrowDown');
+  await expect(rows.nth(1)).toBeFocused();
+  await expect(rows.nth(1)).toHaveAttribute('aria-current', 'true');
+  await page.keyboard.press('ArrowUp');
+  await expect(rows.nth(0)).toHaveAttribute('aria-current', 'true');
+
+  await page.getByRole('tab', { name: 'Slide', exact: true }).click();
+  await page.screenshot({ path: testInfo.outputPath('slide-ribbon-1440.png') });
+  for (const name of ['Match', 'Break', 'Breakout']) {
+    const box = await page.getByRole('button', { name, exact: true }).boundingBox();
+    expect((box?.x ?? Infinity) + (box?.width ?? 0), `${name} is on screen`).toBeLessThanOrEqual(1440);
+  }
+
+  await page.getByRole('tab', { name: 'Theme', exact: true }).click();
+  const pane = page.locator('.deck-editor-properties');
+  await expect(pane.getByRole('heading', { name: /^Logo · / })).toHaveCount(1);
+  await expect(pane.getByRole('heading', { name: /^Background · / })).toHaveCount(1);
 });

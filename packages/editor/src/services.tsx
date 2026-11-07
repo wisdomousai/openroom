@@ -209,7 +209,7 @@ export interface EditorSlots {
   learnerWork?: {
     useReturned(contextId: string | null): EditorQuery<ContextReturned>;
   };
-  /** The space's brand kits in the Deck tab. */
+  /** The space's brand kits in the Theme tab. */
   brandKits?: {
     useBrandKits(spaceId: string): EditorQuery<{ brandKits: BrandKit[] }>;
     manageUrl(spaceId: string): string;
