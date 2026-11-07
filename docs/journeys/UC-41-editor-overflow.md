@@ -7,5 +7,6 @@ Run `bun run verify:browser UC-41-editor-overflow` after building the apps and c
 - A single gap can be authored with typed answers or an optional word bank without extra words; changing the mode survives reload.
 - Slide overflow updates while typing, before blur saves the outline. Review overflow lists the affected content and focuses its existing editor; correcting text removes the warning.
 - Nested column clipping, cards, instructions, answer lists, word banks, text boxes and closed-shadow HTML are checked in 16:9, 16:10 and 4:3. Reading material retains its intentional scrolling.
+- A term, a statement with a stat and a blank slide heading that fit show no overflow notice, although their tight line-height makes their scroll height taller than their box.
 
 The fixture uses the disposable local Worker. Screenshots capture the long homework document, short-window recap, overflow review and reading slides. UC-14 and UC-40 separately check default templates and composition across editor, presenter, projector and learner displays.
