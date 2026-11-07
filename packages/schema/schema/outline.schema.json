@@ -870,12 +870,12 @@
           "enum": ["16:9", "9:16", "4:3", "1:1"]
         },
         "place": {
-          "description": "Where the picture sits. Each layout honours only some places; the outline_validate tool description has the table per layout, and validation warns W_MEDIA_PLACE when the layout draws the picture elsewhere.",
+          "description": "Where the picture sits. Each layout honours only some places; the outline_validate tool description has the table per layout. fill is valid only on the media layout (E_MEDIA_LAYOUT elsewhere), and validation warns W_MEDIA_PLACE when the layout draws the picture elsewhere.",
           "type": "string",
           "enum": ["left", "right", "top", "bottom", "fill"]
         },
         "size": {
-          "description": "Whole percent, 20–100: the picture's share of the slide on layouts that honour it. The outline_validate tool description says what it measures on each layout, and validation warns W_MEDIA_SIZE above 60 on split.",
+          "description": "Whole percent: the picture's share of the slide on layouts that honour it, 20–100, and 20–60 on split (E_MEDIA_LAYOUT above 60). The outline_validate tool description says what it measures on each layout.",
           "type": "integer",
           "minimum": 20,
           "maximum": 100

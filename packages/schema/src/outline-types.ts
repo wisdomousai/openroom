@@ -408,6 +408,14 @@ export const MEDIA_PLACES = ['left', 'right', 'top', 'bottom', 'fill'] as const 
 /** Picture share of the slide, in whole percent. */
 export const MEDIA_SIZE_MIN = 20;
 export const MEDIA_SIZE_MAX = 100;
+/**
+ * On split the size is the picture column's share of the content width. Above
+ * this the words column is too narrow for a split heading: at 60 it is about
+ * 31 cqw at safe area 8 and 27 cqw at safe area 12, the same at every aspect
+ * (widths are in cqw; 16:9 is the tightest for height). A larger value is
+ * E_MEDIA_LAYOUT.
+ */
+export const SPLIT_MEDIA_SIZE_MAX = 60;
 /** Layout default when the author has not sized the picture. */
 export const MEDIA_SIZE_DEFAULT = 42;
 
@@ -590,8 +598,8 @@ export interface Outline {
  * stored and imported decks keep validating, and the author decides.
  *
  *   W_TEXT_FIT            a step's words are estimated taller than its slide
- *   W_MEDIA_PLACE         a picture place the slide redraws or cannot honour
- *   W_MEDIA_SIZE          a split picture so wide the words get a thin column
+ *   W_MEDIA_PLACE         a picture place the slide redraws (left or right on a
+ *                         stacked layout, top or bottom on split)
  *   W_ELEMENT_BOUNDS      a box that runs past the slide edge (x+w or y+h above 100)
  *   W_ELEMENT_OVERLAP     a box over a blank step's title, the master logo or footer
  *   W_SPAN_SIZE           a styled span too small to read
@@ -600,7 +608,6 @@ export interface Outline {
 export type OutlineWarningCode =
   | 'W_TEXT_FIT'
   | 'W_MEDIA_PLACE'
-  | 'W_MEDIA_SIZE'
   | 'W_ELEMENT_BOUNDS'
   | 'W_ELEMENT_OVERLAP'
   | 'W_SPAN_SIZE'

@@ -443,6 +443,11 @@ export const ErrorCodes = {
   E_UNKNOWN_REFERENCE: 'E_UNKNOWN_REFERENCE',
   /** `layout` names an arrangement the step's kind has no content to fill. */
   E_LAYOUT_MISMATCH: 'E_LAYOUT_MISMATCH',
+  /**
+   * The picture's `place` or `size` is one the step's drawn layout cannot hold:
+   * `fill` outside the media layout, or a size above `SPLIT_MEDIA_SIZE_MAX` on split.
+   */
+  E_MEDIA_LAYOUT: 'E_MEDIA_LAYOUT',
   /** `reveal` names a part the step does not have, repeats a part, or has an empty group. */
   E_REVEAL: 'E_REVEAL',
   /** `breakoutOf` is more than one level deep, cyclic, or names a part its parent does not have. */

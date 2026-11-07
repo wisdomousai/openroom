@@ -296,6 +296,32 @@ describe('layout — a kind may only claim a layout it can fill', () => {
   });
 });
 
+describe('media place and size against the drawn layout', () => {
+  const picture = (extra: Record<string, unknown>) => ({ type: 'image' as const, url: 'https://example.test/zoo.png', alt: 'A zoo', ...extra });
+  const statement = (layout: OutlineStep['layout'] | undefined, media: ReturnType<typeof picture>): OutlineStep =>
+    ({ id: 's', kind: 'statement', body: 'Le zoo', ...(layout === undefined ? {} : { layout }), media }) as OutlineStep;
+
+  it('caps the picture column at 60 on split, including a side place on a stacked layout', () => {
+    expect(errorsFor([statement('split', picture({ size: 60 }))])).toEqual([]);
+    const [error] = errorsFor([statement('split', picture({ size: 61 }))]);
+    expect(error).toMatchObject({ code: ErrorCodes.E_MEDIA_LAYOUT, path: '/steps/0/media/size' });
+    expect(error!.message).toContain('20 to 60');
+    expect(error!.message).toContain('Write size 60 or less');
+    expect(errorsFor([statement('text', picture({ place: 'left', size: 80 }))])).toMatchObject([{ code: ErrorCodes.E_MEDIA_LAYOUT }]);
+    expect(errorsFor([statement('text', picture({ place: 'bottom', size: 80 }))])).toEqual([]);
+  });
+
+  it('accepts fill only on the media layout and says what to write instead', () => {
+    expect(errorsFor([{ id: 'm', kind: 'media', media: picture({ place: 'fill' }) }])).toEqual([]);
+    const [onSplit] = errorsFor([{ id: 'm', kind: 'media', layout: 'split', media: picture({ place: 'fill' }) }]);
+    expect(onSplit).toMatchObject({ code: ErrorCodes.E_MEDIA_LAYOUT, path: '/steps/0/media/place' });
+    expect(onSplit!.message).toContain('layout "media"');
+    const [onText] = errorsFor([statement('text', picture({ place: 'fill' }))]);
+    expect(onText!.message).toContain('"top" or "bottom"');
+    expect(onText!.message).not.toContain('layout "media"');
+  });
+});
+
 describe('reveal — every rejection reason', () => {
   it('accepts an ordered partial reveal over real parts', () => {
     expect(errorsFor([{ ...term, reveal: [['header'], ['body']] }])).toEqual([]);

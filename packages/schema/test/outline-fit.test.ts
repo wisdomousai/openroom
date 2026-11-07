@@ -111,7 +111,7 @@ describe('W_TEXT_FIT: words taller than their slide', () => {
   });
 });
 
-describe('W_MEDIA_PLACE and W_MEDIA_SIZE: pictures the layout redraws', () => {
+describe('W_MEDIA_PLACE: pictures the layout redraws', () => {
   const picture = (extra: Record<string, unknown>) => ({ type: 'image' as const, url: 'https://example.test/zoo.png', alt: 'A zoo', ...extra });
 
   it('draws left or right on a stacked layout as split and says so', () => {
@@ -122,16 +122,6 @@ describe('W_MEDIA_PLACE and W_MEDIA_SIZE: pictures the layout redraws', () => {
 
   it('flags top and bottom on split, which draw as right', () => {
     expect(codes({ id: 's', kind: 'statement', body: 'Le zoo', layout: 'split', media: picture({ place: 'top' }) })).toEqual(['W_MEDIA_PLACE']);
-  });
-
-  it('flags fill on split, which leaves no column for the words', () => {
-    expect(codes({ id: 's', kind: 'statement', body: 'Le zoo', layout: 'split', media: picture({ place: 'fill' }) })).toEqual(['W_MEDIA_PLACE']);
-  });
-
-  it('flags a split picture wider than 60 and passes one of 50', () => {
-    const split = (size: number): OutlineStep => ({ id: 's', kind: 'statement', body: 'Le zoo', layout: 'split', media: picture({ place: 'left', size }) });
-    expect(codes(split(50))).toEqual([]);
-    expect(codes(split(80))).toEqual(['W_MEDIA_SIZE']);
   });
 
   it('says nothing about the places a layout honours', () => {

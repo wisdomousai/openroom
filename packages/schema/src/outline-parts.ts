@@ -22,6 +22,7 @@ import {
   MEDIA_SIZE_DEFAULT,
   MEDIA_SIZE_MAX,
   MEDIA_SIZE_MIN,
+  SPLIT_MEDIA_SIZE_MAX,
 } from './outline-types.js';
 
 export const OUTLINE_LAYOUTS = [
@@ -136,8 +137,37 @@ export function stepPicture(step: OutlineStep): OutlineMedia | undefined {
   return undefined;
 }
 
-export function clampMediaSize(size: number): number {
-  return Math.min(MEDIA_SIZE_MAX, Math.max(MEDIA_SIZE_MIN, Math.round(size)));
+/** Layouts that draw their blocks one under the other, with no side region. */
+const STACKED_LAYOUTS: ReadonlySet<OutlineLayout> = new Set(['title', 'text', 'grid']);
+
+/**
+ * The layout a step is drawn in: the authored one when the kind can fill it,
+ * else the kind's default; a picture placed `left` or `right` on a stacked
+ * layout is drawn as `split` when the kind allows it.
+ *
+ * Same rule as `effectiveLayout` in `packages/slides/src/layout.ts`, which
+ * mirrors this package's tables rather than importing them.
+ */
+export function resolvedStepLayout(step: OutlineStep): OutlineLayout {
+  const authored = step.layout;
+  const layout =
+    authored !== undefined && layoutAllowedForKind(step.kind, authored)
+      ? authored
+      : (LAYOUTS_FOR_KIND[step.kind][0] ?? 'text');
+  const place = stepPicture(step)?.place;
+  if ((place === 'left' || place === 'right') && STACKED_LAYOUTS.has(layout) && layoutAllowedForKind(step.kind, 'split')) {
+    return 'split';
+  }
+  return layout;
+}
+
+/** The largest picture size a layout takes: 60 on split, 100 elsewhere. */
+export function mediaSizeMax(layout: OutlineLayout): number {
+  return layout === 'split' ? SPLIT_MEDIA_SIZE_MAX : MEDIA_SIZE_MAX;
+}
+
+export function clampMediaSize(size: number, max: number = MEDIA_SIZE_MAX): number {
+  return Math.min(max, Math.max(MEDIA_SIZE_MIN, Math.round(size)));
 }
 
 /**

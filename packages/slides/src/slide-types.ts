@@ -26,7 +26,11 @@ export interface SlideMedia {
   aspect?: string;
   /** Which slot the picture occupies. Surfaces default from the step layout. */
   place?: string;
-  /** Share of the slide, 20–100. Width for left/right, height for top/bottom. */
+  /**
+   * Share of the slide in percent: on split the picture column's width (at
+   * most 60; top and bottom draw as right), on title, text and grid the
+   * picture's greatest height. The schema owns the ranges.
+   */
   size?: number;
 }
 
