@@ -19,6 +19,9 @@ Acceptance:
 - Saving writing by keyboard keeps focus on the Save button and announces Saved.
 - A correction whose words are not in the response is marked on its field with
   the reason and takes focus; Add correction focuses the new field.
+- Words selected in the response fill Their words through Use selection, or
+  through Add correction, as an exact quote without the surrounding spaces.
+  Keyboard users type the words instead.
 - Leaving the review with unsaved feedback asks "Leave without saving?";
   Cancel keeps the text and Discard changes leaves.
 - A tutor draft is absent from the learner's response and UI.
