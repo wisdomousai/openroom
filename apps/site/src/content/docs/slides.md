@@ -33,7 +33,7 @@ For shared answers, select a question and choose **Design → Responses → One 
 
 Use **All at once** to present a slide's content together. Use **One at a time** to reveal its parts in sequence. Select **Edit order** or the task pane's **Reveal** controls to arrange the reveal sequence and group parts that should appear together.
 
-Preview with the ribbon's playback controls. During presentation, the next action reveals the next part before advancing to the next slide. Backward navigation reverses the reveal position.
+Preview with the ribbon's playback controls. During presentation, the next action reveals the next part before advancing to the next slide. Backward navigation reverses the reveal position. On a title, statement or picture slide with a reveal, the content starts at the top, so the parts already shown do not move when the next one appears.
 
 Correct answers follow the question's result controls. Revealing ordinary slide content and revealing a question's answer are distinct actions.
 

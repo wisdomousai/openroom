@@ -20,6 +20,8 @@ Select **Picture** from the editor's insert controls. Choose a source:
 
 Select the inserted picture to change or remove it, set its size and placement, adjust the focal point, and edit **Alt text** and **Caption**. Use meaningful alt text for information conveyed by the image.
 
+A picture placed left or right sits in a column beside the words, and the slide is drawn with the **Split** layout. That column can take at most 60 percent of the width, so the words keep a usable column. A picture placed above or below the words takes at most its size as a share of the height. **Fill** covers the picture area of a picture slide only.
+
 Supported uploaded images are PNG, JPEG, WebP, GIF, and AVIF. Individual uploaded media files are limited to 20 MiB.
 
 ## Prepare listening audio
