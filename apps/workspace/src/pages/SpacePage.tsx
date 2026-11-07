@@ -794,6 +794,10 @@ export function SpacePage({
 }
 
 function cnLibrary(_personView: boolean): string {
-  /* Narrower rail and inspector at lg, so the list keeps room at 1024 px. */
-  return 'grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:grid-cols-[180px_minmax(0,1fr)_248px] xl:grid-cols-[200px_minmax(0,1fr)_300px]';
+  /*
+   * Three columns at every width: the shell never gets narrower than 980 px
+   * (below that the page scrolls under a notice), so the columns never stack.
+   * Narrower rail and inspector below xl keep the list room.
+   */
+  return 'grid h-full min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)_248px] overflow-hidden bg-background xl:grid-cols-[200px_minmax(0,1fr)_300px]';
 }

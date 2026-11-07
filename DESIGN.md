@@ -277,6 +277,12 @@ Console: three-column live layout (rail / detail / aside) collapsing to two at
 minimum touch targets. Stage: full-viewport composition. Tight groups,
 generous separation; more space above a heading than below it.
 
+Workspace: the shell has a 980 px minimum width, and a narrower window shows a
+one-line notice above it. The Library keeps its three columns at every width
+the shell accepts. Settings, Add student, Space settings, Sample lessons, a
+session's Notes and Review learner work fit any width: the sidebar hides below
+`md` and the search field below `lg`.
+
 Observed rhythm: `2 / 4 / 6 / 8 / 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 / 44 / 56`.
 
 ### Stage geometry tokens (`apps/stage/src/stage-ui.css` on `.stage`)

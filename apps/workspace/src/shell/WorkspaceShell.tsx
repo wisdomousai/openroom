@@ -143,7 +143,16 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
   const libraryPath = pathname === '/space' || (pathname !== '/space/new' && /^\/space\/[^/]+$/.test(pathname));
   const libraryActive = libraryPath && activeContextId === null;
   const flushMain = libraryPath;
-  const accountPage = pathname === '/settings' || pathname.startsWith('/settings/');
+  /*
+   * Form and Notes pages fit any window, as Settings does: Add student, Space
+   * settings, Sample lessons, a session's Notes and Review learner work. The
+   * Library and the rest keep the 980 px desktop minimum, with a notice below it.
+   */
+  const responsivePage = pathname === '/settings' || pathname.startsWith('/settings/')
+    || pathname === '/tutor/contexts/new'
+    || /^\/space\/[^/]+\/(edit|samples)$/.test(pathname)
+    || /^\/sessions\/[^/]+\/record$/.test(pathname)
+    || /^\/tutor\/contexts\/[^/]+\/work(\/[^/]+\/edit)?$/.test(pathname);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const contextById = useMemo(() => new Map([...(trashedContextsQuery.data ?? []), ...contexts].map((context) => [context.id, context])), [contexts, trashedContextsQuery.data]);
@@ -174,12 +183,17 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
   const userLabel = user?.name || user?.email || 'You';
 
   return (
-    <div data-workspace-experience={experience} className={cn("flex h-svh flex-col overflow-hidden bg-background text-foreground", accountPage ? "min-w-0" : "min-w-[980px]")}>
+    <div data-workspace-experience={experience} className={cn("flex h-svh flex-col overflow-hidden bg-background text-foreground", responsivePage ? "min-w-0" : "min-w-[980px]")}>
+      {responsivePage ? null : (
+        <p role="note" className="sticky left-0 w-screen shrink-0 border-b border-border bg-card px-3.5 py-1.5 text-caption text-muted-foreground min-[980px]:hidden">
+          This page is made for windows at least 980 px wide. Widen the window to see all of it.
+        </p>
+      )}
       <header className="flex h-11 shrink-0 items-center gap-3.5 bg-chrome px-3.5">
         <Link {...libraryTo} className="shrink-0 text-title-bar tracking-tight">
           OpenRoom
         </Link>
-        <form onSubmit={runSearch} className={cn("relative min-w-0", accountPage && "hidden lg:block")} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSearchOpen(false); }}>
+        <form onSubmit={runSearch} className={cn("relative min-w-0", responsivePage && "hidden lg:block")} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSearchOpen(false); }}>
           <Input
             value={query}
             onChange={(event) => { setQuery(event.currentTarget.value); setSearchOpen(true); }}
@@ -204,7 +218,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
         </form>
         <span className="flex-1" />
         {actions}
-        <div className={accountPage ? "hidden sm:block" : undefined}><ThemeStudio /></div>
+        <div className={responsivePage ? "hidden sm:block" : undefined}><ThemeStudio /></div>
         <Button asChild variant="subtle" size="sm" className="h-7 px-2.5 font-normal">
           <a href="/docs/start/" target="_blank" rel="noreferrer">Manual<span className="sr-only"> (opens in a new tab)</span></a>
         </Button>
@@ -220,7 +234,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className={cn("min-h-0 w-[244px] shrink-0 flex-col border-r border-border bg-chrome", accountPage ? "hidden md:flex" : "flex")}>
+        <aside className={cn("min-h-0 w-[244px] shrink-0 flex-col border-r border-border bg-chrome", responsivePage ? "hidden md:flex" : "flex")}>
           <div className="px-2 pt-2"><SpaceSwitcher current={currentSpace} spaces={spaces} /></div>
           <div className="px-3 pb-2 pt-3">
             <Button asChild className="h-[34px] w-full">
