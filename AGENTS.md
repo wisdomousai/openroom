@@ -22,7 +22,7 @@ When adding a surface, ask: does this help open a deck, share a space, or teach 
 - Two Workers. `apps/relay` (`openroom-relay`) is the live plane: it owns `SessionDO`, the live session routes (state, commands, WebSocket, export, stage token, per-session assets), anonymous/pseudonymous join, and the stage and participant apps. It has no D1 or R2 and runs alone as a complete live system, where `RELAY_KEY` gates `POST /api/sessions`. `apps/workspace-worker` (`openroom`) is the control plane: accounts, spaces, decks, billing, MCP, and every hosted session creation. It binds `SessionDO` cross-script (`script_name: "openroom-relay"`), answers the live API itself through the shared `openroom-relay/live` module with its own authority (D1 rechecks, archives, identified and roster joins), and forwards `/join/`, `/stage/` and the `join.` host to the relay over the `RELAY` service binding. Live logic lives once, in `apps/relay/src`; the control plane never copies it. Deploy the relay first.
 - Heavy outline preparation happens in the teacher's **own** agent, through one of two doors:
   an **external agent** (any MCP client, the CLI, or the public API), or the **OpenRoom
-  Desktop "Prepare this deck" pane**, which executes the agent locally: the Claude / Codex
+  Desktop Agent pane**, which executes the agent locally: the Claude / Codex
   harness signed in with the teacher's own subscription, or the API-key host, which calls
   a provider the teacher holds a key for. Either way in a conversation-scoped workdir with
   a stdio MCP sidecar to the open file (see `docs/AGENT.md`). OpenRoom stores and delivers

@@ -52,13 +52,13 @@ Desktop reads where to start a live session when the teacher presses Start (`app
 | Signed out, live server set | The teacher's relay (`apps/relay`) | Offline |
 | Signed out, no live server | Off; the deck bar says live sessions need a sign-in or a live server | Offline |
 
-The live server is an OpenRoom relay deployed alone ([`SELF-HOST.md`](SELF-HOST.md), "Relay only"). Its address and `RELAY_KEY` are set under Settings → **Live server**, or **Live server…** in the document window. `apps/desktop/src/relay.ts` keeps both in `live-server.json` under Desktop's application data: the key sealed with Electron `safeStorage` and written `0600`, exactly like the API-key host's keys, and a computer without a keychain is told so. `OPENROOM_RELAY_ORIGIN` and `OPENROOM_RELAY_KEY` supply both from the environment (read, never written). The address must be `https://`, or `http://` on loopback for `bun run dev:relay`.
+The live server is an OpenRoom relay deployed alone ([`SELF-HOST.md`](SELF-HOST.md), "Relay only"). Its address and `RELAY_KEY` are set with **Live server…** in a file window (in the top bar, and in the bar note a signed-out window shows). `apps/desktop/src/relay.ts` keeps both in `live-server.json` under Desktop's application data: the key sealed with Electron `safeStorage` and written `0600`, exactly like the API-key host's keys, and a computer without a keychain is told so. `OPENROOM_RELAY_ORIGIN` and `OPENROOM_RELAY_KEY` supply both from the environment (read, never written). The address must be `https://`, or `http://` on loopback for `bun run dev:relay`.
 
 Starting on the relay: the renderer hands the file's outline to the main process (`relayStartSession`), which sends `POST /api/sessions` with the key as bearer. The key never crosses the preload bridge. The main process records the session code with its relay for 24 hours, so the `openroom://app/api/sessions/<code>/…` proxy sends that session's state polling, commands, resource uploads, exports and stage token to the relay; the audience window follows the same route. The renderer then uploads embedded resources and starts the session exactly as for a hosted session. `RelayLiveServices` (`apps/desktop/renderer-src/relay-live.tsx`) gives the live console relay join and stage links, no saved session record or results, and no remote or Q&A desk links for other devices. Relay sessions are anonymous or pseudonymous; an identified or roster deck is refused with the relay's reason.
 
 ## Link and sync
 
-The first “Put online” action requires a context, space, and optional folder. It creates the deck through the normal control-plane API while binding the existing `fileId`.
+The first **Save to workspace…** action requires a context, space, and optional folder. It creates the deck through the normal control-plane API while binding the existing `fileId`.
 
 A linked file checks the deck on focus and every 30 seconds with `If-None-Match`. No sync Durable Object exists. D1 stores immutable deck versions and the link/location metadata; `SessionDO` remains only for a live session.
 

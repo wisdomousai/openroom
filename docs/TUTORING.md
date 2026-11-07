@@ -296,7 +296,7 @@ not mint a credential.
 
 | Route | Job |
 | --- | --- |
-| `POST /api/tutoring/contexts/:id/links` | Mint. Body `{ expiresInDays? }` (default 180, min 1, max 365). `201 { id, token, tokenPrefix, createdAt, expiresAt }`. |
+| `POST /api/tutoring/contexts/:id/links` | Mint. Body `{ learnerId? \| displayName?, expiresInDays?, sessionCode? }` (expiry default 180, min 1, max 365). `201 { id, token, tokenPrefix, createdAt, expiresAt, learnerId, displayName, learnerUrl, joinUrl? }`. `learnerUrl` is the student's page; `joinUrl` is present when `sessionCode` names a session of this context and is the only usable join URL of an identified session. `422 session-not-in-context` otherwise. |
 | `GET /api/tutoring/contexts/:id/links` | List. `{ links: [{ id, tokenPrefix, createdAt, expiresAt, revokedAt }] }` — prefixes only. |
 | `DELETE /api/tutoring/contexts/:id/links/:linkId` | Revoke. `{ ok: true }`. Sets `revoked_at`; never hard-deletes. |
 

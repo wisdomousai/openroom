@@ -23,8 +23,8 @@ bun run deploy
 ```
 
 Create a session with `POST /api/sessions` and `Authorization: Bearer <RELAY_KEY>`
-(`docs/CONTRACTS.md`, "Relay API"), or point OpenRoom Desktop at the relay under
-Settings → **Live server** (address and key). Signed out, Desktop then starts live
+(`docs/CONTRACTS.md`, "Relay API"), or point OpenRoom Desktop at the relay with
+**Live server…** in a file window (address and key). Signed out, Desktop then starts live
 sessions on that relay.
 
 ## Full: workspace, library and live sessions

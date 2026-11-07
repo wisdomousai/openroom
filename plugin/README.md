@@ -20,6 +20,13 @@ An Agent Plugins package and Codex / ChatGPT plugin for OpenRoom. Compatible cli
   business API, and helps the tutor deliver it live.
 - **`skills/run-a-session/`** — teaches the live classroom loop: author and
   validate an outline, create a session, control it, and read aggregate results.
+- **`skills/prepare-a-language-outline/`** — prepares a one-to-one or
+  small-group language lesson from a language, level, school material or the
+  last session's record.
+- **`skills/port-a-deck/`** — turns a PowerPoint, PDF or folder of slide images
+  into an outline that keeps the visuals as freeform elements.
+- **`skills/make-this-interactive/`** — adds or replaces questions, activities
+  and timers in an outline that already has its visuals.
 - **`.codex-plugin/plugin.json` + `.mcp.json`** — a Codex- and ChatGPT-compatible
   manifest over the same remote MCP endpoint. OpenRoom does not bundle or proxy an LLM.
 
@@ -34,6 +41,9 @@ plugin/
 ├── mcp.json
 ├── assets/
 └── skills/
+    ├── make-this-interactive/
+    ├── port-a-deck/
+    ├── prepare-a-language-outline/
     ├── prepare-a-tutoring-outline/
     │   └── SKILL.md
     └── run-a-session/

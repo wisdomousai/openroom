@@ -26,8 +26,9 @@ bootstraps Personal.
 
 Terminology (UI vs API, library vs instance): **[`docs/TERMINOLOGY.md`](TERMINOLOGY.md)**.
 
-- **Host UI** (`/host/`): **workspace home** first — the deck library, **Prepare**
-  (contexts + decks), live sessions. A **session** is one started instance of a
+- **Host UI** (`/host/`): the **Library** first — spaces, folders and decks, with
+  **Students**, **Shared** and **Trash** in the sidebar and **Live now** while a
+  session runs. A **session** is one started instance of a
   deck (not a primary library nav peer). The deck editor (`DeckEditorPage`) is
   under dedicated `#/decks/new` and `#/decks/:id/edit` routes;
   **YAML** tab is optional import/export there, never the landing page.
@@ -72,8 +73,8 @@ Session (below).
 
 ```text
 1. openroom validate session.yaml
-2. openroom session start session.yaml --url $BASE --admin-key $KEY
-3. Participants join with the printed session code (or POST /api/join)
+2. openroom session start session.yaml --url $BASE --token $OPENROOM_TOKEN
+3. Participants join with the printed join URL or code (or POST /api/join)
 4. openroom session open <first-id>   # or use the phone remote
    …people answer…
    openroom session reveal <id>
@@ -84,7 +85,7 @@ HTTP equivalent (same shapes as CLI):
 
 | Step | Request |
 | --- | --- |
-| Create session | `POST /api/sessions` + `{ outline }` (SimpleSession, Session, or Outline v1), header `x-openroom-admin` |
+| Create session | `POST /api/sessions` + `{ outline }` (SimpleSession, Session, or Outline v1), `Authorization: Bearer orpat_…` |
 | Start | `POST /api/sessions/:code/commands` `{ command: "session.start" }` |
 | Open | `{ command: "interaction.open", interactionId }` |
 | Reveal | `{ command: "interaction.reveal", interactionId }` |
@@ -92,6 +93,14 @@ HTTP equivalent (same shapes as CLI):
 | End | `{ command: "session.end" }` |
 
 Every mutating command needs an `idempotencyKey`. Host uses `Authorization: Bearer <hostToken>`.
+
+`session start` writes `.openroom.json` in the working directory, so the later
+`openroom session …` commands need no code or token. `openroom deck start` writes
+the same file for a saved deck, and `openroom session facilitate <code> --token …`
+writes it for a session that is already running. The personal token (`orpat_…`) is
+minted in Settings → Connect an agent; sessions created with it belong to the
+tutor's account. `--admin-key` (header `x-openroom-admin`) is the deployment
+operator key, for self-hosting and incident work only.
 
 **That is the whole happy path.** If an agent only ever does this, the product works.
 
@@ -159,7 +168,7 @@ has the hosted editor. Local agents use one stdio host: `openroom mcp
 the hosted endpoint. Same tools. No extra PAT. `session_results` is aggregates
 only — never add a ballot-export tool.
 
-OpenRoom Desktop can start that path for you. **Prepare this deck** is a
+OpenRoom Desktop can start that path for you. The **Agent** pane is a
 multi-turn chat that runs the embedded Claude or Codex harness, or the
 in-process API-key host, in a persistent workspace scoped to that deck,
 with the OpenRoom skills and a stdio MCP sidecar back to the open file.
@@ -184,19 +193,19 @@ Make a 4-question exit ticket on present perfect vs past simple for B1
 French speakers and start the session. Give me the join code.
 ```
 
-Twelve focused tools:
+Fourteen focused tools:
 
 | Tool | Args | Returns |
 | --- | --- | --- |
 | `outline_validate` | `{ outline }` (YAML/JSON text or object) | typed step and interaction summary, or stable errors |
-| `session_create` | `{ outline }` (text or object) | `{ code, joinUrl, hostToken, stageToken }` |
+| `session_create` | `{ outline }` (text or object) | `{ code, joinUrl, stageUrl, hostToken, stageToken }`; an identified outline is refused with `identified-session-needs-context` |
 | `session_status` | `{ code }` | session status + per-question lifecycle (no results) |
 | `session_results` | `{ code, interactionId? }` | aggregates only — never ballots, never pre-reveal answer keys |
 | `deck_get` | `{ deckId, version? }` | the deck row, its place, `contentVersion`, and the content as Outline v1 |
 | `deck_preview` | `{ outline }` or `{ deckId, version? }` | a validated read-only deck preview; UI-capable clients render the slide rail and projector view, while other clients receive JSON text |
 | `deck_save_version` | `{ deckId, content, baseVersion }` | `{ version }`, or schema errors, or a `version-conflict` with the server's `latestVersion` |
 | `deck_draft_put` | `{ deckId, source, baseVersion }` | `{ savedAt }` — unvalidated working text, never delivered |
-| `deck_start` | `{ deckId, version?, title?, start? }` | `{ sessionId, sessionCode, code, joinUrl, hostToken, stageToken, deckId }` |
+| `deck_start` | `{ deckId, version?, title?, start? }` | `{ sessionId, sessionCode, code, joinUrl, stageUrl, hostToken, stageToken, deckId }`; an identified session has no `joinUrl` (see below) |
 | `openroom_api` | `{ method, path, body? }` | user-scoped authoring, billing and retained-archive operations through the browser's application services; the tool description is the path contract |
 | `session_recap` | `{ code, selection? }` | selects a workshop recap for facilitator review and download |
 | `session_facilitate` | `{ code }` | joins a shared live session without taking presentation control |
@@ -205,6 +214,14 @@ Twelve focused tools:
 
 Pass Outline v1 to `session_create`. SimpleSession (title + questions) and
 classroom poll lists compile to an outline of interaction steps.
+
+`joinUrl` and `stageUrl` are absolute; hand them to the people in the room. An
+identified session admits nobody by code alone, so its start result carries no
+`joinUrl`. Mint the student's link with `POST /api/tutoring/contexts/{id}/links`
+and body `{ "sessionCode": "…" }` (add `learnerId` or `displayName` for each
+student of a group); the answer's `joinUrl` carries the link, and its
+`learnerUrl` opens the student's own page. Starting an identified deck that is
+not filed under a student answers `422 identified-session-needs-context`.
 
 On openroom.app the teaching loop is the paid `continuity` capability of the
 space owner: context links and people, learner work, session Notes, and creating
@@ -268,8 +285,12 @@ carries. Put it on *that* step; do not insert a new media step to illustrate
 one. `timer`, `break`, and `join` cannot carry one.
 
 Place and size the picture with `media.place` (`left` `right` `top` `bottom`
-`fill`) and `media.size` (a percent of the slide). What each layout does with
-them, and the limits `outline_validate` enforces, are in its tool description. The teacher can
+`fill`) and `media.size` (20 to 100). On split, size is the picture column's
+share of the width and at most 60; on title, text and grid with place top or
+bottom it is the picture's greatest height. Place left or right on those layouts
+draws the step as split, and fill is valid only on the media layout. A place or
+size the drawn layout cannot hold is `E_MEDIA_LAYOUT`. The full table is in the
+`outline_validate` tool description. The teacher can
 drag the same values on the canvas. Default place follows the step layout
 (`split` → right, `media` → fill, otherwise bottom); default size is 42.
 

@@ -109,7 +109,7 @@ These are **filed work**, not peer nav apps. Only decks appear as folder rows.
 | UI term | API / code | What it is | Not |
 | --- | --- | --- | --- |
 | **Access link** (full: **context access link**) | `orlnk_…` bearer; D1 `context_access_links`; `/api/tutoring/contexts/:id/links*` | A revocable capability the tutor mints for **one** context and hands to that student or family. Shown once at mint; default 180 days; max 10 live per context; revoked, never hard-deleted. | **Not an account** — no user row, no sign-in, no space membership, no email. Not a personal API token (`orpat_…`, tutor-side). Not a session join code. |
-| **Learner view** | `/api/learner/*` (`me`, `sessions`) | The student-facing read surface an access link unlocks: their own sessions and curated session records. | Not the host console, not a second workspace, and not a place anything is written. |
+| **Learner view** | `/api/learner/*` (`me`, `sessions`, practice, writing, voice, feedback, audio trash and restore) | The student-facing surface an access link unlocks: their own sessions and curated session records, and their own work (practice grades, writing, voice responses). | Not the host console, not a second workspace, and never a place tutor-side records are written. |
 
 | **Roster invite** | `orinv_…` bearer; D1 `roster_seats`; mint on the session | A one-session named seat the host typed. Shown once; redeemed into that session as that display name. The job is a roll (club vote, board, training attendance). | **Not** a context access link. **Not** a space invite. No context, no learner page, no account. |
 
@@ -135,13 +135,13 @@ records.
 | UI term | API / code | What it is | Primary surfaces |
 | --- | --- | --- | --- |
 | **Session** | session (`/api/sessions*`) | One **deck that was started**: who (context), which deck version, the live plane, the Notes written afterwards. | Nested under deck / context / space folder; `#/sessions/:code`, `#/sessions/:id/record`. |
-| **Live session** | the ephemeral plane (Durable Object + `/api/sessions/:code/*`) | Ephemeral synchronized live state: host, stage, participants, ballots. Lifecycle is driven by the `session.*` commands. Purged on a short TTL. | Host console, remote, stage, participant join. Home **Continue**. |
+| **Live session** | the ephemeral plane (Durable Object + `/api/sessions/:code/*`) | Ephemeral synchronized live state: host, stage, participants, ballots. Lifecycle is driven by the `session.*` commands. Purged on a short TTL. | Host console, remote, stage, participant join. **Live now** · **Rejoin** in the Library and the deck editor. |
 | **Notes** | session record | Compact post-session outcomes (not a transcript). UI word is **Notes**; API/DB word stays `record`. | `#/sessions/:id/record`; a typed row in the session’s folder. |
 
 ### A session is browsable, but not a library peer
 
 - A session is an **occurrence**, not a reusable library object. It is still **findable in a place**.
-- A session is **not** a folder row. Notes appear as a quiet group on the person's folder (titles only, no dates), on Home's timeless write-Notes prompt, and on learner links. Type-filter chips are deleted.
+- A session is **not** a folder row. Notes appear as a quiet group on the person's folder (titles only, no dates), in the Library's timeless write-Notes prompt, and on learner links. Type-filter chips are deleted.
 - Sessions and Notes get **no collection route** and no nav item: there is no “all sessions” shelf.
 - **Create path: a session is started, not scheduled.** It comes into existence from the deck editor's **Start session** or a library row’s **Start session** — there is no create form and no free-floating “New session” anywhere. Notes are written from the session (`#/sessions/:id/record`).
 - **There is no scheduling and no approvals.** Sessions carry no `startsAt`/`endsAt` and no `scheduled` status — not in the workspace, not in the API. Nothing is booked and nothing waits on an approver.
@@ -200,18 +200,18 @@ someone in a live session) and not a user (there is no account).
 
 ## Routes
 
-Host hash routes, in full. Unknown hashes land on Home.
+Host hash routes, in full. An unknown hash lands on the Library.
 
 | Route | Screen |
 | --- | --- |
-| `#/` | Home |
+| `#/` | Library of the current space |
 | `#/space[...]` | Space and folder browser |
 | `#/decks/new` | New deck |
-| `#/decks/:id` | Deck detail |
+| `#/decks/:id` | Redirects to the deck editor |
 | `#/decks/:id/edit` | Deck editor |
 | `#/sessions/:code` | Live host console (`/remote`, `/qna` beneath it) |
 | `#/sessions/:id/record` | Notes |
-| `#/tutor/contexts*` | Contexts (Students) |
+| `#/tutor/contexts`, `#/tutor/contexts/:id` | Redirect to the student's place in the Library; `/new` adds a student, `/:id/links/new` creates an access link |
 | `#/tutor/trash` | Trash |
 | `#/settings*` | Settings |
 | `#/learn` | Learner view |
@@ -265,7 +265,7 @@ Students and classes are free. Paid plans add shared workspaces (`team`), saved 
 | **Advance** | Move to the next pending interaction (classroom) or outline step (tutoring). |
 | **Ballot** | One participant’s response; purged after the session ends. |
 | **Session code** | The 8-character code a participant types to join. Also the live-plane path segment `/api/sessions/:code/*`. |
-| **Handle** | The participant identity shown in a session (never a global account). In the default pseudonymous mode it is generated session-locally ("Amber Fox 4827"); in an identified session it is the context's `display_name`, authored by the tutor. Never typed by the participant in any mode. |
+| **Handle** | The participant identity shown in a session (never a global account). In the default pseudonymous mode it is generated session-locally ("Amber Fox 4827"); in an identified session it is the context's `display_name`, authored by the tutor. Typed by the participant only to recover a pseudonymous seat (**Rejoin with handle**). |
 | **Identity mode** | Outline-level `anonymous` \| `pseudonymous` \| `identified`. Default `pseudonymous`. `identified` sessions are enterable only with a context access link for that session's context. |
 | **Dictionary** | The full entry for a word in the language being taught: part of speech, headword properties (gender, verb class, auxiliary), and a forms table. Part-of-speech generic — verbs, nouns, adjectives, pronouns and prepositions all render through one tag-driven path. The tutor can project it onto the wall. |
 | **Meaning** | The short translation of one word into the student's own language, attached under the word on the slide. Not "gloss": that is a lexicographer's word and told a tutor nothing. Not "translation" either, which is already taken by whole-sentence translation. |
