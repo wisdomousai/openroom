@@ -8,8 +8,8 @@ import {
   deckDraftPutCommand,
   deckGetCommand,
   deckSaveCommand,
-  deckSaveToolLine,
   deckStartCommand,
+  deckToolLine,
   deckVersionsCommand,
   outlineValidateCommand,
 } from './agent-commands';
@@ -33,30 +33,30 @@ const MCP_TOOLS_SOURCE = repoFile('packages/mcp/src/tools.ts');
 
 describe('deck editor agent commands', () => {
   it('echoes the deck id and base version a save actually sends', () => {
-    expect(deckSaveCommand('d-42', 7)).toBe('openroom deck save d-42 --file plan.yaml --base 7');
-    expect(deckGetCommand('d-42')).toBe('openroom deck get d-42 --yaml');
-    expect(deckGetCommand('d-42', 3)).toBe('openroom deck get d-42 --version 3 --yaml');
-    expect(deckStartCommand('d-42')).toBe('openroom deck start d-42');
-    expect(deckVersionsCommand('d-42')).toBe('openroom deck versions d-42');
-    expect(deckDraftPutCommand('d-42')).toBe('openroom deck draft put d-42 --file plan.yaml');
+    const access = '--url https://openroom.app --token "$OPENROOM_TOKEN"';
+    expect(deckSaveCommand('d-42', 7, 'https://openroom.app/')).toBe(`openroom deck save d-42 --file plan.yaml --base 7 ${access}`);
+    expect(deckGetCommand('d-42', 'https://openroom.app')).toBe(`openroom deck get d-42 ${access} > plan.yaml`);
+    expect(deckGetCommand('d-42', 'https://openroom.app', 3)).toBe(`openroom deck get d-42 --version 3 ${access} > plan.yaml`);
+    expect(deckStartCommand('d-42', 'https://openroom.app')).toBe(`openroom deck start d-42 ${access}`);
     expect(outlineValidateCommand()).toBe('openroom outline validate plan.yaml');
   });
 
-  it('uses only subcommands and flags the CLI documents', () => {
+  it('uses only subcommands the CLI documents, with every flag their usage line requires', () => {
     const lines = [
-      deckGetCommand('d-42', 3),
-      deckSaveCommand('d-42', 7),
-      deckDraftPutCommand('d-42'),
-      deckVersionsCommand('d-42'),
-      deckStartCommand('d-42'),
+      deckGetCommand('d-42', 'https://openroom.app', 3),
+      deckSaveCommand('d-42', 7, 'https://openroom.app'),
+      deckDraftPutCommand('d-42', 'https://openroom.app'),
+      deckVersionsCommand('d-42', 'https://openroom.app'),
+      deckStartCommand('d-42', 'https://openroom.app'),
     ];
     for (const line of lines) {
-      const [, , sub] = line.split(' ');
-      expect(CLI_DESIGN).toContain(`openroom deck ${sub as string}`);
-      for (const flag of line.match(/--[a-z]+/g) ?? []) {
-        // --yaml is `deck get`'s default and documented as optional.
-        expect(`${CLI_DESIGN} --yaml`).toContain(flag);
-      }
+      const [, , sub, second] = line.split(' ');
+      const name = sub === 'draft' ? `draft ${second as string}` : (sub as string);
+      const usage = CLI_DESIGN.split('\n').find((row) => row.trim().startsWith(`openroom deck ${name} `));
+      expect(usage, name).toBeDefined();
+      const required = (usage!.replace(/\[[^\]]*\]/g, '').match(/--[a-z-]+/g) ?? []);
+      for (const flag of required) expect(line, `${name} needs ${flag}`).toContain(flag);
+      for (const flag of line.match(/--[a-z-]+/g) ?? []) expect(usage, `${name} takes ${flag}`).toContain(flag);
     }
   });
 
@@ -64,6 +64,6 @@ describe('deck editor agent commands', () => {
     for (const tool of Object.values(MCP_TOOLS)) {
       expect(MCP_TOOLS_SOURCE).toContain(`name: '${tool}'`);
     }
-    expect(deckSaveToolLine(7)).toBe('outline_validate → deck_save_version (baseVersion 7)');
+    expect(deckToolLine(7)).toBe('deck_get → outline_validate → deck_save_version (baseVersion 7) → deck_start');
   });
 });

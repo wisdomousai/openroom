@@ -561,6 +561,8 @@ export function DesktopFileEditor() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <DeckEditor
             deckId={file.remote?.deckId ?? file.fileId}
+            cliOrigin={file.remote?.origin ?? null}
+            currentVersion={file.remote?.baseVersion ?? 0}
             activeStepId={activeStepId}
             spaceId={null}
             source={source}

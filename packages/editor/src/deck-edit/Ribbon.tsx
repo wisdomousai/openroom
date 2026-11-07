@@ -60,7 +60,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@openroom/ui/components/toggle-group';
 import { cn } from '@openroom/ui/utils';
-import { PLAN_FILE, deckGetCommand, outlineValidateCommand } from './agent-commands';
+import {
+  PLAN_FILE,
+  deckGetCommand,
+  deckSaveCommand,
+  deckStartCommand,
+  deckToolLine,
+  outlineValidateCommand,
+} from './agent-commands';
 import { ElementLayoutThumb, LayoutThumb, LAYOUT_WORDS } from './LayoutThumb';
 import {
   elementLayoutsFor,
@@ -191,6 +198,13 @@ export type RibbonTab = 'file' | 'home' | 'slide' | 'insert' | 'ask' | 'reveal' 
 
 export interface RibbonProps {
   deckId: string;
+  /**
+   * The origin the hosted deck lives on, for the plan.yaml commands. Null for
+   * a deck with no hosted copy (a local Desktop file): the menu is not shown.
+   */
+  cliOrigin: string | null;
+  /** The base version a CLI save would name. */
+  currentVersion: number;
   tab: RibbonTab;
   onTabChange: (tab: RibbonTab) => void;
   selected: OutlineStep | null;
@@ -279,7 +293,9 @@ export function Ribbon(props: RibbonProps) {
           <TabsTrigger value="view">View</TabsTrigger>
         </TabsList>
         <span className="flex-1" />
-        <PlanYamlChip deckId={props.deckId} />
+        {props.cliOrigin === null ? null : (
+          <PlanYamlChip deckId={props.deckId} origin={props.cliOrigin} currentVersion={props.currentVersion} />
+        )}
       </div>
 
       <div className="border-b border-border bg-card">
@@ -710,8 +726,14 @@ export function Ribbon(props: RibbonProps) {
   );
 }
 
-function PlanYamlChip({ deckId }: { deckId: string }) {
-  const [copied, setCopied] = useState(false);
+function PlanYamlChip({ deckId, origin, currentVersion }: { deckId: string; origin: string; currentVersion: number }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const commands = [
+    { label: `Read the deck into ${PLAN_FILE}`, line: deckGetCommand(deckId, origin) },
+    { label: `Check ${PLAN_FILE}`, line: outlineValidateCommand() },
+    { label: `Save ${PLAN_FILE} as a new version`, line: deckSaveCommand(deckId, currentVersion, origin) },
+    { label: 'Start a session', line: deckStartCommand(deckId, origin) },
+  ];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -723,19 +745,32 @@ function PlanYamlChip({ deckId }: { deckId: string }) {
           {PLAN_FILE}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>Open YAML</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-[26rem]">
+        <DropdownMenuLabel className="text-caption font-normal">
+          Copy a command. Set OPENROOM_TOKEN to a personal token from Settings first.
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={() => {
-            void navigator.clipboard.writeText(deckGetCommand(deckId));
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 1500);
-          }}
-        >
-          {copied ? 'Copied' : `Copy ${deckGetCommand(deckId)}`}
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled>{outlineValidateCommand()}</DropdownMenuItem>
+        {commands.map((command) => (
+          <DropdownMenuItem
+            key={command.label}
+            className="flex-col items-start gap-0.5"
+            onSelect={(event) => {
+              // Stay open so the item can say it was copied.
+              event.preventDefault();
+              void navigator.clipboard.writeText(command.line);
+              setCopied(command.line);
+              window.setTimeout(() => setCopied((current) => (current === command.line ? null : current)), 1500);
+            }}
+          >
+            <span className="text-secondary">{copied === command.line ? 'Copied' : command.label}</span>
+            <code className="break-all font-mono text-caption text-muted-foreground">{command.line}</code>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="grid gap-0.5 text-caption font-normal">
+          <span>MCP tools for the same steps</span>
+          <code className="break-all font-mono">{deckToolLine(currentVersion)}</code>
+        </DropdownMenuLabel>
       </DropdownMenuContent>
     </DropdownMenu>
   );

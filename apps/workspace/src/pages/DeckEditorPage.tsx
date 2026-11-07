@@ -407,6 +407,7 @@ export function DeckEditorPage({
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <DeckEditor
               deckId={deckId}
+              cliOrigin={window.location.origin}
               activeStepId={activeStepId}
               spaceId={detail?.deck.spaceId ?? null}
               contextId={detail?.deck.contextId ?? null}

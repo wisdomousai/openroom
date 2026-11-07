@@ -136,6 +136,7 @@ export type DeckEditorDialog =
  */
 export function DeckEditor({
   deckId,
+  cliOrigin = null,
   activeStepId,
   spaceId,
   contextId = null,
@@ -157,6 +158,11 @@ export function DeckEditor({
   recipient,
 }: {
   deckId: string;
+  /**
+   * The origin the hosted deck lives on, named in the plan.yaml commands.
+   * Null (the default) for a deck with no hosted copy: the menu is not shown.
+   */
+  cliOrigin?: string | null;
   activeStepId?: string;
   spaceId: string | null;
   contextId?: string | null;
@@ -427,6 +433,8 @@ export function DeckEditor({
   const ribbon = (
     <Ribbon
       deckId={deckId}
+      cliOrigin={cliOrigin}
+      currentVersion={currentVersion}
       aside={aside}
       tab={ribbonTab}
       onTabChange={(next) => { setRibbonTab(next); setPlayIndex(null); }}
