@@ -17,6 +17,9 @@ published assignments. The reusable deck contains no learner identities.
 - A notes-only API update preserves individual recipients. Invalid stored restrictions
   fail closed. Recipient IDs stay out of the reusable deck.
 - Switching personal links in one tab clears the previous learner's data and form state.
+- A typed practice answer whose exercise names a language (`match.locale`) carries that
+  `lang` on its prompt and field, and shows that language's accent keys under the field.
+  A key types at the cursor and leaves focus in the field. Return checks the answer.
 
 ## Fixture and lifecycle
 
@@ -29,7 +32,8 @@ Host Notes and the isolated 390px learner view are the observed surfaces.
 
 Each task groups its instructions and recipients. Named choices have full-width labels
 and touch targets. Learner work remains in Lesson, Practice and Feedback without host
-navigation. Screenshots cover the recipient editor and phone lesson.
+navigation. Accent keys wrap below the answer field at 44px. Screenshots cover the
+recipient editor, the phone lesson and the French practice field with its accent keys.
 
 ## Evidence and status
 

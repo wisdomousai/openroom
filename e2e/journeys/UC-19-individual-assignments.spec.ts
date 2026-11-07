@@ -12,7 +12,7 @@ test('tutor publishes shared and individual tasks without exposing other learner
   const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Conversation en français', kind: 'group', experience: 'tutoring' } })).json();
   const { deck, session } = await (await page.request.post('/api/decks', { headers: CSRF, data: { contextId: context.id, spaceId: context.spaceId, createSession: true,
     content: { version: 1, meta: { title: 'Le prochain voyage' }, steps: [{ id: 'title', kind: 'title', title: 'Le prochain voyage' }],
-      interactions: [{ id: 'practice', type: 'text', prompt: 'Complétez : je ___ à Paris.', correctAnswers: ['vais'] }],
+      interactions: [{ id: 'practice', type: 'text', prompt: 'Complétez : je ___ à Paris.', correctAnswers: ['vais'], match: { locale: 'fr', accents: 'require' } }],
       homework: { tasks: [
         { id: 'reading', kind: 'reading', title: 'Lecture commune', body: 'Lisez le dialogue du voyage.' },
         { id: 'writing', kind: 'writing', title: 'Écrire', prompt: 'Décrivez votre prochain voyage.' },
@@ -55,6 +55,19 @@ test('tutor publishes shared and individual tasks without exposing other learner
   await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
   await learner.getByRole('tab', { name: 'Practice', exact: true }).click();
   await expect(learner.getByText('Complétez : je ___ à Paris.', { exact: true }).first()).toBeVisible();
+  // A typed answer in French is marked as French and offers accent keys that type at the cursor.
+  const practice = learner.getByRole('tabpanel', { name: 'Practice', exact: true });
+  await expect(practice.getByText('Complétez : je ___ à Paris.', { exact: true }).first()).toHaveAttribute('lang', 'fr');
+  const answer = practice.getByRole('textbox', { name: 'Your answer', exact: true });
+  await expect(answer).toHaveAttribute('lang', 'fr');
+  await answer.fill('caf');
+  await practice.getByRole('group', { name: 'Special characters', exact: true }).getByRole('button', { name: 'Insert é', exact: true }).click();
+  await expect(answer).toHaveValue('café');
+  await expect(answer).toBeFocused();
+  await learner.screenshot({ path: testInfo.outputPath('practice-accent-keys-phone.png') });
+  await answer.fill('vais');
+  await answer.press('Enter');
+  await expect(practice.getByText('Correct.', { exact: true })).toBeVisible();
   await learner.evaluate((token) => { location.hash = `/learn?token=${token}`; }, noor);
   await expect(learner.getByRole('heading', { name: 'Noor', exact: true })).toBeVisible();
   await expect(learner.getByRole('heading', { name: 'Parler', exact: true })).toBeVisible();
