@@ -38,6 +38,7 @@ import { desktopMcpSocketPath, startDesktopMcpServer } from './mcp-host.js';
 import { adoptLoginShellPath } from './shell-path.js';
 import { startDesktopUpdateChecks } from './updates.js';
 import { openFailureReason } from './open-failure.js';
+import { createQuitAfterSave } from './quit-after-save.js';
 import {
   createOpenRoomWorkingDirectory,
   disposeOpenRoomWorkingDirectory,
@@ -446,16 +447,15 @@ async function offerRecovery(canonical: string): Promise<RecoveryEnvelope | unde
 /** Set while Quit runs, so a window kept open by the save prompt resumes the quit once it closes. */
 let quitting = false;
 const closingWindows = new WeakSet<BrowserWindow>();
-/** Windows asked to save during Quit: the quit goes on once the save closes them. */
-const quitAfterSave = new WeakSet<BrowserWindow>();
+/** Windows asked to save during Quit: the quit goes on once that save closes them. */
+const quitAfterSave = createQuitAfterSave<BrowserWindow>();
 
 /** Close the window without asking again (after Save or Don't Save). */
-function closeWithoutPrompt(window: BrowserWindow): void {
+function closeWithoutPrompt(window: BrowserWindow, resumeQuit = quitting): void {
   if (window.isDestroyed()) return;
-  const resume = quitting || quitAfterSave.has(window);
   closingWindows.add(window);
   window.close();
-  if (resume) setImmediate(() => app.quit());
+  if (resumeQuit) setImmediate(() => app.quit());
 }
 
 /**
@@ -470,6 +470,7 @@ function guardUnsavedClose(window: BrowserWindow, state: DocumentState): void {
     event.preventDefault();
     if (asking) return;
     asking = true;
+    quitAfterSave.promptOpened(window);
     void dialog.showMessageBox(window, {
       type: 'warning', buttons: ['Save', 'Don’t Save', 'Cancel'], defaultId: 0, cancelId: 2,
       message: `Do you want to save the changes to ${state.displayName}?`,
@@ -479,7 +480,7 @@ function guardUnsavedClose(window: BrowserWindow, state: DocumentState): void {
       if (window.isDestroyed()) return;
       if (response === 0) {
         // The quit waits for this save; a failed or cancelled save keeps the window and ends the quit.
-        if (quitting) quitAfterSave.add(window);
+        quitAfterSave.saveRequested(window, quitting);
         quitting = false;
         window.webContents.send('desktop:menu-command', 'save-and-close');
         return;
@@ -608,9 +609,11 @@ function installIpc(): void {
     state.edited = edited === true;
     if (process.platform === 'darwin') window.setDocumentEdited(state.edited);
   });
-  ipcMain.handle('desktop:close-window', (event) => {
+  ipcMain.handle('desktop:finish-save-and-close', (event, saved: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender);
-    if (window !== null) closeWithoutPrompt(window);
+    if (window === null) return;
+    const resumeQuit = quitAfterSave.saveFinished(window, saved === true);
+    if (saved === true) closeWithoutPrompt(window, quitting || resumeQuit);
   });
   ipcMain.handle('desktop:open-file', (event) => chooseOpenFile(BrowserWindow.fromWebContents(event.sender)));
   ipcMain.handle('desktop:new-file', () => openDocumentWindow());

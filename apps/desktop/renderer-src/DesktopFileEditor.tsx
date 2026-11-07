@@ -240,9 +240,12 @@ export function DesktopFileEditor() {
       if (validation?.ok === true && presentFrom === null) { setStartImmediately(false); setPresentFrom(0); }
       return;
     }
-    if (saving) return;
+    if (saving) {
+      if (command === 'save-and-close') void bridge?.finishSaveAndClose(false);
+      return;
+    }
     void save(command === 'save-as').then((saved) => {
-      if (saved && command === 'save-and-close') void bridge?.closeWindow();
+      if (command === 'save-and-close') void bridge?.finishSaveAndClose(saved);
     });
   };
   useEffect(() => bridge?.onMenuCommand((command) => menuCommand.current(command)), [bridge]);
