@@ -21,6 +21,7 @@
  */
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { practiceLocale } from '@openroom/schema';
 
 import {
   ApiError,
@@ -354,6 +355,7 @@ function HomeworkTaskView({
             itemId: `${sessionId}:${task.id}`,
             assignmentRevision: task.assignmentRevision!,
             title: task.title,
+            locale: practiceLocale(task.interaction),
             interaction: task.interaction,
           }}
           onGrade={async (grade, answer, assignmentRevision, attemptId) => {
