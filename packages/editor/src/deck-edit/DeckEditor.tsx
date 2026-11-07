@@ -36,6 +36,7 @@ import { insertCorrection, insertPracticeExercise, addPracticeHomework, setMedia
 import { Ribbon, type RibbonTab } from './Ribbon';
 import { SlideCanvas } from './SlideCanvas';
 import { ThumbnailRail, type RailSelection } from './ThumbnailRail';
+import { useMinWidth } from './useMinWidth';
 import {
   addHtmlElement,
   addIframeElement,
@@ -204,7 +205,13 @@ export function DeckEditor({
   const { toasts, push: pushToast } = useToasts();
   const [playIndex, setPlayIndex] = useState<number | null>(null);
   const [revealFocus, setRevealFocus] = useState(0);
-  const [paneOpen, setPaneOpen] = useState(true);
+  // Below lg (1024 px) the task pane is an overlay that starts closed; below
+  // md (768 px) the editor shows a notice instead (D8). The host's title bar
+  // keeps Present and Start session at every width.
+  const wide = useMinWidth(1024);
+  const roomy = useMinWidth(768);
+  const [paneOpen, setPaneOpen] = useState(wide);
+  useEffect(() => { setPaneOpen(wide); }, [wide]);
   const [paneTab, setPaneTab] = useState<PaneTab>('design');
   const [overflow, setOverflow] = useState({ stepId: '', issues: EMPTY_ISSUES });
   const [overflowFocus, setOverflowFocus] = useState({ target: '', sequence: 0 });
@@ -502,6 +509,16 @@ export function DeckEditor({
     />
   );
 
+  if (!roomy) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
+        <p role="note" className="border-b border-border bg-card px-3.5 py-1.5 text-caption text-muted-foreground">
+          Open this deck on a larger screen to edit it.
+        </p>
+      </div>
+    );
+  }
+
   if (outline === null) {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
@@ -553,7 +570,7 @@ export function DeckEditor({
           </button>
         </div>
       ) : null}
-      <div className="deck-editor-workarea flex min-h-0 min-w-0 flex-1 overflow-x-auto">
+      <div className="deck-editor-workarea relative flex min-h-0 min-w-0 flex-1 overflow-x-auto">
         <ThumbnailRail
           outline={outline}
           selection={railSelection}
@@ -577,13 +594,13 @@ export function DeckEditor({
             setSelection({ kind: 'homework' });
             setFocusTask(null);
             setPartKey(null);
-            setPaneOpen(true);
+            if (wide) setPaneOpen(true);
             setPaneTab('design');
           }}
           onSelectRecap={() => {
             setSelection({ kind: 'recap' });
             setPartKey(null);
-            setPaneOpen(true);
+            if (wide) setPaneOpen(true);
             setPaneTab('design');
           }}
         />
@@ -700,6 +717,10 @@ export function DeckEditor({
           />
         )}
         {paneOpen ? (
+          <div
+            className={wide ? 'contents' : 'absolute inset-y-0 right-0 z-20 flex shadow-[var(--shadow-overlay)]'}
+            onKeyDown={wide ? undefined : (event) => { if (event.key === 'Escape' && !event.defaultPrevented) setPaneOpen(false); }}
+          >
           <PropertiesPanel
             overflowIssues={aside === null && overflow.stepId === step?.id ? overflow.issues : EMPTY_ISSUES}
             overflowFocus={overflowFocus}
@@ -824,6 +845,7 @@ export function DeckEditor({
             onRecap={(next) => apply(setRecap(outline, next))}
             onLoadVersion={loadVersion}
           />
+          </div>
         ) : null}
       </div>
 
@@ -860,10 +882,11 @@ export function DeckEditor({
             </span>
           </>
         )}
-        {paneOpen ? null : (
+        {paneOpen && wide ? null : (
           <button
             type="button"
-            onClick={() => setPaneOpen(true)}
+            aria-expanded={wide ? undefined : paneOpen}
+            onClick={() => setPaneOpen(!paneOpen)}
             className="h-[22px] rounded-md px-2 text-primary hover:bg-background"
           >
             Slide pane
