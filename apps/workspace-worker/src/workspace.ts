@@ -86,6 +86,9 @@ export interface WorkspaceHome {
 
 /**
  * Ensure the user has at least one space. Idempotent.
+ *
+ * The Personal space stores no experience: it reads as Classroom until the
+ * owner saves one, and the Library's first-run card offers the choice until then.
  */
 export async function ensureWorkspace(
   env: ControlEnv,
@@ -109,7 +112,7 @@ export async function ensureWorkspace(
   await env.DB.batch([
     env.DB.prepare(
       `INSERT INTO spaces (id, owner_user_id, name, created_at, updated_at, settings)
-       VALUES (?1, ?2, ?3, ?4, ?4, '{"experience":"classroom"}')`,
+       VALUES (?1, ?2, ?3, ?4, ?4, '{}')`,
     ).bind(spaceId, user.id, 'Personal', now),
     env.DB.prepare(
       `INSERT INTO space_members (space_id, user_id, role, invited_by, created_at)
@@ -219,10 +222,21 @@ export async function patchSpaceRoute(
 
 /** The stored settings of a space, narrowed. Unreadable JSON reads as unset. */
 export async function spaceSettings(env: ControlEnv, spaceId: string): Promise<SpaceSettings> {
+  return (await storedSpaceSettings(env, spaceId)).settings;
+}
+
+/** The narrowed settings, and whether an experience was ever saved (the default is not one). */
+async function storedSpaceSettings(env: ControlEnv, spaceId: string): Promise<{ settings: SpaceSettings; experienceSaved: boolean }> {
   const row = await env.DB.prepare('SELECT settings FROM spaces WHERE id = ?1')
     .bind(spaceId)
     .first<{ settings: string | null }>();
-  return readSpaceSettings(row?.settings ?? null);
+  const source = row?.settings ?? null;
+  let experienceSaved = false;
+  try {
+    const raw: unknown = source === null ? null : JSON.parse(source);
+    experienceSaved = raw !== null && typeof raw === 'object' && isWorkspaceExperience((raw as { experience?: unknown }).experience);
+  } catch { /* unreadable reads as unset */ }
+  return { settings: readSpaceSettings(source), experienceSaved };
 }
 
 /**
@@ -390,8 +404,8 @@ export async function getSpaceRoute(
    * A student's own space names its student, so settings can say whose they
    * are. A student in Trash still owns the space, so the name stays.
    */
-  const [settings, owner] = await Promise.all([
-    spaceSettings(env, spaceId),
+  const [{ settings, experienceSaved }, owner] = await Promise.all([
+    storedSpaceSettings(env, spaceId),
     env.DB.prepare(
       `SELECT c.id AS id, c.display_name AS display_name FROM space_contexts sc
          JOIN contexts c ON c.id = sc.context_id WHERE sc.space_id = ?1`,
@@ -400,7 +414,7 @@ export async function getSpaceRoute(
 
   return json({
     space: {
-      id: space.id, name: space.name, role: access.role, settings,
+      id: space.id, name: space.name, role: access.role, settings, experienceSaved,
       context: owner === null ? null : { id: owner.id, displayName: owner.display_name },
     },
     itemTags,

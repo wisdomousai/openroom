@@ -652,7 +652,7 @@ export function SpacePage({
           ) : null}
 
           {welcome
-            ? <SpaceWelcome spaceId={spaceId} contextId={currentContextId} experience={space?.settings?.experience ?? 'classroom'} /> : null}
+            ? <SpaceWelcome spaceId={spaceId} contextId={currentContextId} experience={space?.settings?.experience ?? 'classroom'} experienceSaved={space?.experienceSaved ?? true} /> : null}
 
           <LibraryList
             crumbs={crumbs}
@@ -671,7 +671,8 @@ export function SpacePage({
             createTo={canEdit ? createTo : null}
             shareTo={personView ? null : shareTo}
             settingsTo={personView || !canEdit ? null : settingsTo}
-            samplesTo={canEdit && space?.settings?.experience === 'tutoring' ? to.lessonExamples(spaceId, { folderId: currentFolderId, contextId: currentContextId }) : null}
+            /* The welcome card carries Sample lessons while it shows. */
+            samplesTo={canEdit && !welcome && space?.settings?.experience === 'tutoring' ? to.lessonExamples(spaceId, { folderId: currentFolderId, contextId: currentContextId }) : null}
             onDragEnd={() => setDropTarget(null)}
             chrome="browser"
             /* The welcome card is this place's empty state; the list does not add a second one. */

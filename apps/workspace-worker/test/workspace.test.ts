@@ -51,6 +51,17 @@ describe('workspace hierarchy', () => {
     expect(body.spaces[0]!.updatedAt).toBeGreaterThan(0);
   });
 
+  it('reads the Personal space as Classroom until the owner saves an experience', async () => {
+    const { cookie } = await seedSession();
+    const { spaces } = await (await asUser(cookie, '/api/my/spaces')).json() as { spaces: { id: string }[] };
+    const tree = async () => (await (await asUser(cookie, `/api/my/spaces/${spaces[0]!.id}`)).json() as {
+      space: { settings: { experience: string }; experienceSaved: boolean };
+    }).space;
+    expect(await tree()).toMatchObject({ settings: { experience: 'classroom' }, experienceSaved: false });
+    await asUser(cookie, `/api/my/spaces/${spaces[0]!.id}`, { method: 'PATCH', body: JSON.stringify({ experience: 'classroom' }) });
+    expect(await tree()).toMatchObject({ settings: { experience: 'classroom' }, experienceSaved: true });
+  });
+
   it('creates and patches experiences through cookie and personal-token clients', async () => {
     const { cookie } = await seedSession();
     const created = await asUser(cookie, '/api/my/spaces', {
