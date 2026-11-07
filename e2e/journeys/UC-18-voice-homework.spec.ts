@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { chromium, test, expect } from '@playwright/test';
 import { encodeVoiceWav } from '../../packages/schema/src/voice-audio.js';
 import { waitForWorker } from '../fixtures/session';
 
 const CSRF = { 'x-openroom-csrf': '1' };
 test.beforeAll(async () => { await waitForWorker(); });
 
-test('voice response upload, private timed feedback, learner deletion and microphone recovery', async ({ page, browser }, testInfo) => {
+test('voice response upload, private timed feedback, learner deletion and microphone recovery', async ({ page, browser, baseURL }, testInfo) => {
   await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
@@ -99,20 +99,19 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await expect(learner.getByText('Your tutor’s feedback will appear here.')).toBeVisible();
   await learner.close();
 
-  // Exercise the browser's real MediaRecorder/decoder using a synthetic microphone.
+  // Exercise the browser's real getUserMedia, MediaRecorder and decoder with
+  // Chromium's fake capture device. An AudioContext oscillator is not used: its
+  // clock only runs while the machine's audio output renders, so on a host
+  // without a working output device it records nothing.
   // Physical device permissions and Safari codecs remain separate release checks.
-  const mic = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const fakeMicrophone = await chromium.launch({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
+  const mic = await (await fakeMicrophone.newContext({ baseURL, viewport: { width: 390, height: 844 } })).newPage();
   await mic.addInitScript(() => {
-    navigator.mediaDevices.getUserMedia = async () => {
-      const context = new AudioContext();
-      const oscillator = context.createOscillator();
-      const destination = context.createMediaStreamDestination();
-      oscillator.connect(destination); oscillator.start();
-      const track = destination.stream.getAudioTracks()[0]!;
-      const stop = track.stop.bind(track);
-      track.stop = () => { stop(); void context.close(); };
-      (window as unknown as { microphoneTrack: MediaStreamTrack }).microphoneTrack = track;
-      return destination.stream;
+    const getUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+      const stream = await getUserMedia(constraints);
+      (window as unknown as { microphoneTrack: MediaStreamTrack }).microphoneTrack = stream.getAudioTracks()[0]!;
+      return stream;
     };
   });
   await mic.goto(`/host/#/learn?token=${noor}`);
@@ -139,5 +138,5 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await mic.keyboard.press('Enter');
   await expect(mic.getByText('Response sent', { exact: true })).toBeFocused();
   await expect(mic.getByText(/^Recording stopped at/)).toHaveCount(0);
-  await mic.close();
+  await fakeMicrophone.close();
 });

@@ -39,7 +39,8 @@ and deliberately shares comments tied to positions in that response.
 `UC-18-voice-homework.spec.ts` exercises microphone denial, local conversion, a failed
 upload/retry, both playback surfaces, private/published timed feedback, trash/restore,
 reload, and a second learner. It also drives real MediaRecorder and audio decoding
-with a synthetic microphone, checking that tab changes stop its track.
+with Chromium's fake capture device (`--use-fake-device-for-media-stream`), checking
+that tab changes stop its track.
 
 Worker tests cover ownership, credential-family denial, invalid/oversized content,
 range responses, immutable uploads, revision conflicts, retention, purge and limits.
