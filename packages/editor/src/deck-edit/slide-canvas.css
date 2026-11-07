@@ -29,4 +29,5 @@
   font: inherit; font-size: 1.4cqw; font-weight: 600; cursor: pointer;
 }
 .slide-canvas__add-picture:hover,
-.slide-canvas__add-picture:focus-visible { border-color: var(--primary); color: var(--primary); outline: none; }
+.slide-canvas__add-picture:focus-visible { border-color: var(--primary); color: var(--primary); }
+.slide-canvas__add-picture:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
