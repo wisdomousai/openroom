@@ -27,6 +27,13 @@ function Prompt({ interaction, gaps }: { interaction: ParticipantSnapshot['inter
   return <SpanText spans={spans} />;
 }
 
+/** The lesson language, where the author declared one for typed answers. */
+function lessonLocale(interaction: NonNullable<ParticipantSnapshot['interaction']>): string | undefined {
+  return interaction.type === 'text' || interaction.type === 'fill-the-gaps'
+    ? interaction.match?.locale
+    : undefined;
+}
+
 interface BodyProps {
   snapshot: ParticipantSnapshot;
   participantId: string;
@@ -174,7 +181,7 @@ export function Body({
         <div className="round" role="status">
           <p className="round__title">
             <span className="round__badge">Discuss</span>
-            discussion with a peer, second vote follows
+            Talk it through, then vote again.
           </p>
         </div>
       ) : null}
@@ -182,7 +189,7 @@ export function Body({
         <div className="round" role="status">
           <p className="round__title">
             <span className="round__badge">Second vote</span>
-            second vote is open
+            Vote again.
           </p>
           {snapshot.ownRound1Answer ? (
             <p className="round__recall">
@@ -197,6 +204,7 @@ export function Body({
 
       <h1
         className={interaction.type === 'fill-the-gaps' && showForm ? 'sr-only' : 'prompt'}
+        lang={lessonLocale(interaction)}
         style={
           interaction.type === 'fill-the-gaps' ? promptFontStyle(interaction.promptFont) : undefined
         }
@@ -258,7 +266,8 @@ export function Body({
         </p>
       ) : null}
 
-      {snapshot.aggregate ? (
+      {/* No answers yet: an empty chart says nothing a one-learner lesson needs. */}
+      {snapshot.aggregate && snapshot.aggregate.total > 0 ? (
         snapshot.identityMode === 'identified' &&
         interaction.type === 'fill-the-gaps' &&
         snapshot.interactionStatus === 'revealed' &&

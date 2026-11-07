@@ -679,7 +679,7 @@ function FillTheGapsAnswer({
         if (valid && !busy) onSubmit({ kind: 'fill-the-gaps', gaps });
       }}
     >
-      <p className="prompt" id="fill-the-gaps-prompt" style={promptFontStyle(interaction.promptFont)}>
+      <p className="prompt" id="fill-the-gaps-prompt" lang={locale} style={promptFontStyle(interaction.promptFont)}>
         {tokens.map((token, index) => {
           if (token.kind === 'text') return <span key={index}>{token.text}</span>;
           const id = token.id;
