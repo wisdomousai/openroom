@@ -18,7 +18,7 @@ Acceptance:
 
 - Authored aspect ratio, master and background survive reload.
 - Content and live questions use the same saved master.
-- A phone opens a readable reflow view and can switch to the authored slide.
+- A phone opens a readable reflow view and can switch to the authored slide. Reading shows a long media caption whole; the slide clamps it to three lines.
 - French/German content remains complete and legible at the tested viewport.
 - The desktop slide retains its aspect ratio and usable height before the
   participant dismisses the rejoin notice.

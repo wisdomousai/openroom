@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForWorker, joinInBrowser } from '../fixtures/session';
+import { waitForWorker, joinInBrowser, command } from '../fixtures/session';
 
 const CSRF = { 'x-openroom-csrf': '1' };
 test.beforeAll(async () => { await waitForWorker(); });
@@ -54,18 +54,22 @@ test('theme, aspect ratio and master background survive save and live presentati
 });
 
 
+const LONG_CAPTION = 'The station opened in 1900 and still serves trains to the south of the country every day. '.repeat(4).trim();
+
 test('phone reading view keeps complete text and can return to the authored slide', async ({ page, browser }, testInfo) => {
   await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
   const created = await page.request.post('/api/decks', { headers: CSRF, data: { createSession: true, content: {
     version: 1, meta: { title: 'Phone reading' }, steps: [{ id: 'rules', kind: 'steps', title: 'Three useful phrases', items: [
       'Je voudrais réserver une table pour deux personnes.', 'Könnten Sie das bitte noch einmal erklären?', 'Listen to the complete phrase before you reply.',
-    ] }], interactions: [],
+    ] }, { id: 'photo', kind: 'media', layout: 'media', title: 'The old station', media: {
+      type: 'image', url: 'https://example.org/station.svg', alt: 'The station', caption: LONG_CAPTION,
+    } }], interactions: [],
   } } });
   expect(created.status()).toBe(201);
   const id = (await created.json()).session.id;
   const launched = await page.request.post(`/api/sessions/${id}/launch`, { headers: CSRF, data: { start: true } });
   expect(launched.status()).toBe(201);
-  const { code } = await launched.json();
+  const { code, sessionCode, hostToken } = await launched.json();
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, deviceScaleFactor: 1 });
   const phone = await context.newPage();
   await joinInBrowser(phone, code);
@@ -88,6 +92,20 @@ test('phone reading view keeps complete text and can return to the authored slid
   // The picked view is remembered for this session after a reload.
   await phone.reload();
   await expect(phone.getByRole('button', { name: 'Slide', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  // The media layout clamps a long caption to three lines on the slide; Reading shows all of it.
+  await command(sessionCode, hostToken, { command: 'outline.goto', stepId: 'photo' });
+  const caption = phone.locator('.outline-step__caption');
+  await expect(caption).toHaveText(LONG_CAPTION);
+  await phone.getByRole('button', { name: 'Reading', exact: true }).click();
+  await expect(phone.getByRole('button', { name: 'Reading', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const shown = await caption.evaluate((node) => ({
+    clamp: getComputedStyle(node).webkitLineClamp, height: node.clientHeight, content: node.scrollHeight,
+    lines: node.clientHeight / parseFloat(getComputedStyle(node).lineHeight),
+  }));
+  expect(shown.clamp).toBe('none');
+  expect(shown.content).toBeLessThanOrEqual(shown.height + 2);
+  expect(shown.lines).toBeGreaterThan(3);
+  await phone.screenshot({ path: testInfo.outputPath('phone-reading-caption.png'), fullPage: true });
   await context.close();
 
   // A new desktop participant still has the rejoin notice. It must not take
