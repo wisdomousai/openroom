@@ -70,13 +70,16 @@ export function AudioPlayer({
   </div>;
 }
 
+/**
+ * The recording's place on the slide. It carries no player: the learner's own
+ * player sits under the plate in apps/participant (step-view), where the
+ * scaled slide cannot clip its controls.
+ */
 export function ListeningBlock({ media }: { media: SlideMedia }) {
-  const role = useContext(ListeningAudience);
   const individual = media.listening?.mode === 'individual';
   return <section className="listening-block" aria-label="Listening">
     <p className="listening-block__title">{titleOf(media.alt)}</p>
     <p className="listening-block__instruction">{individual ? 'Listen on your own device.' : 'Listen together. Your tutor plays the recording.'}</p>
-    {role === 'participant' && individual && media.url ? <AudioPlayer key={media.url} src={media.url} label={media.alt} /> : null}
     {media.listening?.transcript ? <div className="listening-block__transcript"><h3>Transcript</h3><p>{media.listening.transcript}</p></div> : null}
   </section>;
 }
