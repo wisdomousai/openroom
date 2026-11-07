@@ -464,6 +464,28 @@ export function openapiDocument(origin: string): unknown {
           responses: { '200': { description: 'Pickup pack' }, '403': { description: 'forbidden (presenter cannot read returned work) or continuity-required' } },
         },
       },
+      '/api/learner/practice': {
+        get: {
+          operationId: 'getLearnerPractice',
+          summary: 'Exercises due for the learner who holds this context link; itemId selects one to revisit. No due dates',
+          security: [{ LearnerLink: [] }],
+          parameters: [{ name: 'itemId', in: 'query', required: false, schema: { type: 'string' } }],
+          responses: {
+            '200': {
+              description: 'Practice items',
+              content: { 'application/json': { schema: { type: 'object', properties: { items: { type: 'array', items: { type: 'object', required: ['itemId', 'assignmentRevision', 'interaction'], properties: {
+                itemId: { type: 'string' },
+                assignmentRevision: { type: 'integer' },
+                title: { type: 'string' },
+                locale: { type: 'string', description: "Canonical BCP 47 language of a typed answer, from the interaction's match.locale when valid" },
+                interaction: { type: 'object', description: 'The published exercise with its scoring keys' },
+              } } } } } } },
+            },
+            '401': { description: 'Missing, unknown, expired or revoked link' },
+            '429': { description: 'learner-rate-limited: too many failed link checks from this client' },
+          },
+        },
+      },
       '/api/tutoring/contexts/{contextId}': {
         get: {
           operationId: 'getContext',
@@ -1033,6 +1055,11 @@ export function openapiDocument(origin: string): unknown {
           type: 'http',
           scheme: 'bearer',
           description: 'User-scoped personal API token (orpat_…) or OAuth access token',
+        },
+        LearnerLink: {
+          type: 'http',
+          scheme: 'bearer',
+          description: 'Personal context access link (orlnk_…) held by one learner',
         },
       },
     },

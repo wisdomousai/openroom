@@ -354,7 +354,8 @@ GET /api/learner/me                      Authorization: Bearer orlnk_… ONLY �
 GET /api/learner/sessions                    Authorization: Bearer orlnk_… ONLY
                                          → { sessions: [{ id, title, status, record?: { outcomes, homework, artifacts } }] }
                                          homework is typed tasks; writing may include submitted. Never notes / nextNote.
-GET /api/learner/practice                GET → { items: [{ itemId, interaction }] }  no dueAt
+GET /api/learner/practice                GET → { items: [{ itemId, assignmentRevision, title?, locale?, interaction }] }  no dueAt
+                                         locale: canonical BCP 47 from a typed answer's match.locale, when valid
 POST /api/learner/practice               { itemId, grade: again|good, answer? } → { done:true } | { item }
 PUT  /api/learner/writing                { sessionId, taskId, body }
 GET /api/tutoring/contexts/:id/returned  editor+ → { nextNote, writing, missed }  no dates or scores

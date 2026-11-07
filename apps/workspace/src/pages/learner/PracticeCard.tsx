@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { useLearnerLanguage } from '../../lib/learner-language';
 import { ArrowDown, ArrowUp, Check, RotateCcw } from 'lucide-react';
 import { assessHomework, initialHomeworkAnswer, type HomeworkPracticeAnswer } from '@openroom/schema';
@@ -6,6 +7,7 @@ import { ApiError, type LearnerPracticeItem } from '../../api';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
+import { accentKeysFor, insertCharacter } from './accent-keys';
 
 export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
   item: LearnerPracticeItem;
@@ -57,6 +59,22 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
     event.preventDefault();
     check();
   };
+  // Accent keys type into the typed field last focused, at its cursor, and hand focus straight back.
+  const locale = snapshot.locale;
+  const accentKeys = accentKeysFor(locale);
+  const fieldset = useRef<HTMLFieldSetElement>(null);
+  const field = useRef<HTMLInputElement | null>(null);
+  const insert = (character: string) => {
+    const input = field.current?.isConnected ? field.current : fieldset.current?.querySelector('input');
+    if (!input) return;
+    const next = insertCharacter(input.value, input.selectionStart, input.selectionEnd, character, input.maxLength);
+    if (next) flushSync(() => {
+      if (answer.kind === 'text') update({ kind: 'text', text: next.value });
+      else if (answer.kind === 'fill-the-gaps' && input.dataset.gap) update({ kind: 'fill-the-gaps', gaps: { ...answer.gaps, [input.dataset.gap]: next.value } });
+    });
+    input.focus();
+    if (next) input.setSelectionRange(next.caret, next.caret);
+  };
   const move = (index: number, offset: number) => {
     if (answer.kind !== 'ranking') return;
     const order = [...answer.order];
@@ -66,8 +84,8 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
 
   if (unavailable) return <div className="grid gap-3"><p role="status" className="text-sm text-muted-foreground">{copy.practiceUnavailable}</p>{onSkip ? <Button className="min-h-11 w-fit" onClick={onSkip}>{copy.continuePractice}</Button> : null}</div>;
   return <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
-    {interaction.type !== 'fill-the-gaps' ? <p className="whitespace-pre-wrap text-base leading-relaxed">{interaction.prompt}</p> : null}
-    <fieldset disabled={revealed || busy} className="min-w-0">
+    {interaction.type !== 'fill-the-gaps' ? <p lang={locale} className="whitespace-pre-wrap text-base leading-relaxed">{interaction.prompt}</p> : null}
+    <fieldset ref={fieldset} disabled={revealed || busy} className="min-w-0" onFocus={(event) => { if (event.target instanceof HTMLInputElement) field.current = event.target; }}>
       <legend className="sr-only">{copy.yourAnswer}</legend>
       {interaction.type === 'choice' && answer.kind === 'choice' ? <div className="flex flex-col gap-2">
         {interaction.multiple ? <p className="text-sm text-muted-foreground">{copy.chooseAll}</p> : null}
@@ -80,13 +98,13 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
           </button>;
         })}
       </div> : null}
-      {interaction.type === 'text' && answer.kind === 'text' ? <Input aria-label={copy.yourAnswer} className="min-h-11 text-base" value={answer.text} maxLength={interaction.maxLength ?? 200} onChange={(event) => update({ kind: 'text', text: event.target.value })} onKeyDown={checkOnEnter} enterKeyHint="done" autoComplete="off" /> : null}
+      {interaction.type === 'text' && answer.kind === 'text' ? <Input aria-label={copy.yourAnswer} className="min-h-11 text-base" value={answer.text} maxLength={interaction.maxLength ?? 200} onChange={(event) => update({ kind: 'text', text: event.target.value })} onKeyDown={checkOnEnter} enterKeyHint="done" autoComplete="off" lang={locale} /> : null}
       {interaction.type === 'fill-the-gaps' && answer.kind === 'fill-the-gaps' ? <div className="whitespace-pre-wrap text-base leading-loose">
         {interaction.prompt.split(/(\{\{[^{}]+\}\})/g).map((part, index) => {
           const id = /^\{\{([^{}]+)\}\}$/.exec(part)?.[1];
           const gapIndex = interaction.gaps.findIndex((gap) => gap.id === id);
-          if (!id || gapIndex < 0) return <span key={index}>{part}</span>;
-          return <Input key={index} aria-label={copy.gap(gapIndex + 1)} value={answer.gaps[id] ?? ''} maxLength={200} autoComplete="off" className="mx-1 inline-flex min-h-11 w-32 max-w-full text-base" onChange={(event) => update({ kind: 'fill-the-gaps', gaps: { ...answer.gaps, [id]: event.target.value } })} onKeyDown={checkOnEnter} enterKeyHint="done" />;
+          if (!id || gapIndex < 0) return <span key={index} lang={locale}>{part}</span>;
+          return <Input key={index} data-gap={id} lang={locale} aria-label={copy.gap(gapIndex + 1)} value={answer.gaps[id] ?? ''} maxLength={200} autoComplete="off" className="mx-1 inline-flex min-h-11 w-32 max-w-full text-base" onChange={(event) => update({ kind: 'fill-the-gaps', gaps: { ...answer.gaps, [id]: event.target.value } })} onKeyDown={checkOnEnter} enterKeyHint="done" />;
         })}
       </div> : null}
       {interaction.type === 'match' && answer.kind === 'match' ? <div className="grid gap-3">
@@ -108,6 +126,10 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
           </li>;
         })}
       </ol> : null}
+      {accentKeys.length > 0 ? <div role="group" aria-label={copy.specialCharacters} className="mt-2 flex flex-wrap gap-1.5">
+        {accentKeys.map((character) => <Button key={character} variant="secondary" className="h-11 min-w-11 px-2 text-option" aria-label={copy.insertCharacter(character)}
+          onMouseDown={(event) => event.preventDefault()} onClick={() => insert(character)}>{character}</Button>)}
+      </div> : null}
     </fieldset>
     {!revealed ? <Button className="min-h-11 w-fit" disabled={!assessment.complete} onClick={check}>{copy.check}</Button> : <div className="grid gap-3" aria-live="polite">
       <p ref={result} tabIndex={-1} className="text-base font-semibold outline-none">{assessment.result === 'correct' ? copy.correct : assessment.result === 'incorrect' ? copy.compare : copy.selfCheck}</p>
