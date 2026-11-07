@@ -233,11 +233,11 @@ export interface RibbonProps {
 
 const SLIDE_TABS = ['home', 'slide', 'insert', 'ask', 'reveal'] as const;
 
-function AsideReason({ aside }: { aside: 'homework' | 'recap' }) {
+function AsideReason() {
   return (
     <Row>
       <p className="self-center px-2 text-secondary text-muted-foreground">
-        {aside === 'homework' ? 'Homework' : 'The recap'} is a page, not a slide. Select a slide in the rail to use these tools.
+        These tools work on slides. Select a slide in the rail to use them.
       </p>
     </Row>
   );
@@ -302,7 +302,7 @@ export function Ribbon(props: RibbonProps) {
         {props.aside ? (
           SLIDE_TABS.map((value) => (
             <TabsContent key={value} value={value} className="mt-0">
-              <AsideReason aside={props.aside ?? 'homework'} />
+              <AsideReason />
             </TabsContent>
           ))
         ) : (
