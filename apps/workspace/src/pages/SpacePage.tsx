@@ -1,4 +1,4 @@
-import { downloadCloudDocument, renameCloudDocument } from '../lib/cloud-document';
+import { downloadCloudDocument, inspectedOutline, renameCloudDocument } from '../lib/cloud-document';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
@@ -277,12 +277,12 @@ export function SpacePage({
   const outlineQuery = useQuery({
     queryKey: ['decks', activeItemId, 'outline'] as const,
     enabled: activeItemId !== null,
-    queryFn: () => getDeck(activeItemId!),
+    queryFn: () => inspectedOutline(activeItemId!),
   });
-  const aside: DeckAside | null = outlineQuery.data?.content
+  const aside: DeckAside | null = outlineQuery.data
     ? {
-        homework: outlineQuery.data.content.homework ?? null,
-        recap: outlineQuery.data.content.recap ?? null,
+        homework: outlineQuery.data.homework ?? null,
+        recap: outlineQuery.data.recap ?? null,
       }
     : null;
 
