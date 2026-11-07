@@ -1,9 +1,9 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { RotateCcw, Trash2 } from 'lucide-react';
 
-import { getSessionItem, listAllSpaces, listContexts, listDecks, type ContextSummary } from '../api';
+import { getSessionItem, getSpaceTree, listAllSpaces, listContexts, listDecks, type ContextSummary } from '../api';
 import { EXPERIENCES } from './experiences';
 import { SpaceSwitcher } from './SpaceSwitcher';
 import { PersonBadge } from '../components/PersonBadge';
@@ -151,6 +151,24 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
     const needle = query.trim().toLocaleLowerCase();
     return needle ? decks.filter((deck) => deck.title.toLocaleLowerCase().includes(needle)) : [];
   }, [decks, query]);
+  /*
+   * A deck filed in a folder that is in Trash shows at its space root, so the
+   * link takes the folder the space tree shows (the Library's own query and
+   * cache). Until that tree arrives the stored folder stands in.
+   */
+  const resultSpaceIds = useMemo(() => [...new Set(searchResults.map((deck) => deck.spaceId))], [searchResults]);
+  const resultTrees = useQueries({
+    queries: resultSpaceIds.map((spaceId) => ({
+      queryKey: ['spaces', spaceId, 'tree', 'all'] as const,
+      queryFn: () => getSpaceTree(spaceId),
+      enabled: signedIn === true && searchOpen,
+    })),
+  });
+  const shownFolderId = (deck: { id: string; spaceId: string; folderId: string | null }): string | null => {
+    const tree = resultTrees[resultSpaceIds.indexOf(deck.spaceId)]?.data;
+    const shown = tree?.decks?.find((row) => row.id === deck.id);
+    return shown ? shown.folderId ?? null : deck.folderId;
+  };
   const runSearch = (event: FormEvent) => { event.preventDefault(); setSearchOpen(true); };
 
   const userLabel = user?.name || user?.email || 'You';
@@ -176,7 +194,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
               // A student's deck opens in that student's place, as the sidebar link does; a trashed student's place shows Restore.
               const person = deck.contextId ? contextById.get(deck.contextId) : undefined;
               return <Link
-                key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: deck.folderId, itemId: deck.id, contextId: person?.id })}
+                key={deck.id} {...to.library({ spaceId: deck.spaceId, folderId: shownFolderId(deck), itemId: deck.id, contextId: person?.id })}
                 onClick={() => { setSearchOpen(false); setQuery(''); }} className="block rounded p-2 hover:bg-accent focus:bg-accent">
                 <span className="block text-secondary">{deck.title}</span>
                 <span className="block text-caption text-muted-foreground">{person ? (person.deletedAt != null ? `${person.displayName} · in Trash` : person.displayName) : allSpaces.find((space) => space.id === deck.spaceId)?.name ?? 'Workspace'}</span>
