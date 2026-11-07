@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   defaultDeckDesign,
+  SLIDE_TEMPLATES,
   validateOutline,
   type DeckAspectRatio,
   type DeckDesign,
@@ -110,7 +111,7 @@ describe('W_TEXT_FIT: words taller than their slide', () => {
   });
 });
 
-describe('W_MEDIA_PLACE and W_MEDIA_SIZE: pictures the layout redraws', () => {
+describe('W_MEDIA_PLACE: pictures the layout redraws', () => {
   const picture = (extra: Record<string, unknown>) => ({ type: 'image' as const, url: 'https://example.test/zoo.png', alt: 'A zoo', ...extra });
 
   it('draws left or right on a stacked layout as split and says so', () => {
@@ -121,16 +122,6 @@ describe('W_MEDIA_PLACE and W_MEDIA_SIZE: pictures the layout redraws', () => {
 
   it('flags top and bottom on split, which draw as right', () => {
     expect(codes({ id: 's', kind: 'statement', body: 'Le zoo', layout: 'split', media: picture({ place: 'top' }) })).toEqual(['W_MEDIA_PLACE']);
-  });
-
-  it('flags fill on split, which leaves no column for the words', () => {
-    expect(codes({ id: 's', kind: 'statement', body: 'Le zoo', layout: 'split', media: picture({ place: 'fill' }) })).toEqual(['W_MEDIA_PLACE']);
-  });
-
-  it('flags a split picture wider than 60 and passes one of 50', () => {
-    const split = (size: number): OutlineStep => ({ id: 's', kind: 'statement', body: 'Le zoo', layout: 'split', media: picture({ place: 'left', size }) });
-    expect(codes(split(50))).toEqual([]);
-    expect(codes(split(80))).toEqual(['W_MEDIA_SIZE']);
   });
 
   it('says nothing about the places a layout honours', () => {
@@ -172,5 +163,24 @@ describe('W_SPAN_SIZE and W_INTERACTION_FIELDS', () => {
     expect(warning).toMatchObject({ code: 'W_INTERACTION_FIELDS', path: '/steps/0' });
     expect(warning!.message).toContain('title, body');
     expect(codes({ id: 'q', kind: 'interaction', interactionId: 'q1' })).toEqual([]);
+  });
+
+  it('says nothing about layout poll, which the wall draws, and names layout split', () => {
+    expect(codes({ id: 'q', kind: 'interaction', interactionId: 'q1', layout: 'poll' })).toEqual([]);
+    const [warning] = check({ id: 'q', kind: 'interaction', interactionId: 'q1', layout: 'split' }).warnings;
+    expect(warning!.message).toContain('ignores its layout');
+  });
+
+  it('gives no question template the warning', () => {
+    for (const template of SLIDE_TEMPLATES) {
+      const result = validateOutline({
+        version: 1,
+        meta: { title: template.name },
+        steps: [template.step],
+        interactions: template.interaction === undefined ? [] : [template.interaction],
+      });
+      if (!result.ok) throw new Error(`${template.name}: ${JSON.stringify(result.errors)}`);
+      expect((result.warnings ?? []).filter((warning) => warning.code === 'W_INTERACTION_FIELDS'), template.name).toEqual([]);
+    }
   });
 });

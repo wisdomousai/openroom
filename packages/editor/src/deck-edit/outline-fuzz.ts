@@ -28,6 +28,7 @@ import {
   gapsForFillTheGapsPrompt,
   parseOutline,
   partKeysForStep,
+  resolvedStepLayout,
   stepElements,
   validateOutline,
   type Interaction,
@@ -181,6 +182,8 @@ export function editorRoundtrip(outline: Outline): { ok: true; outline: Outline 
 export interface FuzzState {
   outline: Outline;
   selectedId: string;
+  /** A write that validates but does not do what its button says. */
+  broken?: string;
 }
 
 function selectedStep(state: FuzzState): OutlineStep | undefined {
@@ -434,6 +437,16 @@ export const FUZZ_OP_NAMES: FuzzOpName[] = [
   'split',
 ];
 
+/**
+ * A picture place or size the outline rejects would leave the button doing
+ * nothing: the write has to fit the picture to the layout it is drawn in.
+ */
+function refusedPictureWrite(outline: Outline, selectedId: string, write: string): FuzzState {
+  const result = validateOutline(outline);
+  if (result.ok) return { outline, selectedId };
+  return { outline, selectedId, broken: `${write} is refused: ${result.errors.map((error) => error.message).join('; ')}` };
+}
+
 function applyNamedOp(state: FuzzState, name: FuzzOpName, rng: () => number): FuzzState {
   const step = selectedStep(state);
   if (step === undefined) return state;
@@ -503,7 +516,12 @@ function applyNamedOp(state: FuzzState, name: FuzzOpName, rng: () => number): Fu
       const allowed = LAYOUTS_FOR_KIND[step.kind];
       const layout = pick(rng, allowed);
       if (layout === undefined) return state;
-      return { outline: setLayout(outline, step.id, layout), selectedId: step.id };
+      const next = setLayout(outline, step.id, layout);
+      // The picked layout is the one the slide is drawn in: a side place left
+      // on title, text or grid would keep drawing it as split.
+      const drawn = next.steps.find((item) => item.id === step.id);
+      if (drawn === undefined || resolvedStepLayout(drawn) === layout) return { outline: next, selectedId: step.id };
+      return { outline: next, selectedId: step.id, broken: `setLayout(${layout}) draws ${resolvedStepLayout(drawn)}` };
     }
     case 'reveal-together': {
       const keys = partKeysForStep(step, outline.interactions);
@@ -654,11 +672,12 @@ function applyNamedOp(state: FuzzState, name: FuzzOpName, rng: () => number): Fu
       if (stepMedia(step) === undefined) return state;
       const place = pick(rng, PLACES);
       if (place === undefined) return state;
-      return { outline: setMediaPlace(outline, step.id, place), selectedId: step.id };
+      return refusedPictureWrite(setMediaPlace(outline, step.id, place), step.id, `setMediaPlace(${place})`);
     }
     case 'media-size': {
       if (stepMedia(step) === undefined) return state;
-      return { outline: setMediaSize(outline, step.id, 20 + Math.floor(rng() * 81)), selectedId: step.id };
+      const size = 20 + Math.floor(rng() * 81);
+      return refusedPictureWrite(setMediaSize(outline, step.id, size), step.id, `setMediaSize(${String(size)})`);
     }
     case 'element': {
       const picture = stepElements(step).find((item) => item.type === 'image');
@@ -951,6 +970,9 @@ export function walkEdits(options: WalkOptions): FuzzFailure | null {
       const name = pick(rng, FUZZ_OP_NAMES);
       if (name === undefined) continue;
       const next = applyNamedOp(state, name, rng);
+      if (next.broken !== undefined) {
+        return { seed, walk, step, op: `${name} @ ${state.selectedId}`, errors: [next.broken] };
+      }
       const object = validateOutline(next.outline);
       if (!object.ok) {
         // DeckEditor.apply refuses this write. Staying put is the editor.

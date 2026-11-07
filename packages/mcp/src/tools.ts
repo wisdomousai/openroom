@@ -17,6 +17,9 @@
 import {
   FREE_SESSION_PARTICIPANT_LIMIT,
   LAYOUTS_FOR_KIND,
+  MEDIA_SIZE_MAX,
+  MEDIA_SIZE_MIN,
+  SPLIT_MEDIA_SIZE_MAX,
   OUTLINE_STEP_KINDS,
   isTutoringApiPath,
   TUTORING_API_PATH_PATTERN,
@@ -45,27 +48,31 @@ const LAYOUTS_BY_KIND =
  */
 const FIT_WARNINGS =
   'A valid result also carries "warnings": advice, never a refusal, so read it before you start a session. Each warning has code, path, message and the layout the step is drawn with. ' +
-  'W_TEXT_FIT: the words are taller than the slide and will be cut, or run into the bottom margin. W_MEDIA_PLACE and W_MEDIA_SIZE: the layout draws the picture somewhere other than media.place or media.size say. ' +
+  'W_TEXT_FIT: the words are taller than the slide and will be cut, or run into the bottom margin. W_MEDIA_PLACE: the layout draws the picture somewhere other than media.place says. ' +
   'W_ELEMENT_BOUNDS: an element box runs past the slide edge. W_ELEMENT_OVERLAP: a box covers the step title, the master logo or the footer. W_SPAN_SIZE: a styled span is under 60 percent, too small to read. ' +
   'W_INTERACTION_FIELDS: an interaction step carries fields the live wall does not draw. ' +
   'Each step in the result gives "layout", the layout it is drawn with, which can differ from the one authored. ' +
   'Text budgets at 16:9 with the default margin of 8: a title slide heading of about 100 characters; a statement body of about 300 characters under a short heading; ' +
   '4 cards of up to 140 characters or 6 cards of up to 70; 6 steps, activity instructions or debrief prompts of up to 40 characters each, or 3 of up to 80. ' +
-  '16:10 and 4:3 give more height; a larger master safeArea gives less. ';
+  '16:10 and 4:3 give more height; a larger master safeArea gives less. ' +
+  'Answers on the wall: a question prompt of up to about 100 characters, and 2 to 4 short answers read from the back of a room; 6 to 8 answers take compact rows and 9 or 10 dense rows, so keep those to a few words each. ';
 
 /** What each layout does with media.place and media.size. The schema field descriptions point here. */
 const PLACE_BY_LAYOUT =
-  'Pictures by layout. split: place left or right picks the side (default right); top and bottom draw as right; fill leaves no column for the words, so use the media layout instead; ' +
-  'size is the picture column’s share of the width, and above 60 the words get too narrow. ' +
-  'title, text and grid: place top or bottom (the default) puts the picture above or below the words, and size is its most height; left or right draw the step as split; fill draws the picture under the words. ' +
-  'media: the picture takes the whole picture area whatever place and size say. activity: the picture sits in the 38% side column and size is ignored. ' +
+  'Pictures by layout (media.place, media.size). split: place left or right picks the side (default right); top and bottom draw as right (W_MEDIA_PLACE); ' +
+  `size is the picture column’s share of the width, ${String(MEDIA_SIZE_MIN)} to ${String(SPLIT_MEDIA_SIZE_MAX)}, and a larger size is E_MEDIA_LAYOUT because the words would get no usable column. ` +
+  `title, text and grid: place top or bottom (the default) puts the picture above or below the words, and size, ${String(MEDIA_SIZE_MIN)} to ${String(MEDIA_SIZE_MAX)}, is its greatest height; ` +
+  `left or right draw the step as split (W_MEDIA_PLACE), so the split size limit applies. ` +
+  'media: the picture takes the whole picture area whatever size says. Place fill is valid only on the media layout; on any other layout it is E_MEDIA_LAYOUT. ' +
+  'activity: the picture sits in the 38% side column and size is ignored. ' +
   'On the media layout a still fills its area and is cropped (focal picks what stays), so a portrait photo loses most of its height; set media.aspect "9:16" to show it whole, or use split. ';
 
 /** How freeform element boxes and html elements scale with the slide. */
 const ELEMENT_BOXES =
   'Element boxes {x, y, w, h} are percent of the slide width and height at the deck’s own aspect ratio; keep x+w and y+h at 100 or less. ' +
   'Text in a box is cut at the box edge, mid-line, so size the box for its text. A blank step draws its title at the top of the slide and elements draw over it. ' +
-  'In html element css, px, vw and vh do not scale with the slide, so the element looks different on the editor, the wall and a phone; use em, percent or an svg viewBox. ';
+  'In html element css, px, vw and vh do not scale with the slide, so the element looks different on the editor, the wall and a phone; use em, percent or an svg viewBox. ' +
+  'position:fixed and position:absolute in an html element are confined to its own box: nothing it draws reaches outside the box. ';
 
 /** One saved theme, so an agent can copy the full shape design.theme needs. */
 const THEME_EXAMPLE =

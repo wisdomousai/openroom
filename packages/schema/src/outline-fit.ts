@@ -20,7 +20,15 @@
  */
 
 import { deckAspectRatio, resolveSlideDesign, type ResolvedSlideDesign } from './deck-design.js';
-import { layoutAllowedForKind, LAYOUTS_FOR_KIND, resolveMediaPlace, resolveMediaSize, stepElements, stepPicture } from './outline-parts.js';
+import {
+  layoutAllowedForKind,
+  LAYOUTS_FOR_KIND,
+  resolvedStepLayout,
+  resolveMediaPlace,
+  resolveMediaSize,
+  stepElements,
+  stepPicture,
+} from './outline-parts.js';
 import type {
   Outline,
   OutlineElementBox,
@@ -30,34 +38,6 @@ import type {
 } from './outline-types.js';
 
 /* ------------------------------------------------------------------ */
-/* Resolved layout                                                     */
-/* ------------------------------------------------------------------ */
-
-/** Layouts that draw their blocks one under the other, with no side region. */
-const STACKED_LAYOUTS: ReadonlySet<OutlineLayout> = new Set(['title', 'text', 'grid']);
-
-/**
- * The layout a step is drawn in: the authored one when the kind can fill it,
- * else the kind's default; a picture placed `left` or `right` on a stacked
- * layout is drawn as `split` when the kind allows it.
- *
- * Same rule as `effectiveLayout` in `packages/slides/src/layout.ts`, which
- * mirrors this package's tables rather than importing them.
- */
-export function resolvedStepLayout(step: OutlineStep): OutlineLayout {
-  const authored = step.layout;
-  const layout =
-    authored !== undefined && layoutAllowedForKind(step.kind, authored)
-      ? authored
-      : (LAYOUTS_FOR_KIND[step.kind][0] ?? 'text');
-  const place = stepPicture(step)?.place;
-  if ((place === 'left' || place === 'right') && STACKED_LAYOUTS.has(layout) && layoutAllowedForKind(step.kind, 'split')) {
-    return 'split';
-  }
-  return layout;
-}
-
-/* ------------------------------------------------------------------ */
 /* Slide geometry (cqw)                                                */
 /* ------------------------------------------------------------------ */
 
@@ -65,7 +45,11 @@ export function resolvedStepLayout(step: OutlineStep): OutlineLayout {
 const FOOTER_BAND = 1.6 + 2 * 1.4 * 1.4 + 1.2;
 /** `.slide-surface__logo`: top 2, right 3, 9 x 4 cqw. */
 const LOGO = { top: 2, right: 3, width: 9, height: 4 } as const;
-/** Gap between the two columns of split and activity. */
+/**
+ * Gap between the two columns of split and activity. The regions themselves
+ * have no padding (the master inset rule sets it to 0), so a column's words
+ * get its full width and the content box's full height.
+ */
 const COLUMN_GAP = 3;
 /** Width of the second column when no picture sets it: split 42%, activity 38%. */
 const SPLIT_SUPPORT = 0.42;
@@ -428,8 +412,6 @@ function stepColumns(step: OutlineStep, layout: OutlineLayout, slide: Slide): Co
 /* Warnings                                                            */
 /* ------------------------------------------------------------------ */
 
-/** A picture column on split wider than this leaves too little for the words (LD4). */
-const SPLIT_PICTURE_MAX = 60;
 /** Spans smaller than this are hard to read on a phone (LD14). */
 const SPAN_SIZE_LEGIBLE = 60;
 
@@ -464,7 +446,7 @@ function textFitWarning(step: OutlineStep, index: number, design: ResolvedSlideD
   };
 }
 
-function mediaWarnings(step: OutlineStep, index: number, slide: Slide): OutlineWarning[] {
+function mediaWarnings(step: OutlineStep, index: number): OutlineWarning[] {
   const picture = stepPicture(step);
   if (picture === undefined) return [];
   const warnings: OutlineWarning[] = [];
@@ -487,29 +469,6 @@ function mediaWarnings(step: OutlineStep, index: number, slide: Slide): OutlineW
       layout,
       message: `split draws the picture of step "${step.id}" on the right whatever place says; top and bottom stack only on the title, text and grid layouts`,
     });
-  }
-  if (place === 'fill' && layout !== 'media') {
-    warnings.push({
-      code: 'W_MEDIA_PLACE',
-      path: `${path}/place`,
-      layout,
-      message:
-        layout === 'split'
-          ? `fill on split gives the picture of step "${step.id}" the whole width and leaves no column for the words; use place left or right with a size, or the media layout`
-          : `fill fills the slide only on the media layout; on ${layout} the picture of step "${step.id}" is drawn under the words at up to their full height`,
-    });
-  }
-  if (layout === 'split' && place !== 'fill') {
-    const size = resolveMediaSize(picture, resolveMediaPlace(picture, 'split'));
-    if (size > SPLIT_PICTURE_MAX) {
-      const column = Math.max(0, slide.width - COLUMN_GAP - (slide.width * size) / 100);
-      warnings.push({
-        code: 'W_MEDIA_SIZE',
-        path: `${path}/size`,
-        layout,
-        message: `size ${String(size)} on split leaves the words of step "${step.id}" a column about ${String(round(column))} cqw wide; keep size at ${String(SPLIT_PICTURE_MAX)} or less`,
-      });
-    }
   }
   return warnings;
 }
@@ -647,11 +606,12 @@ function spanWarnings(outline: Outline): OutlineWarning[] {
 
 function interactionWarning(step: OutlineStep, index: number): OutlineWarning | null {
   if (step.kind !== 'interaction') return null;
+  // `poll` is the layout the wall draws, so naming it ignores nothing.
   const fields = [
     ...(step.title !== undefined ? ['title'] : []),
     ...(step.body !== undefined ? ['body'] : []),
     ...(step.media !== undefined ? ['media'] : []),
-    ...(step.layout !== undefined ? ['layout'] : []),
+    ...(step.layout !== undefined && resolvedStepLayout(step) !== 'poll' ? ['layout'] : []),
   ];
   if (fields.length === 0) return null;
   return {
@@ -671,7 +631,7 @@ export function outlineWarnings(outline: Outline): OutlineWarning[] {
     const slide = slideOf(design);
     const fit = textFitWarning(step, index, design);
     if (fit !== null) warnings.push(fit);
-    warnings.push(...mediaWarnings(step, index, slide));
+    warnings.push(...mediaWarnings(step, index));
     warnings.push(...elementWarnings(step, index, design, slide));
     const interaction = interactionWarning(step, index);
     if (interaction !== null) warnings.push(interaction);

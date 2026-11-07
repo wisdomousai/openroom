@@ -1,9 +1,10 @@
 import {
   MEDIA_PLACES,
   MEDIA_SIZE_DEFAULT,
-  MEDIA_SIZE_MAX,
   MEDIA_SIZE_MIN,
   LAYOUTS_FOR_KIND,
+  mediaSizeMax,
+  resolvedStepLayout,
   resolveMediaPlace,
   resolveMediaSize,
   type OutlineMediaFocal,
@@ -62,9 +63,13 @@ export function PictureSection({
   onMediaChange?: (media: OutlineMedia) => void;
 }) {
   const canRemove = step.kind !== 'media';
-  const layout = step.layout ?? LAYOUTS_FOR_KIND[step.kind][0] ?? 'text';
+  const layout = resolvedStepLayout(step);
   const place = resolveMediaPlace(media, layout);
   const size = resolveMediaSize(media, place);
+  // On split the picture is a column beside the words, so it is narrower.
+  const sizeMax = mediaSizeMax(layout);
+  // Fill is the media layout; a kind without one has nothing to fill.
+  const places = MEDIA_PLACES.filter((slot) => slot !== 'fill' || LAYOUTS_FOR_KIND[step.kind].includes('media'));
   return (
     <Section title="Picture" target="image">
       <div className="flex items-center gap-2.5">
@@ -96,7 +101,7 @@ export function PictureSection({
       <div className="flex flex-col gap-1.5">
         <p className="text-caption text-muted-foreground">Place</p>
         <div className="flex flex-wrap gap-1.5">
-          {MEDIA_PLACES.map((slot) => {
+          {places.map((slot) => {
             const active = slot === place;
             return (
               <button
@@ -124,7 +129,7 @@ export function PictureSection({
           </p>
           <Slider
             min={MEDIA_SIZE_MIN}
-            max={MEDIA_SIZE_MAX}
+            max={sizeMax}
             value={[size]}
             aria-label="Picture size"
             onValueChange={([next]) => {
@@ -133,7 +138,7 @@ export function PictureSection({
             className="w-full"
           />
           <div className="flex flex-wrap gap-1.5">
-            {SIZE_CHIPS.map((chip) => (
+            {SIZE_CHIPS.filter((chip) => chip <= sizeMax).map((chip) => (
               <button
                 key={chip}
                 type="button"

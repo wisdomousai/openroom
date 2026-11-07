@@ -168,8 +168,9 @@ describing pixels is not.
   stacked under them). Timer, break, and join cannot carry one.
 - **`media.place`** — `left` `right` `top` `bottom` `fill`. Which slot the
   picture occupies. Default follows the step layout.
-- **`media.size`** — 20–100, the picture's share of the slide (width for
-  left/right, height for top/bottom). The canvas resize handles write this.
+- **`media.size`** — the picture's share of the slide, in percent. What it
+  measures on each layout, and its range there, are in the `outline_validate`
+  tool description.
 - **`media.focal`** — one of nine named points (`top-left` … `bottom-right`)
   saying which part of the frame matters when a media region crops.
 - **`activity.materials`** — what the learners need in front of them, distinct

@@ -130,10 +130,6 @@ async function fetchRowsOrMissing(
   }
 }
 
-async function fetchRows(url: string, fetchImpl: typeof fetch): Promise<UpstreamRow[] | null> {
-  return (await fetchRowsOrMissing(url, fetchImpl)).rows;
-}
-
 function textList(value: unknown, max: number): string[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -237,26 +233,30 @@ function toEntry(
   };
 }
 
-/** The short sense in the reader's own language, or null when unavailable. */
+/**
+ * The short sense in the reader's own language, or null when unavailable.
+ * `failed` is a timeout, a 5xx or a network error: not an answer, so the
+ * lookup must not be cached.
+ */
 async function fetchMeaning(
   word: string,
   lang: string,
   meaningLang: string,
   fetchImpl: typeof fetch,
-): Promise<{ meaning: string | null; unsupported: boolean }> {
+): Promise<{ meaning: string | null; unsupported: boolean; failed: boolean }> {
   const edition = meaningEdition(lang, meaningLang);
-  if (edition === null) return { meaning: null, unsupported: true };
+  if (edition === null) return { meaning: null, unsupported: true, failed: false };
   // The edition names the taught language in its own words — 'Französisch', not
   // 'French' — and it is a path segment, not decoration.
-  const rows = await fetchRows(wordPath(`${meaningLang}wiktionary/${edition}`, word), fetchImpl);
-  if (rows === null) return { meaning: null, unsupported: false };
+  const { rows, missing } = await fetchRowsOrMissing(wordPath(`${meaningLang}wiktionary/${edition}`, word), fetchImpl);
+  if (rows === null) return { meaning: null, unsupported: false, failed: !missing };
   for (const row of rows) {
     for (const sense of sensesOf(row)) {
       const gloss = textList(sense.glosses, 1)[0];
-      if (gloss !== undefined) return { meaning: gloss.slice(0, 200), unsupported: false };
+      if (gloss !== undefined) return { meaning: gloss.slice(0, 200), unsupported: false, failed: false };
     }
   }
-  return { meaning: null, unsupported: false };
+  return { meaning: null, unsupported: false, failed: false };
 }
 
 export interface ResolveInput {
@@ -340,6 +340,7 @@ export async function resolveEntry(
     if (nativeNeedsEdition(lang, meaningLang)) {
       const result = await fetchMeaning(entry?.lemma ?? found, lang, meaningLang, fetchImpl);
       meaning = result.meaning;
+      if (result.failed) failed = true;
       if (result.unsupported) unsupported = 'meaning-language';
     } else {
       /*

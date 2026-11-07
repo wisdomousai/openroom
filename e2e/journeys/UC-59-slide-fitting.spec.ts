@@ -134,13 +134,15 @@ test('long text, pictures, short grids, long lists and HTML fit their slide in t
   editorBoxes.two = await boxes(editor, '[data-part^="cell-"]');
   for (const card of editorBoxes.two) expect(card.h).toBeLessThan(0.15);
 
-  // Twelve steps: every step number sits inside its own row.
+  // Twelve steps: every step number sits inside its own row, and the two-digit
+  // numbers fit inside their badge.
   await open(4, 'Twelve steps');
   await expect(page.locator('[data-slide-overflow]')).toHaveCount(0);
   const rows = await editor.evaluate((root) => [...root.querySelectorAll('.outline-step__sequence li')].map((row) => {
-    const badge = row.querySelector(':scope > span:not([data-slide-decoration])')!.getBoundingClientRect();
+    const span = row.querySelector<HTMLElement>(':scope > span:not([data-slide-decoration])')!;
+    const badge = span.getBoundingClientRect();
     const box = row.getBoundingClientRect();
-    return badge.top >= box.top - 0.5 && badge.bottom <= box.bottom + 0.5;
+    return badge.top >= box.top - 0.5 && badge.bottom <= box.bottom + 0.5 && span.scrollWidth <= span.clientWidth;
   }));
   expect(rows).toEqual(Array.from({ length: 12 }, () => true));
   await editor.screenshot({ path: testInfo.outputPath('twelve-editor.png') });

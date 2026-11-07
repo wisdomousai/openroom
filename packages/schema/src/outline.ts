@@ -9,13 +9,13 @@ import type {
   OutlineStep,
   OutlineValidateResult,
 } from './outline-types.js';
-import { OUTLINE_STEP_KINDS } from './outline-types.js';
+import { MEDIA_SIZE_DEFAULT, MEDIA_SIZE_MIN, OUTLINE_STEP_KINDS, SPLIT_MEDIA_SIZE_MAX } from './outline-types.js';
 import { outlineSchema } from './outline-schema.js';
 import { ErrorCodes, type SessionError, type Session } from './types.js';
 import { compileSimpleSession, isSimpleSession } from './simple-session.js';
 import { validateDraftSession, validateSession } from './validate.js';
 import { stripDeprecatedOutlineFields } from './normalize.js';
-import { outlineWarnings, resolvedStepLayout } from './outline-fit.js';
+import { outlineWarnings } from './outline-fit.js';
 import { describeParseError, describeSchemaError, withoutBranchNoise } from './outline-errors.js';
 import { isHomeworkQuizType } from './homework.js';
 import { elementMarkupIssue } from './element-html.js';
@@ -26,10 +26,45 @@ import {
   LAYOUTS_FOR_KIND,
   LIST_SPANS_FOR_KIND,
   partKeysForStep,
+  resolvedStepLayout,
   revealIssues,
   SLOT_SPANS_FOR_KIND,
   stepElements,
+  stepPicture,
 } from './outline-parts.js';
+
+/**
+ * A picture `place` or `size` the drawn layout cannot hold: `fill` outside the
+ * media layout, or a split picture column so wide the words lose theirs.
+ */
+function mediaLayoutError(step: OutlineStep, index: number): SessionError | null {
+  const picture = stepPicture(step);
+  if (picture === undefined) return null;
+  if (step.layout !== undefined && !layoutAllowedForKind(step.kind, step.layout)) return null;
+  const layout = resolvedStepLayout(step);
+  const path = `/steps/${index}/media`;
+  if (picture.place === 'fill' && layout !== 'media') {
+    const media = LAYOUTS_FOR_KIND[step.kind].includes('media') ? ', or set layout "media" to fill the slide' : '';
+    return {
+      code: ErrorCodes.E_MEDIA_LAYOUT,
+      path: `${path}/place`,
+      message:
+        `place "fill" fills the slide only on the media layout, and step "${step.id}" is drawn as ${layout}: ` +
+        `write place "top" or "bottom" to stack the picture with the words, "left" or "right" to put it beside them (drawn as split), or leave place out${media}`,
+    };
+  }
+  if (layout === 'split' && picture.size !== undefined && picture.size > SPLIT_MEDIA_SIZE_MAX) {
+    return {
+      code: ErrorCodes.E_MEDIA_LAYOUT,
+      path: `${path}/size`,
+      message:
+        `size ${String(picture.size)} is too wide for step "${step.id}", which is drawn as split: there size is the picture column's ` +
+        `share of the slide width and must be ${String(MEDIA_SIZE_MIN)} to ${String(SPLIT_MEDIA_SIZE_MAX)} so the words keep a column. ` +
+        `Write size ${String(SPLIT_MEDIA_SIZE_MAX)} or less, or leave it out for ${String(MEDIA_SIZE_DEFAULT)}`,
+    };
+  }
+  return null;
+}
 
 function semanticErrors(outline: Outline): SessionError[] {
   const errors: SessionError[] = [];
@@ -77,6 +112,10 @@ function semanticErrors(outline: Outline): SessionError[] {
         }" (allowed: ${LAYOUTS_FOR_KIND[step.kind].join(', ')})`,
       });
     }
+
+    // -- the picture's place and size fit the layout it is drawn in -------
+    const mediaError = mediaLayoutError(step, index);
+    if (mediaError !== null) errors.push(mediaError);
 
     // -- reveal names real parts, each at most once ---------------------
     for (const issue of revealIssues(step, outline.interactions)) {
