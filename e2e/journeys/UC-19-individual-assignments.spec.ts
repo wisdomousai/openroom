@@ -61,7 +61,7 @@ test('tutor publishes shared and individual tasks without exposing other learner
   await expect(learner.getByRole('heading', { name: 'Écrire', exact: true })).toHaveCount(0);
   await learner.screenshot({ path: testInfo.outputPath('individual-homework-phone.png'), fullPage: true });
   await learner.getByRole('tab', { name: 'Practice', exact: true }).click();
-  await expect(learner.getByText('Your practice is done for now. Return later to practise again.')).toBeVisible();
+  await expect(learner.getByText('Nothing to practise right now. Exercises from your lessons appear here when it is time to review them.', { exact: true })).toBeVisible();
   await page.goto(notesUrl);
   const writing = page.getByRole('group', { name: 'Écrire assignment', exact: true });
   await expect(writing.getByRole('checkbox', { name: 'Léa', exact: true })).toBeChecked();

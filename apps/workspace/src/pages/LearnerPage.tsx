@@ -167,7 +167,7 @@ function LearnerContent({ token }: { token: string | null }) {
   if (identityQuery.data === undefined) {
     return (
       <Frame>
-        <p className="text-sm text-muted-foreground" role="status">{copy.loading}</p>
+        <p className="text-secondary text-muted-foreground" role="status">{copy.loading}</p>
       </Frame>
     );
   }
@@ -194,7 +194,7 @@ function LearnerContent({ token }: { token: string | null }) {
       {sessionsQuery.isError ? (
         <QueryError error={sessionsQuery.error} message={copy.lessonsError} onRetry={() => void sessionsQuery.refetch()} />
       ) : sessions === null ? (
-        <p className="text-sm text-muted-foreground" role="status">{copy.loading}</p>
+        <p className="text-secondary text-muted-foreground" role="status">{copy.loading}</p>
       ) : sessions.length === 0 ? (
         <p className="text-base">{copy.lessonEmpty}</p>
       ) : (
@@ -204,7 +204,7 @@ function LearnerContent({ token }: { token: string | null }) {
           ) : null}
           {earlier.length > 0 ? (
             <details>
-              <summary className="cursor-pointer text-sm font-semibold">{copy.earlierSessions}</summary>
+              <summary className="cursor-pointer text-row-title">{copy.earlierSessions}</summary>
               <div className="mt-3 flex flex-col gap-4">
                 {earlier.map((session) => (
                   <HomeworkBlock key={session.id} token={token} session={session} active={activeTab === 'lesson'} />
@@ -216,7 +216,7 @@ function LearnerContent({ token }: { token: string | null }) {
       )}
         </TabsContent>
         <TabsContent forceMount value="practice" className="mt-5 grid gap-5 data-[state=inactive]:hidden">
-          {practiceQuery.isError ? <p role="alert">{copy.practiceLoadError}</p> : null}
+          {practiceQuery.isError ? <QueryError error={practiceQuery.error} message={copy.practiceLoadError} onRetry={() => void practiceQuery.refetch()} /> : null}
           {practiceQuery.isPending ? <p role="status">{copy.loadingPractice}</p> : practiceQuery.isSuccess && token ? <PracticePile token={token} items={pile} onDone={() => { void queryClient.invalidateQueries({ queryKey: ['learner', 'practice'] }); }} /> : null}
           {sessions?.some((session) => asHomework(session.record?.homework).some((task) => task.kind === 'quiz')) ? <details><summary className="cursor-pointer font-semibold">{copy.revisit}</summary><div className="mt-4 grid gap-4">{sessions.map((session) => asHomework(session.record?.homework).filter((task) => task.kind === 'quiz').map((task) => <HomeworkTaskView key={`${session.id}:${task.id}`} token={token} sessionId={session.id} task={task} />))}</div></details> : null}
         </TabsContent>
@@ -225,14 +225,14 @@ function LearnerContent({ token }: { token: string | null }) {
             <CardHeader><CardTitle className="text-section">{item.task.title ?? (item.task.kind === 'writing' || item.task.kind === 'voice' ? item.task.prompt : copy.feedback)}</CardTitle></CardHeader>
             <CardContent className="grid gap-5">
               <p className="whitespace-pre-wrap text-base leading-relaxed">{item.feedback.message}</p>
-              {item.feedback.corrections.map((correction, index) => <div key={index} className="grid gap-2 rounded-lg border border-border p-4"><p className="text-sm text-muted-foreground">{copy.yourWords}</p><p className="whitespace-pre-wrap text-base">{correction.original}</p><p className="text-sm text-muted-foreground">{copy.tryThis}</p><p className="whitespace-pre-wrap text-base font-semibold">{correction.replacement}</p><p className="whitespace-pre-wrap text-base leading-relaxed">{correction.explanation}</p></div>)}
+              {item.feedback.corrections.map((correction, index) => <div key={index} className="grid gap-2 rounded-lg border border-border p-4"><p className="text-secondary text-muted-foreground">{copy.yourWords}</p><p className="whitespace-pre-wrap text-base">{correction.original}</p><p className="text-secondary text-muted-foreground">{copy.tryThis}</p><p className="whitespace-pre-wrap text-base font-semibold">{correction.replacement}</p><p className="whitespace-pre-wrap text-base leading-relaxed">{correction.explanation}</p></div>)}
               {item.audio && token ? <PrivateAudio key={item.submissionId} submissionId={item.submissionId} {...item.audio} token={token} comments={item.feedback.audioComments} onChanged={() => Promise.all([feedbackQuery.refetch(), sessionsQuery.refetch()])} /> : null}
-              {item.task.kind === 'writing' ? <details><summary className="cursor-pointer text-sm font-semibold">{copy.yourResponse}</summary><p className="mt-3 whitespace-pre-wrap text-base leading-relaxed">{item.body}</p></details> : null}
+              {item.task.kind === 'writing' ? <details><summary className="cursor-pointer text-row-title">{copy.yourResponse}</summary><p className="mt-3 whitespace-pre-wrap text-base leading-relaxed">{item.body}</p></details> : null}
             </CardContent>
           </Card>)}
         </TabsContent>
       </Tabs>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-caption text-muted-foreground">
         {copy.personalLink}
       </p>
     </Frame>
@@ -266,11 +266,12 @@ function PracticePile({
     advanced.current = false;
     (shownId ? heading : done).current?.focus();
   }, [shownId]);
-  if (shown === undefined) return <p ref={done} tabIndex={-1} className="text-muted-foreground outline-none">{copy.practiceDone}</p>;
+  // Nothing finished on this visit means nothing was due, which is also true for a student who never had practice.
+  if (shown === undefined) return <p ref={done} tabIndex={-1} className="text-muted-foreground outline-none">{finished.size > 0 ? copy.practiceDone : copy.practiceEmpty}</p>;
   const finish = () => { advanced.current = true; setFinished((previous) => new Set([...previous, shown.itemId])); setCurrent(undefined); onDone(); };
   return (
     <section className="flex flex-col gap-3">
-      <h2 ref={heading} tabIndex={-1} className="text-sm font-semibold outline-none">{copy.practice}</h2>
+      <h2 ref={heading} tabIndex={-1} className="text-row-title outline-none">{copy.practice}</h2>
       <PracticeCard
         key={shown.itemId}
         item={shown}
@@ -304,11 +305,11 @@ function HomeworkBlock({
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{latest ? copy.thisSession : session.title}</CardTitle>
-        {latest ? <p className="text-sm text-muted-foreground">{session.title}</p> : null}
+        {latest ? <p className="text-secondary text-muted-foreground">{session.title}</p> : null}
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {tasks.length === 0 && outcomes.length === 0 && artifacts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{copy.nothingWritten}</p>
+          <p className="text-secondary text-muted-foreground">{copy.nothingWritten}</p>
         ) : null}
         {tasks.filter((task) => task.kind !== 'quiz').map((task) => (
           <HomeworkTaskView key={task.id} token={token} sessionId={session.id} task={task} active={active} />
@@ -335,8 +336,8 @@ function HomeworkTaskView({
   if (task.kind === 'reading') {
     return (
       <div>
-        <h3 className="text-sm font-semibold">{task.title ?? copy.reading}</h3>
-        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{task.body}</p>
+        <h3 className="text-row-title">{task.title ?? copy.reading}</h3>
+        <p className="mt-1 whitespace-pre-wrap text-secondary leading-relaxed">{task.body}</p>
       </div>
     );
   }
@@ -347,7 +348,7 @@ function HomeworkTaskView({
   if (task.kind === 'quiz' && task.interaction) {
     return (
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold">{task.title ?? copy.quiz}</h3>
+        <h3 className="text-row-title">{task.title ?? copy.quiz}</h3>
         <PracticeCard
           item={{
             itemId: `${sessionId}:${task.id}`,
@@ -384,9 +385,9 @@ function WritingTask({
   });
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">{task.title ?? copy.writing}</h3>
-      <p className="text-sm">{task.prompt}</p>
-      {task.guidance ? <p className="text-sm text-muted-foreground">{task.guidance}</p> : null}
+      <h3 className="text-row-title">{task.title ?? copy.writing}</h3>
+      <p className="text-secondary">{task.prompt}</p>
+      {task.guidance ? <p className="text-secondary text-muted-foreground">{task.guidance}</p> : null}
       {/* Read-only and aria-disabled rather than disabled while saving, so keyboard focus stays on the field or on Save. */}
       <Textarea
         rows={6}
@@ -406,7 +407,7 @@ function WritingTask({
         {save.isSuccess ? copy.saved : save.isPending ? copy.saving : copy.save}
       </Button>
       <span role="status" className="sr-only">{save.isSuccess ? copy.saved : ''}</span>
-      {save.isError ? <p role="alert" className="text-sm text-destructive">{save.error instanceof ApiError && save.error.status === 409 ? copy.writingChanged : copy.writingError}</p> : null}
+      {save.isError ? <p role="alert" className="text-secondary text-destructive">{save.error instanceof ApiError && save.error.status === 409 ? copy.writingChanged : copy.writingError}</p> : null}
     </div>
   );
 }
@@ -418,8 +419,8 @@ function ItemList({ title, items }: { title: string; items: unknown[] }) {
   if (rows.length === 0) return null;
   return (
     <div>
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <ul className="mt-1 flex list-disc flex-col gap-1 pl-5 text-sm">
+      <h3 className="text-row-title">{title}</h3>
+      <ul className="mt-1 flex list-disc flex-col gap-1 pl-5 text-secondary">
         {rows.map((row, index) => (
           <li key={index}>
             {row.url ? (
