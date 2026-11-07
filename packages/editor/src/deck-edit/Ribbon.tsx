@@ -43,6 +43,7 @@ import {
   LAYOUTS_FOR_KIND,
   kindCanCarryElements,
   kindCanCarryPicture,
+  resolvedStepLayout,
   type OutlineLayout,
   type OutlineStep,
 } from '@openroom/schema';
@@ -364,7 +365,7 @@ export function Ribbon(props: RibbonProps) {
               <>
                 <Group label="Layout">
                   {allowed.map((layout) => {
-                    const active = selected?.layout === layout;
+                    const active = selected !== null && resolvedStepLayout(selected) === layout;
                     return (
                       <button
                         key={layout}

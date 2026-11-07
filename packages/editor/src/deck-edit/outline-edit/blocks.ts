@@ -1,8 +1,11 @@
 import {
   fillTheGapsPromptText,
   LAYOUTS_FOR_KIND,
+  mediaSizeMax,
   partKeysForStep,
+  resolvedStepLayout,
   stepElements,
+  stepPicture,
   validateOutline,
   type Interaction,
   type Outline,
@@ -544,13 +547,44 @@ export function setReveal(outline: Outline, stepId: string, groups: string[][]):
   return replaceStep(outline, stepId, next);
 }
 
+/** Layouts that stack the picture with the words; a side place on them is drawn as split. */
+const STACKED_LAYOUTS = new Set<OutlineLayout>(['title', 'text', 'grid']);
+
+/**
+ * The step with its picture fitted to the layout it is drawn in: `fill` stays
+ * only on the media layout, and a split picture column is no wider than the
+ * contract allows. Shared by every write that changes a layout, place or size.
+ */
+export function fitPictureToLayout(step: OutlineStep): OutlineStep {
+  const picture = stepPicture(step);
+  if (picture === undefined) return step;
+  const media = { ...picture };
+  if (media.place === 'fill' && resolvedStepLayout(step) !== 'media') delete media.place;
+  const max = mediaSizeMax(resolvedStepLayout({ ...step, media } as OutlineStep));
+  if (media.size !== undefined && media.size > max) media.size = max;
+  if (media.place === picture.place && media.size === picture.size) return step;
+  return { ...step, media } as OutlineStep;
+}
+
+/**
+ * Pick the step's layout. Title, text and grid have no side for the picture,
+ * so a `left` or `right` place is dropped there; otherwise the step would
+ * still be drawn as split.
+ */
 export function setLayout(outline: Outline, stepId: string, layout: OutlineStep['layout']): Outline {
   const step = outline.steps.find((item) => item.id === stepId);
   if (step === undefined) return outline;
   const next = { ...step };
   if (layout === undefined) delete next.layout;
   else next.layout = layout;
-  return replaceStep(outline, stepId, next);
+  const chosen = layout ?? LAYOUTS_FOR_KIND[step.kind][0];
+  const picture = stepPicture(next);
+  if (picture !== undefined && (picture.place === 'left' || picture.place === 'right') && chosen !== undefined && STACKED_LAYOUTS.has(chosen)) {
+    const media = { ...picture };
+    delete media.place;
+    (next as { media?: typeof media }).media = media;
+  }
+  return replaceStep(outline, stepId, fitPictureToLayout(next));
 }
 
 /** Wording for a step kind, in the block list and the properties panel. */

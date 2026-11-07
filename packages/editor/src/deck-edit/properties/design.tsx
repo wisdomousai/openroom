@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { type MatchInteraction, type OutlineStep } from '@openroom/schema';
+import { resolvedStepLayout, type MatchInteraction, type OutlineStep } from '@openroom/schema';
 
 import { Input } from '@openroom/ui/components/input';
 import { cn } from '@openroom/ui/utils';
@@ -66,7 +66,8 @@ export function DesignState(props: PropertiesPanelProps & { step: OutlineStep })
         <Section title="Layout" target="layout">
           <div className="grid grid-cols-3 gap-2">
             {allowed.map((layout) => {
-              const active = (step.layout ?? allowed[0]) === layout;
+              // The layout the slide is drawn in: a side picture draws a stacked layout as split.
+              const active = resolvedStepLayout(step) === layout;
               return (
                 <button
                   key={layout}

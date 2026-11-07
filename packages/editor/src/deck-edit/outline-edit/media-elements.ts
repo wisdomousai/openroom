@@ -29,7 +29,7 @@ import {
   type TextElementAlignment,
   type TextSpan,
 } from '@openroom/schema';
-import { keepValid, removeStep, replaceStep } from './blocks';
+import { fitPictureToLayout, keepValid, removeStep, replaceStep } from './blocks';
 import { clampSpanSize, clearStyleRange, normalizeSpans, retargetSpans, styleRange } from '../spans';
 
 /**
@@ -74,7 +74,7 @@ export function setMedia(outline: Outline, stepId: string, media: OutlineMedia):
     if (layout === undefined) delete next.layout;
     else next.layout = layout;
   }
-  return replaceStep(outline, stepId, next);
+  return replaceStep(outline, stepId, fitPictureToLayout(next));
 }
 
 /** The picture a block currently carries, whichever kind is carrying it. */
@@ -152,7 +152,11 @@ export function withMediaPlace(
   return next;
 }
 
-/** Which slot the picture occupies. Also moves the step onto a layout that slot can fill. */
+/**
+ * Which slot the picture occupies. Also moves the step onto a layout that slot
+ * can fill, and narrows the picture when that layout is split. `fill` needs
+ * the media layout, so a kind without one is left as it is.
+ */
 export function setMediaPlace(
   outline: Outline,
   stepId: string,
@@ -162,12 +166,13 @@ export function setMediaPlace(
   if (step === undefined) return outline;
   const media = stepMedia(step);
   if (media === undefined) return outline;
+  if (place === 'fill' && !LAYOUTS_FOR_KIND[step.kind].includes('media')) return outline;
   const layout = layoutForMediaPlace(step.kind, place);
   const next = { ...step, media: withMediaPlace(media, place) } as OutlineStep;
   if (layout !== (step.layout ?? LAYOUTS_FOR_KIND[step.kind][0])) {
     next.layout = layout;
   }
-  return replaceStep(outline, stepId, next);
+  return replaceStep(outline, stepId, fitPictureToLayout(next));
 }
 
 export function withMediaSize(media: OutlineMedia, size: number | undefined): OutlineMedia {
@@ -179,13 +184,13 @@ export function withMediaSize(media: OutlineMedia, size: number | undefined): Ou
   return next;
 }
 
-/** How much of the slide the picture takes, 20–100. The canvas handles write this. */
+/** How much of the slide the picture takes: 20–100, and at most 60 on split. */
 export function setMediaSize(outline: Outline, stepId: string, size: number): Outline {
   const step = outline.steps.find((item) => item.id === stepId);
   if (step === undefined) return outline;
   const media = stepMedia(step);
   if (media === undefined) return outline;
-  return replaceStep(outline, stepId, { ...step, media: withMediaSize(media, size) } as OutlineStep);
+  return replaceStep(outline, stepId, fitPictureToLayout({ ...step, media: withMediaSize(media, size) } as OutlineStep));
 }
 
 export function clampBox(box: OutlineElementBox): OutlineElementBox {
