@@ -1,7 +1,8 @@
 /**
  * UC-54 — insert dialogs, pictures and the task pane in the deck editor.
  *
- * Dialog footers stay inside the dialog at 1280 and 390. The picture dialog's
+ * Dialog footers stay inside the dialog at 1280 and 768, the narrowest width
+ * the editor edits at. The picture dialog's
  * sources are tabs. Image + text fills its own frame, an empty frame offers
  * Add picture, and a picture object has labelled Alt text and Crop. Words on
  * the slide can be looked up and formatted. The task pane tabs are tabs and
@@ -79,7 +80,7 @@ test('Ask and picture dialogs keep Insert inside the dialog, and picture sources
   await expect(sources.getByRole('tab', { name: 'This space', exact: true })).toHaveAttribute('aria-selected', 'true');
   await page.screenshot({ path: testInfo.outputPath('picture-dialog-1280.png') });
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 768, height: 1024 });
   await expectInside(insert, picture);
   await expectInside(picture.getByRole('button', { name: 'Cancel', exact: true }), picture);
   for (const tab of await sources.getByRole('tab').all()) {
@@ -88,7 +89,7 @@ test('Ask and picture dialogs keep Insert inside the dialog, and picture sources
   }
   const credit = picture.getByText('Credit the photographer on the slide');
   expect((await credit.boundingBox())?.height ?? 0, 'the credit label stays on one line').toBeLessThanOrEqual(24);
-  await page.screenshot({ path: testInfo.outputPath('picture-dialog-390.png') });
+  await page.screenshot({ path: testInfo.outputPath('picture-dialog-768.png') });
 });
 
 test('Image + text fills its frame, an empty frame offers Add picture, and a picture object has alt text and crop', async ({ page }, testInfo) => {

@@ -26,7 +26,7 @@ over `GET /api/decks/{id}/draft` where the test checks a saved value.
 
 Acceptance:
 
-Dialogs (1280 × 720, then 390 × 844):
+Dialogs (1280 × 720, then 768 × 1024, the narrowest width the editor edits at):
 
 - On the Home tab, "Ask" opens the dialog "New question". Its "Insert" button
   and the text starting "Lands as one slide" lie inside the dialog.
@@ -34,7 +34,7 @@ Dialogs (1280 × 720, then 390 × 844):
   the dialog.
 - The tablist "Where the picture comes from" starts with "Stock photos"
   selected. ArrowRight selects "This space".
-- At 390 wide, "Insert" and "Cancel" are still inside the dialog, each source
+- At 768 wide, "Insert" and "Cancel" are still inside the dialog, each source
   tab is at most 34 px tall, and the label "Credit the photographer on the
   slide" is at most 24 px tall.
 
