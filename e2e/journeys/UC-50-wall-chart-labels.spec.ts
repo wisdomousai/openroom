@@ -109,17 +109,25 @@ test('rankings, columns, scale ends and the number histogram keep every label re
     await expect.poll(() => laidOut(stage, stage.locator('.or-cols-chart__labels .barrow__label')), { message: `column labels at ${viewport.width}px` }).toBeNull();
     await stage.screenshot({ path: testInfo.outputPath(`columns-${viewport.width}.png`) });
 
-    // A scale keeps its two end labels apart.
+    // A scale keeps its two end labels apart and below the tick numbers.
     await show('scale');
     await expect(stage.locator('.or-scale-ends__min')).toContainText('überhaupt nicht');
     await expect(stage.locator('.or-scale-ends__max')).toContainText('freier Rede');
-    await expect.poll(() => laidOut(stage, stage.locator('.or-scale-ends__min, .or-scale-ends__max')), { message: `scale ends at ${viewport.width}px` }).toBeNull();
+    const ticks = stage.locator('.or-scale-chart svg text[data-ts-key^="x-tick-label"]');
+    const ends = stage.locator('.or-scale-ends__min, .or-scale-ends__max');
+    await expect(ticks).toHaveCount(11);
+    await expect.poll(() => laidOut(stage, stage.locator('.or-scale-chart svg text[data-ts-key^="x-tick-label"], .or-scale-ends__min, .or-scale-ends__max')), { message: `scale ticks and ends at ${viewport.width}px` }).toBeNull();
+    await expect.poll(async () => {
+      const lowestTick = Math.max(...(await boxesOf(ticks)).map((box) => box.bottom));
+      return Math.min(...(await boxesOf(ends)).map((box) => box.top)) >= lowestTick - 1;
+    }, { message: `scale ends below the ticks at ${viewport.width}px` }).toBe(true);
     await stage.screenshot({ path: testInfo.outputPath(`scale-${viewport.width}.png`) });
 
     // A number histogram marks the correct value and says it in its note.
     await show('year');
     await expect(stage.locator('.or-hist-note')).toContainText('5 answers');
     await expect(stage.locator('.or-hist-note__correct')).toContainText('1989');
+    await expect(stage.locator('.or-hist-chart [data-ts-key="numeric-correct"] line')).toHaveCount(1);
     await expect.poll(() => laidOut(stage, stage.locator('.or-hist-note')), { message: `histogram note at ${viewport.width}px` }).toBeNull();
     await stage.screenshot({ path: testInfo.outputPath(`histogram-${viewport.width}.png`) });
   }
