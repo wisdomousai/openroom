@@ -39,16 +39,18 @@ export function codexThreadOptions(input: HostTurnInput): ThreadOptions {
   return {
     workingDirectory: input.workdir,
     skipGitRepoCheck: true,
+    // Writes stay inside the deck workspace. Reference folders and attachments
+    // are read in place, which the sandbox allows without --add-dir; passing
+    // them as additionalDirectories would make them writable.
     sandboxMode: 'workspace-write',
-    // Tutors may paste worksheet/reference URLs into the deck chat. Keep the
-    // filesystem sandbox, but allow the embedded Codex runner to fetch them.
-    networkAccessEnabled: true,
+    // The agent reads audience answers and co-author deck text, so its shell
+    // gets no network to send local files anywhere.
+    networkAccessEnabled: false,
     ...(input.model == null ? {} : { model: input.model }),
     // Headless run: an approval prompt has no one to answer it, so Codex
     // auto-cancels the tool call ("access was cancelled"). The sandbox is
     // the boundary; never prompt.
     approvalPolicy: 'never',
-    additionalDirectories: input.folders,
   };
 }
 

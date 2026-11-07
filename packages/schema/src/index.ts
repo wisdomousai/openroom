@@ -84,7 +84,9 @@ export {
 } from './outline-parts.js';
 export {
   cssLooksUnsafe,
+  elementAttributeIssue,
   elementMarkupIssue,
+  elementTagForbidden,
   htmlLooksUnsafe,
   sanitizeElementCss,
   sanitizeElementHtml,

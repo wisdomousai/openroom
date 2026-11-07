@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import { sanitizeElementCss, sanitizeElementHtml } from '@openroom/schema';
+import { elementAttributeIssue, elementTagForbidden, sanitizeElementCss, sanitizeElementHtml } from '@openroom/schema';
 
 /**
  * Typography for reading material.
@@ -28,6 +28,29 @@ const READING_STYLE = [
   '.or-html img{max-width:100%;height:auto}',
   '.or-html hr{margin:1.4em 0;border:0;border-top:1px solid currentColor;opacity:.25}',
 ].join('\n');
+
+/**
+ * The sanitised fragment as nodes, ready to insert.
+ *
+ * It is parsed in an inert `<template>`, where nothing loads or runs, and the
+ * parsed tree is checked again before it reaches the live document: the string
+ * sanitiser decides what the markup means, this pass checks what the browser
+ * actually built from it.
+ */
+export function sanitizedElementFragment(html: string, doc: Document = document): DocumentFragment {
+  const template = doc.createElement('template');
+  template.innerHTML = sanitizeElementHtml(html);
+  for (const element of [...template.content.querySelectorAll('*')]) {
+    if (elementTagForbidden(element.localName)) {
+      element.remove();
+      continue;
+    }
+    for (const attribute of [...element.attributes]) {
+      if (elementAttributeIssue(attribute.name, attribute.value) !== null) element.removeAttributeNode(attribute);
+    }
+  }
+  return template.content;
+}
 
 /**
  * Mount a sanitised HTML/SVG fragment in a closed shadow root so its CSS
@@ -60,7 +83,7 @@ export function HtmlHost({ html, css, scroll = false }: { html: string; css?: st
     ].join('\n');
     const wrap = document.createElement('div');
     wrap.className = 'or-html';
-    wrap.innerHTML = sanitizeElementHtml(html);
+    wrap.replaceChildren(sanitizedElementFragment(html));
     root.append(style, wrap);
     delete host.dataset.contentOverflow;
     if (scroll || !host.closest('.slide-canvas__frame')) return;

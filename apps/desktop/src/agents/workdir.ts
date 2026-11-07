@@ -6,6 +6,9 @@ import type { McpStdioCommand } from './types.js';
 
 export { SKILL_NAMES };
 
+/** Workspace entries that configure Claude or Codex for this folder; rewritten before every turn. */
+const WORKDIR_CONTROL_ENTRIES = ['.claude', '.agents', '.codex', '.mcp.json'];
+
 export interface WorkdirInput {
   root: string;
   /** Temporary root for copied attachments; never the persistent deck workspace. */
@@ -49,6 +52,12 @@ export async function createAgentWorkdir(input: WorkdirInput): Promise<AgentWork
   const attachmentsDir = join(input.attachmentsRoot ?? input.root, 'attachments');
   const claudeMcpConfigPath = join(input.root, 'mcp.json');
 
+  // The deck workspace persists and the agent can write in it. Run config is
+  // Desktop's alone: drop whatever a previous turn left there (a planted
+  // settings file with hooks, an extra skill) before writing it fresh.
+  await Promise.all(
+    WORKDIR_CONTROL_ENTRIES.map((name) => rm(join(input.root, name), { recursive: true, force: true })),
+  );
   await mkdirFn(input.root);
   await mkdirFn(attachmentsDir);
   await mkdirFn(join(input.root, '.claude', 'skills'));

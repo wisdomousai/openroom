@@ -93,14 +93,17 @@ fails the deployment step with the name of the value to configure.
 
 Production (openroom.app) is a billed deployment and must set
 `PADDLE_ENVIRONMENT` (`sandbox` or `live`) together with the other Paddle values
-in [BILLING.md](BILLING.md). Leaving `PADDLE_ENVIRONMENT` unset or empty makes a
+in [BILLING.md](BILLING.md). Setting `PADDLE_ENVIRONMENT=off` makes a
 deployment self-hosted: every account receives every implemented capability,
 including `continuity` and `team`, and nothing is sold. Self-hosted deployments
 need no Paddle account, catalog, webhook or cron configuration.
 
-Check the variable before the first production deploy and after any change to
-Worker variables or secrets. Local development (`.dev.vars` with an empty
-`PADDLE_ENVIRONMENT`) and the isolated browser journeys run self-hosted.
+An unset or empty `PADDLE_ENVIRONMENT` fails closed: accounts are free (or keep
+their manual development grants), so a deploy that drops the variable does not
+unlock paid features. Check the variable before the first production deploy and
+after any change to Worker variables or secrets. Local development and the
+isolated browser journeys run with `DEMO_AUTH` set and no `PADDLE_ENVIRONMENT`,
+which is treated as self-hosted.
 
 ## Website pageviews
 

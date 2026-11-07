@@ -3,7 +3,7 @@ import { availablePlans } from './prices';
 import { json, type ControlEnv } from '../auth';
 import { requireControlUser } from '../control-auth';
 import { readJson } from '../control-utils';
-import { billingConfigured, parseEntitlements } from '../entitlements';
+import { billingOff, parseEntitlements } from '../entitlements';
 import { billingSubscriptions, subscriptionAccessUntil } from './access';
 import { billingCustomer, cancelCheckout, checkoutDetails, currentCheckout, startCheckout } from './checkout';
 import { record } from './paddle';
@@ -18,7 +18,7 @@ export async function billingRoute(request: Request, env: ControlEnv, url: URL):
   const guard = await requireControlUser(request, env, method !== 'GET');
   if (!guard.ok) return guard.response;
   const config = paddleConfig(env);
-  if (!config) return leaf === '' ? json({ available: false, selfHosted: !billingConfigured(env), subscriptions: [], pendingCheckout: null, canManage: false }) : json({ error: 'billing-not-configured' }, 503);
+  if (!config) return leaf === '' ? json({ available: false, selfHosted: billingOff(env), subscriptions: [], pendingCheckout: null, canManage: false }) : json({ error: 'billing-not-configured' }, 503);
   try {
     if (leaf === '') {
       const [customer, rows, pending, sync] = await Promise.all([billingCustomer(env, config, guard.user.id), billingSubscriptions(env, guard.user.id), currentCheckout(env, config, guard.user.id), env.DB.prepare('SELECT error,checked_at FROM billing_account_sync WHERE environment=?1 AND user_id=?2').bind(config.catalog.environment, guard.user.id).first<{ error: string | null; checked_at: number | null }>()]);

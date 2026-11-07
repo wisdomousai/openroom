@@ -9,6 +9,8 @@
 import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
 import { sha256Hex } from '../src/api-tokens.js';
+import { SESSION_COOKIE } from '../src/auth.js';
+import { signCookieValue } from '../src/cookies.js';
 
 import { OUTLINE_SCHEMA_RESOURCE_URI } from '@openroom/mcp';
 
@@ -23,11 +25,23 @@ async function oauthPat(): Promise<string> {
   return token;
 }
 
+/** A signed-in browser session: the only way to approve an MCP connection. */
+async function oauthSession(): Promise<string> {
+  const id = crypto.randomUUID(), sessionId = crypto.randomUUID(), now = Date.now();
+  await env.DB.prepare('INSERT INTO users (id, google_sub, email, name, created_at) VALUES (?1,?1,?2,?3,?4)').bind(id, `${id}@example.test`, 'Agent owner', now).run();
+  await env.DB.prepare('INSERT INTO auth_sessions (id,user_id,created_at,expires_at) VALUES (?1,?2,?3,?4)').bind(sessionId, id, now, now + 3_600_000).run();
+  const secret = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
+  return `${SESSION_COOKIE}=${encodeURIComponent(await signCookieValue(secret, sessionId))}`;
+}
+
+/** The consent form's proof plus the cookies to post it with: the session and the consent nonce. */
 async function oauthConsent(fields: Record<string, string>) {
-  const page = await call(`/api/mcp/authorize?${new URLSearchParams(fields)}`);
+  const session = await oauthSession();
+  const page = await call(`/api/mcp/authorize?${new URLSearchParams(fields)}`, { headers: { cookie: session } });
   expect(page.status).toBe(200);
   const html = await page.text();
-  return { consent: /name="consent" value="([^"]+)"/.exec(html)![1]!, cookie: page.headers.get('set-cookie')!.split(';')[0]! };
+  expect(html).toContain('Approve connection');
+  return { consent: /name="consent" value="([^"]+)"/.exec(html)![1]!, cookie: `${session}; ${page.headers.get('set-cookie')!.split(';')[0]!}` };
 }
 
 const QUIZ_OUTLINE_YAML = `version: 1
@@ -379,17 +393,18 @@ describe('MCP OAuth front door', () => {
     const html = await form.text();
     const consent = /name="consent" value="([^"]+)"/.exec(html)![1]!;
     const cookie = form.headers.get('set-cookie')!.split(';')[0]!;
-    const credential = await oauthPat();
     expect(html).toContain('Connect ChatGPT');
     expect(html).toContain('ChatGPT');
     const methods = await (await call('/api/auth/status')).json() as { google: boolean; demo: boolean };
     expect(html.includes('/api/auth/google?returnTo=')).toBe(methods.google);
     expect(html.includes('Sign in with demo account')).toBe(methods.demo);
-    expect(html).toContain('Personal API token');
+    // Signed out there is nothing to approve with; a token cannot stand in for the browser.
+    expect(html).not.toContain('Personal API token');
+    expect(html).not.toContain('Approve connection');
     expect(html).toContain('You can revoke this connection in Settings');
 
-    // Wrong key → form again with error
-    const bad = await call('/api/mcp/authorize', {
+    // A personal API token is not a consent credential.
+    const withPat = await call('/api/mcp/authorize', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
       body: new URLSearchParams({
@@ -400,16 +415,18 @@ describe('MCP OAuth front door', () => {
         code_challenge: challenge,
         code_challenge_method: 'S256',
         consent,
-        credential: 'nope',
+        credential: await oauthPat(),
       }).toString(),
+      redirect: 'manual',
     });
-    expect(bad.status).toBe(401);
-    expect(await bad.text()).toContain('valid personal API token');
+    expect(withPat.status).toBe(401);
+    expect(await withPat.text()).toContain('Sign in to continue.');
 
-    // Approve with a user credential and the form's CSRF proof.
+    // Approve from a signed-in browser with the form's CSRF proof.
+    const proof = await oauthConsent(Object.fromEntries(authorizeQs));
     const approved = await call('/api/mcp/authorize', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie },
+      headers: { 'content-type': 'application/x-www-form-urlencoded', cookie: proof.cookie },
       body: new URLSearchParams({
         response_type: 'code',
         client_id: clientId,
@@ -417,8 +434,8 @@ describe('MCP OAuth front door', () => {
         state: 'st-1',
         code_challenge: challenge,
         code_challenge_method: 'S256',
-        consent,
-        credential,
+        consent: proof.consent,
+        via_session: '1',
       }).toString(),
       redirect: 'manual',
     });
@@ -487,7 +504,7 @@ describe('MCP OAuth front door', () => {
         code_challenge: challenge,
         code_challenge_method: 'S256',
         consent: proof.consent,
-        credential: await oauthPat(),
+        via_session: '1',
       }).toString(),
       redirect: 'manual',
     });
@@ -539,7 +556,7 @@ describe('MCP OAuth front door', () => {
         code_challenge: challenge,
         code_challenge_method: 'S256',
         consent: proof.consent,
-        credential: await oauthPat(),
+        via_session: '1',
       }).toString(),
       redirect: 'manual',
     });

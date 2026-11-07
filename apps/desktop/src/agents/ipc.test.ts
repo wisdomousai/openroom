@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { IpcMain } from 'electron';
+import { dialog, type IpcMain } from 'electron';
 
 import { AGENT_CHANNELS } from './channels.js';
 import { createAskQuestionBroker } from './ask-question.js';
@@ -51,15 +51,15 @@ function hostStatus(overrides: Partial<AgentHostStatus> = {}): AgentHostStatus {
 
 function fakeSession(overrides: Partial<AgentSession> = {}): AgentSession {
   return {
-    id: 'conv-1',
+    id: '6f1d1f6e-2b8a-4c55-9a1e-3c0d5e7b9a10',
     deckKey: 'deck:one',
     host: 'claude',
     modelId: null,
     workdir: {
-      path: '/runs/conv-1',
-      attachmentsDir: '/runs/conv-1/attachments',
+      path: '/workspaces/one/work',
+      attachmentsDir: '/runs/6f1d1f6e-2b8a-4c55-9a1e-3c0d5e7b9a10/attachments',
       attachmentNames: [],
-      claudeMcpConfigPath: '/runs/conv-1/mcp.json',
+      claudeMcpConfigPath: '/workspaces/one/work/mcp.json',
     },
     resumeId: null,
     folders: [],
@@ -179,7 +179,7 @@ describe('agent IPC', () => {
       getSenderWindow: () => null,
     });
     expect(command.args).toEqual([
-      '/app/mcp-stdio.js', '--socket', '/tmp/mcp.sock', '--deny-tool', 'deck_preview',
+      '/app/mcp-stdio.js', '--socket', '/tmp/mcp.sock', '--deny-tool', 'deck_preview', '--confirm-api',
     ]);
   });
 
@@ -206,12 +206,35 @@ describe('agent IPC', () => {
   });
 
   it('loads and selects chat history using the deck identity from main', async () => {
-    const { handlers, store } = register({});
+    const { handlers, store, session } = register({});
     const { event } = fakeSenderEvent();
     await handlers.get(AGENT_CHANNELS.load)?.(event, 'deck-9');
-    await handlers.get(AGENT_CHANNELS.select)?.(event, 'conv-1', 'deck-9');
+    await handlers.get(AGENT_CHANNELS.select)?.(event, session.id, 'deck-9');
     expect(store.load).toHaveBeenCalledWith('deck:deck-9');
-    expect(store.select).toHaveBeenCalledWith('deck:deck-9', 'conv-1');
+    expect(store.select).toHaveBeenCalledWith('deck:deck-9', session.id);
+  });
+
+  it('runs only with attachments and folders this window picked, and only a minted chat id', async () => {
+    const { handlers, turns } = register({});
+    const { event } = fakeSenderEvent();
+    const run = (overrides: Partial<AgentRunRequest>) => handlers.get(AGENT_CHANNELS.run)?.(event, runRequest(overrides));
+
+    await expect(run({ attachments: ['/Users/t/.ssh/id_ed25519'] })).rejects.toThrow('attach button');
+    await expect(run({ folders: ['/Users/t'] })).rejects.toThrow('folder button');
+    await expect(run({ conversationId: '../work/planted' })).rejects.toThrow('Chat not found');
+    expect(turns).toEqual([]);
+
+    const show = vi.fn()
+      .mockResolvedValueOnce({ canceled: false, filePaths: ['/Users/t/School/sheet.pdf'] })
+      .mockResolvedValueOnce({ canceled: false, filePaths: ['/Users/t/School'] });
+    (dialog as unknown as { showOpenDialog: typeof show }).showOpenDialog = show;
+    await handlers.get(AGENT_CHANNELS.pickAttachments)?.(event);
+    await handlers.get(AGENT_CHANNELS.pickFolders)?.(event);
+    await expect(run({ attachments: ['/Users/t/School/sheet.pdf'], folders: ['/Users/t/School'] }))
+      .resolves.toMatchObject({ ok: true });
+    // Another window's picks are not this window's grant.
+    await expect(handlers.get(AGENT_CHANNELS.run)?.(fakeSenderEvent(2).event, runRequest({ folders: ['/Users/t/School'] })))
+      .rejects.toThrow('folder button');
   });
 
   it('runs a turn, forwards events, and returns the conversation id', async () => {

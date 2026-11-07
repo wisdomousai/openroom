@@ -643,6 +643,27 @@ describe('step union error pruning', () => {
     expect(result.errors[0]!.message).not.toContain('^(');
   });
 
+  // Anonymous A2A validates outlines, so the cost of a bad one must stay linear.
+  it('refuses a step list over the limit without validating each step', () => {
+    const steps = Array.from({ length: 5000 }, (_, index) => ({ id: `s${String(index)}`, kind: 'exercise' }));
+    const result = validateOutline({ ...base, steps });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toEqual([
+      { code: ErrorCodes.E_SCHEMA, path: '/steps', message: 'must NOT have more than 200 items' },
+    ]);
+  });
+
+  it('reports many bad steps within the default test timeout', () => {
+    const junk = Object.fromEntries(Array.from({ length: 60 }, (_, index) => [`junk${String(index)}`, 1]));
+    const steps = Array.from({ length: 200 }, (_, index) => ({ id: `s${String(index)}`, kind: 'title', title: 'x', ...junk }));
+    const result = validateOutline({ ...base, steps });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors[0]).toMatchObject({ path: '/steps/0/junk0' });
+    expect(result.errors.length).toBeLessThanOrEqual(5000);
+  });
+
   it('names the allowed reveal values for a bare string other than together', () => {
     const result = withStep({ id: 's', kind: 'statement', body: 'Le zoo', reveal: 'nope' });
     expect(result.ok).toBe(false);

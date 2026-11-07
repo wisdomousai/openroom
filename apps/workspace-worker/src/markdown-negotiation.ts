@@ -70,66 +70,271 @@ function attr(tag: string, name: string): string | null {
   return m ? decodeEntities(m[1] ?? m[2] ?? m[3] ?? '') : null;
 }
 
-function metaContent(html: string, attrName: 'name' | 'property', value: string): string | null {
-  const re = new RegExp(
-    `<meta\\b[^>]*\\b${attrName}\\s*=\\s*["']${value}["'][^>]*>`,
-    'i',
-  );
-  const tag = re.exec(html)?.[0];
-  if (!tag) {
-    // Attribute order may put content before name/property.
-    const re2 = new RegExp(
-      `<meta\\b[^>]*\\bcontent\\s*=\\s*(["'])([\\s\\S]*?)\\1[^>]*\\b${attrName}\\s*=\\s*["']${value}["'][^>]*>`,
-      'i',
-    );
-    const m2 = re2.exec(html);
-    const content = m2?.[2];
-    return content !== undefined ? decodeEntities(content) : null;
+/*
+ * Tag scanning.
+ *
+ * Pages come from any host, so the extractor must stay linear in the page. A
+ * regex like `<p\b[^>]*>([\s\S]*?)<\/p>` is not: from every opener that has no
+ * closer it rescans the rest of the page. These helpers find the same matches,
+ * but remember where each closer next occurs, so the page is read once per
+ * pass. Where hostile markup nests `<` inside a tag, they skip the whole tag
+ * rather than retry from every `<` in it.
+ */
+
+type Span = [start: number, end: number];
+
+function asciiLower(value: string): string {
+  return value.replace(/[A-Z]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 32));
+}
+
+/** A forward search that remembers its last answer. Callers search from increasing offsets. */
+function forward(find: (from: number) => Span | null): (from: number) => Span | null {
+  let last: Span | null = null;
+  let exhausted = false;
+  return (from) => {
+    if (exhausted) return null;
+    if (last !== null && last[0] >= from) return last;
+    last = find(from);
+    if (last === null) exhausted = true;
+    return last;
+  };
+}
+
+function literal(lowered: string, needle: string): (from: number) => Span | null {
+  return forward((from) => {
+    const at = lowered.indexOf(needle, from);
+    return at === -1 ? null : [at, at + needle.length];
+  });
+}
+
+/** `<\/[^>]+>`: the next end tag of any name. */
+function anyEndTag(html: string): (from: number) => Span | null {
+  const gt = literal(html, '>');
+  return forward((from) => {
+    for (let at = html.indexOf('</', from); at !== -1; at = html.indexOf('</', at + 1)) {
+      if (html[at + 2] === '>') continue;
+      const close = gt(at + 2);
+      return close === null ? null : [at, close[1]];
+    }
+    return null;
+  });
+}
+
+interface PairSpec {
+  /** Global regex for the opening `<name` (no `[^>]*`); the tag runs to the next `>`. */
+  open: RegExp;
+  /** Sticky regex that must follow the opening tag, for `<pre…>\s*<code…>`. */
+  then?: RegExp;
+  /** Only tags this accepts open a pair. */
+  accept?: (tag: string) => boolean;
+  /**
+   * Closing tags in order; each group runs lazily to the next one. A string is
+   * a lowercase literal (`'</*>'` is any end tag); a regex must be global.
+   */
+  close: (match: RegExpExecArray) => (string | RegExp)[];
+  /** Replacement; `groups` are the text between the tags. */
+  replace: (groups: string[], tag: string, match: RegExpExecArray) => string;
+}
+
+/** `html.replace(/<open…>(…?)<close>/gi, …)` without the rescans. */
+function replacePairs(html: string, spec: PairSpec): string {
+  const lowered = asciiLower(html);
+  const gt = literal(html, '>');
+  const closers = new Map<string, (from: number) => Span | null>();
+  const closer = (needle: string | RegExp) => {
+    const key = needle instanceof RegExp ? `/${needle.source}/` : needle;
+    let find = closers.get(key);
+    if (find === undefined) {
+      if (needle instanceof RegExp) {
+        find = forward((from) => {
+          needle.lastIndex = from;
+          const match = needle.exec(html);
+          return match === null ? null : [match.index, match.index + match[0].length];
+        });
+      } else {
+        find = needle === '</*>' ? anyEndTag(html) : literal(lowered, needle);
+      }
+      closers.set(key, find);
+    }
+    return find;
+  };
+  const out: string[] = [];
+  let copied = 0;
+  spec.open.lastIndex = 0;
+  for (let match = spec.open.exec(html); match !== null; match = spec.open.exec(html)) {
+    const first = gt(spec.open.lastIndex);
+    if (first === null) break;
+    let tagEnd = first[1];
+    spec.open.lastIndex = tagEnd;
+    if (spec.then !== undefined) {
+      spec.then.lastIndex = tagEnd;
+      if (!spec.then.test(html)) continue;
+      const second = gt(spec.then.lastIndex);
+      if (second === null) break;
+      tagEnd = second[1];
+    }
+    const tag = html.slice(match.index, tagEnd);
+    if (spec.accept !== undefined && !spec.accept(tag)) continue;
+    const groups: string[] = [];
+    let at = tagEnd;
+    let found = true;
+    for (const needle of spec.close(match)) {
+      const span = closer(needle)(at);
+      if (span === null) {
+        found = false;
+        break;
+      }
+      groups.push(html.slice(at, span[0]));
+      at = span[1];
+    }
+    if (!found) continue;
+    out.push(html.slice(copied, match.index), spec.replace(groups, tag, match));
+    copied = at;
+    spec.open.lastIndex = at;
   }
-  return attr(tag, 'content');
+  out.push(html.slice(copied));
+  return out.join('');
+}
+
+/** `html.replace(/<open[^>]*>/gi, …)` without the rescans. */
+function replaceTags(html: string, open: RegExp, replace: (tag: string) => string): string {
+  const gt = literal(html, '>');
+  const out: string[] = [];
+  let copied = 0;
+  open.lastIndex = 0;
+  for (let match = open.exec(html); match !== null; match = open.exec(html)) {
+    const close = gt(open.lastIndex);
+    if (close === null) break;
+    out.push(html.slice(copied, match.index), replace(html.slice(match.index, close[1])));
+    copied = close[1];
+    open.lastIndex = close[1];
+  }
+  out.push(html.slice(copied));
+  return out.join('');
+}
+
+/** `html.replace(/<[^>]+>/g, '')`. */
+function stripTags(html: string): string {
+  const out: string[] = [];
+  let copied = 0;
+  let at = html.indexOf('<');
+  while (at !== -1) {
+    const close = html.indexOf('>', at + 1);
+    if (close === -1) break;
+    if (close > at + 1) {
+      out.push(html.slice(copied, at));
+      copied = close + 1;
+      at = html.indexOf('<', close + 1);
+    } else {
+      at = html.indexOf('<', at + 1);
+    }
+  }
+  out.push(html.slice(copied));
+  return out.join('');
+}
+
+/** Every `<open…>…<close>` pair's inner text. */
+function innerOf(html: string, open: RegExp, close: (match: RegExpExecArray) => string | RegExp): string[] {
+  const found: string[] = [];
+  replacePairs(html, {
+    open,
+    close: (match) => [close(match)],
+    replace: ([inner]) => {
+      found.push(inner ?? '');
+      return '';
+    },
+  });
+  return found;
+}
+
+function metaContent(html: string, attrName: 'name' | 'property', value: string): string | null {
+  const named = new RegExp(`\\b${attrName}\\s*=\\s*["']${value}["']`, 'i');
+  let content: string | null = null;
+  replaceTags(html, /<meta\b/gi, (tag) => {
+    if (content === null && named.test(tag)) content = attr(tag, 'content');
+    return '';
+  });
+  return content;
 }
 
 function titleFromHtml(html: string): string | null {
-  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
-  const text = m?.[1];
+  const text = innerOf(html, /<title/gi, () => '</title>')[0];
   return text !== undefined ? decodeEntities(text.replace(/\s+/g, ' ').trim()) : null;
 }
 
 function extractJsonLd(html: string): string[] {
   const blocks: string[] = [];
-  const re = /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    const raw = m[1]?.trim();
-    if (raw) blocks.push(raw);
-  }
+  replacePairs(html, {
+    open: /<script\b/gi,
+    accept: (tag) => /type\s*=\s*["']application\/ld\+json["']/i.test(tag),
+    close: () => ['</script>'],
+    replace: ([inner]) => {
+      const raw = inner?.trim();
+      if (raw) blocks.push(raw);
+      return '';
+    },
+  });
   return blocks;
+}
+
+function dropPairs(html: string, open: RegExp, close: string, accept?: (tag: string) => boolean): string {
+  return replacePairs(html, { open, accept, close: () => [close], replace: () => '' });
 }
 
 function stripChrome(html: string): string {
   let out = html;
   // Drop head; we already pulled meta / JSON-LD from the full document.
-  out = out.replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, '');
+  out = dropPairs(out, /<head\b/gi, '</head>');
   // Chrome Cloudflare also strips: nav, footer, script, style, noscript.
   for (const tag of ['script', 'style', 'noscript', 'svg', 'footer']) {
-    out = out.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, 'gi'), '');
-    out = out.replace(new RegExp(`<${tag}\\b[^>]*\\/?>`, 'gi'), '');
+    out = dropPairs(out, new RegExp(`<${tag}\\b`, 'gi'), `</${tag}>`);
+    out = replaceTags(out, new RegExp(`<${tag}\\b`, 'gi'), () => '');
   }
   // Top site nav only — keep docs TOC (`nav.toc`) as structured links.
-  out = out.replace(/<aside\b[^>]*\bclass\s*=\s*["'][^"']*\bmanual-sidebar\b[^"']*["'][^>]*>[\s\S]*?<\/aside>/gi, '');
-  out = out.replace(/<nav\b[^>]*\bclass\s*=\s*["'][^"']*\btopnav\b[^"']*["'][^>]*>[\s\S]*?<\/nav>/gi, '');
-  out = out.replace(/<nav\b(?![^>]*\btoc\b)[^>]*>[\s\S]*?<\/nav>/gi, '');
+  out = dropPairs(out, /<aside\b/gi, '</aside>', (tag) => /\bclass\s*=\s*["'][^"']*\bmanual-sidebar\b/i.test(tag));
+  out = dropPairs(out, /<nav\b/gi, '</nav>', (tag) => /\bclass\s*=\s*["'][^"']*\btopnav\b/i.test(tag));
+  out = dropPairs(out, /<nav\b/gi, '</nav>', (tag) => !/\btoc\b/i.test(tag));
   // Decorative / mock UI.
-  out = out.replace(/<[^>]+aria-hidden\s*=\s*["']true["'][^>]*>[\s\S]*?<\/[^>]+>/gi, '');
-  const body = /<body\b[^>]*>([\s\S]*)<\/body>/i.exec(out);
-  return body?.[1] ?? out;
+  out = dropPairs(out, /<[^>]/g, '</*>', (tag) => /aria-hidden\s*=\s*["']true["']/i.test(tag.slice(2)));
+  return bodyOf(out) ?? out;
 }
 
+/** `/<body\b[^>]*>([\s\S]*)<\/body>/i`: the first body tag to the last closer. */
+function bodyOf(html: string): string | null {
+  const open = /<body\b/i.exec(html);
+  if (open === null) return null;
+  const close = html.indexOf('>', open.index + 5);
+  const end = asciiLower(html).lastIndexOf('</body>');
+  if (close === -1 || end <= close) return null;
+  return html.slice(close + 1, end);
+}
+
+/** Each line's trailing spaces and tabs, then runs of blank lines. */
 function collapseBlankLines(text: string): string {
   return text
-    .replace(/[ \t]+\n/g, '\n')
+    .split('\n')
+    .map((line) => {
+      let end = line.length;
+      while (end > 0 && (line[end - 1] === ' ' || line[end - 1] === '\t')) end -= 1;
+      return line.slice(0, end);
+    })
+    .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+/** Lines joined by single spaces, blank ones dropped. A regex over the spaces would backtrack. */
+function joinLines(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+    .join(' ');
+}
+
+function fencedCode(code: string): string {
+  const text = decodeEntities(stripTags(code));
+  return `\n\n\`\`\`\n${text.replace(/\n$/, '')}\n\`\`\`\n\n`;
 }
 
 /** Convert a content HTML fragment into Markdown (best-effort, static pages). */
@@ -137,63 +342,75 @@ export function fragmentToMarkdown(fragment: string): string {
   let html = fragment;
 
   // Preserve reference-table relationships in the negotiated manual edition.
-  html = html.replace(/<table\b[^>]*>([\s\S]*?)<\/table>/gi, (_match, table: string) => {
-    const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((row) =>
-      [...row[1]!.matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((cell) =>
-        inlineToMarkdown(cell[1]!).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ').trim()),
-    ).filter((row) => row.length);
-    if (!rows.length) return '';
-    const width = Math.max(...rows.map((row) => row.length));
-    const line = (row: string[]) => `| ${Array.from({ length: width }, (_, i) => row[i] ?? '').join(' | ')} |`;
-    return `\n\n${line(rows[0]!)}\n${line(Array(width).fill('---'))}\n${rows.slice(1).map(line).join('\n')}\n\n`;
+  html = replacePairs(html, {
+    open: /<table\b/gi,
+    close: () => ['</table>'],
+    replace: ([table = '']) => {
+      const rows = innerOf(table, /<tr\b/gi, () => '</tr>').map((row) =>
+        innerOf(row, /<t[hd]\b/gi, () => /<\/t[hd]>/gi).map((cell) =>
+          joinLines(inlineToMarkdown(cell).replace(/\|/g, '\\|'))),
+      ).filter((row) => row.length);
+      if (!rows.length) return '';
+      const width = Math.max(...rows.map((row) => row.length));
+      const line = (row: string[]) => `| ${Array.from({ length: width }, (_, i) => row[i] ?? '').join(' | ')} |`;
+      return `\n\n${line(rows[0]!)}\n${line(Array(width).fill('---'))}\n${rows.slice(1).map(line).join('\n')}\n\n`;
+    },
   });
 
   // Fenced code first (preserve inner markup as text).
-  html = html.replace(/<pre\b[^>]*>\s*<code\b[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi, (_m, code: string) => {
-    const text = decodeEntities(code.replace(/<[^>]+>/g, ''));
-    return `\n\n\`\`\`\n${text.replace(/\n$/, '')}\n\`\`\`\n\n`;
+  html = replacePairs(html, {
+    open: /<pre\b/gi,
+    then: /\s*<code\b/iy,
+    close: () => [/<\/code>\s*<\/pre>/gi],
+    replace: ([code = '']) => fencedCode(code),
   });
-  html = html.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (_m, code: string) => {
-    const text = decodeEntities(code.replace(/<[^>]+>/g, ''));
-    return `\n\n\`\`\`\n${text.replace(/\n$/, '')}\n\`\`\`\n\n`;
+  html = replacePairs(html, { open: /<pre\b/gi, close: () => ['</pre>'], replace: ([code = '']) => fencedCode(code) });
+
+  html = replacePairs(html, {
+    open: /<h([1-6])\b/gi,
+    close: (match) => [`</h${match[1]!}>`],
+    replace: ([inner = ''], _tag, match) => `\n\n${'#'.repeat(Number(match[1]))} ${inlineToMarkdown(inner).trim()}\n\n`,
   });
 
-  html = html.replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_m, level: string, inner: string) => {
-    const text = inlineToMarkdown(inner).trim();
-    return `\n\n${'#'.repeat(Number(level))} ${text}\n\n`;
+  html = replacePairs(html, {
+    open: /<blockquote\b/gi,
+    close: () => ['</blockquote>'],
+    replace: ([inner = '']) => {
+      const text = fragmentToMarkdown(inner)
+        .split('\n')
+        .map((line) => (line ? `> ${line}` : '>'))
+        .join('\n');
+      return `\n\n${text}\n\n`;
+    },
   });
 
-  html = html.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, (_m, inner: string) => {
-    const text = fragmentToMarkdown(inner)
-      .split('\n')
-      .map((line) => (line ? `> ${line}` : '>'))
-      .join('\n');
-    return `\n\n${text}\n\n`;
+  html = replacePairs(html, {
+    open: /<li\b/gi,
+    close: () => ['</li>'],
+    replace: ([inner = '']) => `\n- ${inlineToMarkdown(inner).replace(/\n+/g, ' ').trim()}`,
   });
+  html = replaceTags(html, /<\/?(?:ul|ol)\b/gi, () => '\n\n');
 
-  html = html.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_m, inner: string) => {
-    const text = inlineToMarkdown(inner).replace(/\n+/g, ' ').trim();
-    return `\n- ${text}`;
-  });
-  html = html.replace(/<\/?(?:ul|ol)\b[^>]*>/gi, '\n\n');
-
-  html = html.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_m, inner: string) => {
-    return `\n\n${inlineToMarkdown(inner).trim()}\n\n`;
+  html = replacePairs(html, {
+    open: /<p\b/gi,
+    close: () => ['</p>'],
+    replace: ([inner = '']) => `\n\n${inlineToMarkdown(inner).trim()}\n\n`,
   });
 
   html = html.replace(/<br\s*\/?>/gi, '  \n');
   html = html.replace(/<hr\s*\/?>/gi, '\n\n---\n\n');
 
   // details/summary → bold summary + body
-  html = html.replace(
-    /<details\b[^>]*>\s*<summary\b[^>]*>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/gi,
-    (_m, summary: string, body: string) => {
-      return `\n\n**${inlineToMarkdown(summary).trim()}**\n\n${fragmentToMarkdown(body)}\n\n`;
-    },
-  );
+  html = replacePairs(html, {
+    open: /<details\b/gi,
+    then: /\s*<summary\b/iy,
+    close: () => ['</summary>', '</details>'],
+    replace: ([summary = '', body = '']) =>
+      `\n\n**${inlineToMarkdown(summary).trim()}**\n\n${fragmentToMarkdown(body)}\n\n`,
+  });
 
   // Drop remaining block wrappers; keep their text.
-  html = html.replace(/<\/?(?:div|section|article|main|header|span|figure|figcaption)\b[^>]*>/gi, '\n');
+  html = replaceTags(html, /<\/?(?:div|section|article|main|header|span|figure|figcaption)\b/gi, () => '\n');
 
   // Any leftover tags → text / strip.
   html = inlineToMarkdown(html);
@@ -202,24 +419,37 @@ export function fragmentToMarkdown(fragment: string): string {
 
 function inlineToMarkdown(inner: string): string {
   let html = inner;
-  html = html.replace(/<img\b[^>]*>/gi, (tag) => {
+  html = replaceTags(html, /<img\b/gi, (tag) => {
     const src = attr(tag, 'src');
     const alt = (attr(tag, 'alt') ?? '').replace(/[\[\]]/g, '');
     return src ? `![${alt}](${src})` : alt;
   });
-  html = html.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_m, tagAttrs: string, text: string) => {
-    const href = attr(`<a ${tagAttrs}>`, 'href');
-    const label = inlineToMarkdown(text).trim();
-    if (!href || href.startsWith('javascript:')) return label;
-    return `[${label}](${href})`;
+  html = replacePairs(html, {
+    open: /<a\b/gi,
+    close: () => ['</a>'],
+    replace: ([text = ''], tag) => {
+      const href = attr(tag, 'href');
+      const label = inlineToMarkdown(text).trim();
+      if (!href || href.startsWith('javascript:')) return label;
+      return `[${label}](${href})`;
+    },
   });
-  html = html.replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m, _t, t: string) => `**${inlineToMarkdown(t)}**`);
-  html = html.replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m, _t, t: string) => `*${inlineToMarkdown(t)}*`);
-  html = html.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_m, t: string) => {
-    const text = decodeEntities(t.replace(/<[^>]+>/g, ''));
-    return `\`${text}\``;
+  html = replacePairs(html, {
+    open: /<(strong|b)\b/gi,
+    close: (match) => [`</${match[1]!.toLowerCase()}>`],
+    replace: ([text = '']) => `**${inlineToMarkdown(text)}**`,
   });
-  html = html.replace(/<[^>]+>/g, '');
+  html = replacePairs(html, {
+    open: /<(em|i)\b/gi,
+    close: (match) => [`</${match[1]!.toLowerCase()}>`],
+    replace: ([text = '']) => `*${inlineToMarkdown(text)}*`,
+  });
+  html = replacePairs(html, {
+    open: /<code\b/gi,
+    close: () => ['</code>'],
+    replace: ([text = '']) => `\`${decodeEntities(stripTags(text))}\``,
+  });
+  html = stripTags(html);
   return decodeEntities(html);
 }
 

@@ -105,6 +105,9 @@ export const PURGE_AFTER_MS = 30 * 60 * 1000; // 30min
 export const DELETE_AFTER_MS = 24 * 60 * 60 * 1000; // 24h
 const ASSET_CHUNK_BYTES = 1024 * 1024;
 
+const PRESENTER_ONLY = (): Response =>
+  json({ ok: false, error: { code: 'E_FORBIDDEN', message: 'Only the active presenter can change the presentation.' } }, 403);
+
 export interface CommandResult {
   status: number;
   body: { ok: true; revision: number } | { ok: false; error: DomainError };
@@ -132,6 +135,8 @@ export class SessionDO implements DurableObject {
   readonly #joinEnv: JoinOriginEnv;
   #state: SessionState | null = null;
   #loaded = false;
+  /** False until `/__init` creates the tables; an uninitialised object writes nothing. */
+  #schemaReady = false;
   #lastBroadcast = 0;
   #lastResults = 0;
   /** next results flush must include participant sockets (session Q&A changed) */
@@ -142,7 +147,9 @@ export class SessionDO implements DurableObject {
     this.#ctx = ctx;
     this.#sql = ctx.storage.sql;
     this.#joinEnv = env;
-    this.#ensureSchema();
+    // Only an initialised session re-runs the (idempotent) schema, which adds any
+    // table introduced since it was created. A code nobody issued stays empty.
+    if (this.#hasSessionTable()) this.#ensureSchema();
     this.#ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
   }
 
@@ -166,11 +173,18 @@ export class SessionDO implements DurableObject {
 
   /* ------------------------------------------------------------- storage */
 
+  #hasSessionTable(): boolean {
+    return this.#sql
+      .exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session'")
+      .toArray().length > 0;
+  }
+
   /**
-   * Idempotent schema creation — also re-runs after a retention wipe.
-   * One statement per `sql.exec` (clearer errors; avoids multi-statement quirks).
+   * Idempotent schema creation, run by `/__init` and on wake of an initialised
+   * session. One statement per `sql.exec` (clearer errors; avoids multi-statement quirks).
    */
   #ensureSchema(): void {
+    this.#schemaReady = true;
     this.#sql.exec(
       'CREATE TABLE IF NOT EXISTS session (id INTEGER PRIMARY KEY CHECK(id = 1), state TEXT NOT NULL)',
     );
@@ -189,6 +203,7 @@ export class SessionDO implements DurableObject {
   /** Lazily reload state from SQL — the first access after a hibernation wake. */
   #load(): SessionState | null {
     if (this.#loaded) return this.#state;
+    if (!this.#schemaReady) return null;
     const rows = this.#sql.exec<{ state: string }>('SELECT state FROM session WHERE id = 1').toArray();
     const row = rows[0];
     // ensureQna patches the session-Q&A region into session states stored before
@@ -407,7 +422,7 @@ export class SessionDO implements DurableObject {
       }
     }
     await this.#ctx.storage.deleteAll();
-    this.#ensureSchema();
+    this.#schemaReady = false;
     this.#state = null;
     this.#loaded = true;
     this.#pendingResultsGroupIds.clear();
@@ -417,6 +432,7 @@ export class SessionDO implements DurableObject {
   }
 
   async alarm(): Promise<void> {
+    if (!this.#schemaReady) return;
     const now = Date.now();
     let state = this.#load();
 
@@ -486,7 +502,7 @@ export class SessionDO implements DurableObject {
     const assetMatch = /^\/__assets\/([^/]+)$/.exec(url.pathname);
     if (assetMatch !== null) {
       const resourceId = decodeURIComponent(assetMatch[1] as string);
-      if (request.method === 'PUT') return this.#putAsset(request, resourceId);
+      if (request.method === 'PUT') return this.#putAsset(request, resourceId, url.searchParams.get('facilitatorId') ?? '');
       if (request.method === 'GET' || request.method === 'HEAD') return this.#getAsset(request, resourceId);
       return json({ error: 'method-not-allowed' }, 405);
     }
@@ -536,6 +552,7 @@ export class SessionDO implements DurableObject {
       participantLimit?: number;
     };
     if (this.#load() !== null) return json({ error: 'already-initialized' }, 409);
+    this.#ensureSchema();
     const participantLimit =
       Number.isInteger(body.participantLimit) && (body.participantLimit as number) > 0
         ? (body.participantLimit as number)
@@ -599,7 +616,7 @@ export class SessionDO implements DurableObject {
      */
     const identityBody =
       typeof body?.identity === 'object' && body.identity !== null
-        ? (body.identity as { displayName?: unknown; seatKey?: unknown })
+        ? (body.identity as { displayName?: unknown; seatKey?: unknown; kind?: unknown })
         : undefined;
     const supplied = identityBody?.displayName;
     const seatKeyRaw = identityBody?.seatKey;
@@ -619,6 +636,18 @@ export class SessionDO implements DurableObject {
           },
           403,
         );
+      }
+      /*
+       * Each mode admits exactly one credential family (AGENTS.md, credential
+       * boundary): a context link never enters a roster session and a roster
+       * invite never enters an identified one. The refusal is the one the
+       * Worker gives for an invalid credential of the kind presented.
+       */
+      const expectedKind = identityMode === 'roster' ? 'roster-invite' : 'context-link';
+      if (identityBody?.kind !== expectedKind) {
+        return identityBody?.kind === 'roster-invite'
+          ? json({ error: 'roster-invite-invalid', message: 'That invite is not valid for this session.' }, 403)
+          : json({ error: 'context-link-invalid', message: 'That access link is not valid for this session.' }, 403);
       }
       /*
        * Identified sessions are enterable only once the tutor has actually started
@@ -803,7 +832,7 @@ export class SessionDO implements DurableObject {
     const state = this.#load();
     if (state === null) return json({ error: 'session-not-found' }, 404);
     if (envelope.actor.role === 'host' && !facilitatorCanCommand(state, envelope.actor.facilitatorId ?? '', envelope.command)) {
-      return json({ ok: false, error: { code: 'E_FORBIDDEN', message: 'Only the active presenter can change the presentation.' } }, 403);
+      return PRESENTER_ONLY();
     }
     const key = typeof envelope.idempotencyKey === 'string' && envelope.idempotencyKey !== ''
       ? JSON.stringify([envelope.actor.role, envelope.actor.facilitatorId ?? envelope.actor.participantId ?? '', envelope.idempotencyKey])
@@ -880,9 +909,10 @@ export class SessionDO implements DurableObject {
     return json(payload.body, payload.status);
   }
 
-  async #putAsset(request: Request, resourceId: string): Promise<Response> {
+  async #putAsset(request: Request, resourceId: string, facilitatorId: string): Promise<Response> {
     const state = this.#load();
     if (state === null) return json({ error: 'session-not-found' }, 404);
+    if (state.facilitation.presenterId !== facilitatorId) return PRESENTER_ONLY();
     if (state.status !== 'lobby') return json({ error: 'session-already-started' }, 409);
     if (!RESOURCE_ID_PATTERN.test(resourceId) || !this.#resourceIds().includes(resourceId)) {
       return json({ error: 'resource-not-in-session' }, 404);
@@ -904,6 +934,7 @@ export class SessionDO implements DurableObject {
     // Start/end may have completed while the upload or digest was pending.
     const current = this.#load();
     if (current === null) return json({ error: 'session-not-found' }, 404);
+    if (current.facilitation.presenterId !== facilitatorId) return PRESENTER_ONLY();
     if (current.status !== 'lobby') return json({ error: 'session-already-started' }, 409);
     if (!this.#resourceIds().includes(resourceId)) return json({ error: 'resource-not-in-session' }, 404);
     const otherSize = this.#sql.exec<{ total: number }>(
@@ -941,6 +972,7 @@ export class SessionDO implements DurableObject {
   }
 
   #getAsset(request: Request, resourceId: string): Response {
+    if (!this.#schemaReady) return json({ error: 'not-found' }, 404);
     return assetResponse(this.#sql, request, resourceId);
   }
 

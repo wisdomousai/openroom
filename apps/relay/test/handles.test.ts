@@ -195,6 +195,38 @@ describe('pseudonymous mode', () => {
     expect(peer.yourHandle).toBe(b.handle);
   });
 
+  it('a Q&A asker or text author handle never reaches peers or the stage, so it cannot be replayed as a recovery handle', async () => {
+    const session = await createSessionWithOutline({
+      version: 1,
+      meta: { title: 'Deck with Q&A' },
+      qna: { enabled: true },
+      steps: [
+        { id: 'welcome', kind: 'title', title: 'Welcome' },
+        { id: 'chat-step', kind: 'interaction', interactionId: 'chat' },
+      ],
+      interactions: [{ id: 'chat', type: 'text', prompt: 'Say something', resultVisibility: 'live' }],
+    });
+    const a = (await join(session.code)) as Record<string, any>;
+    const b = (await join(session.code)) as Record<string, any>;
+    expect(a.identityMode).toBe('pseudonymous');
+    await command(session.sessionCode, session.hostToken, { command: 'session.start' });
+    await command(session.sessionCode, session.hostToken, { command: 'qna.stage', mode: 'list' });
+    expect((await command(session.sessionCode, a.participantToken, { command: 'qna.ask', questionId: 'q1', text: 'Why?' })).status).toBe(200);
+    await command(session.sessionCode, session.hostToken, { command: 'interaction.open', interactionId: 'chat' });
+    expect((await command(
+      session.sessionCode,
+      a.participantToken,
+      { command: 'answer.submit', interactionId: 'chat', answer: { kind: 'text', text: 'hello' } },
+    )).status).toBe(200);
+
+    const peer = await stateJson(session.sessionCode, b.participantToken, 'participant');
+    expect(peer.qna.questions).toHaveLength(1);
+    expect(JSON.stringify(peer)).not.toContain(a.handle);
+    const stage = await stateJson(session.sessionCode, session.stageToken, 'stage');
+    expect(stage.qna.questions).toHaveLength(1);
+    expect(JSON.stringify(stage)).not.toContain(a.handle);
+  });
+
   it('CSV export carries the handle column only in pseudonymous sessions', async () => {
     const session = await createSessionWithOutline(PSEUDO_OUTLINE);
     const a = (await join(session.code)) as Record<string, any>;

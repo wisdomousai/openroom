@@ -75,12 +75,21 @@ export function createSession(
 }
 
 /**
+ * The most participants any session admits, whatever its billing limit. The
+ * whole session state is one SQLite row, so an unlimited session (`largeSessions`,
+ * an ops session, a relay session created without a limit) still needs a bound
+ * on how far anonymous joins can grow it.
+ */
+export const SESSION_PARTICIPANT_HARD_LIMIT = 1000;
+
+/**
  * Whether a genuinely new participant would exceed the session's limit.
  * Re-entry with an existing seat or handle is not an admission and is never
  * checked against it.
  */
 export function participantLimitReached(state: SessionState): boolean {
-  return state.participantLimit !== undefined && Object.keys(state.participants).length >= state.participantLimit;
+  const limit = Math.min(state.participantLimit ?? SESSION_PARTICIPANT_HARD_LIMIT, SESSION_PARTICIPANT_HARD_LIMIT);
+  return Object.keys(state.participants).length >= limit;
 }
 
 /** Classroom poll lists compile to interaction steps whose id equals the question id. */

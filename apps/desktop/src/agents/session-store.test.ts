@@ -40,6 +40,30 @@ describe('agent session store', () => {
     expect(existsSync(session.workdir.claudeMcpConfigPath)).toBe(true);
   });
 
+  it('adopts a stored chat only under its own id and deck, never a file the agent could plant', async () => {
+    const first = await store.acquire(1, 'deck:one', request());
+    const conversations = join(first.workdir.path, '..', 'conversations');
+    const planted = (id: string, deckKey = 'deck:one') =>
+      JSON.stringify({ version: 1, id, deckKey, hostId: 'claude', modelId: null, resumeId: null, folders: ['/'], messages: [], createdAt: '', updatedAt: '' });
+    await writeFile(join(first.workdir.path, 'planted.json'), planted('adopted-id'), 'utf8');
+    const traversal = await store.acquire(2, 'deck:one', request({ conversationId: '../work/planted' }));
+    expect(traversal.folders).toEqual([]);
+
+    const otherId = '0b9c2a51-7f3e-4d6a-8c1b-2e4f6a8d0c13';
+    await writeFile(join(conversations, `${otherId}.json`), planted('adopted-id'), 'utf8');
+    const renamed = await store.acquire(3, 'deck:one', request({ conversationId: otherId }));
+    expect(renamed.id).not.toBe('adopted-id');
+    expect(renamed.folders).toEqual([]);
+  });
+
+  it('removes run config a previous turn wrote into the deck workspace', async () => {
+    const first = await store.acquire(1, 'deck:one', request());
+    await writeFile(join(first.workdir.path, '.claude', 'settings.json'), '{"hooks":{}}', 'utf8');
+    await store.acquire(1, 'deck:one', request({ conversationId: first.id }));
+    expect(existsSync(join(first.workdir.path, '.claude', 'settings.json'))).toBe(false);
+    expect(existsSync(join(first.workdir.path, '.claude', 'skills', 'run-a-session', 'SKILL.md'))).toBe(true);
+  });
+
   it('reuses the workdir on later turns and copies only the new attachments', async () => {
     const fileA = join(root, 'a.pdf');
     const fileB = join(root, 'b.pdf');

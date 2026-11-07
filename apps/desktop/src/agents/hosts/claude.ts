@@ -1,6 +1,16 @@
-import { query as sdkQuery, type Options, type SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+import { homedir } from 'node:os';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+
+import {
+  query as sdkQuery,
+  type HookCallback,
+  type HookJSONOutput,
+  type Options,
+  type SDKMessage,
+} from '@anthropic-ai/claude-agent-sdk';
 
 import type { AgentHostRunner, AgentTurnHandle, HostTurnInput } from '../runner.js';
+import { canonical, contains } from './byok-read-file.js';
 
 type QueryFn = (input: { prompt: string; options: Options }) => AsyncIterable<SDKMessage>;
 
@@ -12,6 +22,113 @@ export function sanitizedEnv(env: NodeJS.ProcessEnv = process.env): Record<strin
   }
   delete out['ANTHROPIC_API_KEY'];
   return out;
+}
+
+/**
+ * Tools that reach past the file scope below: a shell, a script runtime, the
+ * web. They are not in allowedTools either, but acceptEdits auto-approves some
+ * shell file commands, so they are removed outright.
+ */
+export const CLAUDE_DENIED_TOOLS = ['Bash', 'PowerShell', 'REPL', 'Monitor', 'WebFetch', 'WebSearch', 'NotebookEdit'];
+
+/**
+ * Entries in the deck workspace that brief or configure the next run, for
+ * either vendor. Desktop writes them; the agent never does.
+ */
+const WORKDIR_CONTROL = new Set(
+  ['.claude', '.agents', '.codex', '.mcp.json', 'AGENTS.md', 'CLAUDE.md', 'mcp.json', 'open-in-codex.command'].map(
+    (name) => name.toLowerCase(),
+  ),
+);
+
+export interface ClaudeFileScope {
+  workdir: string;
+  folders: string[];
+  attachmentsDir?: string;
+  /** Claude Code's config directory; defaults to CLAUDE_CONFIG_DIR or ~/.claude. */
+  configDir?: string;
+}
+
+/** Where Claude Code keeps this cwd's oversized tool results, which it reads back with Read. */
+function claudeProjectDir(workdir: string, configDir: string): string {
+  return join(configDir, 'projects', workdir.replace(/[^a-zA-Z0-9]/g, '-'));
+}
+
+const PARENT_SEGMENT = /(^|[\\/])\.\.([\\/]|$)/;
+const GLOB_CHAR = /[*?[\]{}]/;
+
+/** The fixed directory an absolute glob starts from: `/a/b/*.md` searches `/a/b`. */
+function globBase(pattern: string): string {
+  const wildcard = pattern.search(GLOB_CHAR);
+  if (wildcard === -1) return pattern;
+  const fixed = pattern.slice(0, wildcard);
+  const slash = Math.max(fixed.lastIndexOf('/'), fixed.lastIndexOf(sep));
+  return slash <= 0 ? '/' : fixed.slice(0, slash);
+}
+
+function deny(reason: string): HookJSONOutput {
+  return {
+    hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason },
+  };
+}
+
+/**
+ * The file boundary the API-key host enforces with read_file, applied to
+ * Claude's own file tools: read the deck workspace, this conversation's
+ * attachments and the tutor's folders; write only ordinary files in the deck
+ * workspace. Paths resolve through realpath, so `..` and symlinks cannot
+ * escape. A PreToolUse deny holds even for tools in allowedTools.
+ */
+export function claudeFileScopeHook(scope: ClaudeFileScope): HookCallback {
+  const configDir = scope.configDir ?? process.env['CLAUDE_CONFIG_DIR'] ?? join(homedir(), '.claude');
+  const readRoots = [
+    scope.workdir,
+    ...(scope.attachmentsDir === undefined ? [] : [scope.attachmentsDir]),
+    ...scope.folders,
+    claudeProjectDir(scope.workdir, configDir),
+  ];
+  const readable = async (target: string): Promise<boolean> => {
+    const path = await canonical(target);
+    const roots = await Promise.all(readRoots.map(canonical));
+    return roots.some((root) => contains(root, path));
+  };
+  const writable = async (target: string): Promise<boolean> => {
+    const path = await canonical(target);
+    const root = await canonical(scope.workdir);
+    if (path === root || !contains(root, path)) return false;
+    const first = relative(root, path).split(sep)[0] ?? '';
+    return !WORKDIR_CONTROL.has(first.toLowerCase());
+  };
+  const at = (value: unknown): string =>
+    typeof value === 'string' && value !== '' ? resolve(scope.workdir, value) : scope.workdir;
+
+  return async (input) => {
+    if (input.hook_event_name !== 'PreToolUse') return {};
+    const name = input.tool_name;
+    if (CLAUDE_DENIED_TOOLS.includes(name)) return deny(`${name} is not available in OpenRoom Desktop.`);
+    const args =
+      typeof input.tool_input === 'object' && input.tool_input !== null
+        ? (input.tool_input as Record<string, unknown>)
+        : {};
+    if (name === 'Write' || name === 'Edit') {
+      return (await writable(at(args['file_path'])))
+        ? {}
+        : deny('Write only ordinary files in the deck workspace. Attached files and reference folders are read-only.');
+    }
+    if (name !== 'Read' && name !== 'Glob' && name !== 'Grep') return {};
+    const targets = [at(name === 'Read' ? args['file_path'] : args['path'])];
+    const pattern = name === 'Glob' ? args['pattern'] : args['glob'];
+    if (typeof pattern === 'string') {
+      if (PARENT_SEGMENT.test(pattern)) return deny('Search patterns may not climb out with "..".');
+      if (isAbsolute(pattern)) targets.push(globBase(pattern));
+    }
+    for (const target of targets) {
+      if (!(await readable(target))) {
+        return deny('Read only the deck workspace, the attached files and the reference folders named in the turn.');
+      }
+    }
+    return {};
+  };
 }
 
 export function claudeTurnOptions(input: HostTurnInput, abort: AbortController): Options {
@@ -28,7 +145,21 @@ export function claudeTurnOptions(input: HostTurnInput, abort: AbortController):
     },
     strictMcpConfig: true,
     allowedTools: ['mcp__openroom__*', 'Read', 'Glob', 'Grep', 'Write', 'Edit', 'Skill'],
+    disallowedTools: CLAUDE_DENIED_TOOLS,
     permissionMode: 'acceptEdits',
+    hooks: {
+      PreToolUse: [
+        {
+          hooks: [
+            claudeFileScopeHook({
+              workdir: input.workdir,
+              folders: input.folders,
+              ...(input.attachmentsDir === undefined ? {} : { attachmentsDir: input.attachmentsDir }),
+            }),
+          ],
+        },
+      ],
+    },
     additionalDirectories: input.folders,
     settingSources: ['project'],
     systemPrompt: { type: 'preset', preset: 'claude_code' },

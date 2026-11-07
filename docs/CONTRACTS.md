@@ -115,7 +115,7 @@ Three optional step fields describe *structure*, never presentation. They are cl
 
 **Part keys** are derived from a step's own shape by `partKeysForStep(step, interactions?)` — the single implementation the validator and the deck editor UI both use. The vocabulary is closed: `header` (the heading, omitted on `statement` / `timer` / `media` / `blank` when no title is authored, and never on `join`), `body` (when the step has prose), `option-N` (one per option of the referenced interaction), `cell-N` (one per repeated peer item — a card, a list item, a debrief prompt, and a `term`'s optional example), `materials` (an activity's materials list, one part for the whole list), `image` (a media step's media region, or the optional picture on a title / statement / cards / steps / term / activity / debrief / interaction step). A `join` step has no parts — the QR is session state.
 
-`title`, `statement`, `media`, and `blank` steps may also carry `elements` (max 12): `text`, `image`, `html`, `iframe`, or `pdf` objects with a percent `box` `{x,y,w,h}`. `html` is a fragment plus optional `css`, sanitised (no script, iframes, event handlers, `javascript:`, `@import`). An `html` element may instead carry `markdown` as its source, in which case `html` must be exactly `renderMarkdownToHtml(markdown)` — a writer that edits one must regenerate the other, and a mismatch is rejected. Markdown-backed elements are **reading material**: they scroll, and they render with reading typography rather than as a fixed fragment. An `iframe` is a separate typed element with an HTTPS `url` and accessible `title`; it renders sandboxed, without same-origin access, and sends no referrer. A `pdf` uses `url`, retained `assetId`, or package-local `resourceId` plus an accessible title, and opens in a restricted, scrollable PDF viewer. Desktop may locally extract selected pages before embedding them. A site may still refuse framing through its own `frame-ancestors` or `X-Frame-Options` policy, and a PDF server may force a download instead of allowing an inline viewer. Wired kinds must not carry `elements`.
+`title`, `statement`, `media`, and `blank` steps may also carry `elements` (max 12): `text`, `image`, `html`, `iframe`, or `pdf` objects with a percent `box` `{x,y,w,h}`. `html` is a fragment plus optional `css`, sanitised (no script, iframes, forms, `<title>`, `<noscript>`, `<template>` or CDATA, no event handlers, URLs only `http(s):`, `mailto:`, `tel:`, relative, or raster `data:image/`, no `@import`). An `html` element may instead carry `markdown` as its source, in which case `html` must be exactly `renderMarkdownToHtml(markdown)` — a writer that edits one must regenerate the other, and a mismatch is rejected. Markdown-backed elements are **reading material**: they scroll, and they render with reading typography rather than as a fixed fragment. An `iframe` is a separate typed element with an HTTPS `url` and accessible `title`; it renders sandboxed, without same-origin access, and sends no referrer. A `pdf` uses `url`, retained `assetId`, or package-local `resourceId` plus an accessible title, and opens in a restricted, scrollable PDF viewer. Desktop may locally extract selected pages before embedding them. A site may still refuse framing through its own `frame-ancestors` or `X-Frame-Options` policy, and a PDF server may force a download instead of allowing an inline viewer. Wired kinds must not carry `elements`.
 
 A web-page slide is a blank step with one full-box iframe element:
 
@@ -434,7 +434,7 @@ GET  /.well-known/api-catalog            RFC 9727 linkset (application/linkset+j
 GET  /openapi.json                       OpenAPI 3.1 for the public HTTP + MCP surfaces (service-desc target)
 GET  /api/health                         liveness { status: "ok" } (status link relation)
 POST /api/mcp/register                   RFC 7591 dynamic client registration (stateless signed client_id)
-GET|POST /api/mcp/authorize              browser consent (session or PAT) → single-use code; exact redirect + consent proof
+GET|POST /api/mcp/authorize              browser consent (session only) → single-use code; exact redirect + consent proof
 POST /api/mcp/token                      code + client_id + exact redirect_uri + PKCE S256 → revocable account token
 POST /api/mcp/revoke                     token + client_id → idempotent revocation
 GET  /api/my/connections                 account's active connected applications, no secrets
@@ -648,7 +648,7 @@ access. Interface preferences live separately in `users.prefs`. Closed allowlist
 | `largeSessions` | A live session admits more than `FREE_SESSION_PARTICIPANT_LIMIT` (50) participants. Read from the space owner (the personal creator outside a space) once, at session creation, and carried into the DO; joins never read D1 and a later lapse changes nothing for that session. Admin-key sessions have no owner and no limit. Without it, a new participant past the limit receives `409 session-full` from `POST /api/join`; re-entry by an admitted participant (recovery handle, access link or roster seat) is always admitted. The host snapshot carries `participantLimit` when one applies |
 | `connectors` | Reserved, unimplemented archive delivery workflows; rejected in Paddle price catalogs |
 
-Free hosts see every flag `false`. A deployment without `PADDLE_ENVIRONMENT` is
+Free hosts see every flag `false`. A deployment with `PADDLE_ENVIRONMENT=off` is
 self-hosted: every account sees every flag `true` except `connectors`
 (docs/BILLING.md). `/api/me` returns the parsed object. No user route may write this column.
 
@@ -728,10 +728,12 @@ GET  /api/auth/status           → { google, demo, accounts:[{username,email,na
 POST /api/auth/demo/login       → 200 { user } + session cookie  (body {username,password})
                                 → 401 invalid-credentials | 501 demo-auth-disabled
 GET  /api/auth/google           → 302 to Google, or 501 when unconfigured
-                                → `?desktop=1` marks the start as a Desktop handoff
+                                → `?desktop=1` marks the start as a Desktop handoff;
+                                  `&desktop_challenge=` binds it to that Desktop's verifier
 GET  /api/auth/google/callback  → 302 /host/ with the session cookie set
                                 → desktop starts: 200 HTML that opens `openroom://auth/desktop?ticket=`
 POST /api/auth/desktop/redeem   → 200 { ok:true } + session cookie; ticket is one-use
+                                  (body {ticket, verifier}; a bound ticket needs its verifier)
 POST /api/auth/logout           → 200 { ok:true }, cookie cleared          (csrf header required)
 GET  /api/me                    → 200 { user:{ id, email, name, entitlements } | null }
 ```
@@ -742,7 +744,7 @@ The callback verifies the state cookie, exchanges the code with the PKCE verifie
 
 The user is upserted by `google_sub`, a `sessions` row is created with a 30-day expiry, and `Set-Cookie: or_session=<signed session id>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`. Cookie values are HMAC-signed with `TOKEN_SECRET` using the same primitive as capability tokens (`signCookieValue`/`verifyCookieValue` in `tokens.ts`), so a tampered cookie is rejected before it reaches D1.
 
-OpenRoom Desktop must not run the Google hop inside Electron. Forwarding only `accounts.google.com` after `/api/auth/google` has already set `or_oauth` in Electron leaves the callback in the system browser without the PKCE cookie. Desktop therefore opens the **start** URL (`/api/auth/google?desktop=1`) in the system browser so the whole dance, cookie included, stays there. The callback then mints a two-minute one-use ticket and returns an interstitial that opens `openroom://auth/desktop?ticket=…`. Desktop redeems the ticket on `POST /api/auth/desktop/redeem` and stores `or_session` in its own cookie jar. Interactive authentication stays a browser action; the custom-scheme hop is only the return.
+OpenRoom Desktop must not run the Google hop inside Electron. Forwarding only `accounts.google.com` after `/api/auth/google` has already set `or_oauth` in Electron leaves the callback in the system browser without the PKCE cookie. Desktop therefore opens the **start** URL (`/api/auth/google?desktop=1`) in the system browser so the whole dance, cookie included, stays there. The callback then mints a two-minute one-use ticket and returns an interstitial that opens `openroom://auth/desktop?ticket=…`. Desktop redeems the ticket on `POST /api/auth/desktop/redeem` and stores `or_session` in its own cookie jar. Each start carries `desktop_challenge`, the S256 hash of a verifier Desktop keeps in memory; the ticket is stored under that binding and redeems only with the verifier. Desktop also ignores a ticket when it has no sign-in pending, so someone else's ticket cannot sign it in to their account. A redeem without a verifier finds only an unbound ticket (older Desktop builds). Interactive authentication stays a browser action; the custom-scheme hop is only the return.
 
 Session lookup is **exactly one D1 read per request and nothing is cached** — a logout must take effect on the very next request, and a primary-key hit is not worth trading for revocation latency.
 

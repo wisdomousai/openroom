@@ -268,15 +268,27 @@ function belongs(err: ErrorObject, input: unknown): boolean {
  */
 export function withoutBranchNoise(errors: readonly ErrorObject[], input: unknown): ErrorObject[] {
   const owned = errors.filter((err) => belongs(err, input));
-  const deeper = (err: ErrorObject, under: string): boolean =>
-    owned.some((other) => other !== err && (other.instancePath === under || other.instancePath.startsWith(`${under}/`)));
+  // Error counts at each instance path and strictly below it, so "is there
+  // another error at or under this path" is a lookup rather than a scan of
+  // every other error. A scan made this quadratic in the number of bad steps.
+  const at = new Map<string, number>();
+  const below = new Map<string, number>();
+  for (const err of owned) {
+    const path = err.instancePath;
+    at.set(path, (at.get(path) ?? 0) + 1);
+    for (let cut = path.lastIndexOf('/'); cut >= 0; cut = path.lastIndexOf('/', cut - 1)) {
+      const parent = path.slice(0, cut);
+      below.set(parent, (below.get(parent) ?? 0) + 1);
+      if (cut === 0) break;
+    }
+  }
+  const othersAtOrUnder = (path: string, self: number): boolean =>
+    (at.get(path) ?? 0) - self + (below.get(path) ?? 0) > 0;
   const kept = owned.filter((err) => {
     // A failed `if` only says its `then` failed; the `then` errors are kept.
-    if (err.keyword === 'if') return !deeper(err, err.instancePath);
+    if (err.keyword === 'if') return !othersAtOrUnder(err.instancePath, 1);
     if (err.keyword === 'oneOf' || err.keyword === 'anyOf') {
-      return !owned.some(
-        (other) => other !== err && other.instancePath.startsWith(`${err.instancePath}/`),
-      );
+      return (below.get(err.instancePath) ?? 0) === 0;
     }
     // A property that failed its own schema is also "not evaluated" by the
     // object around it; the property's own error is the one to read.
@@ -284,9 +296,7 @@ export function withoutBranchNoise(errors: readonly ErrorObject[], input: unknow
       const extra = (err.params as { unevaluatedProperty?: string }).unevaluatedProperty;
       if (typeof extra === 'string') {
         const under = `${err.instancePath}/${extra.replace(/~/g, '~0').replace(/\//g, '~1')}`;
-        if (owned.some((other) => other !== err && (other.instancePath === under || other.instancePath.startsWith(`${under}/`)))) {
-          return false;
-        }
+        if (othersAtOrUnder(under, 0)) return false;
       }
     }
     return true;

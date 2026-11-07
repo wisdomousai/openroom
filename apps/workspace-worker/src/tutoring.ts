@@ -11,7 +11,7 @@ import { startDeckRoute } from './deck-start.js';
 import { CONTEXT_KINDS, isWorkspaceExperience } from '@openroom/schema';
 
 import { sha256Hex } from './api-tokens.js';
-import { getSession, json, type ControlEnv } from './auth.js';
+import { getSession, json, type ControlEnv, type SessionUser } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import {
   listContextLinksRoute,
@@ -27,6 +27,7 @@ import { embedCheckRoute, embedImportRoute } from './embed-route.js';
 import { lookupRoute } from './lookup.js';
 import { stockRoute } from './stock.js';
 import { ownerHasContinuity, spaceOwnerId } from './continuity-access.js';
+import { roleAtLeast, spaceRole } from './members.js';
 import {
   DELETION_INTENT_TTL_MS,
   contextOfSpace,
@@ -89,6 +90,12 @@ async function contextAccess(
   )
     .bind(contextId, userId)
     .first<ContextRow>();
+}
+
+/** Changing, trashing or purging a context needs `editor` on its space; reads need membership. */
+async function contextEditable(env: ControlEnv, user: SessionUser, spaceId: string): Promise<boolean> {
+  const access = await spaceRole(env, user, spaceId);
+  return access !== null && roleAtLeast(access.role, 'editor');
 }
 
 /**
@@ -246,6 +253,7 @@ export async function contextItemRoute(
   const withNextNote = async () => row.next_note !== '' && (await ownerHasContinuity(env, await spaceOwnerId(env, row.space_id)));
 
   if (request.method === 'GET') return json({ context: contextJson(row, true, await withNextNote()) });
+  if (!(await contextEditable(env, guard.user, row.space_id))) return json({ error: 'forbidden' }, 403);
 
   if (request.method === 'DELETE') {
     if (row.deleted_at === null) {
@@ -297,6 +305,7 @@ export async function restoreContextRoute(
   if (!guard.ok) return guard.response;
   const row = await contextAccess(env, guard.user.id, contextId);
   if (row === null) return json({ error: 'not-found' }, 404);
+  if (!(await contextEditable(env, guard.user, row.space_id))) return json({ error: 'forbidden' }, 403);
   await env.DB.prepare('UPDATE contexts SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2')
     .bind(Date.now(), contextId)
     .run();
@@ -312,6 +321,7 @@ export async function createDeletionIntentRoute(
   if (!guard.ok) return guard.response;
   const resource = await contextAccess(env, guard.user.id, resourceId);
   if (resource === null) return json({ error: 'not-found' }, 404);
+  if (!(await contextEditable(env, guard.user, resource.space_id))) return json({ error: 'forbidden' }, 403);
   if (resource.deleted_at === null) return json({ error: 'move-to-trash-first' }, 409);
   const token = randomToken();
   const tokenHash = await sha256Hex(token);
@@ -533,6 +543,8 @@ export async function confirmPermanentDeletionRoute(
   if (intent.resource_type === 'context') {
     const resource = await contextAccess(env, user.id, intent.resource_id);
     if (resource === null || resource.deleted_at === null) return notInTrash();
+    // The role may have changed since the intent was made; purging still needs editor.
+    if (!(await contextEditable(env, user, resource.space_id))) return notInTrash();
     const { results } = await env.DB.prepare('SELECT id FROM decks WHERE context_id = ?1')
       .bind(resource.id).all<{ id: string }>();
     for (const deck of results ?? []) {

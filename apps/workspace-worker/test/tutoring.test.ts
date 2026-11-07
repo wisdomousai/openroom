@@ -243,6 +243,41 @@ describe('folder-scoped decks and sessions', () => {
     expect((await asBrowser(editor.cookie, `/api/sessions/${sessionId}`, { method: 'DELETE' })).status).toBe(200);
   });
 
+  it('lets a presenter read a context but not change, trash, restore or purge it', async () => {
+    const owner = await seedSession();
+    const presenter = await seedSession();
+    const spaces = (await (await asBrowser(owner.cookie, '/api/my/spaces')).json()) as { spaces: { id: string }[] };
+    const spaceId = spaces.spaces[0]!.id;
+    await env.DB.prepare(
+      "INSERT INTO space_members (space_id, user_id, role, created_at) VALUES (?1, ?2, 'presenter', ?3)",
+    ).bind(spaceId, presenter.userId, Date.now()).run();
+    const contextId = await createContext(owner.cookie, spaceId);
+    const path = `/api/tutoring/contexts/${contextId}`;
+
+    expect((await asBrowser(presenter.cookie, path)).status).toBe(200);
+    expect((await asBrowser(presenter.cookie, path, {
+      method: 'PATCH',
+      body: JSON.stringify({ displayName: 'Nope' }),
+    })).status).toBe(403);
+    expect((await asBrowser(presenter.cookie, path, { method: 'DELETE' })).status).toBe(403);
+
+    expect((await asBrowser(owner.cookie, path, { method: 'DELETE' })).status).toBe(200);
+    expect((await asBrowser(presenter.cookie, `${path}/restore`, { method: 'POST' })).status).toBe(403);
+    expect((await asBrowser(presenter.cookie, `${path}/permanent-deletion`, { method: 'POST' })).status).toBe(403);
+
+    // An intent made while the member was an editor stops working once demoted.
+    await env.DB.prepare("UPDATE space_members SET role = 'editor' WHERE space_id = ?1 AND user_id = ?2")
+      .bind(spaceId, presenter.userId).run();
+    const intent = await asBrowser(presenter.cookie, `${path}/permanent-deletion`, { method: 'POST' });
+    expect(intent.status).toBe(202);
+    const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
+    await env.DB.prepare("UPDATE space_members SET role = 'presenter' WHERE space_id = ?1 AND user_id = ?2")
+      .bind(spaceId, presenter.userId).run();
+    const confirmed = await asBrowser(presenter.cookie, new URL(confirmationUrl).pathname, { method: 'POST' });
+    expect(confirmed.status).toBe(404);
+    expect((await asBrowser(owner.cookie, path)).status).toBe(200);
+  });
+
   it('stores contexts, deck content versions, and a draft session', async () => {
     const { cookie } = await seedSession();
     const contextId = await createContext(cookie);

@@ -35,7 +35,7 @@ import { facilitateSessionRoute, facilitatorAccess, facilitatorCommandAllowed, r
 import { accountRecapRoute, forwardRecap } from './recap-route.js';
 import { connectionsRoute } from './oauth-connections.js';
 import { mySessionsRoute, recordLiveSession, sessionQuotaExceeded } from './control.js';
-import { spaceRole } from './members.js';
+import { roleAtLeast, spaceRole, type SpaceRole } from './members.js';
 import { sharingRoute } from './sharing';
 import {
   createFolderRoute,
@@ -516,7 +516,7 @@ async function resolveJoinIdentity(
         response: json({ error: 'roster-invite-invalid', message: 'That invite is not valid for this session.' }, 403),
       };
     }
-    return { ok: true, identity: { displayName: seat.displayName, seatKey: seat.seatId } };
+    return { ok: true, identity: { displayName: seat.displayName, seatKey: seat.seatId, kind: 'roster-invite' } };
   }
   if (Object.prototype.hasOwnProperty.call(body, 'contextLink')) {
     if (typeof body.contextLink !== 'string' || body.contextLink === '') {
@@ -533,7 +533,7 @@ async function resolveJoinIdentity(
         response: json({ error: 'context-link-invalid', message: 'That access link is not valid for this session.' }, 403),
       };
     }
-    return { ok: true, identity: { displayName: link.displayName, seatKey: link.learnerId } };
+    return { ok: true, identity: { displayName: link.displayName, seatKey: link.learnerId, kind: 'context-link' } };
   }
   return { ok: true };
 }
@@ -968,6 +968,14 @@ export default {
       if (seatId === null && request.method === 'POST') {
         const blocked = await requireNamedSessionAccess(env, owner.userId);
         if (blocked !== null) return blocked;
+        // Minting a credential is a privilege escalation primitive, so in a space
+        // session a presenter co-facilitator may not; an editor or owner may.
+        if (owner.spaceId !== null) {
+          const minter = await env.DB.prepare('SELECT role FROM space_members WHERE space_id = ?1 AND user_id = ?2')
+            .bind(owner.spaceId, auth.payload.userId ?? '')
+            .first<{ role: SpaceRole }>();
+          if (minter === null || !roleAtLeast(minter.role, 'editor')) return json({ error: 'forbidden' }, 403);
+        }
         const body = await readJson(request);
         const name = typeof body?.displayName === 'string' ? body.displayName : '';
         const minted = await mintRosterSeat(env, sessionCode, auth.payload.userId ?? owner.userId, name);

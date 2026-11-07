@@ -4,6 +4,7 @@ import {
   estimateTokens,
   htmlToAgentMarkdown,
   negotiateMarkdown,
+  pageToReadingMarkdown,
   parseAccept,
   prefersMarkdown,
 } from '../src/markdown-negotiation.js';
@@ -87,6 +88,15 @@ describe('htmlToAgentMarkdown', () => {
     expect(markdown).not.toContain('Footer chrome');
     expect(markdown).not.toContain('Ignore me');
     expect(tokens).toBe(estimateTokens(markdown));
+  });
+});
+
+describe('pageToReadingMarkdown', () => {
+  // embed-import feeds it any public page up to 2 MiB. An unclosed tag must not
+  // make the extractor rescan the rest of the page from every `<`.
+  it('converts a page of unclosed tags within the default test timeout', () => {
+    const html = `<head><title>T</title></head><body><p>Kept</p>${'<'.repeat(100_000)}${'<h1><a href="x">'.repeat(20_000)}</body>`;
+    expect(pageToReadingMarkdown(html)).toEqual({ title: 'T', markdown: 'Kept' });
   });
 });
 

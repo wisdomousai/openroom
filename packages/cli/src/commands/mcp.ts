@@ -19,7 +19,7 @@ const SERVER_INFO = { name: 'openroom', version: '0.1.0' };
 export async function cmdMcp(args: ParsedArgs, reporter: Reporter, cwd = process.cwd()): Promise<number> {
   const fileArg = args.positionals[1];
   const socketPath = desktopMcpSocketPath();
-  const socket = await tryConnectSocket(socketPath);
+  const socket = socketPath === null ? null : await tryConnectSocket(socketPath);
   const backend = chooseMcpBackend({
     ...(fileArg === undefined ? {} : { fileArg: resolve(cwd, fileArg) }),
     desktopSocketPath: socketPath,

@@ -79,7 +79,15 @@ describe('Paddle subscription access', () => {
     expect(await a.access()).toEqual({ ...FREE_ENTITLEMENTS, team: true, keep: true });
     expect(await readEntitlements({ ...configured, PADDLE_ENVIRONMENT: 'live' }, a.userId)).toEqual(FREE_ENTITLEMENTS);
     // No billing at all is a self-hosted deployment, not a lapsed customer.
+    expect(await readEntitlements({ ...configured, PADDLE_ENVIRONMENT: 'off', DEMO_AUTH: undefined }, a.userId)).toEqual(SELF_HOSTED_ENTITLEMENTS);
+    // Local demo-auth development treats an unset value as off.
     expect(await readEntitlements({ ...configured, PADDLE_ENVIRONMENT: undefined }, a.userId)).toEqual(SELF_HOSTED_ENTITLEMENTS);
+    // A deploy that drops the variable fails closed instead of unlocking every account.
+    for (const dropped of [undefined, '', '  ']) {
+      const hosted = { ...configured, PADDLE_ENVIRONMENT: dropped, DEMO_AUTH: undefined };
+      expect(await readEntitlements(hosted, a.userId)).toEqual(FREE_ENTITLEMENTS);
+      expect(await readEntitlements(hosted, `no-such-user-${crypto.randomUUID()}`)).toEqual(FREE_ENTITLEMENTS);
+    }
     expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM billing_events WHERE event_id=?1').bind(value.event_id).first<{ n: number }>())!.n).toBe(1);
   });
   it('orders events at full Paddle precision and cannot revive a canceled subscription with an older update', async () => {

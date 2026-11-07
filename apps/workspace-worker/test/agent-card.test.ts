@@ -3,7 +3,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { call } from './helpers.js';
+import { env } from 'cloudflare:test';
+import worker from '../src/index.js';
+import { BASE, SMOKE_OUTLINE, call } from './helpers.js';
+import { account, configured } from './paid-fixtures.js';
 
 describe('GET /.well-known/agent-card.json', () => {
   it('returns a valid A2A Agent Card', async () => {
@@ -118,5 +121,35 @@ interactions:
     expect(res.status).toBe(200);
     const body = (await res.json()) as { error?: { code?: number } };
     expect(body.error?.code).toBe(-32601);
+  });
+
+  it('binds a session-create host token to the connection, so revoking it ends host control', async () => {
+    const owner = await account();
+    const res = await owner.raw('/api/a2a', 'POST', {
+      jsonrpc: '2.0',
+      id: 4,
+      method: 'message/send',
+      params: {
+        message: {
+          role: 'user',
+          messageId: 'msg-4',
+          parts: [{ kind: 'data', data: { skill: 'session-create', arguments: { outline: SMOKE_OUTLINE } } }],
+        },
+      },
+    }, 'oauth');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { result: { parts: Array<{ text: string }> } };
+    const created = JSON.parse(body.result.parts[0]!.text) as { ok: boolean; sessionCode: string; hostToken: string };
+    expect(created.ok).toBe(true);
+    const start = () => worker.fetch(new Request(`${BASE}/api/sessions/${created.sessionCode}/commands`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${created.hostToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ command: { command: 'session.start' } }),
+    }), configured);
+
+    await env.DB.prepare('UPDATE oauth_connections SET revoked_at = ?1 WHERE id = ?2').bind(Date.now(), owner.connectionId).run();
+    const revoked = await start();
+    expect(revoked.status).toBe(403);
+    expect(await revoked.json()).toMatchObject({ error: 'connection-revoked' });
   });
 });

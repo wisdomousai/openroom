@@ -50,7 +50,7 @@ every kind — are free: create, list, read, edit and file into a space.
   and the
   `/api/tutoring/lookup`, `/dictionary`, `/stock`, `/embed-check` and
   `/embed-import` tools, which only share the path prefix.
-- **Self-hosted.** A deployment without `PADDLE_ENVIRONMENT` has no billing and
+- **Self-hosted.** A deployment with `PADDLE_ENVIRONMENT=off` has no billing and
   every account holds `continuity` (see [BILLING.md](BILLING.md)).
 
 The host shows a **Homework and Notes** lock with a **Plans** action

@@ -356,9 +356,20 @@ interface OAuthState {
   returnTo?: string;
   /** OpenRoom Desktop: finish in the system browser, then hand the session back. */
   desktop?: boolean;
+  /** S256 challenge of the verifier the Desktop that started this sign-in holds. */
+  desktopChallenge?: string;
 }
 
 export const DESKTOP_AUTH_TICKET_TTL_MS = 2 * 60 * 1000;
+
+/**
+ * The row a desktop ticket is stored under. A ticket bound to a Desktop
+ * challenge is found only with that Desktop's verifier, so a ticket from
+ * someone else's sign-in cannot be redeemed into this Desktop.
+ */
+async function desktopTicketKey(ticket: string, challenge: string | undefined): Promise<string> {
+  return challenge === undefined ? ticket : pkceChallenge(`${challenge}.${ticket}`);
+}
 
 export function desktopHandoffUrl(ticket: string): string {
   return `openroom://auth/desktop?ticket=${encodeURIComponent(ticket)}`;
@@ -448,12 +459,16 @@ export async function googleStartRoute(request: Request, env: ControlEnv): Promi
   const verifier = randomId(32);
   const returnTo = safeAuthReturnTo(url.searchParams.get('returnTo'));
   const desktop = url.searchParams.get('desktop') === '1';
+  const desktopChallenge = url.searchParams.get('desktop_challenge');
   const payload: OAuthState = {
     state,
     verifier,
     exp: Date.now() + OAUTH_TTL_MS,
     ...(returnTo === undefined ? {} : { returnTo }),
     ...(desktop ? { desktop: true } : {}),
+    ...(desktop && desktopChallenge !== null && /^[A-Za-z0-9_-]{43}$/.test(desktopChallenge)
+      ? { desktopChallenge }
+      : {}),
   };
   const signed = await signCookieValue(env.TOKEN_SECRET, JSON.stringify(payload));
 
@@ -512,6 +527,8 @@ export const fetchTokenExchange: TokenExchanger = async (env, input) => {
 export interface IdTokenClaims {
   sub: string;
   email: string;
+  /** Google's `email_verified`; only `true` lets the email name the account. */
+  emailVerified: boolean;
   name?: string;
   iss: string;
   aud: string;
@@ -561,6 +578,7 @@ export function decodeIdToken(idToken: string): IdTokenClaims | null {
   return {
     sub: c.sub,
     email: c.email,
+    emailVerified: c.email_verified === true,
     ...(typeof c.name === 'string' ? { name: c.name } : {}),
     iss: c.iss,
     aud: c.aud,
@@ -625,6 +643,8 @@ export async function googleCallbackRoute(
   if (!GOOGLE_ISSUERS.has(claims.iss)) return json({ error: 'bad-issuer' }, 502);
   if (claims.aud !== clientId) return json({ error: 'bad-audience' }, 502);
   if (claims.exp * 1000 <= now) return json({ error: 'id-token-expired' }, 502);
+  // Space invites are matched by email, so an unverified address must not sign in.
+  if (!claims.emailVerified) return json({ error: 'email-not-verified' }, 403);
 
   const userId = await upsertUser(env, claims, now);
   const sessionCookie = await createSession(env, userId, now);
@@ -636,7 +656,7 @@ export async function googleCallbackRoute(
     await env.DB.prepare(
       'INSERT INTO desktop_auth_tickets (id, session_id, expires_at) VALUES (?1, ?2, ?3)',
     )
-      .bind(ticket, sessionId, now + DESKTOP_AUTH_TICKET_TTL_MS)
+      .bind(await desktopTicketKey(ticket, parsed.desktopChallenge), sessionId, now + DESKTOP_AUTH_TICKET_TTL_MS)
       .run();
     return desktopHandoffPage(ticket, sessionCookie, request);
   }
@@ -645,27 +665,33 @@ export async function googleCallbackRoute(
 }
 
 /**
- * POST /api/auth/desktop/redeem — body `{ ticket }`.
+ * POST /api/auth/desktop/redeem — body `{ ticket, verifier? }`.
  *
  * One-time exchange after the system-browser Google dance. Not a credential
  * family of its own: it only hands the already-created `or_session` to Electron.
+ * A Desktop that sends its verifier gets only a ticket bound to it; a ticket
+ * without that binding is redeemable only by a caller that sends none (older
+ * Desktop builds).
  */
 export async function desktopRedeemRoute(request: Request, env: ControlEnv): Promise<Response> {
   let ticket = '';
+  let verifier: string | undefined;
   try {
-    const body = (await request.json()) as { ticket?: unknown };
+    const body = (await request.json()) as { ticket?: unknown; verifier?: unknown };
     if (typeof body.ticket === 'string') ticket = body.ticket.trim();
+    if (typeof body.verifier === 'string' && body.verifier !== '') verifier = body.verifier;
   } catch {
     return json({ error: 'invalid-ticket' }, 400);
   }
   if (ticket === '') return json({ error: 'invalid-ticket' }, 400);
 
+  const key = await desktopTicketKey(ticket, verifier === undefined ? undefined : await pkceChallenge(verifier));
   const row = await env.DB.prepare(
     'SELECT session_id AS sessionId, expires_at AS expiresAt FROM desktop_auth_tickets WHERE id = ?1',
   )
-    .bind(ticket)
+    .bind(key)
     .first<{ sessionId: string; expiresAt: number }>();
-  await env.DB.prepare('DELETE FROM desktop_auth_tickets WHERE id = ?1').bind(ticket).run();
+  await env.DB.prepare('DELETE FROM desktop_auth_tickets WHERE id = ?1').bind(key).run();
   if (row === null || row.expiresAt <= Date.now()) {
     return json({ error: 'invalid-ticket' }, 400);
   }

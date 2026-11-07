@@ -7,8 +7,10 @@ export interface HostTurnInput {
   workdir: string;
   mcpConfigPath: string;
   mcp: McpStdioCommand;
-  /** Folders the tutor referenced; read in place via the host's add-dir mechanism. */
+  /** Folders the tutor referenced; read in place, never written. */
   folders: string[];
+  /** Temporary copies of this conversation's attached files; readable, never written. */
+  attachmentsDir?: string;
   /** Claude session_id / Codex thread id from the previous turn, or null on the first. */
   resume: string | null;
   /** Prior turns, replayed by hosts with no vendor session. Claude and Codex ignore it. */

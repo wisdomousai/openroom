@@ -97,7 +97,7 @@ Response includes \`issuer\` (must match the PRM authorization server), OAuth en
 
 - \`register_uri\` — dynamic client registration (Step 3a).
 - \`claim_uri\` — browser consent that binds the registration to a host with a verified email (Step 3b).
-- \`identity_assertion\` / \`verified_email\` — credentials are issued only after an account holder approves (session or personal API token). Not ID-JAG; not anonymous.
+- \`identity_assertion\` / \`verified_email\` — credentials are issued only after an account holder approves in a signed-in browser session. Not ID-JAG; not anonymous.
 
 ## Step 2 — Pick a method
 
@@ -148,7 +148,7 @@ GET /api/mcp/authorize?response_type=code&client_id=<client_id>&redirect_uri=<re
 Host: ${hostName}
 \`\`\`
 
-The consent page accepts a signed-in OpenRoom session or a personal API token (\`orpat_…\`). The host reviews and submits the browser form; its consent proof is bound to the exact request and signed-in account. On approve it redirects with \`?code=…&state=…\`. Codes expire after ten minutes and can be redeemed once. Redirect URIs must match registration exactly, including loopback host and port.
+The consent page accepts only a signed-in OpenRoom browser session; a personal API token cannot approve it. The host reviews and submits the browser form; its consent proof is bound to the exact request and signed-in account. On approve it redirects with \`?code=…&state=…\`. Codes expire after ten minutes and can be redeemed once. Redirect URIs must match registration exactly, including loopback host and port.
 
 #### 3c. Exchange the code
 
@@ -227,7 +227,7 @@ Full agent skill index: ${origin}/.well-known/agent-skills/index.json (includes 
 | 401 | /api/mcp | Missing/invalid bearer | Discover via \`WWW-Authenticate\`, then Method A or B |
 | 400 | /api/mcp/register | Invalid \`redirect_uris\` / metadata | Fix client metadata; HTTPS or loopback only |
 | 400 | /api/mcp/token | \`invalid_grant\` / PKCE mismatch | Restart authorize with a fresh PKCE pair |
-| 401 | /api/mcp/authorize (POST) | Credential rejected | Sign in, or use a valid \`orpat_…\` |
+| 401 | /api/mcp/authorize (POST) | Not signed in | Sign in in the browser, then approve |
 | 403 | /api/mcp/authorize (POST) | Consent proof changed or expired | Open authorization again and approve the fresh form |
 | 401 | /api/my/tokens | No session | Sign in at ${host} first |
 | 429 | any | Rate limited | Back off and retry |

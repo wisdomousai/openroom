@@ -49,8 +49,9 @@ export default defineConfig({
           /*
            * Tests run as the hosted product: billing is configured, so accounts
            * without a Paddle mapping use their manual `users.entitlements` and
-           * start free. A deployment without PADDLE_ENVIRONMENT is self-hosted
-           * and unlocks every capability; tests opt into that explicitly.
+           * start free. PADDLE_ENVIRONMENT=off (or unset with DEMO_AUTH, as
+           * here) is self-hosted and unlocks every capability; tests opt into
+           * that explicitly.
            */
           PADDLE_ENVIRONMENT: 'sandbox',
           TEST_MIGRATIONS: migrations,

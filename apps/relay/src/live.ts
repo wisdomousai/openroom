@@ -13,7 +13,7 @@
  * plane's and arrive here, if at all, as a resolved `JoinIdentity`.
  */
 
-import type { Command } from '@openroom/domain';
+import { isValidSessionCode, type Command } from '@openroom/domain';
 import type { Outline } from '@openroom/schema';
 
 import { parseExportFormat } from './export.js';
@@ -188,10 +188,15 @@ export async function issueSessionTokens(
 
 /* -------------------------------------------------------------------- join */
 
-/** A name and seat the deployment resolved from its own invite credential. */
+/**
+ * A name and seat the deployment resolved from its own invite credential.
+ * `kind` names the credential family that was verified: an identified session
+ * admits only a context link, a roster session only a roster invite.
+ */
 export interface JoinIdentity {
   displayName: string;
   seatKey: string;
+  kind: 'context-link' | 'roster-invite';
 }
 
 /**
@@ -212,6 +217,9 @@ export async function joinRoute(
   const rawCode = typeof body?.code === 'string' ? body.code : '';
   if (body === null || rawCode === '') return json({ error: 'missing-code' }, 400);
   const code = normalizeCode(rawCode);
+  // A code that cannot have been issued is answered like an unknown one, before
+  // any credential lookup and without addressing a Durable Object.
+  if (!isValidSessionCode(code)) return json({ error: 'session-not-found' }, 404);
   if (Object.prototype.hasOwnProperty.call(body, 'recoveryHandle') && typeof body.recoveryHandle !== 'string') {
     return json({ error: 'invalid-handle', message: 'Enter your session handle.' }, 400);
   }
@@ -383,9 +391,15 @@ export async function sessionAssetRoute<G>(
   sessionCode: string,
   resourceId: string,
 ): Promise<Response> {
+  if (!isValidSessionCode(sessionCode)) return json({ error: 'not-found' }, 404);
+  // Media bytes are part of what is presented: only the active presenter's seat
+  // may replace them, the same rule the command path applies. The seat comes
+  // from the verified token, never from the request.
+  const params: Record<string, string> = {};
   if (request.method === 'PUT') {
     const auth = await authenticate(live, request, url, sessionCode, 'host');
     if (!auth.ok) return auth.response;
+    params.facilitatorId = auth.payload.facilitatorId ?? '';
   } else if (request.method !== 'GET' && request.method !== 'HEAD') {
     return json({ error: 'method-not-allowed' }, 405);
   }
@@ -395,7 +409,7 @@ export async function sessionAssetRoute<G>(
     if (value !== null) headers.set(name, value);
   }
   const response = await sessionStub(live.env, sessionCode).fetch(
-    sessionDoUrl(`/__assets/${encodeURIComponent(resourceId)}`),
+    sessionDoUrl(`/__assets/${encodeURIComponent(resourceId)}`, params),
     {
       method: request.method,
       headers,

@@ -4,11 +4,13 @@
  * Manual development flags apply only before a customer mapping exists. No client
  * writes either source. Missing state and malformed flags always resolve to free.
  *
- * A deployment with no `PADDLE_ENVIRONMENT` has no billing at all (self-hosted):
- * every account holds every capability except the reserved `connectors`.
+ * A deployment that sets `PADDLE_ENVIRONMENT=off` has no billing at all
+ * (self-hosted): every account holds every capability except the reserved
+ * `connectors`. An unset value fails closed, so a deploy that drops the variable
+ * cannot unlock paid features; only local demo-auth development treats unset as off.
  */
 import { FREE_SESSION_PARTICIPANT_LIMIT } from '@openroom/schema';
-import type { ControlEnv } from './auth.js';
+import { demoAuthEnabled, type ControlEnv } from './auth.js';
 import { billingSubscriptions, subscriptionAccessUntil } from './billing/access';
 
 export const ENTITLEMENT_FLAGS = [
@@ -49,9 +51,13 @@ export const SELF_HOSTED_ENTITLEMENTS: Entitlements = {
   connectors: false,
 };
 
-/** Billing exists only when the deployment names a Paddle environment. */
-export function billingConfigured(env: { PADDLE_ENVIRONMENT?: string }): boolean {
-  return typeof env.PADDLE_ENVIRONMENT === 'string' && env.PADDLE_ENVIRONMENT.trim() !== '';
+/**
+ * Billing is off (self-hosted) only when the deployment says so with
+ * `PADDLE_ENVIRONMENT=off`, or when it is unset on a local demo-auth server.
+ */
+export function billingOff(env: ControlEnv): boolean {
+  const value = env.PADDLE_ENVIRONMENT?.trim() ?? '';
+  return value === 'off' || (value === '' && demoAuthEnabled(env));
 }
 
 export function parseEntitlements(raw: unknown): Entitlements {
@@ -82,7 +88,7 @@ export function hasEntitlement(entitlements: Entitlements, flag: EntitlementFlag
 }
 
 export async function readEntitlements(env: ControlEnv, userId: string): Promise<Entitlements> {
-  if (!billingConfigured(env)) return { ...SELF_HOSTED_ENTITLEMENTS };
+  if (billingOff(env)) return { ...SELF_HOSTED_ENTITLEMENTS };
   const row = await env.DB.prepare(`SELECT entitlements,
     EXISTS (SELECT 1 FROM billing_customers WHERE user_id = ?1) AS billing_managed FROM users WHERE id = ?1`)
     .bind(userId)

@@ -60,7 +60,7 @@ describe('free session participant limit', () => {
     // The Worker verifies the roster invite and forwards only the seat; seats are driven directly here.
     const stub = env.SESSIONS.get(env.SESSIONS.idFromName(created.body.sessionCode));
     const seat = async (n: number) => {
-      const response = await stub.fetch('https://session.internal/__join', { method: 'POST', body: JSON.stringify({ identity: { displayName: `Seat ${n}`, seatKey: `seat-${n}` } }) });
+      const response = await stub.fetch('https://session.internal/__join', { method: 'POST', body: JSON.stringify({ identity: { displayName: `Seat ${n}`, seatKey: `seat-${n}`, kind: 'roster-invite' } }) });
       return { status: response.status, body: await response.json() as { participantId?: string; error?: string } };
     };
     const first = await seat(0);

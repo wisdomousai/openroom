@@ -30,12 +30,10 @@ const CODE_SLOT_PATTERN = new RegExp(`${CODE_SLOT}(\\d+)${CODE_SLOT}`, 'g');
  * Escape a text span.
  *
  * `=` is escaped along with the usual four. It is not a security requirement —
- * the angle brackets already are — but `htmlLooksUnsafe` and
- * `sanitizeElementHtml` match ` on&lt;word&gt;=` anywhere in the string, so reading
- * material that merely *mentions* `onerror=` would be rejected as an event
- * attribute and then silently mangled at render time. Escaping the `=` keeps
- * prose about HTML storable, and `&#61;` renders as `=` in text and decodes to
- * `=` inside an attribute value.
+ * the angle brackets already are, and `htmlLooksUnsafe` reads attributes only
+ * inside tags — but the output is stored, so changing it is a migration (see 1
+ * above). `&#61;` renders as `=` in text and decodes to `=` inside an attribute
+ * value.
  */
 export function escapeHtmlText(value: string): string {
   return value

@@ -190,7 +190,7 @@ function publicHandles(state: SessionState): Record<string, string> | undefined 
   }
   // Classroom poll lists do not publish handles on audience/stage aggregates.
   // Tutoring outlines may — the learner is named.
-  if (isPollOnlyOutline(state.outline)) return undefined;
+  if (isPollOnlyOutline(state.outline) || !handlesArePublic(state)) return undefined;
   const handles: Record<string, string> = {};
   for (const [id, record] of Object.entries(state.participants)) {
     if (record.handle !== undefined) handles[id] = record.handle;
@@ -228,7 +228,7 @@ export interface ParticipantQnaQuestion {
   votedByYou: boolean;
   /** only ever true on the participant's OWN moderated question */
   hidden: boolean;
-  /** asker's session-local handle (pseudonymous sessions only) — system-assigned, not PII */
+  /** asker's host-authored name (identified and roster sessions only); never a pseudonymous handle */
   handle?: string;
 }
 
@@ -258,17 +258,27 @@ export interface HostQnaView {
 }
 
 /**
+ * A pseudonymous handle is also its owner's recovery credential (`recoveryHandle`
+ * on join), so it reaches only the host and its owner. Identified and roster
+ * names are host-authored and recovered by seat key, so they may be shown.
+ */
+function handlesArePublic(state: SessionState): boolean {
+  return sessionOf(state).defaults.identityMode !== 'pseudonymous';
+}
+
+/**
  * Visible questions plus the participant's own hidden ones (a moderated author
  * still sees their question, flagged, like hidden text answers). Frozen is the
  * panic button: all participant text disappears from public views.
  */
 function participantQnaView(state: SessionState, participantId: string): ParticipantQnaView {
+  const named = handlesArePublic(state);
   const questions: ParticipantQnaQuestion[] = state.frozen
     ? []
     : sortedQuestions(state.qna)
         .filter((question) => !question.hidden || question.participantId === participantId)
         .map((question) => {
-          const handle = state.participants[question.participantId]?.handle;
+          const handle = named ? state.participants[question.participantId]?.handle : undefined;
           return {
             id: question.id,
             text: question.text,
@@ -283,12 +293,13 @@ function participantQnaView(state: SessionState, participantId: string): Partici
 }
 
 function stageQnaView(state: SessionState): StageQnaView {
+  const named = handlesArePublic(state);
   const questions = state.frozen
     ? []
     : sortedQuestions(state.qna)
         .filter((question) => !question.hidden)
         .map((question) => {
-          const handle = state.participants[question.participantId]?.handle;
+          const handle = named ? state.participants[question.participantId]?.handle : undefined;
           return {
             id: question.id,
             text: question.text,

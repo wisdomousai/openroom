@@ -1,5 +1,5 @@
 /** Shared control-plane OAuth: exact redirects, S256, single-use codes and revocable connections. */
-import { sha256Hex, verifyApiToken } from './api-tokens.js';
+import { sha256Hex } from './api-tokens.js';
 import { DEMO_ACCOUNTS, demoAuthEnabled, demoLoginRoute, getSession, googleAuthConfigured } from './auth.js';
 import type { Env } from './index.js';
 
@@ -223,8 +223,8 @@ function consentPage(fields: Record<string, string>, client: ClientInfo, nonce: 
   const hidden = Object.entries(fields).map(([key, value]) => `<input type="hidden" name="${escapeHtml(key)}" value="${escapeHtml(value)}">`).join('');
   const google = googleAuthConfigured(env), demo = demoAuthEnabled(env);
   const signIn = signedInAs ? '' : `${google ? `<p><a href="${escapeHtml(signInHref)}">Sign in with Google</a> to continue.</p>` : ''}${demo ? `<form method="post">${hidden}<p>Local development · use a demo account.</p><label for="demo-account">Demo account</label><select id="demo-account" name="username">${DEMO_ACCOUNTS.map((account) => `<option value="${escapeHtml(account.username)}">${escapeHtml(account.name)}</option>`).join('')}</select><input type="hidden" name="action" value="demo-sign-in"><input type="hidden" name="password" value="demo"><button type="submit">Sign in with demo account</button></form>` : ''}${!google && !demo ? '<p role="status">Sign-in is not configured on this OpenRoom server.</p>' : ''}`;
-  const approval = signedInAs || !client.firstParty
-    ? `<form method="post">${hidden}${signedInAs ? `<p>Signed in as <strong>${escapeHtml(signedInAs)}</strong>.</p><input type="hidden" name="via_session" value="1">` : '<label for="credential">Personal API token</label><input id="credential" name="credential" type="password" autocomplete="off">'}<button type="submit">Approve connection</button></form>`
+  const approval = signedInAs
+    ? `<form method="post">${hidden}<p>Signed in as <strong>${escapeHtml(signedInAs)}</strong>.</p><input type="hidden" name="via_session" value="1"><button type="submit">Approve connection</button></form>`
     : '';
   const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect to OpenRoom</title><style>body{font:16px/1.6 system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f6f8;color:#17212d}main{max-width:440px;margin:24px;padding:32px;background:white;border:1px solid #d9dfe5;border-radius:12px}h1{font-size:24px;line-height:1.3}p{color:#526578}label{display:block;margin-top:16px}input[type=password],select{box-sizing:border-box;width:100%;padding:10px;margin-top:8px;font:inherit}button{padding:12px 20px;margin-top:20px;background:#175b96;color:white;border:0;border-radius:6px;font:inherit;cursor:pointer}.error{color:#b91c1c}</style><main><h1>Connect ${escapeHtml(client.name)}</h1><p>This application can read and edit your OpenRoom decks and use the spaces and sessions your account can access.</p><p>You can revoke this connection in Settings. Your space permissions and paid capabilities still apply.</p>${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ''}${signIn}${approval}</main></html>`;
   // A no-referrer form navigation sends Origin: null in Chromium. Same-origin
@@ -285,10 +285,10 @@ export async function authorizeRoute(request: Request, url: URL, env: Env): Prom
       'cache-control': 'no-store', 'referrer-policy': 'same-origin',
     } });
   }
-  let userId: string | undefined;
-  if (params.get('via_session') === '1' && user) userId = user.id;
-  else if (!client.firstParty) userId = (await verifyApiToken(env, params.get('credential') ?? ''))?.user.id;
-  if (!userId) return consentPage({ ...fields, consent: params.get('consent')! }, client, consent.n, url, env, user?.email, client.firstParty ? 'Sign in to continue.' : 'Sign in or use a valid personal API token to approve.');
+  // Only a signed-in browser approves. A personal API token is not accepted here:
+  // it would mint a connection that outlives the token's revocation.
+  const userId = params.get('via_session') === '1' && user ? user.id : undefined;
+  if (!userId) return consentPage({ ...fields, consent: params.get('consent')! }, client, consent.n, url, env, user?.email, 'Sign in to continue.');
   const code = `orcode_${b64url(crypto.getRandomValues(new Uint8Array(32)))}`;
   await env.DB.batch([
     env.DB.prepare('DELETE FROM oauth_codes WHERE expires_at <= ?1').bind(Date.now()),

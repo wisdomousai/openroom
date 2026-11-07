@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_SESSION_PARTICIPANT_LIMIT } from '@openroom/schema';
 
-import { createSession, participantLimitReached } from '../src/create-session.js';
+import { createSession, participantLimitReached, SESSION_PARTICIPANT_HARD_LIMIT } from '../src/create-session.js';
 import { applyCommand } from '../src/apply-command.js';
 import { hostSnapshot, stageSnapshot } from '../src/snapshots.js';
 import { hostWireSnapshot } from '../src/wire-snapshots.js';
@@ -32,11 +32,15 @@ describe('participant limit', () => {
     expect(participantLimitReached(admit(state, FREE_SESSION_PARTICIPANT_LIMIT))).toBe(true);
   });
 
-  it('never fills a session created without a limit', () => {
+  it('bounds a session created without a limit, or above it, by the hard limit only', () => {
     const state = admit(createSession(outline, 'ABCD2345', 0), 500);
     expect(participantLimitReached(state)).toBe(false);
     expect(hostSnapshot(state).participantLimit).toBeUndefined();
     expect('participantLimit' in hostWireSnapshot(state)).toBe(false);
+    expect(participantLimitReached(admit(state, SESSION_PARTICIPANT_HARD_LIMIT - 1))).toBe(false);
+    expect(participantLimitReached(admit(state, SESSION_PARTICIPANT_HARD_LIMIT))).toBe(true);
+    const generous = createSession(outline, 'ABCD2345', 0, { participantLimit: SESSION_PARTICIPANT_HARD_LIMIT * 10 });
+    expect(participantLimitReached(admit(generous, SESSION_PARTICIPANT_HARD_LIMIT))).toBe(true);
   });
 
   it('keeps the limit through the session lifecycle and shows it to the host only', () => {

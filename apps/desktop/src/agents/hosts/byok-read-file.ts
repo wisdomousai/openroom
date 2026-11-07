@@ -20,7 +20,7 @@ export interface ReadFileResult {
   error?: string;
 }
 
-function contains(root: string, target: string): boolean {
+export function contains(root: string, target: string): boolean {
   return target === root || target.startsWith(root.endsWith(sep) ? root : `${root}${sep}`);
 }
 
@@ -30,7 +30,7 @@ function contains(root: string, target: string): boolean {
  * so a typo inside the workspace would be reported as an escape attempt. Fall
  * back to the nearest existing ancestor, which is what the check needs anyway.
  */
-async function canonical(path: string): Promise<string> {
+export async function canonical(path: string): Promise<string> {
   const absolute = resolve(path);
   try {
     return await realpath(absolute);

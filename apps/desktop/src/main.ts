@@ -26,15 +26,18 @@ import { registerAgentIpc, type AgentIpcHandle } from './agents/ipc.js';
 import { createAskQuestionBroker } from './agents/ask-question.js';
 import { sweepAgentRuns } from './agents/session-store.js';
 import {
+  createDesktopSignInBinding,
   decideDesktopNavigation,
   desktopGoogleStartUrl,
+  isTrustedDesktopUrl,
   parseDesktopAuthHandoff,
   parseDesktopDeckHandoff,
   withDesktopAuthFlag,
 } from './auth-navigation.js';
+import { trustedIpc } from './trusted-ipc.js';
 import { prepareDesktopDeckHandoff } from './deck-handoff.js';
 import { createRelayStore, defaultRelayFile } from './relay.js';
-import { desktopMcpSocketPath, startDesktopMcpServer } from './mcp-host.js';
+import { desktopMcpPipeFile, desktopMcpSocketPath, startDesktopMcpServer } from './mcp-host.js';
 import { adoptLoginShellPath } from './shell-path.js';
 import { startDesktopUpdateChecks } from './updates.js';
 import { openFailureReason } from './open-failure.js';
@@ -92,6 +95,8 @@ let presentationState: PresentationState | null = null;
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 const rendererRoot = app.isPackaged ? join(app.getAppPath(), 'renderer') : resolve(moduleDir, '../renderer');
 const onlineOrigin = (process.env['OPENROOM_ORIGIN'] ?? 'https://openroom.app').replace(/\/$/, '');
+/** Only a sign-in this Desktop started can sign it in. */
+const signIn = createDesktopSignInBinding();
 
 // Signed out, live sessions run on the teacher's own relay; see relay.ts.
 const relay = createRelayStore({
@@ -239,22 +244,30 @@ function secureWindow(options: Electron.BrowserWindowConstructorOptions = {}): B
     event.preventDefault();
     applyDesktopNavigation(url);
   });
+  // A server redirect must not carry the window (and its bridge) somewhere will-navigate never saw.
+  window.webContents.on('will-redirect', (event) => {
+    if (!event.isMainFrame || decideDesktopNavigation(event.url, onlineOrigin) === 'allow') return;
+    event.preventDefault();
+    applyDesktopNavigation(event.url);
+  });
   return window;
 }
 
 function applyDesktopNavigation(url: string): void {
   const decision = decideDesktopNavigation(url, onlineOrigin);
-  if (decision === 'open-auth-start') void shell.openExternal(withDesktopAuthFlag(url));
+  if (decision === 'open-auth-start') void shell.openExternal(withDesktopAuthFlag(url, signIn.begin()));
   else if (decision === 'open-external') void shell.openExternal(url);
 }
 
 async function completeDesktopSignIn(url: string): Promise<void> {
   const ticket = parseDesktopAuthHandoff(url);
-  if (ticket === null) return;
+  // A ticket Desktop did not ask for is someone else's sign-in; it is never redeemed.
+  const verifier = signIn.verifier();
+  if (ticket === null || verifier === null) return;
   const res = await session.defaultSession.fetch(`${onlineOrigin}/api/auth/desktop/redeem`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ ticket }),
+    body: JSON.stringify({ ticket, verifier }),
   });
   if (!res.ok) {
     await dialog.showMessageBox({
@@ -264,6 +277,7 @@ async function completeDesktopSignIn(url: string): Promise<void> {
     });
     return;
   }
+  signIn.finish();
   deckSignInOpen = false;
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) window.webContents.send('desktop:signed-in');
@@ -570,16 +584,18 @@ let agentIpc: AgentIpcHandle | null = null;
 const askBroker = createAskQuestionBroker();
 
 function installIpc(): void {
+  // Every bridge call must come from the bundled renderer or the OpenRoom origin.
+  const ipc = trustedIpc(ipcMain, (url) => isTrustedDesktopUrl(url, onlineOrigin));
   // The live console can run in a window that never opened a file (a session
   // started from the workspace), so asking whether this window holds a
   // document has to be answerable without throwing.
-  ipcMain.handle('desktop:has-document', (event) => documents.has(event.sender.id));
-  ipcMain.handle('desktop:get-document', async (event) => {
+  ipc.handle('desktop:has-document', (event) => documents.has(event.sender.id));
+  ipc.handle('desktop:get-document', async (event) => {
     const state = stateFor(event.sender);
     const device = await deviceIdentity();
     return { ...state, deviceId: device.id, deviceName: device.name, onlineOrigin: `${onlineOrigin}/` };
   });
-  ipcMain.handle('desktop:save-document', async (event, source: string) => {
+  ipc.handle('desktop:save-document', async (event, source: string) => {
     const state = stateFor(event.sender);
     if (state.path === null) return saveAs(event.sender, source);
     await writeOpenRoomPackage(state.path, source, state.workingDirectory);
@@ -587,8 +603,8 @@ function installIpc(): void {
     app.addRecentDocument(state.path);
     return { ...state, ...(await deviceIdentity()) };
   });
-  ipcMain.handle('desktop:save-document-as', (event, source: string) => saveAs(event.sender, source));
-  ipcMain.handle('desktop:save-recovery', async (event, fileId: string, source: string) => {
+  ipc.handle('desktop:save-document-as', (event, source: string) => saveAs(event.sender, source));
+  ipc.handle('desktop:save-recovery', async (event, fileId: string, source: string) => {
     const state = stateFor(event.sender);
     state.recoverySource = source;
     await mkdir(recoveryDir(), { recursive: true });
@@ -601,23 +617,23 @@ function installIpc(): void {
     };
     await atomicWrite(recoveryFile(fileId), JSON.stringify(envelope));
   });
-  ipcMain.handle('desktop:clear-recovery', async (_event, fileId: string) => { await unlink(recoveryFile(fileId)).catch(() => undefined); });
-  ipcMain.on('desktop:set-edited', (event, edited: unknown) => {
+  ipc.handle('desktop:clear-recovery', async (_event, fileId: string) => { await unlink(recoveryFile(fileId)).catch(() => undefined); });
+  ipc.on('desktop:set-edited', (event, edited: unknown) => {
     const state = documents.get(event.sender.id);
     const window = BrowserWindow.fromWebContents(event.sender);
     if (state === undefined || window === null) return;
     state.edited = edited === true;
     if (process.platform === 'darwin') window.setDocumentEdited(state.edited);
   });
-  ipcMain.handle('desktop:finish-save-and-close', (event, saved: unknown) => {
+  ipc.handle('desktop:finish-save-and-close', (event, saved: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window === null) return;
     const resumeQuit = quitAfterSave.saveFinished(window, saved === true);
     if (saved === true) closeWithoutPrompt(window, quitting || resumeQuit);
   });
-  ipcMain.handle('desktop:open-file', (event) => chooseOpenFile(BrowserWindow.fromWebContents(event.sender)));
-  ipcMain.handle('desktop:new-file', () => openDocumentWindow());
-  ipcMain.handle('desktop:pick-image', async (event) => {
+  ipc.handle('desktop:open-file', (event) => chooseOpenFile(BrowserWindow.fromWebContents(event.sender)));
+  ipc.handle('desktop:new-file', () => openDocumentWindow());
+  ipc.handle('desktop:pick-image', async (event) => {
     const result = await dialog.showOpenDialog(ownerFor(event), {
       properties: ['openFile'],
       filters: [{ name: 'Picture', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'] }],
@@ -632,7 +648,7 @@ function installIpc(): void {
     const state = stateFor(event.sender);
     return registerImportedResource(state, await importOpenRoomResource(state.workingDirectory, path, contentType));
   });
-  ipcMain.handle('desktop:pick-audio', async (event) => {
+  ipc.handle('desktop:pick-audio', async (event) => {
     const result = await dialog.showOpenDialog(ownerFor(event), {
       properties: ['openFile'], filters: [{ name: 'Audio recording', extensions: ['mp3', 'wav', 'm4a'] }],
     });
@@ -644,7 +660,7 @@ function installIpc(): void {
     const state = stateFor(event.sender);
     return registerImportedResource(state, await importOpenRoomResource(state.workingDirectory, path, contentType));
   });
-  ipcMain.handle('desktop:pick-pdf', async (event) => {
+  ipc.handle('desktop:pick-pdf', async (event) => {
     const result = await dialog.showOpenDialog(ownerFor(event), {
       properties: ['openFile'], filters: [{ name: 'PDF document', extensions: ['pdf'] }],
     });
@@ -654,7 +670,7 @@ function installIpc(): void {
     pendingPdfs.set(selectionId, { path, ownerId: event.sender.id });
     return { selectionId, name: basename(path), pageCount: await inspectPdf(path) };
   });
-  ipcMain.handle('desktop:extract-pdf', async (event, selectionId: string, fromPage: number, toPage: number) => {
+  ipc.handle('desktop:extract-pdf', async (event, selectionId: string, fromPage: number, toPage: number) => {
     const selection = pendingPdfs.get(selectionId);
     if (selection === undefined || selection.ownerId !== event.sender.id) throw new Error('Choose the PDF again.');
     try {
@@ -666,7 +682,7 @@ function installIpc(): void {
   });
   // A deck synced to a space has no .openroom package to embed into, so the pages come
   // back as bytes and the renderer uploads them to the space's asset store.
-  ipcMain.handle('desktop:extract-pdf-bytes', async (event, selectionId: string, fromPage: number, toPage: number) => {
+  ipc.handle('desktop:extract-pdf-bytes', async (event, selectionId: string, fromPage: number, toPage: number) => {
     const selection = pendingPdfs.get(selectionId);
     if (selection === undefined || selection.ownerId !== event.sender.id) throw new Error('Choose the PDF again.');
     const pageCount = await inspectPdf(selection.path);
@@ -682,21 +698,21 @@ function installIpc(): void {
       pendingPdfs.delete(selectionId);
     }
   });
-  ipcMain.handle('desktop:read-resource', async (event, resourceId: string) => {
+  ipc.handle('desktop:read-resource', async (event, resourceId: string) => {
     const path = resourcePath(event.sender.id, resourceId);
     if (path === null) throw new Error('Embedded resource not found.');
     return readFile(path);
   });
-  ipcMain.handle('desktop:open-sign-in', (event) => {
+  ipc.handle('desktop:open-sign-in', (event) => {
     signInOwner = BrowserWindow.fromWebContents(event.sender);
-    void shell.openExternal(desktopGoogleStartUrl(onlineOrigin));
+    void shell.openExternal(desktopGoogleStartUrl(onlineOrigin, signIn.begin()));
     return { ok: true };
   });
-  ipcMain.on('desktop:control-origin', (event) => {
+  ipc.on('desktop:control-origin', (event) => {
     event.returnValue = onlineOrigin;
   });
-  ipcMain.handle('desktop:relay:status', () => relay.status());
-  ipcMain.handle('desktop:relay:save', async (_event, input: { origin?: unknown; key?: unknown }) => {
+  ipc.handle('desktop:relay:status', () => relay.status());
+  ipc.handle('desktop:relay:save', async (_event, input: { origin?: unknown; key?: unknown }) => {
     try {
       const origin = typeof input?.origin === 'string' ? input.origin : '';
       const key = typeof input?.key === 'string' ? input.key : '';
@@ -705,16 +721,16 @@ function installIpc(): void {
       return { ok: false, message: error instanceof Error ? error.message : String(error) };
     }
   });
-  ipcMain.handle('desktop:relay:clear', async () => {
+  ipc.handle('desktop:relay:clear', async () => {
     try { return { ok: true, status: await relay.clear() }; }
     catch (error) { return { ok: false, message: error instanceof Error ? error.message : String(error) }; }
   });
-  ipcMain.handle('desktop:relay:start-session', (_event, outline: unknown) => relay.startSession(outline));
-  ipcMain.handle('desktop:show-in-folder', (event) => { const path = stateFor(event.sender).path; if (path) shell.showItemInFolder(path); });
-  ipcMain.handle('desktop:list-displays', () => screen.getAllDisplays().map((display, index) => ({
+  ipc.handle('desktop:relay:start-session', (_event, outline: unknown) => relay.startSession(outline));
+  ipc.handle('desktop:show-in-folder', (event) => { const path = stateFor(event.sender).path; if (path) shell.showItemInFolder(path); });
+  ipc.handle('desktop:list-displays', () => screen.getAllDisplays().map((display, index) => ({
     id: String(display.id), label: displayLabel(display, index), primary: display.id === screen.getPrimaryDisplay().id, external: !display.internal,
   })));
-  ipcMain.handle('desktop:start-presentation', async (event, state: PresentationState, displayId?: string) => {
+  ipc.handle('desktop:start-presentation', async (event, state: PresentationState, displayId?: string) => {
     presentationOwner = ownerFor(event);
     presentationState = state;
     if (presentationWindow && !presentationWindow.isDestroyed()) presentationWindow.close();
@@ -730,14 +746,14 @@ function installIpc(): void {
     });
     await presentationWindow.loadURL('openroom://app/core/index.html#/present');
   });
-  ipcMain.handle('desktop:update-presentation', (_event, state: PresentationState) => {
+  ipc.handle('desktop:update-presentation', (_event, state: PresentationState) => {
     presentationState = state;
     presentationWindow?.webContents.send('desktop:presentation-state', state);
   });
-  ipcMain.handle('desktop:close-presentation', () => { presentationWindow?.close(); presentationState = null; });
-  ipcMain.handle('desktop:get-presentation', () => presentationState);
-  ipcMain.on('desktop:presentation-command', (_event, command: string) => presentationOwner?.webContents.send('desktop:presentation-command', command));
-  agentIpc = registerAgentIpc(ipcMain, {
+  ipc.handle('desktop:close-presentation', () => { presentationWindow?.close(); presentationState = null; });
+  ipc.handle('desktop:get-presentation', () => presentationState);
+  ipc.on('desktop:presentation-command', (_event, command: string) => presentationOwner?.webContents.send('desktop:presentation-command', command));
+  agentIpc = registerAgentIpc(ipc, {
     userData: () => app.getPath('userData'),
     skillsRoot: () =>
       app.isPackaged
@@ -905,7 +921,7 @@ async function handleDesktopDeckHandoff(url: string): Promise<void> {
       if (!pendingDesktopDeckUrls.includes(url)) pendingDesktopDeckUrls.push(url);
       if (!deckSignInOpen) {
         deckSignInOpen = true;
-        await shell.openExternal(desktopGoogleStartUrl(onlineOrigin));
+        await shell.openExternal(desktopGoogleStartUrl(onlineOrigin, signIn.begin()));
       }
       return;
     }
@@ -968,6 +984,7 @@ else void app.whenReady().then(async () => {
   startUpdateChecks();
   const mcp = await startDesktopMcpServer({
     socketPath: desktopMcpSocketPath(app.getPath('userData')),
+    pipeFile: desktopMcpPipeFile(app.getPath('userData')),
     origin: onlineOrigin,
     currentDocument: currentDesktopDocument,
     ask: (args) => askBroker.ask(args),

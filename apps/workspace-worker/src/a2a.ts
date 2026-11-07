@@ -27,7 +27,7 @@ const JSON_HEADERS = {
   'access-control-allow-origin': '*',
 } as const;
 
-type A2aIdentity = { kind: 'admin' } | { kind: 'user'; userId: string } | { kind: 'anon' };
+type A2aIdentity = { kind: 'admin' } | { kind: 'user'; userId: string; connectionId?: string } | { kind: 'anon' };
 
 function jsonRpc(id: unknown, result: unknown): Response {
   return new Response(JSON.stringify({ jsonrpc: '2.0', id: id ?? null, result }), {
@@ -50,7 +50,9 @@ async function resolveIdentity(env: Env, bearer: string): Promise<A2aIdentity> {
   if (pat !== null) return { kind: 'user', userId: pat.user.id };
   const oauth = await verifyMcpAccessToken(env, bearer);
   if (oauth !== null) {
-    return oauth.userId === null ? { kind: 'admin' } : { kind: 'user', userId: oauth.userId };
+    return oauth.userId === null
+      ? { kind: 'admin' }
+      : { kind: 'user', userId: oauth.userId, connectionId: oauth.connectionId };
   }
   return { kind: 'anon' };
 }
@@ -66,7 +68,11 @@ function makeDeps(env: Env, identity: A2aIdentity): ToolDeps {
         if (await sessionQuotaExceeded(env, identity.userId, now)) {
           throw new Error('session-quota');
         }
-        const created = await createSessionFromOutline(env, validation.outline, { entitlementOwnerId: identity.userId });
+        const user = await env.DB.prepare('SELECT id, name, email FROM users WHERE id = ?1').bind(identity.userId).first<{ id: string; name: string | null; email: string }>();
+        if (!user) throw new Error('unauthorized');
+        // Bind the host token to the account and connection, as MCP does, so
+        // revoking the connection or the facilitator seat ends host control.
+        const created = await createSessionFromOutline(env, validation.outline, { user, ...(identity.connectionId ? { connectionId: identity.connectionId } : {}) });
         if (!created.ok) throw new Error('session-init-failed');
         await recordLiveSession(env, created.session.code, identity.userId, validation.outline.meta.title, now);
         return created.session;

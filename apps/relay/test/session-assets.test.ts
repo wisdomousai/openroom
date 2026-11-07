@@ -3,6 +3,7 @@ import { env, runInDurableObject } from 'cloudflare:test';
 import { describe, expect, it, vi } from 'vitest';
 import type { SessionDO } from '../src/session-do';
 
+import { signToken } from '../src/tokens.js';
 import { call, command, createSessionWithOutline, join, stateJson } from './helpers.js';
 
 const resourceId = '2ec03e9e-8ed8-4ddd-94ed-11847531dd8f';
@@ -38,6 +39,29 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 }
 
 describe('ephemeral session resources', () => {
+  it('lets only the active presenter replace an asset, not a co-facilitator seat', async () => {
+    const session = await createSessionWithOutline(outline);
+    const stub = env.SESSIONS.get(env.SESSIONS.idFromName(session.sessionCode));
+    const seat = await stub.fetch('https://session.internal/__facilitator', {
+      method: 'POST',
+      body: JSON.stringify({ id: 'co-host', name: 'Co-host', canRecover: false }),
+    });
+    expect(seat.status).toBe(200);
+    const coHostToken = await signToken(env.TOKEN_SECRET, { sessionCode: session.sessionCode, role: 'host', facilitatorId: 'co-host' });
+    const put = async (token: string, bytes: Uint8Array) => call(`/api/sessions/${session.sessionCode}/assets/${resourceId}`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/pdf', 'x-openroom-sha256': await sha256(bytes) },
+      body: bytes,
+    });
+    const original = new TextEncoder().encode('%PDF-1.4\noriginal\n%%EOF');
+    expect((await put(session.hostToken, original)).status).toBe(201);
+    const replaced = await put(coHostToken, new TextEncoder().encode('%PDF-1.4\nreplaced\n%%EOF'));
+    expect(replaced.status).toBe(403);
+    expect(await replaced.json()).toMatchObject({ error: { code: 'E_FORBIDDEN' } });
+    const served = await call(`/api/sessions/${session.sessionCode}/assets/${resourceId}`);
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(original);
+  });
+
   it('cannot replace an asset when the session starts while its upload body is still arriving', async () => {
     const session = await createSessionWithOutline(outline);
     const original = new TextEncoder().encode('%PDF-1.4\noriginal\n%%EOF');
@@ -53,7 +77,7 @@ describe('ephemeral session resources', () => {
       let release!: () => void;
       const reading = new Promise<void>((resolve) => { entered = resolve; });
       const pendingBody = new Promise<void>((resolve) => { release = resolve; });
-      const upload = new Request(`https://session.test/__assets/${resourceId}`, {
+      const upload = new Request(`https://session.test/__assets/${resourceId}?facilitatorId=${host.facilitation.yourId}`, {
         method: 'PUT', headers: { 'content-type': 'application/pdf', 'x-openroom-sha256': replacementHash }, body: replacement,
       });
       vi.spyOn(upload, 'arrayBuffer').mockImplementation(async () => {

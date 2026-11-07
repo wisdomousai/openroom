@@ -20,6 +20,26 @@ describe('element HTML sanitiser', () => {
     expect(elementMarkupIssue('<a href="javascript:alert(1)">x</a>')).toMatch(/javascript/);
   });
 
+  // Attributes start after `/` or a closing quote too, not only after a space.
+  it.each([
+    '<img src="x"/onerror="alert(1)">',
+    '<img src="x"onerror="alert(1)">',
+    '<svg/onload="alert(1)"></svg>',
+    '<<script></script>img src=x onerror=alert(1)>',
+  ])('rejects and strips the event attribute in %s', (html) => {
+    expect(elementMarkupIssue(html)).not.toBeNull();
+    const cleaned = sanitizeElementHtml(html);
+    expect(cleaned).not.toMatch(/onerror|onload/);
+    expect(elementMarkupIssue(cleaned)).toBeNull();
+  });
+
+  it('reads character references before checking a link scheme', () => {
+    expect(elementMarkupIssue('<a href="jav&#x61;script:alert(1)">x</a>')).toMatch(/javascript/);
+    expect(elementMarkupIssue('<a href="javascript&colon;alert(1)">x</a>')).toMatch(/javascript/);
+    expect(sanitizeElementHtml('<a href="java&Tab;script:alert(1)">x</a>')).toBe('<a  >x</a>');
+    expect(elementMarkupIssue('<a href="https://example.org/?a=1&amp;b=2">x</a><img src="/a.png" alt="">')).toBeNull();
+  });
+
   it('strips the unsafe bits so a mixed fragment can still draw', () => {
     const cleaned = sanitizeElementHtml(
       '<p>ok</p><script>alert(1)</script><img src="https://a.test/a.png" onclick="bad()">',

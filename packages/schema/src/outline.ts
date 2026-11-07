@@ -630,14 +630,70 @@ function pruneStepUnionErrors(errors: readonly ErrorObject[], input: unknown): S
   return kept;
 }
 
+/* ------------------------------------------------------------------ */
+/* Oversize arrays                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Ajv with `allErrors` keeps validating every item of an array that is already
+ * over its `maxItems`, and joins each failing `$ref`'s errors onto all the
+ * errors so far, so its time grows with the square of the bad items. Validate
+ * no longer than the schema could ever accept. Both limits are read from the
+ * schema: the step list's own, and the largest anywhere.
+ */
+const STEPS_MAX = (outlineSchema['properties'] as { steps?: { maxItems?: number } } | undefined)?.steps?.maxItems ?? 200;
+const ARRAY_MAX = (() => {
+  let max = STEPS_MAX;
+  const pending: unknown[] = [outlineSchema];
+  while (pending.length > 0) {
+    const node = pending.pop();
+    if (node === null || typeof node !== 'object') continue;
+    const limit = (node as { maxItems?: unknown }).maxItems;
+    if (typeof limit === 'number' && limit > max) max = limit;
+    pending.push(...Object.values(node));
+  }
+  return max;
+})();
+
+/**
+ * Ajv errors read past this many are dropped before pruning. Steps are checked
+ * in order and a union's own error follows its branches', so what is kept is
+ * the complete report for the first steps. Normal mistakes stay far below it.
+ */
+const SCHEMA_ERRORS_MAX = 5000;
+
+/** The first array longer than any the schema accepts, as an error. */
+function oversizeArrayError(input: unknown): SessionError | null {
+  const steps = (input as { steps?: unknown } | null)?.steps;
+  if (Array.isArray(steps) && steps.length > STEPS_MAX) {
+    return { code: ErrorCodes.E_SCHEMA, path: '/steps', message: `must NOT have more than ${String(STEPS_MAX)} items` };
+  }
+  const pending: [unknown, string][] = [[input, '']];
+  while (pending.length > 0) {
+    const [node, path] = pending.pop()!;
+    if (node === null || typeof node !== 'object') continue;
+    if (Array.isArray(node) && node.length > ARRAY_MAX) {
+      return { code: ErrorCodes.E_SCHEMA, path: path || '/', message: `must NOT have more than ${String(ARRAY_MAX)} items` };
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (value !== null && typeof value === 'object') {
+        pending.push([value, `${path}/${key.replace(/~/g, '~0').replace(/\//g, '~1')}`]);
+      }
+    }
+  }
+  return null;
+}
+
 /** Validate an Outline. Interactions are checked against the shared interaction defs. */
 export function validateOutline(rawInput: unknown): OutlineValidateResult {
   // Withdrawn fields are dropped, never rejected: stored outlines carrying them
   // must keep validating. See DEPRECATED_OUTLINE_STEP_KEYS in normalize.ts.
   const input = stripDeprecatedOutlineFields(rawInput);
+  const oversize = oversizeArrayError(input);
+  if (oversize !== null) return { ok: false, errors: [oversize] };
   const validator = compiledOutlineValidator as ValidateFunction;
   if (!validator(input)) {
-    const errors = pruneStepUnionErrors(validator.errors ?? [], input);
+    const errors = pruneStepUnionErrors((validator.errors ?? []).slice(0, SCHEMA_ERRORS_MAX), input);
     return {
       ok: false,
       errors: errors.length > 0 ? errors : [{ code: ErrorCodes.E_SCHEMA, path: '/', message: 'invalid outline' }],

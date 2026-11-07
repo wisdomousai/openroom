@@ -56,6 +56,8 @@ export interface ByokRunnerDeps {
 export interface ByokPrefixInput {
   workdir: string;
   folders: string[];
+  /** Temporary copies of attached files; read_file may read them. */
+  attachmentsDir?: string;
   mcp: McpStdioCommand;
   model?: string | null;
   /** Task profile; absent is the full agent. */
@@ -180,7 +182,11 @@ async function byokPrefix(
   for (const [name, item] of named.sort(([left], [right]) => (left < right ? -1 : 1))) {
     tools[name] = item;
   }
-  tools.read_file = readFileTool([input.workdir, ...input.folders]);
+  tools.read_file = readFileTool([
+    input.workdir,
+    ...(input.attachmentsDir === undefined ? [] : [input.attachmentsDir]),
+    ...input.folders,
+  ]);
   return { session, model, system, tools };
 }
 

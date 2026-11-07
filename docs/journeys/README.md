@@ -90,6 +90,7 @@ and themes are document content and may use the saved design system's gradients.
 | UC-59 | Slide content fits its box in the editor and on the stage | editor at 1440 × 900, stage at 1920 × 1080 | `e2e/journeys/UC-59-slide-fitting.spec.ts` | green in Chromium |
 | UC-60 | Rejoin a running lesson | student, linked deck, live session | `e2e/journeys/UC-60-live-rejoin.spec.ts` | green when added |
 | UC-61 | Workspace pages at phone and laptop widths | student with two decks and records | `e2e/journeys/UC-61-workspace-widths.spec.ts` | green when added |
+| UC-62 | Create questions in PowerPoint | one training space, simulated Office file | `e2e/journeys/UC-62-powerpoint-questions-in-place.spec.ts` | green in Chromium |
 
 Status values: `planned` · `draft` · `red` · `green`. `green when added` means the journey passed when it was committed and has not been re-run since.
 

@@ -64,15 +64,14 @@ describe('codex runner', () => {
     });
   });
 
-  it('scopes the thread to the conversation workdir plus referenced folders', () => {
+  it('writes only in the conversation workdir, with no shell network and no writable reference folders', () => {
     expect(codexThreadOptions(turnInput())).toEqual({
       workingDirectory: '/run/conv',
       skipGitRepoCheck: true,
       sandboxMode: 'workspace-write',
-      networkAccessEnabled: true,
+      networkAccessEnabled: false,
       // Headless: an approval prompt could only be auto-cancelled.
       approvalPolicy: 'never',
-      additionalDirectories: ['/Users/t/School'],
     });
   });
 

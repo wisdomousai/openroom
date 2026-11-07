@@ -3,9 +3,10 @@
  * `ask_question`. Local agents reverse-proxy here when this socket exists.
  * Hosted calls use the Electron session cookie.
  */
+import { randomBytes } from 'node:crypto';
 import { createServer, type Server } from 'node:net';
-import { mkdir, unlink } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { session } from 'electron';
 
@@ -31,13 +32,28 @@ export interface DesktopDocument {
   write(source: string): Promise<void>;
 }
 
-export function desktopMcpSocketPath(userData: string): string {
-  if (process.platform === 'win32') return '\\\\.\\pipe\\openroom-mcp';
+/**
+ * Windows pipe names are one machine-wide namespace, so a fixed name could be
+ * taken or answered by another user first. Each launch picks a random name and
+ * leaves it in `desktopMcpPipeFile`, which only this user can read; the
+ * macOS/Linux socket gets the same protection from living in userData.
+ */
+const WINDOWS_PIPE = `\\\\.\\pipe\\openroom-mcp-${randomBytes(16).toString('hex')}`;
+
+export function desktopMcpSocketPath(userData: string, platform: NodeJS.Platform = process.platform): string {
+  if (platform === 'win32') return WINDOWS_PIPE;
   return `${userData.replace(/\/$/, '')}/mcp.sock`;
 }
 
-export function startDesktopMcpServer(input: {
+/** Where the CLI finds this launch's Windows pipe name (`openroom mcp`). */
+export function desktopMcpPipeFile(userData: string): string {
+  return join(userData, 'mcp-pipe');
+}
+
+export async function startDesktopMcpServer(input: {
   socketPath: string;
+  /** Windows: written with the pipe name once listening, removed on close. */
+  pipeFile?: string;
   origin: string;
   currentDocument: () => DesktopDocument | null;
   ask: (args: Record<string, unknown>) => Promise<AgentQuestionAnswer[]>;
@@ -45,7 +61,14 @@ export function startDesktopMcpServer(input: {
   onDeckSaved?: (deckId: string) => void;
 }): Promise<Server> {
   const deps = multiplexToolDeps(hostedDeps(input.origin), liveFileBinding(input.currentDocument));
-  return listen(input.socketPath, deps, input.ask, input.onDeckSaved);
+  const server = await listen(input.socketPath, deps, input.ask, input.onDeckSaved);
+  const pipeFile = input.pipeFile;
+  if (process.platform === 'win32' && pipeFile !== undefined) {
+    await mkdir(dirname(pipeFile), { recursive: true });
+    await writeFile(pipeFile, input.socketPath, { encoding: 'utf8', mode: 0o600 });
+    server.once('close', () => { void unlink(pipeFile).catch(() => undefined); });
+  }
+  return server;
 }
 
 function liveFileBinding(currentDocument: () => DesktopDocument | null): FileBinding | null {

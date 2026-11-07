@@ -40,6 +40,7 @@ function claimsFor(overrides: Record<string, unknown> = {}): Record<string, unkn
     aud: CLIENT_ID,
     sub: 'google-sub-1',
     email: 'host@example.com',
+    email_verified: true,
     name: 'Host One',
     exp: Math.floor(Date.now() / 1000) + 600,
     ...overrides,
@@ -54,10 +55,12 @@ function exchanger(idToken: string | null): TokenExchanger {
 async function begin(
   returnTo?: string,
   desktop = false,
+  desktopChallenge?: string,
 ): Promise<{ cookie: string; state: string; challenge: string }> {
   const url = new URL(`${BASE}/api/auth/google`);
   if (returnTo !== undefined) url.searchParams.set('returnTo', returnTo);
   if (desktop) url.searchParams.set('desktop', '1');
+  if (desktopChallenge !== undefined) url.searchParams.set('desktop_challenge', desktopChallenge);
   const res = await googleStartRoute(new Request(url), configured());
   expect(res.status).toBe(302);
   const setCookie = res.headers.get('set-cookie') ?? '';
@@ -240,6 +243,23 @@ describe('google oidc', () => {
     }
   });
 
+  it('refuses a Google identity whose email is not verified, so it cannot claim invites', async () => {
+    const sub = `unverified-${crypto.randomUUID()}`;
+    for (const emailVerified of [false, undefined, 'true']) {
+      const { cookie, state } = await begin();
+      const res = await googleCallbackRoute(
+        callbackRequest(cookie, { code: 'c', state }),
+        configured(),
+        exchanger(fakeIdToken(claimsFor({ sub, email: 'Victim@Example.test', email_verified: emailVerified }))),
+      );
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({ error: 'email-not-verified' });
+      expect(res.headers.getSetCookie().some((c) => c.startsWith(`${SESSION_COOKIE}=`))).toBe(false);
+    }
+    const users = await env.DB.prepare('SELECT COUNT(*) AS n FROM users WHERE google_sub = ?1').bind(sub).first<{ n: number }>();
+    expect(users?.n).toBe(0);
+  });
+
   it('502s when the token exchange fails', async () => {
     const { cookie, state } = await begin();
     const res = await googleCallbackRoute(
@@ -293,5 +313,38 @@ describe('google oidc', () => {
       configured(),
     );
     expect(replay.status).toBe(400);
+  });
+
+  it('redeems a desktop ticket only with the verifier of the Desktop that started the sign-in', async () => {
+    const verifier = b64url(crypto.randomUUID() + crypto.randomUUID());
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+    const challenge = btoa(String.fromCharCode(...digest)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const redeem = (body: Record<string, string>) =>
+      desktopRedeemRoute(
+        new Request(`${BASE}/api/auth/desktop/redeem`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        }),
+        configured(),
+      );
+    const signIn = async (desktopChallenge?: string) => {
+      const { cookie, state } = await begin(undefined, true, desktopChallenge);
+      const res = await googleCallbackRoute(
+        callbackRequest(cookie, { code: 'auth-code', state }),
+        configured(),
+        exchanger(fakeIdToken(claimsFor({ sub: `desk-${crypto.randomUUID()}` }))),
+      );
+      return /ticket=([^"&]+)/.exec(await res.text())?.[1] as string;
+    };
+
+    // Someone else's ticket (no binding, or bound to their own challenge) does not sign this Desktop in.
+    expect((await redeem({ ticket: await signIn(), verifier })).status).toBe(400);
+    const otherVerifier = b64url(crypto.randomUUID() + crypto.randomUUID());
+    expect((await redeem({ ticket: await signIn(challenge), verifier: otherVerifier })).status).toBe(400);
+    // Nor does a bound ticket redeem without its verifier.
+    expect((await redeem({ ticket: await signIn(challenge) })).status).toBe(400);
+
+    expect((await redeem({ ticket: await signIn(challenge), verifier })).status).toBe(200);
   });
 });

@@ -181,10 +181,16 @@ deleted when the window or app closes; referenced folders are read in place.
 The teacher’s subscription pays, or their own provider key does. Desktop does not
 wrap the model and does not upload school files. The API-key host reaches OpenAI,
 Google, Anthropic, Mistral, Groq, OpenRouter, or Cloudflare Workers AI with a key
-the teacher stores in the OS keychain; the key goes only to that provider. Codex
-keeps the workspace-write filesystem boundary but has network access so a pasted
-worksheet URL can be fetched; the API-key host has no shell and one read-only
-`read_file` bounded by the workspace and the folders named that turn.
+the teacher stores in the OS keychain; the key goes only to that provider. A run
+accepts only files and folders the teacher picked in that window's dialogs (or
+pasted). Codex writes only in the deck workspace and its shell has no network;
+reference folders are read, never made writable. Claude's file tools are held by
+a Desktop hook to the workspace, the attachments and the named folders, and it has
+no shell or web tools. The API-key host has no shell and one read-only
+`read_file` bounded by the workspace, the attachments and the folders named that
+turn. In the pane, `openroom_api` writes to space members, invitations, student
+access links and billing wait for the teacher to confirm a question that Desktop
+asks; the agent cannot answer it.
 
 One-turn demo (paste into a connected agent):
 

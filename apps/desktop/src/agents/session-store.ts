@@ -90,6 +90,13 @@ export interface AgentSessionStore {
   disposeAll(): Promise<void>;
 }
 
+const CONVERSATION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Conversation ids are this store's randomUUIDs; nothing else names a transcript file. */
+export function isConversationId(value: unknown): value is string {
+  return typeof value === 'string' && CONVERSATION_ID.test(value);
+}
+
 function workspaceSlug(deckKey: string): string {
   return createHash('sha256').update(deckKey).digest('hex');
 }
@@ -103,6 +110,7 @@ function indexPath(root: string, deckKey: string): string {
 }
 
 function conversationPath(root: string, deckKey: string, id: string): string {
+  if (!isConversationId(id)) throw new Error('Chat not found for this deck.');
   return join(workspaceDir(root, deckKey), 'conversations', `${id}.json`);
 }
 
@@ -169,8 +177,13 @@ export function createAgentSessionStore(deps: AgentSessionStoreDeps): AgentSessi
   const writeIndex = async (index: WorkspaceIndex): Promise<void> =>
     atomicJson(indexPath(deps.workspacesRoot(), index.deckKey), index);
 
-  const readConversation = (deckKey: string, id: string): Promise<PersistedConversation | null> =>
-    readJson<PersistedConversation>(conversationPath(deps.workspacesRoot(), deckKey, id));
+  /** A transcript is adopted only under the id and deck it was filed as. */
+  const readConversation = async (deckKey: string, id: string): Promise<PersistedConversation | null> => {
+    if (!isConversationId(id)) return null;
+    const conversation = await readJson<PersistedConversation>(conversationPath(deps.workspacesRoot(), deckKey, id));
+    if (conversation === null || conversation.id !== id || conversation.deckKey !== deckKey) return null;
+    return Array.isArray(conversation.folders) && Array.isArray(conversation.messages) ? conversation : null;
+  };
 
   const queuePersist = (session: AgentSession): Promise<void> => {
     const value = persisted(session);
@@ -240,6 +253,14 @@ export function createAgentSessionStore(deps: AgentSessionStoreDeps): AgentSessi
       const sessions = sessionsOf(senderId);
       const existing = request.conversationId === null ? undefined : sessions.get(request.conversationId);
       if (existing !== undefined && existing.deckKey === deckKey && existing.host === request.host) {
+        // Rebrief the shared deck workspace: the last turn could write in it.
+        await createAgentWorkdir({
+          root: existing.workdir.path,
+          attachmentsRoot: join(deps.runsRoot(), existing.id),
+          attachments: [],
+          skillsRoot: deps.skillsRoot(),
+          mcp: deps.mcp(),
+        });
         const names = await addAttachments(existing.workdir.attachmentsDir, request.attachments);
         existing.newAttachmentPaths = names.map((name) => join(existing.workdir.attachmentsDir, name));
         existing.newFolders = request.folders.filter((folder) => !existing.folders.includes(folder));

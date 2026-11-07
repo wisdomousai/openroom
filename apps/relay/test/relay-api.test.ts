@@ -3,10 +3,14 @@
  * joins, the refusals that keep identified sessions on the control plane, and
  * the participant limit a key holder sets.
  */
-import { env } from 'cloudflare:test';
+import { env, runInDurableObject } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 
+import { generateSessionCode } from '@openroom/domain';
+import { compileToOutline } from '@openroom/schema';
+
 import worker from '../src/index.js';
+import { initSession } from '../src/live.js';
 import { signToken } from '../src/tokens.js';
 import {
   BASE,
@@ -129,6 +133,41 @@ describe('POST /api/join', () => {
       expect(response.status).toBe(403);
       expect(await response.json()).toMatchObject({ error: 'identified-join-unavailable' });
     }
+  });
+
+  it('admits each invited mode only with its own credential family', async () => {
+    // The control plane verifies the credential; the session binds its kind to the mode.
+    const seat = async (identityMode: 'roster' | 'identified', kind: string) => {
+      const compiled = compileToOutline(withOutlineMode(identityMode));
+      if (!compiled.ok) throw new Error('outline');
+      const sessionCode = generateSessionCode();
+      expect((await initSession(env, { outline: compiled.outline, sessionCode })).status).toBe(200);
+      const response = await env.SESSIONS.get(env.SESSIONS.idFromName(sessionCode)).fetch('https://session.internal/__join', {
+        method: 'POST',
+        body: JSON.stringify({ identity: { displayName: 'Camille', seatKey: 'seat-1', kind } }),
+      });
+      return { status: response.status, body: await response.json() };
+    };
+    expect(await seat('roster', 'context-link')).toMatchObject({ status: 403, body: { error: 'context-link-invalid' } });
+    expect(await seat('identified', 'roster-invite')).toMatchObject({ status: 403, body: { error: 'roster-invite-invalid' } });
+    expect(await seat('roster', 'roster-invite')).toMatchObject({ status: 200, body: { handle: 'Camille' } });
+  });
+
+  it('answers an unissued code with 404 and leaves no storage behind', async () => {
+    const malformed = await joinBody({ code: 'ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ' });
+    expect(malformed.status).toBe(404);
+    expect(await malformed.json()).toMatchObject({ error: 'session-not-found' });
+
+    const invented = 'ZZZZ2345';
+    const unknown = await joinBody({ code: invented });
+    expect(unknown.status).toBe(404);
+    expect(await unknown.json()).toMatchObject({ error: 'session-not-found' });
+    const tables = await runInDurableObject(
+      env.SESSIONS.get(env.SESSIONS.idFromName(invented)),
+      (_instance, state) =>
+        state.storage.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\'").toArray(),
+    );
+    expect(tables).toEqual([]);
   });
 
   it('honours the participant limit the creator sets', async () => {

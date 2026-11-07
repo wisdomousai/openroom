@@ -90,16 +90,16 @@ describe('paid access across account clients', () => {
     expect((await editor.request(members, 'GET', undefined, 'mcp')).status).toBe(404);
   });
 
-  it('gates named sessions on every creation path and uses the space owner for invited presenters', async () => {
-    const owner = await account(), presenter = await account();
+  it('gates named sessions on every creation path and uses the space owner for invited editors', async () => {
+    const owner = await account(), invited = await account();
     for (const client of ['cookie', 'pat', 'oauth'] as const) expect((await owner.request('/api/sessions', 'POST', { outline: namedOutline }, client)).status).toBe(403);
     expect((await owner.rpc('session_create', { outline: namedOutline })).error).toBe(true);
     const source = await owner.request('/api/decks', 'POST', { spaceId: owner.spaceId, content: namedOutline });
     expect(source.status).toBe(201);
     for (const client of clients) expect((await owner.request(`/api/decks/${source.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() }, client)).status).toBe(403);
     expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM live_sessions WHERE user_id=?1').bind(owner.id).first<{ n: number }>())!.n).toBe(0);
-    const change = await subscribe(owner); await member(owner, presenter, 'presenter');
-    const started = await presenter.request('/api/sessions', 'POST', { outline: namedOutline, spaceId: owner.spaceId }, 'oauth');
+    const change = await subscribe(owner); await member(owner, invited, 'editor');
+    const started = await invited.request('/api/sessions', 'POST', { outline: namedOutline, spaceId: owner.spaceId }, 'oauth');
     expect(started.status).toBe(201);
     const live = started.body as Live, seats = 'roster/seats';
     const seat = await liveRequest(live, seats, { displayName: 'Alex' });

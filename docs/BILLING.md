@@ -9,15 +9,17 @@ acceptance, including a provider support investigation, remains open.
 
 ## Self-hosted deployments
 
-Billing is optional. A deployment with no `PADDLE_ENVIRONMENT` (unset or empty)
-has no billing at all: `readEntitlements` grants every account every capability
+Billing is optional. A deployment that sets `PADDLE_ENVIRONMENT=off` has no
+billing at all: `readEntitlements` grants every account every capability
 (`keep`, `roster`, `rawExport`, `branding`, `team`, `continuity`,
 `largeSessions`) except the reserved `connectors`. No subscription, manual grant or customer mapping is read.
 `GET /api/my/billing` answers `{ available: false, selfHosted: true }`, and
 Settings → Billing states that billing is off on this deployment.
 
-A deployment that sets `PADDLE_ENVIRONMENT` is a billed deployment, and the
-rest of this document applies to it. A billed deployment whose catalog or keys
+A deployment with any other `PADDLE_ENVIRONMENT` is a billed deployment, and the
+rest of this document applies to it. An unset or empty value is treated the same
+way (fail closed), except on a local server with `DEMO_AUTH` enabled, where it
+means off. A billed deployment whose catalog or keys
 are missing or invalid stays billed: accounts are free (or keep their manual
 development grants) until configuration is fixed. It never falls back to the
 self-hosted unlock. The hosted openroom.app must always set

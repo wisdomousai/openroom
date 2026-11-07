@@ -120,6 +120,35 @@ describe('roster sessions', () => {
     });
     expect(sneak.status).toBe(403);
   });
+
+  it('lets a space editor mint seats but not a presenter co-facilitator', async () => {
+    const owner = await seedUser(JSON.stringify({ roster: true, team: true }));
+    const presenter = await seedUser('{}');
+    const space = (await (await asUser(owner, '/api/my/spaces', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Board', experience: 'training' }),
+    })).json()) as { id: string };
+    await env.DB.prepare('INSERT INTO space_members (space_id, user_id, role, created_at) VALUES (?1, ?2, ?3, ?4)')
+      .bind(space.id, presenter.userId, 'presenter', Date.now())
+      .run();
+    const created = await asUser(owner, '/api/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ outline: ROSTER_OUTLINE, spaceId: space.id }),
+    });
+    expect(created.status).toBe(201);
+    const session = (await created.json()) as { sessionCode: string; hostToken: string; code: string };
+    const facilitate = await asUser(presenter, `/api/my/sessions/${session.code}/facilitate`, { method: 'POST' });
+    expect(facilitate.status).toBe(200);
+    const { hostToken } = (await facilitate.json()) as { hostToken: string };
+
+    const refused = await call(`/api/sessions/${session.sessionCode}/roster/seats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${hostToken}` },
+      body: JSON.stringify({ displayName: 'Mallory' }),
+    });
+    expect(refused.status).toBe(403);
+    expect(await mintSeat(session, owner, 'Alex')).toMatchObject({ token: expect.stringMatching(/^orinv_/) });
+  });
 });
 
 async function mintSeat(

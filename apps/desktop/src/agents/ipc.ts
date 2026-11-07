@@ -5,7 +5,7 @@ import * as electron from 'electron';
 import { dialog, shell } from 'electron';
 
 import { AGENT_CHANNELS } from './channels.js';
-import { createAskQuestionBroker, type AskQuestionBroker } from './ask-question.js';
+import { ASK_QUESTION_TOOL_NAME, createAskQuestionBroker, type AskQuestionBroker } from './ask-question.js';
 import { createHostDetector, isHostSignedIn, systemAsyncDetectDeps, systemDetectDeps, type HostDetector } from './detect.js';
 import { byokModels } from './byok-models.js';
 import { createClaudeRunner } from './hosts/claude.js';
@@ -20,8 +20,9 @@ import { codexOpenScript } from './open-in-codex.js';
 import { createPastedImageStore, type PastedImage, type PastedImageStore } from './pasted.js';
 import { agentTaskProfile, FULL_TASK_PROFILE, type AgentTaskProfileId } from './profiles.js';
 import { routeAgentProfile, type AgentRouterDeps } from './router.js';
-import { createAgentSessionStore, type AgentSessionStore } from './session-store.js';
+import { createAgentSessionStore, isConversationId, type AgentSessionStore } from './session-store.js';
 import type { AgentRunnerMap } from './runner.js';
+import { AGENT_HOST_ORDER } from './types.js';
 import type { AgentEvent, AgentChatMessage, AgentHostId, AgentRunRequest, AgentRunResult, McpStdioCommand } from './types.js';
 
 export interface AgentIpcDeps {
@@ -69,6 +70,70 @@ const LOGIN_MISSING: Record<AgentHostId, string> = {
   byok: 'Add an API key in Agent settings instead.',
 };
 
+/**
+ * Paths the tutor chose in this window's native dialogs, or pasted as images.
+ * The renderer hands them back with a run, but only main decides which of them
+ * the agent may read or be given as a folder.
+ */
+export interface PickedPaths {
+  files: Set<string>;
+  folders: Set<string>;
+}
+
+function stringList(value: unknown, field: string): string[] {
+  if (!Array.isArray(value) || !value.every((item): item is string => typeof item === 'string')) {
+    throw new Error(`Invalid ${field}.`);
+  }
+  return value;
+}
+
+function optionalString(value: unknown, field: string): string | null | undefined {
+  if (value === undefined || value === null || typeof value === 'string') return value;
+  throw new Error(`Invalid ${field}.`);
+}
+
+/**
+ * The run request as main accepts it: every attachment and folder was picked
+ * in this window, and the conversation id is one this store minted. Anything
+ * else is refused before a path reaches the workdir or an agent host.
+ */
+export function checkedRunRequest(raw: unknown, picked: PickedPaths): AgentRunRequest {
+  const request = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const host = request['host'];
+  if (!AGENT_HOST_ORDER.includes(host as AgentHostId)) throw new Error('Unknown agent host.');
+  const prompt = request['prompt'];
+  if (typeof prompt !== 'string') throw new Error('Invalid prompt.');
+  const attachments = stringList(request['attachments'], 'attachments');
+  const folders = stringList(request['folders'], 'folders');
+  if (attachments.some((path) => !picked.files.has(path))) {
+    throw new Error('Attach files with the attach button.');
+  }
+  if (folders.some((path) => !picked.folders.has(path))) {
+    throw new Error('Choose reference folders with the folder button.');
+  }
+  const conversationId = request['conversationId'] ?? null;
+  if (conversationId !== null && !isConversationId(conversationId)) throw new Error('Chat not found for this deck.');
+  const deckId = optionalString(request['deckId'], 'deck');
+  const model = optionalString(request['model'], 'model');
+  const profile = optionalString(request['profile'], 'profile');
+  return {
+    host: host as AgentHostId,
+    prompt,
+    attachments,
+    folders,
+    conversationId,
+    ...(deckId === undefined ? {} : { deckId }),
+    ...(model === undefined ? {} : { model }),
+    ...(profile === undefined ? {} : { profile: profile as AgentRunRequest['profile'] }),
+  };
+}
+
+/**
+ * The sidecar every embedded host talks to. With ask_question available (the
+ * pane), account-level openroom_api writes wait for the tutor's confirmation
+ * there. The Codex terminal handoff denies ask_question and confirms each tool
+ * call in Codex's own prompt instead.
+ */
 export function mcpStdioCommand(deps: AgentIpcDeps, denyTools: readonly string[] = []): McpStdioCommand {
   return {
     command: deps.electronExecPath(),
@@ -77,6 +142,7 @@ export function mcpStdioCommand(deps: AgentIpcDeps, denyTools: readonly string[]
       '--socket',
       deps.mcpSocketPath(),
       ...['deck_preview', ...denyTools].flatMap((tool) => ['--deny-tool', tool]),
+      ...(denyTools.includes(ASK_QUESTION_TOOL_NAME) ? [] : ['--confirm-api']),
     ],
     env: { ELECTRON_RUN_AS_NODE: '1' },
   };
@@ -139,6 +205,16 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
   const askBroker = deps.askBroker ?? createAskQuestionBroker();
   const logins = new Map<number, () => void>();
   const runs = new Map<number, { cancel: () => void }>();
+  // Keyed by the window's WebContents, so a closed window's picks go with it.
+  const picks = new WeakMap<WebContents, PickedPaths>();
+  const pickedBy = (sender: WebContents): PickedPaths => {
+    let picked = picks.get(sender);
+    if (picked === undefined) {
+      picked = { files: new Set(), folders: new Set() };
+      picks.set(sender, picked);
+    }
+    return picked;
+  };
 
   ipc.handle(AGENT_CHANNELS.list, () => detector.list());
 
@@ -215,6 +291,7 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     const options = { properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'> };
     const result = win === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(win, options);
     if (result.canceled) return [];
+    for (const path of result.filePaths) pickedBy(event.sender).files.add(path);
     return result.filePaths;
   });
 
@@ -223,6 +300,7 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     const options = { properties: ['openDirectory', 'multiSelections'] as Array<'openDirectory' | 'multiSelections'> };
     const result = win === null ? await dialog.showOpenDialog(options) : await dialog.showOpenDialog(win, options);
     if (result.canceled) return [];
+    for (const path of result.filePaths) pickedBy(event.sender).folders.add(path);
     return result.filePaths;
   });
 
@@ -230,7 +308,7 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
    * Pasted or dropped images: bytes in, path out. They then travel as ordinary
    * attachments, so nothing else in the run path needs to know about them.
    */
-  ipc.handle(AGENT_CHANNELS.savePasted, async (_event, images: PastedImage[]) => {
+  ipc.handle(AGENT_CHANNELS.savePasted, async (event, images: PastedImage[]) => {
     if (!Array.isArray(images)) return [];
     const saved = await Promise.all(
       images.map((image) =>
@@ -239,18 +317,22 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
           .catch(() => null),
       ),
     );
-    return saved.filter((path): path is string => path !== null);
+    const paths = saved.filter((path): path is string => path !== null);
+    for (const path of paths) pickedBy(event.sender).files.add(path);
+    return paths;
   });
 
   ipc.handle(AGENT_CHANNELS.load, (event, deckId?: string | null) =>
     store.load(deps.deckKey(event.sender, deckId ?? null)),
   );
 
-  ipc.handle(AGENT_CHANNELS.select, (event, conversationId: string, deckId?: string | null) =>
-    store.select(deps.deckKey(event.sender, deckId ?? null), conversationId),
-  );
+  ipc.handle(AGENT_CHANNELS.select, (event, conversationId: unknown, deckId?: string | null) => {
+    if (!isConversationId(conversationId)) throw new Error('Chat not found for this deck.');
+    return store.select(deps.deckKey(event.sender, deckId ?? null), conversationId);
+  });
 
-  ipc.handle(AGENT_CHANNELS.run, async (event, request: AgentRunRequest): Promise<AgentRunResult> => {
+  ipc.handle(AGENT_CHANNELS.run, async (event, raw: unknown): Promise<AgentRunResult> => {
+    const request = checkedRunRequest(raw, pickedBy(event.sender));
     const existing = runs.get(event.sender.id);
     if (existing !== undefined) throw new Error('A preparation is already running.');
     // Claim the slot before any await so a rapid second send cannot slip past the guard.
@@ -321,6 +403,7 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
         mcpConfigPath: session.workdir.claudeMcpConfigPath,
         mcp: mcpStdioCommand(deps),
         folders: session.folders,
+        attachmentsDir: session.workdir.attachmentsDir,
         resume: session.resumeId,
         // beginTurn already pushed this turn's prompt and a pending agent
         // placeholder; replaying them would duplicate the prompt.
