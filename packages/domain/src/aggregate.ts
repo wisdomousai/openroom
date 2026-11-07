@@ -1,8 +1,8 @@
 import type { NormalizedInteraction } from '@openroom/schema';
 
-import type { Aggregate, Ballot } from './types.js';
+import type { Aggregate, Answer } from './types.js';
 
-/** The zero aggregate for an interaction that has no ballots yet. */
+/** The zero aggregate for an interaction that has no answers yet. */
 export function emptyAggregate(interaction: NormalizedInteraction): Aggregate {
   switch (interaction.type) {
     case 'choice': {
@@ -60,32 +60,32 @@ function median(values: number[]): number | null {
 }
 
 /**
- * Recompute an interaction's aggregate from its ballots. Deterministic: given
- * the same ballot map (insertion order included) the output is byte-identical.
+ * Recompute an interaction's aggregate from its answers. Deterministic: given
+ * the same answer map (insertion order included) the output is byte-identical.
  *
  * "I don't know" is its own bar: counted in `dontKnow` *and* in `total`, and
  * named in the written summary. Means, medians and ranking averages still use
- * only the scored ballots so a don't-know never moves the math.
+ * only the scored answers so a don't-know never moves the math.
  */
 export function computeAggregate(
   interaction: NormalizedInteraction,
-  ballots: Record<string, Ballot>,
+  answers: Record<string, Answer>,
 ): Aggregate {
   const base = emptyAggregate(interaction);
-  const entries = Object.entries(ballots);
+  const entries = Object.entries(answers);
 
   switch (base.kind) {
     case 'choice': {
       let scored = 0;
       let dontKnow = 0;
-      for (const [, ballot] of entries) {
-        if (ballot.kind === 'dont-know') {
+      for (const [, answer] of entries) {
+        if (answer.kind === 'dont-know') {
           dontKnow += 1;
           continue;
         }
-        if (ballot.kind !== 'choice') continue;
+        if (answer.kind !== 'choice') continue;
         scored += 1;
-        for (const optionId of ballot.optionIds) {
+        for (const optionId of answer.optionIds) {
           base.counts[optionId] = (base.counts[optionId] ?? 0) + 1;
         }
       }
@@ -94,27 +94,27 @@ export function computeAggregate(
     case 'scale': {
       const values: number[] = [];
       let dontKnow = 0;
-      for (const [, ballot] of entries) {
-        if (ballot.kind === 'dont-know') {
+      for (const [, answer] of entries) {
+        if (answer.kind === 'dont-know') {
           dontKnow += 1;
           continue;
         }
-        if (ballot.kind !== 'scale') continue;
-        values.push(ballot.value);
-        base.counts[ballot.value] = (base.counts[ballot.value] ?? 0) + 1;
+        if (answer.kind !== 'scale') continue;
+        values.push(answer.value);
+        base.counts[answer.value] = (base.counts[answer.value] ?? 0) + 1;
       }
       return { ...base, total: values.length + dontKnow, mean: mean(values), dontKnow };
     }
     case 'numeric': {
       const values: number[] = [];
       let dontKnow = 0;
-      for (const [, ballot] of entries) {
-        if (ballot.kind === 'dont-know') {
+      for (const [, answer] of entries) {
+        if (answer.kind === 'dont-know') {
           dontKnow += 1;
           continue;
         }
-        if (ballot.kind !== 'numeric') continue;
-        values.push(ballot.value);
+        if (answer.kind !== 'numeric') continue;
+        values.push(answer.value);
       }
       values.sort((a, b) => a - b);
       return {
@@ -128,9 +128,9 @@ export function computeAggregate(
     }
     case 'text': {
       const list: { participantId: string; text: string; hidden: boolean }[] = [];
-      for (const [participantId, ballot] of entries) {
-        if (ballot.kind !== 'text') continue;
-        list.push({ participantId, text: ballot.text, hidden: ballot.hidden });
+      for (const [participantId, answer] of entries) {
+        if (answer.kind !== 'text') continue;
+        list.push({ participantId, text: answer.text, hidden: answer.hidden });
       }
       return { kind: 'text', entries: list, total: list.length };
     }
@@ -141,13 +141,13 @@ export function computeAggregate(
         hidden: boolean;
         votes: number;
       }[] = [];
-      for (const [participantId, ballot] of entries) {
-        if (ballot.kind !== 'qna') continue;
+      for (const [participantId, answer] of entries) {
+        if (answer.kind !== 'qna') continue;
         list.push({
           participantId,
-          text: ballot.text,
-          hidden: ballot.hidden,
-          votes: ballot.votes,
+          text: answer.text,
+          hidden: answer.hidden,
+          votes: answer.votes,
         });
       }
       // Most-voted first; ties broken by participantId for determinism.
@@ -164,14 +164,14 @@ export function computeAggregate(
       for (const id of optionIds) rankSums[id] = 0;
       let scored = 0;
       let dontKnow = 0;
-      for (const [, ballot] of entries) {
-        if (ballot.kind === 'dont-know') {
+      for (const [, answer] of entries) {
+        if (answer.kind === 'dont-know') {
           dontKnow += 1;
           continue;
         }
-        if (ballot.kind !== 'ranking') continue;
+        if (answer.kind !== 'ranking') continue;
         scored += 1;
-        ballot.optionIds.forEach((id, position) => {
+        answer.optionIds.forEach((id, position) => {
           if (!(id in base.scores)) return;
           // Borda: first place (position 0) is worth k points, last is worth 1.
           base.scores[id] = (base.scores[id] ?? 0) + (k - position);
@@ -187,13 +187,13 @@ export function computeAggregate(
     case 'fill-the-gaps': {
       const list: { participantId: string; gaps: Record<string, string>; hidden: boolean }[] = [];
       let dontKnow = 0;
-      for (const [participantId, ballot] of entries) {
-        if (ballot.kind === 'dont-know') {
+      for (const [participantId, answer] of entries) {
+        if (answer.kind === 'dont-know') {
           dontKnow += 1;
           continue;
         }
-        if (ballot.kind !== 'fill-the-gaps') continue;
-        list.push({ participantId, gaps: { ...ballot.gaps }, hidden: ballot.hidden });
+        if (answer.kind !== 'fill-the-gaps') continue;
+        list.push({ participantId, gaps: { ...answer.gaps }, hidden: answer.hidden });
       }
       return { kind: 'fill-the-gaps', entries: list, total: list.length + dontKnow, dontKnow };
     }
@@ -203,14 +203,14 @@ export function computeAggregate(
       for (const item of interaction.left) pairs[item.id] = {};
       const list: { participantId: string; pairs: Record<string, string> }[] = [];
       let dontKnow = 0;
-      for (const [participantId, ballot] of entries) {
-        if (ballot.kind === 'dont-know') {
+      for (const [participantId, answer] of entries) {
+        if (answer.kind === 'dont-know') {
           dontKnow += 1;
           continue;
         }
-        if (ballot.kind !== 'match') continue;
-        list.push({ participantId, pairs: { ...ballot.pairs } });
-        for (const [leftId, rightId] of Object.entries(ballot.pairs)) {
+        if (answer.kind !== 'match') continue;
+        list.push({ participantId, pairs: { ...answer.pairs } });
+        for (const [leftId, rightId] of Object.entries(answer.pairs)) {
           const row = pairs[leftId] ?? (pairs[leftId] = {});
           row[rightId] = (row[rightId] ?? 0) + 1;
         }

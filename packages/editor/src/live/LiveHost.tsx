@@ -563,7 +563,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
 
   const { downloadExport } = services.live;
   const doExport = useCallback(
-    (format: 'csv' | 'json' | 'ballots') => {
+    (format: 'csv' | 'json' | 'answers') => {
       downloadExport(live.sessionCode, live.hostToken, format).catch((err: unknown) => {
         push(err instanceof Error ? err.message : 'Export failed', 'error');
       });

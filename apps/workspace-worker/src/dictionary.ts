@@ -1,7 +1,7 @@
 /**
  * Word lookup: the dictionary entry, and the meaning in the student's language.
  *
- * Tutor and learner convenience, never a session command and never on the ballot
+ * Tutor and learner convenience, never a session command and never on the answer
  * path. This module holds no auth of its own — the two routes that call it
  * bring their own credential, because they carry different ones (a control
  * session for the tutor, a session capability token for the learner in a session).

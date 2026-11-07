@@ -22,7 +22,7 @@ questions, then collect a single shared response from each explicitly assigned g
    while the unassigned participant and projector still see no result.
 4. Reload the teammate's phone. The shared answer and role survive.
 5. Change the spokesperson. The former speaker loses the change-answer action; the new
-   speaker edits the same ballot. The aggregate still contains one response.
+   speaker edits the same answer. The aggregate still contains one response.
 6. Reveal to the room. Move to an individual question and answer separately from both
    group members. Each phone retains only its own unrevealed answer.
 7. Dissolve the group. Earlier group responses and the two individual answers remain.

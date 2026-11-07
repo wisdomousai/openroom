@@ -19,7 +19,7 @@
  * run of non-alphanumeric characters becomes a single space so that punctuation
  * cannot be used to break a word apart.
  *
- * A hit only sets `hidden: true` on the ballot. Nothing is deleted, and the
+ * A hit only sets `hidden: true` on the answer. Nothing is deleted, and the
  * host can always unhide via the `text.unhide` command.
  */
 

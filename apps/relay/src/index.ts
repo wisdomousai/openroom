@@ -71,10 +71,10 @@ const relayAuthority: LiveAuthority<never> = {
     return true;
   },
   async sessionEnded() {},
-  async mayExportBallots() {
+  async mayExportAnswers() {
     return true;
   },
-  async archivedBallots() {
+  async archivedAnswers() {
     return null;
   },
 };

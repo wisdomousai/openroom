@@ -38,7 +38,7 @@ function started() {
   return run(state, env({ command: 'session.start' }));
 }
 
-describe('fill-the-gaps ballots', () => {
+describe('fill-the-gaps answers', () => {
   it('accepts a complete gap fill and hides keys until reveal', () => {
     let state = started();
     state = run(state, env({ command: 'interaction.open', interactionId: 'gap' }));
@@ -73,7 +73,7 @@ describe('fill-the-gaps ballots', () => {
   });
 });
 
-describe('match ballots', () => {
+describe('match answers', () => {
   it('accepts a complete pairing and strips correct until reveal', () => {
     let state = started();
     state = run(state, env({ command: 'interaction.open', interactionId: 'pair' }));

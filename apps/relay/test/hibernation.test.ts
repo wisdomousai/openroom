@@ -4,7 +4,7 @@
  * Production drops idle SessionDOs from memory while hibernatable WebSockets stay
  * connected; the next event re-runs the constructor and `#load()` rebuilds
  * from SQLite. PRD requires "Hibernation, reinitialization, and reconnect
- * tests" and "no lost accepted ballot".
+ * tests" and "no lost accepted answer".
  *
  * `evictDurableObject` (the official vitest helper) currently times out on
  * SessionDO with "active references", so we cover the wake contract two ways:
@@ -80,7 +80,7 @@ async function simulateWake(sessionCode: string): Promise<void> {
 }
 
 describe('hibernation — abort (constructor re-run)', () => {
-  it('reloads SQLite state after abort without losing an accepted ballot', async () => {
+  it('reloads SQLite state after abort without losing an accepted answer', async () => {
     const session = await createLiveSession();
     await command(session.sessionCode, session.hostToken, { command: 'session.start' });
     await command(session.sessionCode, session.hostToken, {
@@ -96,7 +96,7 @@ describe('hibernation — abort (constructor re-run)', () => {
     });
 
     const before = await stateJson(session.sessionCode, session.hostToken, 'host');
-    expect(before.ballots.warmup[participant.participantId]).toEqual({
+    expect(before.answers.warmup[participant.participantId]).toEqual({
       kind: 'choice',
       optionIds: ['a'],
     });
@@ -115,7 +115,7 @@ describe('hibernation — abort (constructor re-run)', () => {
     expect(after.revision).toBe(before.revision);
     expect(after.status).toBe('live');
     expect(after.interactionStatus).toBe('open');
-    expect(after.ballots.warmup[participant.participantId]).toEqual({
+    expect(after.answers.warmup[participant.participantId]).toEqual({
       kind: 'choice',
       optionIds: ['a'],
     });
@@ -203,7 +203,7 @@ describe('hibernation — simulated wake (sockets stay open)', () => {
   });
 
   // Deliberate settle + silence windows put this past the 5s default under load.
-  it('preserves role tags so hidden-results ballots reach host only after wake', { timeout: 20_000 }, async () => {
+  it('preserves role tags so hidden-results answers reach host only after wake', { timeout: 20_000 }, async () => {
     const session = await createLiveSession();
     await command(session.sessionCode, session.hostToken, { command: 'session.start' });
     await command(session.sessionCode, session.hostToken, {

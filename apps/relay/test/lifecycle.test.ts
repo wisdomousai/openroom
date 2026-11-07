@@ -140,8 +140,8 @@ describe('full lifecycle e2e (examples/seg-camp.yaml)', () => {
     const countsText = await countsRes.text();
     expect(countsText.split('\n')[0]).toBe('interactionId,prompt,type,status,total,summary');
 
-    // ---- export: ballots csv (ops / unowned sessions) ------------------------
-    const csvExportRes = await call(`/api/sessions/${session.sessionCode}/export?format=ballots`, {
+    // ---- export: answers csv (ops / unowned sessions) ------------------------
+    const csvExportRes = await call(`/api/sessions/${session.sessionCode}/export?format=answers`, {
       headers: { authorization: `Bearer ${session.hostToken}` },
     });
     expect(csvExportRes.status).toBe(200);
@@ -149,8 +149,8 @@ describe('full lifecycle e2e (examples/seg-camp.yaml)', () => {
     const lines = csvText.split('\n').filter((line) => line.length > 0);
     expect(lines[0]).toBe('interactionId,prompt,participantId,name,answer,hidden');
 
-    const expectedRows = Object.values(hostAfterEnd.ballots as Record<string, Record<string, unknown>>).reduce(
-      (sum, ballotsForInteraction) => sum + Object.keys(ballotsForInteraction).length,
+    const expectedRows = Object.values(hostAfterEnd.answers as Record<string, Record<string, unknown>>).reduce(
+      (sum, answersForInteraction) => sum + Object.keys(answersForInteraction).length,
       0,
     );
     expect(lines.length - 1).toBe(expectedRows);
@@ -163,6 +163,6 @@ describe('full lifecycle e2e (examples/seg-camp.yaml)', () => {
     });
     expect(participantExportAttempt.status).toBe(403);
   // This journey performs the complete interaction/answer/export sequence;
-  // its timeout is an integration-test budget, not a ballot latency assertion.
+  // its timeout is an integration-test budget, not an answer latency assertion.
   }, 30_000);
 });

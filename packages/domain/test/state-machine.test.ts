@@ -131,7 +131,7 @@ describe('state machine — interaction.open', () => {
     expect(state.interactions['mood']?.status).toBe('open');
   });
 
-  it('opening a revealed interaction re-opens it and preserves ballots (ok)', () => {
+  it('opening a revealed interaction re-opens it and preserves answers (ok)', () => {
     let state = sessionWithOpen('mood');
     state = run(
       state,
@@ -140,14 +140,14 @@ describe('state machine — interaction.open', () => {
         participant('p1'),
       ),
     );
-    const ballots = state.interactions['mood']?.ballots;
+    const answers = state.interactions['mood']?.answers;
     const aggregate = state.interactions['mood']?.aggregate;
     state = run(state, env({ command: 'interaction.close', interactionId: 'mood' }));
     state = run(state, env({ command: 'interaction.reveal', interactionId: 'mood' }));
     expect(state.interactions['mood']?.status).toBe('revealed');
     state = run(state, env({ command: 'interaction.open', interactionId: 'mood' }));
     expect(state.interactions['mood']?.status).toBe('open');
-    expect(state.interactions['mood']?.ballots).toEqual(ballots);
+    expect(state.interactions['mood']?.answers).toEqual(answers);
     expect(state.interactions['mood']?.aggregate).toEqual(aggregate);
     expect(state.activeInteractionId).toBe('mood');
   });
@@ -305,7 +305,7 @@ describe('state machine — text.hide / text.unhide', () => {
     );
   });
 
-  it('no ballot from that participant -> E_INVALID_ANSWER', () => {
+  it('no answer from that participant -> E_INVALID_ANSWER', () => {
     expectError(
       sessionWithOpen('reflection'),
       env({ command: 'text.hide', interactionId: 'reflection', participantId: 'ghost' }),
@@ -313,7 +313,7 @@ describe('state machine — text.hide / text.unhide', () => {
     );
   });
 
-  it('non-text/qna ballot kind -> E_INVALID_ANSWER', () => {
+  it('non-text/qna answer kind -> E_INVALID_ANSWER', () => {
     let state = sessionWithOpen('mood');
     state = run(
       state,
@@ -329,7 +329,7 @@ describe('state machine — text.hide / text.unhide', () => {
     );
   });
 
-  it('hides a text ballot even on an ended session is not possible (E_ENDED wins)', () => {
+  it('hides a text answer even on an ended session is not possible (E_ENDED wins)', () => {
     let state = sessionWithOpen('reflection');
     state = run(
       state,
@@ -368,7 +368,7 @@ describe('state machine — text.hide / text.unhide', () => {
       state,
       env({ command: 'text.hide', interactionId: 'reflection', participantId: 'p1' }),
     );
-    expect(state.interactions['reflection']?.ballots['p1']).toMatchObject({ hidden: true });
+    expect(state.interactions['reflection']?.answers['p1']).toMatchObject({ hidden: true });
   });
 });
 
@@ -434,7 +434,7 @@ describe('state machine — answer.submit', () => {
         participant('p1'),
       ),
     );
-    expect(state.interactions['mood']?.ballots['p1']).toMatchObject({ value: 3 });
+    expect(state.interactions['mood']?.answers['p1']).toMatchObject({ value: 3 });
   });
 
   it('frozen session -> E_FROZEN, even for an open interaction', () => {

@@ -47,10 +47,10 @@ describe('text pipeline', () => {
     expect(stage.aggregate.entries).toHaveLength(1);
 
     const host = await stateJson(session.sessionCode, session.hostToken, 'host');
-    const hostBallots = host.ballots.discuss as Record<string, any>;
-    expect(hostBallots[rude.participantId].hidden).toBe(true);
-    expect(hostBallots[rude.participantId].text).toContain('shit');
-    expect(hostBallots[clean.participantId].hidden).toBe(false);
+    const hostAnswers = host.answers.discuss as Record<string, any>;
+    expect(hostAnswers[rude.participantId].hidden).toBe(true);
+    expect(hostAnswers[rude.participantId].text).toContain('shit');
+    expect(hostAnswers[clean.participantId].hidden).toBe(false);
   });
 
   it('text.hide / text.unhide roundtrips are reflected on the stage', async () => {

@@ -17,7 +17,7 @@ import { INK_COLORS, isKnownTheme, SESSION_THEME_IDS, TOKEN_MARK_KINDS } from '.
 import type {
   AnswerInput,
   ApplyResult,
-  Ballot,
+  Answer,
   Command,
   CommandEnvelope,
   DomainError,
@@ -70,7 +70,7 @@ export function applyQnaCommands(
       if (runtime.status !== 'open') {
         return fail('E_NOT_OPEN', `interaction "${command.interactionId}" is not open`);
       }
-      const target = runtime.ballots[command.targetParticipantId];
+      const target = runtime.answers[command.targetParticipantId];
       if (target === undefined || target.kind !== 'qna') {
         return fail('E_INVALID_ANSWER', 'there is no question to vote for');
       }
@@ -78,16 +78,16 @@ export function applyQnaCommands(
         return fail('E_FORBIDDEN', 'you have already voted for this question');
       }
       const voters = [...target.voters, participantId];
-      const ballots: Record<string, Ballot> = {
-        ...runtime.ballots,
+      const answers: Record<string, Answer> = {
+        ...runtime.answers,
         [command.targetParticipantId]: { ...target, voters, votes: voters.length },
       };
       const withParticipant = ensureParticipant(state, participantId, now);
       return commit(
         withRuntime(withParticipant, command.interactionId, {
           ...runtime,
-          ballots,
-          aggregate: computeAggregate(interaction, ballots),
+          answers,
+          aggregate: computeAggregate(interaction, answers),
         }),
       );
     }

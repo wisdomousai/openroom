@@ -17,7 +17,7 @@ import { INK_COLORS, isKnownTheme, SESSION_THEME_IDS, TOKEN_MARK_KINDS } from '.
 import type {
   AnswerInput,
   ApplyResult,
-  Ballot,
+  Answer,
   Command,
   CommandEnvelope,
   DomainError,
@@ -110,7 +110,7 @@ export function applyWriteCommands(
         }
         const runtime: InteractionRuntime = {
           status: 'pending',
-          ballots: {},
+          answers: {},
           aggregate: emptyAggregate(normalized),
         };
         if (normalized.type === 'choice' && normalized.peerInstruction) runtime.round = 1;

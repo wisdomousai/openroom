@@ -1,6 +1,6 @@
 /**
  * Tutor-only word lookup. Fills the private meaning draft. Not a session command,
- * not on the Durable Object, never on the ballot path.
+ * not on the Durable Object, never on the answer path.
  *
  * ## Why this always talks to en.wiktionary.org
  *

@@ -725,12 +725,12 @@ describe('control plane hardening', () => {
     expect(stillThere.status).toBe(200);
   });
 
-  it('session record contains no ballot data', async () => {
+  it('session record contains no answer data', async () => {
     const { cookie } = await seedSession();
     const { sessionId } = await createDeckWithSession(cookie, await createStudent(cookie));
     const put = await asBrowser(cookie, `/api/sessions/${sessionId}/record`, {
       method: 'PUT',
-      body: JSON.stringify({ outcomes: ['Done'], notes: '', homework: [], ballots: [{ secret: 'vote' }] }),
+      body: JSON.stringify({ outcomes: ['Done'], notes: '', homework: [], answers: [{ secret: 'vote' }] }),
     });
     expect(put.status).toBe(200);
     const record = (await (await asBrowser(cookie, `/api/sessions/${sessionId}/record`)).json()) as {

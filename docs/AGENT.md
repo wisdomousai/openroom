@@ -166,7 +166,7 @@ listings stay on `POST /api/mcp` so a machine with nothing installed still
 has the hosted editor. Local agents use one stdio host: `openroom mcp
 [file.openroom]`. That process probes Desktop’s socket, else the file, else
 the hosted endpoint. Same tools. No extra PAT. `session_results` is aggregates
-only — never add a ballot-export tool.
+only — never add an answer-export tool.
 
 OpenRoom Desktop can start that path for you. The **Agent** pane is a
 multi-turn chat that runs the embedded Claude or Codex harness, or the
@@ -206,7 +206,7 @@ Fourteen focused tools:
 | `outline_validate` | `{ outline }` (YAML/JSON text or object) | typed step and interaction summary, or stable errors |
 | `session_create` | `{ outline }` (text or object) | `{ code, joinUrl, stageUrl, hostToken, stageToken }`; an identified outline is refused with `identified-session-needs-student` |
 | `session_status` | `{ code }` | session status + per-question lifecycle (no results) |
-| `session_results` | `{ code, interactionId? }` | aggregates only — never ballots, never pre-reveal answer keys |
+| `session_results` | `{ code, interactionId? }` | aggregates only — never answers, never pre-reveal answer keys |
 | `deck_get` | `{ deckId, version? }` | the deck row, its place, `contentVersion`, and the content as Outline v1 |
 | `deck_preview` | `{ outline }` or `{ deckId, version? }` | a validated read-only deck preview; UI-capable clients render the slide rail and projector view, while other clients receive JSON text |
 | `deck_save_version` | `{ deckId, content, baseVersion }` | `{ version }`, or schema errors, or a `version-conflict` with the server's `latestVersion` |

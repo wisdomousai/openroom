@@ -27,8 +27,8 @@ export function snapshotResponse(deps: SnapshotDeps, url: URL): Response {
   // Deleting removes host identities along with participants. The Worker
   // still verifies the host capability and current account access before this
   // read; retained aggregate snapshots remain readable until the session expires.
-  const ballotsDeleted = state.status === 'ended' && state.ballotsDeletedAt !== undefined;
-  if (role === 'host' && !ballotsDeleted && !Object.hasOwn(state.hosting.hosts, hostId)) return json({ error: 'host-not-found' }, 403);
+  const answersDeleted = state.status === 'ended' && state.answersDeletedAt !== undefined;
+  if (role === 'host' && !answersDeleted && !Object.hasOwn(state.hosting.hosts, hostId)) return json({ error: 'host-not-found' }, 403);
 
   const afterParam = url.searchParams.get('afterRevision');
   if (afterParam !== null) {
@@ -45,7 +45,7 @@ export function snapshotResponse(deps: SnapshotDeps, url: URL): Response {
   let body: Json;
   if (role === 'host') {
     body = hostWireSnapshot(state);
-    body.hosting = { presenterId: state.hosting.presenterId, hosts: Object.values(state.hosting.hosts).map(({ id, name }) => ({ id, name })), yourId: ballotsDeleted ? '' : hostId, canPresent: !ballotsDeleted && state.hosting.presenterId === hostId, canRecover: !ballotsDeleted && url.searchParams.get('canRecover') === 'true' };
+    body.hosting = { presenterId: state.hosting.presenterId, hosts: Object.values(state.hosting.hosts).map(({ id, name }) => ({ id, name })), yourId: answersDeleted ? '' : hostId, canPresent: !answersDeleted && state.hosting.presenterId === hostId, canRecover: !answersDeleted && url.searchParams.get('canRecover') === 'true' };
   } else if (role === 'stage') {
     body = stageWireSnapshot(state);
   } else {

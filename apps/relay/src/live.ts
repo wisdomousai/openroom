@@ -88,10 +88,10 @@ export interface LiveAuthority<G = unknown> {
   commandAllowed(grant: G, sessionCode: string, command: Command): Promise<boolean>;
   /** Runs after the session accepted `session.end`. */
   sessionEnded(sessionCode: string): Promise<void>;
-  /** Does the ballots export include per-participant rows? */
-  mayExportBallots(sessionCode: string): Promise<boolean>;
-  /** Ballots CSV kept after the session's own storage is gone, if any. */
-  archivedBallots(sessionCode: string): Promise<string | null>;
+  /** Does the answers export include per-participant rows? */
+  mayExportAnswers(sessionCode: string): Promise<boolean>;
+  /** Answers CSV kept after the session's own storage is gone, if any. */
+  archivedAnswers(sessionCode: string): Promise<string | null>;
 }
 
 export interface Live<G = unknown> {
@@ -336,19 +336,19 @@ export async function exportRoute<G>(live: Live<G>, request: Request, url: URL, 
   const auth = await authenticate(live, request, url, sessionCode, 'host');
   if (!auth.ok) return auth.response;
   const format = parseExportFormat(url.searchParams.get('format'));
-  const allowBallots = format === 'ballots' && (await live.authority.mayExportBallots(sessionCode));
+  const allowAnswers = format === 'answers' && (await live.authority.mayExportAnswers(sessionCode));
   const exported = await sessionStub(live.env, sessionCode).fetch(
-    sessionDoUrl('/__export', { format, ...(allowBallots ? { allowBallots: '1' } : {}) }),
+    sessionDoUrl('/__export', { format, ...(allowAnswers ? { allowAnswers: '1' } : {}) }),
   );
-  if (format === 'ballots' && exported.status === 410) {
-    const archived = await live.authority.archivedBallots(sessionCode);
+  if (format === 'answers' && exported.status === 410) {
+    const archived = await live.authority.archivedAnswers(sessionCode);
     if (archived !== null) {
       return new Response(archived, {
         status: 200,
         headers: {
           'content-type': 'text/csv; charset=utf-8',
           'cache-control': 'no-store',
-          'content-disposition': `attachment; filename="openroom-${sessionCode}-ballots.csv"`,
+          'content-disposition': `attachment; filename="openroom-${sessionCode}-answers.csv"`,
         },
       });
     }

@@ -1,9 +1,9 @@
 /**
- * Ballot deletion (PRD DATA-04).
+ * Answer deletion (PRD DATA-04).
  *
  * A finished session keeps its teaching value — the aggregates — long after the
- * per-person answers stop being anyone's business. `deleteBallots` is the pure
- * half of that story: it drops every ballot and every participant record while
+ * per-person answers stop being anyone's business. `deleteAnswers` is the pure
+ * half of that story: it drops every answer and every participant record while
  * leaving the stored aggregates intact, so counts, means and the wording of
  * text/Q&A entries survive while the link back to a person does not.
  *
@@ -17,7 +17,7 @@ import type { Aggregate, InteractionRuntime, QnaQuestion, QnaState, SessionState
 /**
  * Replace every participantId in a text/Q&A aggregate with a stable ordinal
  * placeholder. Ordinals follow the stored entry order, which is itself stable
- * (aggregates are recomputed deterministically from the ballot map), so two
+ * (aggregates are recomputed deterministically from the answer map), so two
  * deletes of the same state produce the same labels.
  */
 function anonymizeAggregate(aggregate: Aggregate): Aggregate {
@@ -66,17 +66,17 @@ function anonymizeAggregate(aggregate: Aggregate): Aggregate {
   return aggregate;
 }
 
-function deleteRuntimeBallots(runtime: InteractionRuntime): InteractionRuntime {
+function deleteRuntimeAnswers(runtime: InteractionRuntime): InteractionRuntime {
   const deleted: InteractionRuntime = {
     ...runtime,
-    ballots: {},
+    answers: {},
     aggregate: anonymizeAggregate(runtime.aggregate),
   };
   delete deleted.groupNames;
-  // Peer instruction keeps a round-1 archive; its ballots are per-person data
+  // Peer instruction keeps a round-1 archive; its answers are per-person data
   // and go the same way, while the round-1 aggregate survives anonymized.
   if (runtime.round1 !== undefined) {
-    deleted.round1 = { ballots: {}, aggregate: anonymizeAggregate(runtime.round1.aggregate) };
+    deleted.round1 = { answers: {}, aggregate: anonymizeAggregate(runtime.round1.aggregate) };
   }
   return deleted;
 }
@@ -107,21 +107,21 @@ function anonymizeQna(qna: QnaState): QnaState {
  *    time-triggered by an alarm, never a live-session operation, so there is no
  *    race to lose here: refusing is strictly safer than racing a session that is
  *    still collecting answers.
- *  - a session that already carries `ballotsDeletedAt` is returned unchanged (idempotent —
+ *  - a session that already carries `answersDeletedAt` is returned unchanged (idempotent —
  *    an alarm may legitimately fire twice).
- *  - otherwise: every ballot map is emptied (peer-instruction round-1 archives
+ *  - otherwise: every answer map is emptied (peer-instruction round-1 archives
  *    included), text/Q&A aggregate entries keep
  *    their text/hidden/votes with `participantId` replaced by `deleted-<n>`,
- *    `participants` is emptied, `ballotsDeletedAt` is stamped and `revision` bumps once.
+ *    `participants` is emptied, `answersDeletedAt` is stamped and `revision` bumps once.
  */
-export function deleteBallots(input: SessionState, now: number): SessionState {
+export function deleteAnswers(input: SessionState, now: number): SessionState {
   const state = ensureQna(input);
   if (state.status !== 'ended') return input;
-  if (state.ballotsDeletedAt !== undefined) return input;
+  if (state.answersDeletedAt !== undefined) return input;
 
   const interactions: Record<string, InteractionRuntime> = {};
   for (const [id, runtime] of Object.entries(state.interactions)) {
-    interactions[id] = deleteRuntimeBallots(runtime);
+    interactions[id] = deleteRuntimeAnswers(runtime);
   }
 
   return {
@@ -132,6 +132,6 @@ export function deleteBallots(input: SessionState, now: number): SessionState {
     participants: {},
     groups: {},
     hosting: { presenterId: '', hosts: {} },
-    ballotsDeletedAt: now,
+    answersDeletedAt: now,
   };
 }

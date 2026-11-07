@@ -127,8 +127,8 @@ test.describe('UC-43 relay-only session', () => {
     await expect(results).toContainText(LABEL_FALSE);
     await stage.close();
 
-    // The ballots export is the relay's record of the session.
-    const csv = await relay(`/api/sessions/${session.sessionCode}/export?format=ballots`, {
+    // The answers export is the relay's record of the session.
+    const csv = await relay(`/api/sessions/${session.sessionCode}/export?format=answers`, {
       headers: { authorization: `Bearer ${session.hostToken}` },
     });
     expect(csv.status).toBe(200);

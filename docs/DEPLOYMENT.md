@@ -125,17 +125,32 @@ Before deploying a release that contains these migrations:
 - Local `.openroom` files and drafts saved outside D1 keep the old values and fail
   validation until someone edits them; D1 decks, versions, drafts and frozen session
   outlines are rewritten by the migration.
-- R2 session archives (`archives/<session code>.json`) hold aggregates and the kept ballots
-  CSV. The aggregates carry no renamed value, but the CSV header names its participant
-  column. It was `handle` and is now `name`. Archives written before this release keep the
-  old header until rewritten. Run `apps/workspace-worker/scripts/terminology-archives.mjs`
-  on downloaded copies (it never contacts Cloudflare, supports `--dry-run`, and can run
-  twice): list the keys with `SELECT r2_key FROM session_archives`, fetch each with
+- R2 session archives (`archives/<session code>.json`) hold aggregates and the kept answers
+  CSV. Two things in an archive carry retired names. The JSON key that holds the CSV was
+  `ballotsCsv` and is now `answersCsv`; without the rewrite, the Worker finds no per-person
+  file in an old archive and answers `answers-not-kept` for it. The CSV header names its
+  participant column: it was `handle` and is now `name`. The aggregates may also hold
+  anonymized asker ids written as `purged-<n>`, now `deleted-<n>`. Run
+  `apps/workspace-worker/scripts/terminology-archives.mjs` on downloaded copies (it never
+  contacts Cloudflare, supports `--dry-run`, and can run twice): list the keys with
+  `SELECT r2_key FROM session_archives`, fetch each with
   `wrangler r2 object get <bucket>/<key> --remote --file <folder>/<code>.json`, run
   `node apps/workspace-worker/scripts/terminology-archives.mjs <folder>`, and put the
   changed files back with `wrangler r2 object put <bucket>/<key> --remote --file ...
-  --content-type application/json`. Skipping this only leaves the old column header in
-  old archived downloads.
+  --content-type application/json`. The object keys themselves (`archives/<code>.json`) do
+  not change.
+- "Ballot" is now "answer". No D1 table, column or stored value carries the old word, so
+  there is no D1 migration for it. The per-person export is `format=answers` (it was
+  `format=ballots`) in `GET /api/sessions/:code/export`, `GET /api/my/archives/:code`, the
+  CLI (`openroom export --format answers`) and the SDK; the downloaded file is
+  `openroom-<code>-answers.csv`. The errors `ballots-purged` and `ballots-not-kept` are now
+  `answers-deleted` and `answers-not-kept`. The host snapshot field `ballots` is `answers`
+  and `purgedAt` is `answersDeletedAt`; the participant snapshot field names did not change
+  (`yourAnswer`). The entitlement key `rawExport` did not change. Old bookmarks, scripts and
+  Playwright or load-test fixtures that use `format=ballots` do not fail: the relay treats an
+  unknown format as the aggregate CSV, so they download the wrong file. Update them.
+  Session state inside Durable Objects stores `answers` (it was `ballots`); a session that
+  is live at deploy time ends, as noted above.
 - The tutoring entity is now a student in every API route, field, error code and table. Old
   bookmarks and external callers that use `/api/tutoring/contexts`, `contextId`,
   `contextLink`, `?contextId=` on a host space URL, `#/tutor/contexts` or the

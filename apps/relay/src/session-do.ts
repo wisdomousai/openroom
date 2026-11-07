@@ -19,19 +19,19 @@
  *   lifecycle — host-driven changes every client must see (open/close/reveal/
  *               next/freeze/theme/end). Audience: ALL sockets, coalesced at
  *               250 ms.
- *   results   — ballot-shaped changes (answer.submit, qna.vote, joins).
+ *   results   — answer-shaped changes (answer.submit, qna.vote, joins).
  *               Audience: host + stage only, coalesced at 1 s; participant
  *               sockets are included ONLY while the active interaction's
  *               results are visible to participants (live mode or revealed).
  *               Session Q&A (qna.ask / qna.upvote) rides this channel with a
  *               coalescing "include participants" flag: everyone sees the
  *               shared question list, so those ticks always reach participant
- *               sockets — without loosening the poll-ballot gating above.
+ *               sockets — without loosening the poll-answer gating above.
  *
- * Without the split, every ballot notified every participant and each notified
+ * Without the split, every answer notified every participant and each notified
  * participant re-fetched a snapshot — O(N²) HTTP requests per answering round.
- * Participants already hold the HTTP acknowledgement for their own ballot, so
- * a hidden-results ballot is information they never need pushed.
+ * Participants already hold the HTTP acknowledgement for their own answer, so
+ * a hidden-results answer is information they never need pushed.
  *
  * An instance field mirrors `meta.lastBroadcast` / `meta.lastResults`. After a
  * mutation, broadcast immediately if that channel's last broadcast is older
@@ -52,7 +52,7 @@ import {
   ensureQna,
   generateParticipantName,
   participantLimitReached,
-  deleteBallots,
+  deleteAnswers,
   resultsVisible,
   sessionOf,
   type Command,
@@ -70,7 +70,7 @@ import {
   type Outline,
 } from '@openroom/schema';
 
-import { exportAggregateCsv, exportBallotsCsv, exportJson, parseExportFormat } from './export.js';
+import { exportAggregateCsv, exportAnswersCsv, exportJson, parseExportFormat } from './export.js';
 import { absolutizeJoinUrl, type JoinOriginEnv } from './join-url.js';
 import {
   hostWireSnapshot,
@@ -96,12 +96,12 @@ export const RECOVERY_FAILURE_LIMIT = 20;
 /**
  * Retention schedule (PRD DATA-04). Both clocks start when the session reaches
  * `ended` — by host command or by the 12 h idle auto-end.
- *   BALLOTS_DELETE_AFTER_MS  ballots and participant records are dropped; aggregates and
+ *   ANSWERS_DELETE_AFTER_MS  answers and participant records are dropped; aggregates and
  *                   anonymized text survive and stay exportable as JSON.
  *   DELETE_AFTER_MS the whole Durable Object storage is wiped; the session then
  *                   404s exactly like a code that was never issued.
  */
-export const BALLOTS_DELETE_AFTER_MS = 30 * 60 * 1000; // 30min
+export const ANSWERS_DELETE_AFTER_MS = 30 * 60 * 1000; // 30min
 export const DELETE_AFTER_MS = 24 * 60 * 60 * 1000; // 24h
 const ASSET_CHUNK_BYTES = 1024 * 1024;
 
@@ -386,7 +386,7 @@ export class SessionDO implements DurableObject {
     if (pendingResultsAt > 0) candidates.push(pendingResultsAt);
     const endedAt = this.#metaNumber('endedAt', 0);
     if (endedAt > 0) {
-      if (this.#load()?.ballotsDeletedAt === undefined) candidates.push(endedAt + BALLOTS_DELETE_AFTER_MS);
+      if (this.#load()?.answersDeletedAt === undefined) candidates.push(endedAt + ANSWERS_DELETE_AFTER_MS);
       candidates.push(endedAt + DELETE_AFTER_MS);
     }
     return Math.min(...candidates);
@@ -439,7 +439,7 @@ export class SessionDO implements DurableObject {
     const pendingAt = this.#metaNumber('pendingBroadcastAt', 0);
     if (pendingAt > 0 && pendingAt <= now && state !== null) {
       // This flush supersedes pending results too: announce the latest stored
-      // revision, including ballots accepted since the lifecycle tick was queued.
+      // revision, including answers accepted since the lifecycle tick was queued.
       this.#broadcastNow(state.revision, now);
     }
     // A lifecycle flush above already cleared this; check again rather than
@@ -475,15 +475,15 @@ export class SessionDO implements DurableObject {
       }
     }
 
-    // retention (PRD DATA-04): delete ballots, then delete the session outright
+    // retention (PRD DATA-04): delete answers, then delete the session outright
     const endedAt = this.#metaNumber('endedAt', 0);
     if (state !== null && endedAt > 0) {
       if (now - endedAt >= DELETE_AFTER_MS) {
         await this.#wipe();
         return; // nothing left to schedule; deleteAll took the alarm with it
       }
-      if (now - endedAt >= BALLOTS_DELETE_AFTER_MS) {
-        const deleted = deleteBallots(state, now);
+      if (now - endedAt >= ANSWERS_DELETE_AFTER_MS) {
+        const deleted = deleteAnswers(state, now);
         if (deleted !== state) {
           state = deleted;
           this.#persist(state);
@@ -523,7 +523,7 @@ export class SessionDO implements DurableObject {
         const body = request.method === 'POST' ? await readRecapBody(request) : null;
         const state = this.#load();
         if (!state) return json({ error: 'session-not-found' }, 404);
-        if (state.ballotsDeletedAt !== undefined) return json({ error: 'recap-source-deleted' }, 410);
+        if (state.answersDeletedAt !== undefined) return json({ error: 'recap-source-deleted' }, 410);
         if (request.method === 'GET') return json(recapCandidates(state));
         if (request.method === 'POST') return selectedRecap(state, body);
         return json({ error: 'method-not-allowed' }, 405);
@@ -888,8 +888,8 @@ export class SessionDO implements DurableObject {
     }
 
     if (result.effects.some((effect) => effect.type === 'notify')) {
-      // Individual ballots use the narrow results channel: the submitter
-      // already has its HTTP ack. Group ballots also notify that group,
+      // Individual answers use the narrow results channel: the submitter
+      // already has its HTTP ack. Group answers also notify that group,
       // whose shared answer is visible before the aggregate is revealed. Session Q&A is different: the question list is
       // a shared surface every participant renders, so qna.ask/qna.upvote ride
       // the same channel but flag the flush to include participant sockets.

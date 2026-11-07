@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { applyCommand } from '../src/apply-command.js';
-import { deleteBallots } from '../src/delete-ballots.js';
+import { deleteAnswers } from '../src/delete-answers.js';
 import { hostSnapshot, participantSnapshot, stageSnapshot } from '../src/snapshots.js';
 import type { Aggregate, SessionState } from '../src/types.js';
 import { apply, env, expectError, host, sessionWithOpen, participant, run } from './helpers.js';
@@ -48,7 +48,7 @@ describe('interaction.revote — lifecycle', () => {
     expect(sessionWithOpen('single-choice').interactions['single-choice']?.round).toBeUndefined();
   });
 
-  it('archives round 1, resets the ballots, reopens in round 2 and bumps the revision', () => {
+  it('archives round 1, resets the answers, reopens in round 2 and bumps the revision', () => {
     const closed = afterRound1();
     const result = apply(closed, env({ command: 'interaction.revote', interactionId: 'pi-vote' }));
     expect(result.ok).toBe(true);
@@ -57,11 +57,11 @@ describe('interaction.revote — lifecycle', () => {
     const runtime = result.state.interactions['pi-vote']!;
     expect(runtime.status).toBe('open');
     expect(runtime.round).toBe(2);
-    expect(runtime.ballots).toEqual({});
+    expect(runtime.answers).toEqual({});
     expect(choiceCounts(runtime.aggregate)).toEqual({ right: 0, wrong: 0 });
     expect(runtime.aggregate).toMatchObject({ total: 0, dontKnow: 0 });
 
-    expect(Object.keys(runtime.round1!.ballots).sort()).toEqual(['p1', 'p2', 'p3']);
+    expect(Object.keys(runtime.round1!.answers).sort()).toEqual(['p1', 'p2', 'p3']);
     expect(choiceCounts(runtime.round1!.aggregate)).toEqual({ right: 1, wrong: 2 });
 
     expect(result.revision).toBe(closed.revision + 1);
@@ -232,7 +232,7 @@ describe('interaction.undoRevote — back to round 1', () => {
     return run(state, env({ command: 'interaction.undoRevote', interactionId: 'pi-vote' }));
   }
 
-  it('restores the round-1 ballots and tally, closed, with no archive left', () => {
+  it('restores the round-1 answers and tally, closed, with no archive left', () => {
     const r2 = revote(afterRound1());
     // Round 2 gets some votes that must be discarded on undo.
     let dirtied = r2;
@@ -257,7 +257,7 @@ describe('interaction.undoRevote — back to round 1', () => {
     expect(runtime.round).toBe(1);
     expect(runtime.round1).toBeUndefined();
     expect(choiceCounts(runtime.aggregate)).toEqual({ right: 1, wrong: 2 });
-    expect(Object.keys(runtime.ballots).sort()).toEqual(['p1', 'p2', 'p3']);
+    expect(Object.keys(runtime.answers).sort()).toEqual(['p1', 'p2', 'p3']);
     expect(restored.activeInteractionId).toBe('pi-vote');
   });
 
@@ -401,7 +401,7 @@ describe('interaction.revote — anti-anchoring snapshot gating', () => {
       kind: 'choice',
       optionIds: ['right'],
     });
-    // Someone who did not vote in round 1 gets null, not a stranger's ballot.
+    // Someone who did not vote in round 1 gets null, not a stranger's answer.
     expect(participantSnapshot(state, 'p9').ownRound1Answer).toBeNull();
   });
 
@@ -430,7 +430,7 @@ describe('interaction.revote — anti-anchoring snapshot gating', () => {
   });
 });
 
-describe('deleteBallots with peer-instruction rounds', () => {
+describe('deleteAnswers with peer-instruction rounds', () => {
   function endedRound2(): SessionState {
     let state = revote(afterRound1());
     state = run(
@@ -447,18 +447,18 @@ describe('deleteBallots with peer-instruction rounds', () => {
     return run(state, env({ command: 'session.end' }));
   }
 
-  it('drops the round-1 ballots and keeps the round-1 aggregate', () => {
-    const deleted = deleteBallots(endedRound2(), 5_000);
+  it('drops the round-1 answers and keeps the round-1 aggregate', () => {
+    const deleted = deleteAnswers(endedRound2(), 5_000);
     const runtime = deleted.interactions['pi-vote']!;
-    expect(runtime.ballots).toEqual({});
-    expect(runtime.round1?.ballots).toEqual({});
+    expect(runtime.answers).toEqual({});
+    expect(runtime.round1?.answers).toEqual({});
     expect(choiceCounts(runtime.round1?.aggregate)).toEqual({ right: 1, wrong: 2 });
     expect(runtime.round).toBe(2);
-    expect(deleted.ballotsDeletedAt).toBe(5_000);
+    expect(deleted.answersDeletedAt).toBe(5_000);
   });
 
   it('no participant id survives anywhere in the deleted session', () => {
-    const serialized = JSON.stringify(deleteBallots(endedRound2(), 5_000));
+    const serialized = JSON.stringify(deleteAnswers(endedRound2(), 5_000));
     for (const id of ['p1', 'p2', 'p3']) {
       expect(serialized).not.toContain(`"${id}"`);
     }
@@ -475,14 +475,14 @@ describe('deleteBallots with peer-instruction rounds', () => {
       ),
     );
     state = run(state, env({ command: 'session.end' }));
-    const deleted = deleteBallots(state, 1);
+    const deleted = deleteAnswers(state, 1);
     const aggregate = deleted.interactions['reflection']!.aggregate;
     if (aggregate.kind !== 'text') throw new Error('expected text');
     expect(aggregate.entries[0]).toEqual({ participantId: 'deleted-1', text: 'hello', hidden: false });
   });
 
   it('stays idempotent with rounds present', () => {
-    const once = deleteBallots(endedRound2(), 5_000);
-    expect(deleteBallots(once, 6_000)).toBe(once);
+    const once = deleteAnswers(endedRound2(), 5_000);
+    expect(deleteAnswers(once, 6_000)).toBe(once);
   });
 });

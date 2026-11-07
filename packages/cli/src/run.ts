@@ -65,7 +65,7 @@ Usage:
   openroom session hide|unhide <interactionId> <participantId>
   openroom results
   openroom mcp [file.openroom]             stdio MCP (desktop if running, else file, else web)
-  openroom export --format csv|json|ballots [--out <file>]
+  openroom export --format csv|json|answers [--out <file>]
   openroom session recap [--selection <selection.json>] [--format json|html] [--out <file>]
 
 Options:

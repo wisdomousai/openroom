@@ -16,7 +16,7 @@ describe('ensureQna', () => {
 });
 
 describe('Q&A — voting', () => {
-  it('a vote increments the target ballot votes and adds the voter to the ledger', () => {
+  it('a vote increments the target answer votes and adds the voter to the ledger', () => {
     let state = sessionWithOpen('ask');
     state = run(
       state,
@@ -26,8 +26,8 @@ describe('Q&A — voting', () => {
       state,
       env({ command: 'qna.vote', interactionId: 'ask', targetParticipantId: 'asker' }, participant('voter')),
     );
-    const ballot = state.interactions['ask']!.ballots['asker'];
-    expect(ballot).toMatchObject({ kind: 'qna', votes: 1, voters: ['voter'] });
+    const answer = state.interactions['ask']!.answers['asker'];
+    expect(answer).toMatchObject({ kind: 'qna', votes: 1, voters: ['voter'] });
   });
 
   it('a double-vote by the same participant is rejected or a no-op — either way votes never reach 2', () => {
@@ -45,10 +45,10 @@ describe('Q&A — voting', () => {
       env({ command: 'qna.vote', interactionId: 'ask', targetParticipantId: 'asker' }, participant('voter')),
     );
     const finalState = secondVote.ok ? secondVote.state : state;
-    const ballot = finalState.interactions['ask']!.ballots['asker'];
-    if (ballot?.kind !== 'qna') throw new Error('expected qna ballot');
-    expect(ballot.votes).toBe(1);
-    expect(ballot.voters.filter((v) => v === 'voter')).toHaveLength(1);
+    const answer = finalState.interactions['ask']!.answers['asker'];
+    if (answer?.kind !== 'qna') throw new Error('expected qna answer');
+    expect(answer.votes).toBe(1);
+    expect(answer.voters.filter((v) => v === 'voter')).toHaveLength(1);
     // This implementation rejects the repeat outright rather than silently no-op'ing.
     expect(secondVote.ok).toBe(false);
     if (!secondVote.ok) expect(secondVote.error.code).toBe('E_FORBIDDEN');
@@ -73,11 +73,11 @@ describe('Q&A — voting', () => {
       state,
       env({ command: 'answer.submit', interactionId: 'ask', answer: { kind: 'qna', text: 'Edited question?' } }, participant('asker')),
     );
-    const ballot = state.interactions['ask']!.ballots['asker'];
-    if (ballot?.kind !== 'qna') throw new Error('expected qna ballot');
-    expect(ballot.text).toBe('Edited question?');
-    expect(ballot.votes).toBe(2);
-    expect(ballot.voters.sort()).toEqual(['v1', 'v2']);
+    const answer = state.interactions['ask']!.answers['asker'];
+    if (answer?.kind !== 'qna') throw new Error('expected qna answer');
+    expect(answer.text).toBe('Edited question?');
+    expect(answer.votes).toBe(2);
+    expect(answer.voters.sort()).toEqual(['v1', 'v2']);
   });
 
   it('voters are never present in participant or stage snapshots', () => {

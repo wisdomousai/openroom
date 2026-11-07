@@ -147,11 +147,11 @@ describe('MCP multiplexer', () => {
     );
   });
 
-  it('session_results stays hosted and never grows a ballot tool', async () => {
+  it('session_results stays hosted and never grows an answer tool', async () => {
     const deps = multiplexToolDeps(hostedSpy(), memoryFile());
     const results = await callTool(deps, 'session_results', { code: 'SESSHOST' });
     expect(results).toEqual(expect.objectContaining({ code: 'SESSHOST' }));
-    await expect(callTool(deps, 'session_ballots', { code: 'SESSHOST' })).rejects.toThrow('unknown tool');
+    await expect(callTool(deps, 'session_answers', { code: 'SESSHOST' })).rejects.toThrow('unknown tool');
   });
 
   it('headless without a session refuses live sessions', async () => {

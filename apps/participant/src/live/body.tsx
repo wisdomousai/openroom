@@ -15,7 +15,7 @@ import { StepView, type ContentView } from './step-view';
 
 /**
  * The prompt as the author wrote it, styled when the interaction carries spans.
- * A fill-the-gaps prompt never does — the ballot draws its blanks itself.
+ * A fill-the-gaps prompt never does — the answer draws its blanks itself.
  */
 function Prompt({ interaction, gaps }: { interaction: ParticipantSnapshot['interaction']; gaps?: Record<string, string> }) {
   const spans = interaction?.promptSpans;

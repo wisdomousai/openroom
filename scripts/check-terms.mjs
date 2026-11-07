@@ -53,6 +53,11 @@ export const BANNED = [
     pattern: /purg(?:e|ed|es|ing)(?![a-z])|Purg(?:e|ed|es|ing)(?![a-z])|PURGE/,
     use: 'permanent delete / delete permanently (deleteDeckPermanently, requestDeckPermanentDeletion, /permanent-deletion), deleted (the timed removal of answers)',
   },
+  {
+    name: 'ballot',
+    pattern: /ballot/i,
+    use: 'answer (Answer, BuiltAnswer, answers, format=answers, answersCsv, answers-deleted); OwnAnswer for the participant-side projection',
+  },
 ];
 
 const ALLOWED_PATHS = [

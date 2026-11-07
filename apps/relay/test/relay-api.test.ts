@@ -211,9 +211,9 @@ describe('session routes', () => {
     expect(asStage.status).toBe(403);
   });
 
-  it('exports ballots to the host', async () => {
+  it('exports answers to the host', async () => {
     const created = await createSessionWithOutline(SMOKE_OUTLINE);
-    const response = await call(`/api/sessions/${created.sessionCode}/export?format=ballots`, {
+    const response = await call(`/api/sessions/${created.sessionCode}/export?format=answers`, {
       headers: { authorization: `Bearer ${created.hostToken}` },
     });
     expect(response.status).toBe(200);

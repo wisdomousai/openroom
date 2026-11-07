@@ -1,6 +1,6 @@
 /**
  * Tutor-only Pixabay search. Returns hosted picture URLs to embed on a slide.
- * The API key never leaves the Worker. Not a session command, not on the ballot path.
+ * The API key never leaves the Worker. Not a session command, not on the answer path.
  */
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';

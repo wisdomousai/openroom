@@ -14,7 +14,7 @@ export function SavedResultsPage({ archiveId, userId }: { archiveId: string; use
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [accessLost, setAccessLost] = useState(false);
   const downloadRequest = useRef<AbortController | null>(null);
   useEffect(() => () => downloadRequest.current?.abort(), []);
-  async function download(format: 'report' | 'json' | 'ballots') {
+  async function download(format: 'report' | 'json' | 'answers') {
     const controller = new AbortController(); downloadRequest.current?.abort(); downloadRequest.current = controller;
     setBusy(true); setError('');
     try {
@@ -26,7 +26,7 @@ export function SavedResultsPage({ archiveId, userId }: { archiveId: string; use
       const blob = format === 'report' ? new Blob([savedResultsHtml((await response.json() as SavedResultsDocument).results)], { type: 'text/html;charset=utf-8' }) : await response.blob();
       if (controller.signal.aborted) return;
       const url = URL.createObjectURL(blob), anchor = document.createElement('a');
-      anchor.href = url; anchor.download = `openroom-results${format === 'ballots' ? '-responses.csv' : format === 'report' ? '.html' : '.json'}`;
+      anchor.href = url; anchor.download = `openroom-results${format === 'answers' ? '-responses.csv' : format === 'report' ? '.html' : '.json'}`;
       document.body.append(anchor); anchor.click(); anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (failure) { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'The file could not be downloaded.'); }
@@ -48,7 +48,7 @@ export function SavedResultsPage({ archiveId, userId }: { archiveId: string; use
         <header className="border-t-4 border-t-primary px-6 pb-7 pt-8 sm:px-10">
           <h1 className="break-words font-display text-page-title">{results.title}</h1>
           <p className="mt-4 max-w-2xl text-secondary text-muted-foreground">Saved results are kept for 90 days. Download a copy to keep them. This file is available to your account and current members of its space.</p>
-          <div className="mt-6 flex flex-wrap gap-3"><Button disabled={busy} onClick={() => void download('report')}>Download report</Button>{file.hasIndividualResponses ? <Button disabled={busy} variant="outline" onClick={() => void download('ballots')}>Download individual responses</Button> : null}<Button disabled={busy} variant="ghost" onClick={() => void download('json')}>Download data</Button></div>
+          <div className="mt-6 flex flex-wrap gap-3"><Button disabled={busy} onClick={() => void download('report')}>Download report</Button>{file.hasIndividualResponses ? <Button disabled={busy} variant="outline" onClick={() => void download('answers')}>Download individual responses</Button> : null}<Button disabled={busy} variant="ghost" onClick={() => void download('json')}>Download data</Button></div>
           <p className="mt-3 text-caption text-muted-foreground">Data downloads{file.hasIndividualResponses ? ' and individual responses' : ''} can contain names and hidden entries. Review files before sharing.</p>
           {error ? <p role="alert" className="mt-4 text-secondary text-destructive">{error}</p> : null}
         </header>

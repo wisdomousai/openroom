@@ -8,14 +8,14 @@ import {
   type ParticipantInteraction,
 } from '@openroom/schema';
 
-import { expectedAnswerCount, groupBallotKey, participantGroup, participantLabel } from './groups.js';
+import { expectedAnswerCount, groupAnswerKey, participantGroup, participantLabel } from './groups.js';
 import { listeningFor } from './listening.js';
 import { isPollOnlyOutline, sessionOf } from './create-session.js';
 import { ensureQna, qnaMaxLength, sortedQuestions } from './qna.js';
 
 import type {
   Aggregate,
-  Ballot,
+  Answer,
   InteractionStatus,
   QnaStagePlacement,
   LearnerOutlineView,
@@ -85,7 +85,7 @@ function filterStepForLane(step: OutlineStep, lane: 0 | 1 | undefined): OutlineS
  * Default is live: open/closed interactions with `resultVisibility === 'live'`
  * show aggregates as answers arrive. `hidden-until-close` stays blank until
  * the host reveals. Either way, `resultsHidden` blanks the audience/stage
- * without deleting ballots (host Hide results control).
+ * without deleting answers (host Hide results control).
  */
 export function resultsVisible(state: SessionState, interactionId: string): boolean {
   const runtime = state.interactions[interactionId];
@@ -104,7 +104,7 @@ export function resultsVisible(state: SessionState, interactionId: string): bool
   );
 }
 
-/** A ballot as the owning participant sees it: no voter list at all. */
+/** An answer as the owning participant sees it: no voter list at all. */
 export type OwnAnswer =
   | { kind: 'choice'; optionIds: string[] }
   | { kind: 'scale'; value: number }
@@ -116,14 +116,14 @@ export type OwnAnswer =
   | { kind: 'match'; pairs: Record<string, string> }
   | { kind: 'dont-know' };
 
-function ownAnswer(ballot: Ballot): OwnAnswer {
-  if (ballot.kind === 'qna') {
-    return { kind: 'qna', text: ballot.text, hidden: ballot.hidden, votes: ballot.votes };
+function ownAnswer(answer: Answer): OwnAnswer {
+  if (answer.kind === 'qna') {
+    return { kind: 'qna', text: answer.text, hidden: answer.hidden, votes: answer.votes };
   }
-  if (ballot.kind === 'fill-the-gaps') {
-    return { kind: 'fill-the-gaps', gaps: { ...ballot.gaps } };
+  if (answer.kind === 'fill-the-gaps') {
+    return { kind: 'fill-the-gaps', gaps: { ...answer.gaps } };
   }
-  return ballot;
+  return answer;
 }
 
 /**
@@ -212,7 +212,7 @@ function answeredCount(state: SessionState, interactionId: string | null): numbe
   if (interactionId === null) return 0;
   const runtime = state.interactions[interactionId];
   if (runtime === undefined) return 0;
-  return Object.keys(runtime.ballots).length;
+  return Object.keys(runtime.answers).length;
 }
 
 /* ------------------------------------------------------------------ */
@@ -339,7 +339,7 @@ export interface ParticipantSnapshot {
   participantId: string;
   interaction: ParticipantInteraction | null;
   interactionStatus: InteractionStatus | null;
-  /** the participant's own current ballot, if any */
+  /** the participant's own current answer, if any */
   yourAnswer: OwnAnswer | null;
   answered: boolean;
   /** null unless results are visible for the active interaction */
@@ -353,7 +353,7 @@ export interface ParticipantSnapshot {
   round?: 1 | 2;
   /** round-1 tally: present once a revote happened, null until the reveal */
   round1Aggregate?: Aggregate | null;
-  /** this participant's own round-1 ballot, so they can recall their first vote */
+  /** this participant's own round-1 answer, so they can recall their first vote */
   ownRound1Answer?: OwnAnswer | null;
   /** own session-local name (nickname sessions only); peers' names are never sent */
   yourName?: string;
@@ -386,8 +386,8 @@ export function participantSnapshot(
   const runtime = activeId === null ? undefined : state.interactions[activeId];
   const group = participantGroup(state, participantId);
   const groupQuestion = interactionWithDisplay(state, activeId)?.responseMode === 'group';
-  const ballotKey = groupQuestion ? (group ? groupBallotKey(group.id) : null) : participantId;
-  const ballot = ballotKey ? runtime?.ballots[ballotKey] : undefined;
+  const answerKey = groupQuestion ? (group ? groupAnswerKey(group.id) : null) : participantId;
+  const answer = answerKey ? runtime?.answers[answerKey] : undefined;
   const visible = activeId !== null && resultsVisible(state, activeId);
 
   const snapshot: ParticipantSnapshot = {
@@ -401,8 +401,8 @@ export function participantSnapshot(
     ...(group ? { yourGroup: { id: group.id, name: group.name, isSpokesperson: group.spokespersonId === participantId } } : {}),
     interaction: interactionWithDisplay(state, activeId),
     interactionStatus: runtime?.status ?? null,
-    yourAnswer: ballot === undefined ? null : ownAnswer(ballot),
-    answered: ballot !== undefined,
+    yourAnswer: answer === undefined ? null : ownAnswer(answer),
+    answered: answer !== undefined,
     results:
       visible && runtime !== undefined
         ? publicAggregate(runtime.aggregate, state.frozen, publicNames(state))
@@ -412,7 +412,7 @@ export function participantSnapshot(
   if (activeId !== null) {
     const round1 = publicRound1Aggregate(state, activeId);
     if (round1 !== undefined) snapshot.round1Aggregate = round1;
-    const ownRound1 = ballotKey ? runtime?.round1?.ballots[ballotKey] : undefined;
+    const ownRound1 = answerKey ? runtime?.round1?.answers[answerKey] : undefined;
     if (runtime?.round1 !== undefined) {
       snapshot.ownRound1Answer = ownRound1 === undefined ? null : ownAnswer(ownRound1);
     }
@@ -575,8 +575,8 @@ export interface HostSnapshot {
   expectedAnswerCount: number;
   answeredCount: number;
   interactions: HostInteractionSummary[];
-  /** ballots including hidden entries and Q&A voter ledgers */
-  ballots: Record<string, Record<string, Ballot>>;
+  /** answers including hidden entries and Q&A voter ledgers */
+  answers: Record<string, Record<string, Answer>>;
   /** session-wide audience Q&A: always present so the console can show the disabled state */
   qna: HostQnaView;
   /** Full outline, including tutor-only notes. */
@@ -594,8 +594,8 @@ export interface HostSnapshot {
   /** participantId -> session-local name; present only in nickname sessions */
   names?: Record<string, string>;
   endedAt?: number;
-  /** set once the ballots have been deleted (PRD DATA-04); host-only */
-  ballotsDeletedAt?: number;
+  /** set once the answers have been deleted (PRD DATA-04); host-only */
+  answersDeletedAt?: number;
 }
 
 export function hostSnapshot(input: SessionState): HostSnapshot {
@@ -607,7 +607,7 @@ export function hostSnapshot(input: SessionState): HostSnapshot {
       type: interaction.type,
       prompt: interaction.prompt,
       status: runtime?.status ?? 'pending',
-      answered: runtime === undefined ? 0 : Object.keys(runtime.ballots).length,
+      answered: runtime === undefined ? 0 : Object.keys(runtime.answers).length,
       aggregate: runtime?.aggregate ?? { kind: 'text', entries: [], total: 0 },
       resultsVisible: resultsVisible(state, interaction.id),
     };
@@ -622,9 +622,9 @@ export function hostSnapshot(input: SessionState): HostSnapshot {
     return summary;
   });
 
-  const ballots: Record<string, Record<string, Ballot>> = {};
+  const answers: Record<string, Record<string, Answer>> = {};
   for (const [id, runtime] of Object.entries(state.interactions)) {
-    ballots[id] = runtime.ballots;
+    answers[id] = runtime.answers;
   }
 
   const snapshot: HostSnapshot = {
@@ -643,7 +643,7 @@ export function hostSnapshot(input: SessionState): HostSnapshot {
     expectedAnswerCount: expectedAnswerCount(state),
     answeredCount: answeredCount(state, state.activeInteractionId),
     interactions,
-    ballots,
+    answers,
     qna: hostQnaView(state),
     outline: state.outline,
   };
@@ -660,6 +660,6 @@ export function hostSnapshot(input: SessionState): HostSnapshot {
   if (Object.keys(names).length > 0) snapshot.names = names;
   if (state.participantLimit !== undefined) snapshot.participantLimit = state.participantLimit;
   if (state.endedAt !== undefined) snapshot.endedAt = state.endedAt;
-  if (state.ballotsDeletedAt !== undefined) snapshot.ballotsDeletedAt = state.ballotsDeletedAt;
+  if (state.answersDeletedAt !== undefined) snapshot.answersDeletedAt = state.answersDeletedAt;
   return snapshot;
 }

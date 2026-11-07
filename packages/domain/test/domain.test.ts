@@ -145,7 +145,7 @@ describe('applyCommand — happy path', () => {
     if (aggregate?.kind === 'choice') expect(aggregate.counts['yes']).toBe(1);
     expect(Object.keys(state.participants)).toEqual(['p1', 'p2']);
 
-    // answer change replaces the ballot
+    // answer change replaces the answer
     state = run(
       state,
       env({ command: 'answer.submit', interactionId: 'pulse', answer: { kind: 'choice', optionIds: ['no'] } }, participant('p1')),
@@ -264,12 +264,12 @@ describe('applyCommand — rules', () => {
       state,
       env({ command: 'answer.submit', interactionId: 'muddiest', answer: { kind: 'text', text: 'this is bullshit' } }, participant('p1')),
     );
-    expect(state.interactions['muddiest']?.ballots['p1']).toMatchObject({ hidden: true });
+    expect(state.interactions['muddiest']?.answers['p1']).toMatchObject({ hidden: true });
     state = run(
       state,
       env({ command: 'text.unhide', interactionId: 'muddiest', participantId: 'p1' }),
     );
-    expect(state.interactions['muddiest']?.ballots['p1']).toMatchObject({ hidden: false });
+    expect(state.interactions['muddiest']?.answers['p1']).toMatchObject({ hidden: false });
   });
 
   it('counts qna votes once per participant', () => {
@@ -283,8 +283,8 @@ describe('applyCommand — rules', () => {
       state,
       env({ command: 'qna.vote', interactionId: 'questions', targetParticipantId: 'asker' }, participant('voter')),
     );
-    const ballot = state.interactions['questions']?.ballots['asker'];
-    expect(ballot).toMatchObject({ kind: 'qna', votes: 1, voters: ['voter'] });
+    const answer = state.interactions['questions']?.answers['asker'];
+    expect(answer).toMatchObject({ kind: 'qna', votes: 1, voters: ['voter'] });
 
     const twice = applyCommand(
       state,

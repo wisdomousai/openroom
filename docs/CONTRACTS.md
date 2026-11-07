@@ -192,18 +192,18 @@ interface SessionState {
   participants: Record<string, { joinedAt: number }>;   // key = participantId
   frozen: boolean;                // panic: no submissions, participant text hidden on stage
   endedAt?: number;
-  ballotsDeletedAt?: number;              // set by deleteBallots (PRD DATA-04); ballots and participants are gone
+  answersDeletedAt?: number;              // set by deleteAnswers (PRD DATA-04); answers and participants are gone
 }
 interface InteractionRuntime {
   status: InteractionStatus;
-  ballots: Record<string, Ballot>;      // key = participantId; replacement = answer change
+  answers: Record<string, Answer>;      // key = participantId; replacement = answer change
   aggregate: Aggregate;                 // recomputed on write, stored
   openedAt?: number; closedAt?: number;
   closesAt?: number;                    // absolute ms auto-close deadline while open with a session timerSec
   round?: 1 | 2;                        // peer-instruction interactions only; absent means round 1
-  round1?: { ballots: Record<string, Ballot>; aggregate: Aggregate };  // archive written by interaction.revote
+  round1?: { answers: Record<string, Answer>; aggregate: Aggregate };  // archive written by interaction.revote
 }
-type Ballot =
+type Answer =
   | { kind: 'choice'; optionIds: string[] }
   | { kind: 'scale'; value: number }
   | { kind: 'numeric'; value: number }
@@ -252,9 +252,9 @@ type DomainError = { code: 'E_REVISION_CONFLICT' | 'E_INVALID_TRANSITION' | 'E_N
                      'E_ENDED'; message: string };
 ```
 
-Ranking answers must be a complete permutation of the interaction's option ids — a partial list, a repeat or an unknown id is `E_INVALID_ANSWER`. The ranking aggregate is a Borda count: with k options, the option a ballot puts in position p (0-based) scores k - p points, so first place is worth k and last is worth 1; `avgRank` is the mean 1-based position, or `null` for every option while `total` is 0. "I don't know" ballots count in `dontKnow` only. Optional interaction field `correctOrder` is reveal metadata only (put-in-order quiz key); it does not change the Borda aggregate.
+Ranking answers must be a complete permutation of the interaction's option ids — a partial list, a repeat or an unknown id is `E_INVALID_ANSWER`. The ranking aggregate is a Borda count: with k options, the option an answer puts in position p (0-based) scores k - p points, so first place is worth k and last is worth 1; `avgRank` is the mean 1-based position, or `null` for every option while `total` is 0. "I don't know" answers count in `dontKnow` only. Optional interaction field `correctOrder` is reveal metadata only (put-in-order quiz key); it does not change the Borda aggregate.
 
-Peer instruction (`peerInstruction: true` on a choice): `interaction.revote` is host-only and valid only on that interaction when it is `closed` and in round 1. It archives the current ballots and aggregate into `round1`, empties the ballots, recomputes the empty aggregate, sets `round: 2` and `status: 'open'`, makes the interaction active again (closing whatever else was open) and bumps the revision. When the interaction is already in round 2 it is a no-op success WITHOUT a revision bump, checked BEFORE `expectedRevision` like the other documented no-ops (retry safety). `interaction.undoRevote` is the reverse: host-only, valid when a `round1` archive exists and `round === 2` (open, closed, or revealed). It restores the archived ballots and aggregate, sets `status: 'closed'`, `round: 1`, clears the archive, and discards round-2 votes. When already on round 1 (or never revoted) it is a no-op success without a revision bump. Anything else is `E_INVALID_TRANSITION`; a non-host actor gets `E_FORBIDDEN`. Anti-anchoring: the round-1 aggregate reaches participant and stage snapshots ONLY once the interaction is `revealed` (before that the field is present but `null`); the host snapshot carries it from the moment it exists. During round 2 the participant snapshot carries `round: 2` plus `ownRound1Answer` (that participant's own round-1 ballot, or null) and the answered flag starts over.
+Peer instruction (`peerInstruction: true` on a choice): `interaction.revote` is host-only and valid only on that interaction when it is `closed` and in round 1. It archives the current answers and aggregate into `round1`, empties the answers, recomputes the empty aggregate, sets `round: 2` and `status: 'open'`, makes the interaction active again (closing whatever else was open) and bumps the revision. When the interaction is already in round 2 it is a no-op success WITHOUT a revision bump, checked BEFORE `expectedRevision` like the other documented no-ops (retry safety). `interaction.undoRevote` is the reverse: host-only, valid when a `round1` archive exists and `round === 2` (open, closed, or revealed). It restores the archived answers and aggregate, sets `status: 'closed'`, `round: 1`, clears the archive, and discards round-2 votes. When already on round 1 (or never revoted) it is a no-op success without a revision bump. Anything else is `E_INVALID_TRANSITION`; a non-host actor gets `E_FORBIDDEN`. Anti-anchoring: the round-1 aggregate reaches participant and stage snapshots ONLY once the interaction is `revealed` (before that the field is present but `null`); the host snapshot carries it from the moment it exists. During round 2 the participant snapshot carries `round: 2` plus `ownRound1Answer` (that participant's own round-1 answer, or null) and the answered flag starts over.
 
 Theming (`session.theme`): host-only, valid in `lobby` and `live`. `theme` must be one of the five built-in ids (`default`, `chalkboard`, `paper`, `projector`, `sherbet`) — anything else is `E_INVALID_THEME` and the session keeps the theme it had. Re-sending the theme the session already has is an idempotent no-op success WITHOUT a revision bump, checked BEFORE `expectedRevision` like the other documented no-ops (retry safety). A real change bumps the revision and emits a notify, so participant, stage and console all restyle at the same revision. `theme` is not sensitive: it appears verbatim in all three snapshots and is never stripped by `participantView`.
 
@@ -267,25 +267,25 @@ Session-wide audience Q&A (`SessionState.qna`, session flag `qna: { enabled, max
 Retention (PRD DATA-04), also in domain and equally pure:
 
 ```ts
-function deleteBallots(state: SessionState, now: number): SessionState;
+function deleteAnswers(state: SessionState, now: number): SessionState;
 ```
-Drops the per-person layer of a FINISHED session and keeps the aggregates: every `ballots` map becomes `{}` (peer-instruction `round1.ballots` included, with the round-1 aggregate anonymized by the same rules), `participants` becomes `{}`, text/qna aggregate entries keep `text`/`hidden`/`votes` with `participantId` replaced by `deleted-<n>` (stable ordinal in stored entry order, 1-based), `ballotsDeletedAt` is stamped and `revision` bumps by 1. Returns the state unchanged when `status !== 'ended'` (the deletion is time-triggered by an alarm and must never race a live session) or when `ballotsDeletedAt` is already set (idempotent — alarms can fire twice). `hostSnapshot` surfaces `ballotsDeletedAt`; participant and stage snapshots do not.
+Drops the per-person layer of a FINISHED session and keeps the aggregates: every `answers` map becomes `{}` (peer-instruction `round1.answers` included, with the round-1 aggregate anonymized by the same rules), `participants` becomes `{}`, text/qna aggregate entries keep `text`/`hidden`/`votes` with `participantId` replaced by `deleted-<n>` (stable ordinal in stored entry order, 1-based), `answersDeletedAt` is stamped and `revision` bumps by 1. Returns the state unchanged when `status !== 'ended'` (the deletion is time-triggered by an alarm and must never race a live session) or when `answersDeletedAt` is already set (idempotent — alarms can fire twice). `hostSnapshot` surfaces `answersDeletedAt`; participant and stage snapshots do not.
 
 Snapshot views (also in domain): `participantSnapshot(state, participantId)`, `stageSnapshot(state)`, `hostSnapshot(state)`. All three carry `theme` (the active theme id) — the wire snapshots forward it unchanged as `theme`.
 
 Group response projection: session groups are live coordination state, not credentials or
 space membership. Host snapshots expose group membership and participant labels. A phone
-receives only its own group name/spokesperson flag and its shared ballot. Aggregate reveal
-rules still apply to other groups and the stage. A group ballot survives spokesperson
+receives only its own group name/spokesperson flag and its shared answer. Aggregate reveal
+rules still apply to other groups and the stage. A group answer survives spokesperson
 changes; membership changes do not move historical answers. Requests bind to the displayed
-group so late submissions cannot enter a different group's ballot. Recorded group names
-and memberships are removed by the existing ballot deletion. Answer counts and progress use
+group so late submissions cannot enter a different group's answer. Recorded group names
+and memberships are removed by the existing answer deletion. Answer counts and progress use
 group seats for group questions; joined counts still count people. Private notes and
 pedagogy are stripped from participant/stage wire interactions. Peer-instruction round one
 stays hidden during discussion in multi-slide decks as well as poll-only decks.
 - participant: revision, status, frozen, active interaction (via `participantView`), own current answer, answered-flag; results ONLY if interaction revealed or (`resultVisibility === 'live'` and open/closed). Never notes/correct pre-reveal. Peer instruction adds `round`, `round1Aggregate` (null until revealed) and `ownRound1Answer`. Sessions that assign names (nickname, and identified where the name is the student display name) add `yourName` (own name only — peers' names are never sent, EXCEPT as `name` attribution on session Q&A questions, see §Session Q&A). While the active interaction is open with a session `timerSec`, snapshots include `closesAt` (absolute ms auto-close deadline).
 - stage: revision, status, code, join URL path, participant count, answered count, active interaction (participantView), aggregate only when revealable (same rule as participant), text entries excluding `hidden`, everything text-hidden when frozen. Peer instruction adds `round` and `round1Aggregate` (null until revealed). Same `closesAt` rule as participant.
-- host: everything — the session document, notes, and per-interaction status, joined and answered counts, correct answers, hidden entries, and — for peer instruction — `round` plus `round1Aggregate` with no reveal gating. Per-interaction summaries and the active snapshot also carry `closesAt` while armed. Sessions that assign names add `names: Record<participantId, name>`; the stage sees names only as session-Q&A question attribution, and the CSV export gains a `name` column (header `interactionId,prompt,participantId,name,answer,hidden`) in every non-anonymous session — nickname sessions put the session-local name in that slot, identified sessions put the student display name there. Names die with the deletion (`participants` → `{}`). Retention is unchanged from DATA-04: ballots deleted 30 min after end, session deleted at 24 h — the participant-facing notice states this.
+- host: everything — the session document, notes, and per-interaction status, joined and answered counts, correct answers, hidden entries, and — for peer instruction — `round` plus `round1Aggregate` with no reveal gating. Per-interaction summaries and the active snapshot also carry `closesAt` while armed. Sessions that assign names add `names: Record<participantId, name>`; the stage sees names only as session-Q&A question attribution, and the CSV export gains a `name` column (header `interactionId,prompt,participantId,name,answer,hidden`) in every non-anonymous session — nickname sessions put the session-local name in that slot, identified sessions put the student display name there. Names die with the deletion (`participants` → `{}`). Retention is unchanged from DATA-04: answers deleted 30 min after end, session deleted at 24 h — the participant-facing notice states this.
 
 ## HTTP API (worker)
 
@@ -398,7 +398,7 @@ GET|POST /api/sessions              list or create sessions (one delivery of a d
                                          live/completed statuses are server-owned (422 status-server-owned)
 GET|PATCH|DELETE /api/sessions/:id
                                          detail, metadata edit, or recoverable trash
-GET|PUT /api/sessions/:id/record    curated outcomes, notes, nextNote (the Next session note), homework (string[] or typed tasks), selected artifacts; never transcript/ballots
+GET|PUT /api/sessions/:id/record    curated outcomes, notes, nextNote (the Next session note), homework (string[] or typed tasks), selected artifacts; never transcript/answers
 POST /api/sessions/:id/launch       create an outline-aware session from the selected version;
                                          409 session-already-live when the session is already live
 POST /api/sessions/:id/restore      restore from trash
@@ -446,30 +446,30 @@ GET  /api/sessions/:sessionCode/state            ?role=participant|stage|host  (
 POST /api/sessions/:sessionCode/commands         Bearer token; body CommandEnvelope minus actor (server derives actor from token)
                                          → 200 { ok:true, revision } | 409 { ok:false, error }  (409 for E_REVISION_CONFLICT, 422 others)
 GET  /api/sessions/:sessionCode/export?format=csv|json   host token → final results
-                                         csv = per-ballot; after the ballot deletion → 410 { ok:false, error:"ballots-deleted" }
+                                         csv = per-answer; after the answer deletion → 410 { ok:false, error:"answers-deleted" }
                                          json = aggregates; keeps working until the session is deleted
 GET  /api/sessions/:sessionCode/ws?token=...     WebSocket upgrade (hibernation API). Server → client: {"v":1,"type":"session.changed","revision":N}.
                                          Fan-out is role-selective (sockets tagged with the token role): host commands (open/close/
-                                         reveal/next/freeze/theme/end) → ALL sockets, coalesced ≥250ms; ballots (answer.submit,
+                                         reveal/next/freeze/theme/end) → ALL sockets, coalesced ≥250ms; answers (answer.submit,
                                          qna.vote) and joins → host+stage only, coalesced ≥1s — participant sockets are included only
                                          while the active interaction's results are participant-visible (`resultVisibility:'live'` or
-                                         revealed). Participants never need a push for hidden ballots: the submitter has the HTTP ack.
+                                         revealed). Participants never need a push for hidden answers: the submitter has the HTTP ack.
                                          Exception: session Q&A (`qna.ask`/`qna.upvote`) rides the results channel with a coalescing
                                          "include participants" flag (mirrored in DO meta, hibernation-safe) — the question list is a
                                          shared surface, so those ticks always reach participant sockets without loosening the
-                                         poll-ballot gating. Hidden group responses additionally notify only current members
+                                         poll-answer gating. Hidden group responses additionally notify only current members
                                          of affected groups, using participant tags derived from verified capabilities.
                                          Pending group IDs are mirrored in DO meta for hibernation. Every alarm flush announces
-                                         the latest stored revision, including newer coalesced ballots. Client sends nothing except pings.
+                                         the latest stored revision, including newer coalesced answers. Client sends nothing except pings.
 ```
 
 Tokens: HMAC-SHA256 signed via WebCrypto, format `base64url(payload).base64url(sig)`, payload `{ sessionCode, role, participantId?, exp }` (exp: participant 6h, host/stage 12h). Secret from env `TOKEN_SECRET`, the same value on the control plane and the relay. Sign/verify in `apps/relay/src/tokens.ts`.
 
-SessionDO: SQLite-backed Durable Object named `SessionDO`, id = `idFromName(sessionCode)`. Session code mapping in KV-less MVP: sessionCode IS derived — `sessionCode = code` (the code is the session id), `idFromName(code)`. Persists `state` as JSON in one SQLite row (MVP simplification; measured normalization later), `idempotency` table (key, resultJson, ts), and optional live-only embedded resources in `session_assets` plus 1 MiB `session_asset_chunks`. Start refuses a session whose referenced resources are missing. Single-range GET/HEAD serves those bytes inline; the existing 24-hour session `deleteAll()` removes them with all other session state. The alarm prunes idempotency rows older than 1h. Uses `ctx.acceptWebSocket()` hibernation API + `setWebSocketAutoResponse` for pings. Coalesced notify runs on two channels (broadcast immediately if that channel's last broadcast is older than its interval, else `ctx.storage.setAlarm` — no `setTimeout`): lifecycle (host commands → all sockets, 250ms) and results (ballots/joins → `getWebSockets('host'|'stage')`, 1s, plus `'participant'` sockets only when `resultsVisible(state, activeInteractionId)`; audience computed at send time). A lifecycle broadcast clears any pending results tick — everyone just refetched. This keeps per-round work linear in participants: without it every ballot notified every participant and each notified participant refetched a snapshot (quadratic). Session auto-expiry: alarm ends sessions idle 12h. Optional countdown: when an open interaction has `closesAt` (from the session's `timerSec`), the same multiplexed alarm applies host `interaction.close` at that deadline — no speed scoring.
+SessionDO: SQLite-backed Durable Object named `SessionDO`, id = `idFromName(sessionCode)`. Session code mapping in KV-less MVP: sessionCode IS derived — `sessionCode = code` (the code is the session id), `idFromName(code)`. Persists `state` as JSON in one SQLite row (MVP simplification; measured normalization later), `idempotency` table (key, resultJson, ts), and optional live-only embedded resources in `session_assets` plus 1 MiB `session_asset_chunks`. Start refuses a session whose referenced resources are missing. Single-range GET/HEAD serves those bytes inline; the existing 24-hour session `deleteAll()` removes them with all other session state. The alarm prunes idempotency rows older than 1h. Uses `ctx.acceptWebSocket()` hibernation API + `setWebSocketAutoResponse` for pings. Coalesced notify runs on two channels (broadcast immediately if that channel's last broadcast is older than its interval, else `ctx.storage.setAlarm` — no `setTimeout`): lifecycle (host commands → all sockets, 250ms) and results (answers/joins → `getWebSockets('host'|'stage')`, 1s, plus `'participant'` sockets only when `resultsVisible(state, activeInteractionId)`; audience computed at send time). A lifecycle broadcast clears any pending results tick — everyone just refetched. This keeps per-round work linear in participants: without it every answer notified every participant and each notified participant refetched a snapshot (quadratic). Session auto-expiry: alarm ends sessions idle 12h. Optional countdown: when an open interaction has `closesAt` (from the session's `timerSec`), the same multiplexed alarm applies host `interaction.close` at that deadline — no speed scoring.
 
 Students, decks (content metadata), immutable deck versions, sessions (delivery instances), Notes, trash state, and deletion intents are ordinary multi-tenant D1 business data. Only the active synchronized session is a Durable Object. Launch copies one selected deck version into the session so the session hot path never reads D1 or calls an AI provider.
 
-Retention (PRD DATA-04), served by the same multiplexed alarm: `BALLOTS_DELETE_AFTER_MS = 30 * 60 * 1000` and `DELETE_AFTER_MS = 24 * 60 * 60 * 1000`, both measured from `meta.endedAt` — recorded when a session reaches `ended` by command OR by the idle auto-end. At `endedAt + BALLOTS_DELETE_AFTER_MS` the DO applies `deleteBallots`, persists and broadcasts `session.changed` once. At `endedAt + DELETE_AFTER_MS` it closes remaining WebSockets and calls `ctx.storage.deleteAll()`, dropping the in-memory state copy too, so join/state/export take the same 404 path as an uninitialized session. The alarm always re-arms to the nearest remaining deadline (pending broadcast, housekeeping, active `closesAt`, deletion, delete); after the wipe there is none.
+Retention (PRD DATA-04), served by the same multiplexed alarm: `ANSWERS_DELETE_AFTER_MS = 30 * 60 * 1000` and `DELETE_AFTER_MS = 24 * 60 * 60 * 1000`, both measured from `meta.endedAt` — recorded when a session reaches `ended` by command OR by the idle auto-end. At `endedAt + ANSWERS_DELETE_AFTER_MS` the DO applies `deleteAnswers`, persists and broadcasts `session.changed` once. At `endedAt + DELETE_AFTER_MS` it closes remaining WebSockets and calls `ctx.storage.deleteAll()`, dropping the in-memory state copy too, so join/state/export take the same 404 path as an uninitialized session. The alarm always re-arms to the nearest remaining deadline (pending broadcast, housekeeping, active `closesAt`, deletion, delete); after the wipe there is none.
 
 Worker env bindings (wrangler.jsonc): `SESSIONS: DurableObjectNamespace` (control plane: `script_name: "openroom-relay"`), `RELAY: Fetcher` (control plane → relay service binding), `TOKEN_SECRET`, `ADMIN_KEY`, `ASSETS` (static assets with `not_found_handling: single-page-application` per app dir). Router: hono or hand-rolled — hand-rolled preferred (few routes).
 
@@ -494,7 +494,7 @@ POST /api/join                            body { code, recoveryName? } — anony
                                          409 session-full when participantLimit is reached
 GET  /api/sessions/:code/state            as above
 POST /api/sessions/:code/commands         as above; the host may run every host command
-GET  /api/sessions/:code/export           as above; format=ballots allowed for the host; no archive (ended sessions follow DO retention)
+GET  /api/sessions/:code/export           as above; format=answers allowed for the host; no archive (ended sessions follow DO retention)
 GET  /api/sessions/:code/ws               as above
 GET  /api/sessions/:code/stage-token      host token → { stageToken }
 PUT|GET|HEAD /api/sessions/:code/assets/:resourceId  as above
@@ -594,7 +594,7 @@ Shared visual language: all three apps style themselves exclusively from the `@o
 
 ## Auth and control plane (v1)
 
-Everything above describes the **session plane**: capability tokens, the SessionDO, the ballot hot path. This section adds the **control plane**: who the host is, what they own, and how they get back to a session. The two planes are deliberately separate — a session cookie is never accepted on a session route, and a capability token is never accepted on a control-plane route, so a leaked session link stays scoped to exactly one session.
+Everything above describes the **session plane**: capability tokens, the SessionDO, the answer hot path. This section adds the **control plane**: who the host is, what they own, and how they get back to a session. The two planes are deliberately separate — a session cookie is never accepted on a session route, and a capability token is never accepted on a control-plane route, so a leaked session link stays scoped to exactly one session.
 
 **The only D1 access during a live session is one INSERT at session creation.** Joining, answering, snapshots, WebSocket fan-out and export never touch D1.
 
@@ -641,7 +641,7 @@ access. Interface preferences live separately in `users.prefs`. Closed allowlist
 | --- | --- |
 | `keep` | Snapshot the ended session to R2 (`session_archives`); DO still deletes at 30 min and dies at 24 h |
 | `guestList` | Create a session with `identityMode: guest-list` and mint `orinv_…` guest links |
-| `rawExport` | Per-ballot / named CSV (and ballots inside a `keep` snapshot) |
+| `rawExport` | Per-answer / named CSV (and answers inside a `keep` snapshot) |
 | `branding` | Create and edit shared brand kits; existing kits and designs remain readable after downgrade |
 | `team` | Invite and admit new space members; start new shared sessions. Existing paid session collaboration continues while membership remains valid |
 | `continuity` | The teaching loop: session Notes (`/api/sessions/{id}/record`, including `nextNote` and homework), learners and access links, returned and learner work, creating identified sessions, and `/api/learner/*`. Read from the space owner. Denied as `403 continuity-required` (learner routes: the revoked-link `401`). Students themselves, trash, restore, permanent deletion and link revocation are never gated |
@@ -658,9 +658,9 @@ self-hosted: every account sees every flag `true` except `connectors`
 
 - `format=json` — aggregates only. Free until the DO is wiped.
 - `format=csv` — **aggregate** CSV (one row per interaction, counts). Free until the DO is wiped.
-- `format=ballots` — today's per-ballot CSV (including `name` when the session is not anonymous). Requires `rawExport` or `identityMode === 'guest-list'`. `410 ballots-deleted` after DATA-04 unless a `keep` archive exists.
+- `format=answers` — today's per-answer CSV (including `name` when the session is not anonymous). Requires `rawExport` or `identityMode === 'guest-list'`. `410 answers-deleted` after DATA-04 unless a `keep` archive exists.
 
-`session_results` (MCP) stays the JSON aggregate shape. Do not add a ballot tool on the free MCP path.
+`session_results` (MCP) stays the JSON aggregate shape. Do not add an answer tool on the free MCP path.
 
 ### Guest lists
 
@@ -903,11 +903,11 @@ It never authenticates the control plane. Live host requests recheck current D1
 membership. Collaboration paid for at session creation is retained for that session,
 so billing expiry does not interrupt teaching; otherwise current owner team access
 is required. New shared sessions always require current owner access. Participant
-ballots remain entirely on the session Durable Object path. Joining as a host is explicit and does not
+answers remain entirely on the session Durable Object path. Joining as a host is explicit and does not
 change the active presenter. Moderator commands cover hiding responses and managing
 live groups. All presentation changes require the active presenter; only the creator
 or current space owner can explicitly recover presentation control. Handoff preserves
-the cursor, reveals, timers and ballots. A presenter may use multiple devices.
+the cursor, reveals, timers and answers. A presenter may use multiple devices.
 
 Command authorization runs before idempotency replay. Idempotency keys are scoped to
 the verified actor. Host identity and recovery permission on host snapshots
@@ -954,7 +954,7 @@ expires. It is not a session collection, a new library record, or a copy of the 
 snapshot. No content is selected by default and nothing is automatically published.
 
 The candidate projection allowlists prompts, aggregate rows and visible response
-text. It never spreads an interaction, aggregate, ballot or Q&A object. Choice,
+text. It never spreads an interaction, aggregate, answer or Q&A object. Choice,
 scale, numeric and ranking results are supported; numeric results contain only mean
 and median, not individual values. Text and Q&A are selected separately. Hidden
 content, participant identifiers/names, answer keys, tutor notes, private pedagogy,
@@ -972,7 +972,7 @@ The live endpoint accepts only host session capabilities. The account endpoint
 accepts the control-plane credentials and rechecks current host access,
 including the owner's shared-space entitlement; cookie POSTs require CSRF. CLI,
 MCP and the browser reach the same projection/selection service. Reading a recap
-neither joins hosting nor takes presentation control, and leaves ballot state
+neither joins hosting nor takes presentation control, and leaves answer state
 unchanged. The MCP tool description owns its callable contract.
 
 ## Frozen PowerPoint slide composition

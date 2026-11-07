@@ -70,5 +70,5 @@ results are a deliberate teaching moment, not a live scoreboard by default.
 
 - Peer-instruction dual-round (UC-03).
 - Live visibility while open (UC-02).
-- Don't-know ballots.
+- Don't-know answers.
 - Display styles other than `bars`.

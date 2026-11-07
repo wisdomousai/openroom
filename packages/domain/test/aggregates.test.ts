@@ -63,7 +63,7 @@ describe('aggregates — scale', () => {
     expect(aggregate.counts[5]).toBe(1);
   });
 
-  it('mean is null with zero ballots', () => {
+  it('mean is null with zero answers', () => {
     const state = sessionWithOpen('mood');
     const aggregate = state.interactions['mood']!.aggregate;
     if (aggregate.kind !== 'scale') throw new Error('expected scale');
@@ -113,7 +113,7 @@ describe('aggregates — numeric', () => {
     expect(aggregate.median).toBe(13);
   });
 
-  it('mean and median are null with zero ballots', () => {
+  it('mean and median are null with zero answers', () => {
     const state = sessionWithOpen('guess');
     const aggregate = state.interactions['guess']!.aggregate;
     if (aggregate.kind !== 'numeric') throw new Error('expected numeric');

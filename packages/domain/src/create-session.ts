@@ -42,7 +42,7 @@ export function createSession(
   for (const interaction of normalized.interactions) {
     const runtime: InteractionRuntime = {
       status: 'pending',
-      ballots: {},
+      answers: {},
       aggregate: emptyAggregate(interaction),
     };
     // Peer-instruction interactions start in round 1; every other interaction

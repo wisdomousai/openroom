@@ -498,8 +498,8 @@ export async function cmdExport(
   deps: SessionDeps = {},
 ): Promise<number> {
   const format = flagString(args, 'format') ?? 'json';
-  if (format !== 'csv' && format !== 'json' && format !== 'ballots') {
-    throw new UsageError(`--format must be "csv", "json", or "ballots" (got "${format}")`);
+  if (format !== 'csv' && format !== 'json' && format !== 'answers') {
+    throw new UsageError(`--format must be "csv", "json", or "answers" (got "${format}")`);
   }
   const state = resolveState(args, deps);
   const client = clientFor(state.url, deps);

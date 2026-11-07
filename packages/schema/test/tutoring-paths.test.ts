@@ -36,7 +36,7 @@ describe('isTutoringApiPath', () => {
   });
 
   it('allows account archive reads without admitting nested or arbitrary account resources', () => {
-    for (const path of ['/api/my/archives', '/api/my/archives/ABCDEFGH?format=ballots', '/api/my/archives/ABCDEFGH/document']) expect(isTutoringApiPath(path)).toBe(true);
+    for (const path of ['/api/my/archives', '/api/my/archives/ABCDEFGH?format=answers', '/api/my/archives/ABCDEFGH/document']) expect(isTutoringApiPath(path)).toBe(true);
     for (const path of ['/api/my/archives/a/edit', '/api/my/users']) expect(isTutoringApiPath(path)).toBe(false);
   });
 

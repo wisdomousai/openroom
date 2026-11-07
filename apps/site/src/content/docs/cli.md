@@ -110,7 +110,7 @@ A guest list supports 200 active guest links. Names are normalized to single spa
 openroom results
 openroom export --format csv --out counts.csv
 openroom export --format json --out results.json
-openroom export --format ballots --out responses.csv
+openroom export --format answers --out responses.csv
 openroom session recap --selection selection.json --format html --out recap.html
 ```
 

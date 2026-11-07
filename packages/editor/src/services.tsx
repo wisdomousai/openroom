@@ -123,7 +123,7 @@ export interface StudentReturned {
   }>;
 }
 
-export type ExportFormat = 'csv' | 'json' | 'ballots';
+export type ExportFormat = 'csv' | 'json' | 'answers';
 
 /** The projector surface the live console mirrors (apps/stage `StageView`). */
 export interface StageViewProps {

@@ -54,7 +54,7 @@ export interface VerifiedPat {
 
 /**
  * Verify a raw bearer as a non-revoked PAT and return its owner.
- * Updates last_used_at (best-effort; not on the ballot path).
+ * Updates last_used_at (best-effort; not on the answer path).
  */
 export async function verifyApiToken(
   env: ControlEnv,

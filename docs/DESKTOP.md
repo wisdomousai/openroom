@@ -62,7 +62,7 @@ The first **Save to workspace…** action requires a student, space, and optiona
 
 A linked file checks the deck on focus and every 30 seconds with `If-None-Match`. No sync Durable Object exists. D1 stores immutable deck versions and the link/location metadata; `SessionDO` remains only for a live session.
 
-When a linked file first syncs an embedded resource, Desktop uploads those bytes to the space's retained R2 media library and records the asset id beside the package hash. When a local-only file starts a synchronized session, Desktop instead uploads the referenced bytes directly to that session's Durable Object in 1 MiB SQLite BLOB chunks. Start is refused until every referenced resource is present. Those live-only bytes follow the session lifecycle: ballot data is deleted after 30 minutes and `storage.deleteAll()` removes the complete session, including resources, 24 hours after it ends. Local `Present` does not upload anything.
+When a linked file first syncs an embedded resource, Desktop uploads those bytes to the space's retained R2 media library and records the asset id beside the package hash. When a local-only file starts a synchronized session, Desktop instead uploads the referenced bytes directly to that session's Durable Object in 1 MiB SQLite BLOB chunks. Start is refused until every referenced resource is present. Those live-only bytes follow the session lifecycle: answer data is deleted after 30 minutes and `storage.deleteAll()` removes the complete session, including resources, 24 hours after it ends. Local `Present` does not upload anything.
 
 Reconciliation uses content hashes and the common `baseOutline`:
 

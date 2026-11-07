@@ -39,7 +39,7 @@ export function beatStateOf(snapshot: {
 
 /**
  * Which beat, if any, the session just played. Returns `null` for a snapshot that
- * changed in some way the moment layer does not care about (a new ballot, a
+ * changed in some way the moment layer does not care about (a new answer, a
  * participant joining) — those are the data layer's business.
  *
  * The first snapshot after a page load deliberately produces no beat for an

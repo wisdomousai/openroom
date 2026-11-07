@@ -2,7 +2,7 @@
  * Control-plane routes: the live-session directory.
  *
  * Everything here is session-cookie authenticated and D1 backed. None of it is
- * on the ballot hot path — the only D1 write during a session is one INSERT at
+ * on the answer hot path — the only D1 write during a session is one INSERT at
  * session creation.
  */
 

@@ -114,7 +114,7 @@ import { prefsRoute } from './prefs.js';
 import { endSessionForCode, type SessionLaunchInput } from './delivery/index.js';
 import { identifiedNeedsStudent } from './delivery/shared.js';
 import {
-  archivedBallotsCsv,
+  archivedAnswersCsv,
   downloadArchiveRoute,
   listArchivesRoute,
   maybeArchiveEndedSession,
@@ -153,7 +153,7 @@ export interface Env extends ControlEnv {
 /**
  * The control plane's authority over the shared live routes. Account-bound
  * host tokens are rechecked against D1 on every call (revoked connection,
- * removed host); `session.end` archives; ballots exports follow the
+ * removed host); `session.end` archives; answers exports follow the
  * owner's paid access and fall back to the archive.
  */
 function controlAuthority(env: Env): LiveAuthority<HostAccess> {
@@ -169,8 +169,8 @@ function controlAuthority(env: Env): LiveAuthority<HostAccess> {
     },
     commandAllowed: (grant, sessionCode, command) => hostCommandAllowed(env, sessionCode, grant, command),
     sessionEnded: (sessionCode) => finishEndedSession(env, sessionCode),
-    mayExportBallots: (sessionCode) => ownerMayExportBallots(env, sessionCode),
-    archivedBallots: (sessionCode) => archivedBallotsCsv(env, sessionCode),
+    mayExportAnswers: (sessionCode) => ownerMayExportAnswers(env, sessionCode),
+    archivedAnswers: (sessionCode) => archivedAnswersCsv(env, sessionCode),
   };
 }
 
@@ -196,7 +196,7 @@ function authenticate(
  * Cookie, PAT and OAuth clients share account quotas, paid-access checks and
  * ownership. The admin key remains an unquota'd ops override and creates an
  * unowned session with no participant limit. These control-plane checks never
- * run on the ballot hot path.
+ * run on the answer hot path.
  */
 
 /**
@@ -611,8 +611,8 @@ async function sessionStudentRoute(
 /** Called only after the DO accepts an end command, from REST and MCP alike. */
 export async function finishEndedSession(env: Env, sessionCode: string): Promise<void> {
   await endSessionForCode(env, sessionCode);
-  await maybeArchiveEndedSession(env, sessionCode, (format, allowBallots) =>
-    stub(env, sessionCode).fetch(doUrl('/__export', { format, ...(allowBallots ? { allowBallots: '1' } : {}) })),
+  await maybeArchiveEndedSession(env, sessionCode, (format, allowAnswers) =>
+    stub(env, sessionCode).fetch(doUrl('/__export', { format, ...(allowAnswers ? { allowAnswers: '1' } : {}) })),
   );
 }
 
@@ -620,7 +620,7 @@ export async function finishEndedSession(env: Env, sessionCode: string): Promise
  * Ops sessions keep the full file. Account sessions use the space owner's
  * paid access, or the creator's when no space is attached.
  */
-async function ownerMayExportBallots(env: Env, sessionCode: string): Promise<boolean> {
+async function ownerMayExportAnswers(env: Env, sessionCode: string): Promise<boolean> {
   const owner = await sessionEntitlementOwner(env, sessionCode);
   if (!owner) return true; // Ops sessions have no account directory row.
   if (!owner.userId) return owner.spaceId === null;
@@ -999,7 +999,7 @@ export default {
       const sessionCode = normalizeSessionCode(decodeURIComponent(sessionMatch[1] as string));
       const leaf = sessionMatch[2];
       // Live routes: the relay's implementation, under this deployment's
-      // authority (account rechecks, archive on end, paid ballots export).
+      // authority (account rechecks, archive on end, paid answers export).
       const live = liveFor(env);
       if (leaf === 'state' && request.method === 'GET') {
         return liveStateRoute(live, request, url, sessionCode);

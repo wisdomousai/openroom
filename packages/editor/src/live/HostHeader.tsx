@@ -72,7 +72,7 @@ export interface HostHeaderProps {
   hasQna: boolean;
   activeThemeName: string;
   onOpenTheme: () => void;
-  onExport: (format: 'csv' | 'json' | 'ballots') => void;
+  onExport: (format: 'csv' | 'json' | 'answers') => void;
   /** `null` until the desktop shell answers; hides the exit destination. */
   documentWindow: boolean | null;
   /** The deck's place in the Library, so leaving mid-session keeps the folder. */
@@ -304,7 +304,7 @@ export function HostHeader({
             <Download aria-hidden="true" />
             Download counts (CSV)
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onExport('ballots')}>
+          <DropdownMenuItem onSelect={() => onExport('answers')}>
             <Download aria-hidden="true" />
             Download responses (CSV)
           </DropdownMenuItem>

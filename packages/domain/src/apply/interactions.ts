@@ -18,7 +18,7 @@ import { INK_COLORS, isKnownTheme, SESSION_THEME_IDS, TOKEN_MARK_KINDS } from '.
 import type {
   AnswerInput,
   ApplyResult,
-  Ballot,
+  Answer,
   Command,
   CommandEnvelope,
   DomainError,
@@ -169,11 +169,11 @@ export function applyInteractionCommands(
       const closesAt = armClosesAt(interaction, now);
       const reopened: InteractionRuntime = {
         status: 'open',
-        ballots: {},
+        answers: {},
         aggregate: emptyAggregate(interaction),
         openedAt: now,
         round: 2,
-        round1: { ballots: current.ballots, aggregate: current.aggregate },
+        round1: { answers: current.answers, aggregate: current.aggregate },
         ...(closesAt !== undefined ? { closesAt } : {}),
       };
       return commit({
@@ -203,7 +203,7 @@ export function applyInteractionCommands(
       }
       const restored: InteractionRuntime = {
         status: 'closed',
-        ballots: runtime.round1.ballots,
+        answers: runtime.round1.answers,
         aggregate: runtime.round1.aggregate,
         openedAt: runtime.openedAt,
         closedAt: now,

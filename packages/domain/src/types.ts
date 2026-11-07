@@ -57,7 +57,7 @@ export interface ParticipantRecord {
   lane?: 0 | 1;
 }
 
-export type Ballot =
+export type Answer =
   | { kind: 'choice'; optionIds: string[] }
   | { kind: 'scale'; value: number }
   | { kind: 'numeric'; value: number }
@@ -103,7 +103,7 @@ export type Aggregate =
       total: number;
     }
   /**
-   * `scores` is a Borda count: with k options, the option a ballot puts in
+   * `scores` is a Borda count: with k options, the option an answer puts in
    * position p (0-based) receives k - p points. `avgRank` is the mean 1-based
    * position of the option, or null while `total` is 0.
    */
@@ -137,8 +137,8 @@ export interface InteractionRuntime {
   /** Group names at first submission; later renaming never relabels a recorded response. */
   groupNames?: Record<string, string>;
   status: InteractionStatus;
-  /** key = participantId; a replacement ballot is an answer change */
-  ballots: Record<string, Ballot>;
+  /** key = participantId; a replacement answer is an answer change */
+  answers: Record<string, Answer>;
   /** recomputed on every write and stored */
   aggregate: Aggregate;
   openedAt?: number;
@@ -169,7 +169,7 @@ export interface InteractionRuntime {
    * archived aggregate reaches participant/stage snapshots only once the
    * interaction is `revealed`; the host always sees it.
    */
-  round1?: { ballots: Record<string, Ballot>; aggregate: Aggregate };
+  round1?: { answers: Record<string, Answer>; aggregate: Aggregate };
 }
 
 /* ------------------------------------------------------------------ */
@@ -268,8 +268,8 @@ export interface SessionState {
   /** panic: no submissions, participant text hidden on stage */
   frozen: boolean;
   endedAt?: number;
-  /** set by `deleteBallots` once the per-person layer has been dropped (PRD DATA-04) */
-  ballotsDeletedAt?: number;
+  /** set by `deleteAnswers` once the per-person layer has been dropped (PRD DATA-04) */
+  answersDeletedAt?: number;
 }
 
 export type TimerPlacement = 'slide' | 'corner';
@@ -412,7 +412,7 @@ export interface SessionGroup {
   name: string;
   memberIds: string[];
   spokespersonId: string | null;
-  /** Removed groups retain their id so a later group cannot inherit their ballots. */
+  /** Removed groups retain their id so a later group cannot inherit their answers. */
   removed?: boolean;
 }
 
@@ -436,7 +436,7 @@ export type Command =
   | { command: 'interaction.close'; interactionId: string }
   | { command: 'interaction.reveal'; interactionId: string }
   /**
-   * Blank audience/stage results without closing voting or deleting ballots.
+   * Blank audience/stage results without closing voting or deleting answers.
    * Host-only. Cleared by showResults / reveal / reopen.
    */
   | { command: 'interaction.hideResults'; interactionId: string }
@@ -451,7 +451,7 @@ export type Command =
    */
   | { command: 'interaction.revote'; interactionId: string }
   /**
-   * Peer instruction: discard round 2 and restore the archived round-1 ballots.
+   * Peer instruction: discard round 2 and restore the archived round-1 answers.
    * Host-only. Valid whenever a round-1 archive exists (open/closed/revealed in round 2).
    * Lands on closed round 1 so the host can discuss again, revote, or reveal R1.
    */
@@ -486,7 +486,7 @@ export type Command =
     }
   /**
    * Rewrite a content slide already in the live outline (term, statement, …).
-   * Interaction steps are rejected — live polls keep their ballots.
+   * Interaction steps are rejected — live polls keep their answers.
    */
   | {
       command: 'outline.replace';

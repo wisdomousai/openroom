@@ -106,7 +106,7 @@ revisions. The host's joined count continues to represent distinct participants.
 
 The check fails for lost or duplicated answers, incomplete state convergence,
 unexpected HTTP failures, socket close handshakes that do not finish within five
-seconds, or local ballot p95 at or above 500 ms / host aggregate
+seconds, or local answer p95 at or above 500 ms / host aggregate
 receipt p95 at or above one second. Timing includes the local client and HTTP
 transport; it does **not** establish production server latency or
 browser rendering performance. Run it without other builds or test workloads.

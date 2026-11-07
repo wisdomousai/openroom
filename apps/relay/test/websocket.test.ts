@@ -66,7 +66,7 @@ describe('websocket notify', () => {
   });
 
   it('coalesces a burst of rapid submissions into far fewer host-facing frames than submissions', async () => {
-    // Ballots ride the results channel (1s coalescing) and reach only host and
+    // Answers ride the results channel (1s coalescing) and reach only host and
     // stage sockets — the host watcher here should see a trickle, not the burst.
     const session = await createLiveSession();
     await command(session.sessionCode, session.hostToken, { command: 'session.start' });
@@ -102,9 +102,9 @@ describe('websocket notify', () => {
     }
   });
 
-  it('sends a participant NO frames for ballots while results are hidden', async () => {
+  it('sends a participant NO frames for answers while results are hidden', async () => {
     // SMOKE_OUTLINE's warmup normalizes to resultVisibility 'hidden-until-close':
-    // a participant can learn nothing from other people's ballots, so their
+    // a participant can learn nothing from other people's answers, so their
     // socket must stay silent through joins and submissions alike.
     const session = await createLiveSession();
     await command(session.sessionCode, session.hostToken, { command: 'session.start' });
@@ -135,7 +135,7 @@ describe('websocket notify', () => {
     }
   });
 
-  it('includes participants in ballot notifications when results are live-visible', async () => {
+  it('includes participants in answer notifications when results are live-visible', async () => {
     const liveOutline = {
       ...SMOKE_OUTLINE,
       interactions: [{ ...SMOKE_OUTLINE.interactions[0], resultVisibility: 'live' }],

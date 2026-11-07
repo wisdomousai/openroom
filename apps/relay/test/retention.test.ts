@@ -1,5 +1,5 @@
 /**
- * Retention schedule (PRD DATA-04): ballots deleted 30 min after a session ends,
+ * Retention schedule (PRD DATA-04): answers deleted 30 min after a session ends,
  * the whole session deleted 24 h after.
  *
  * Same shape as expiry.test.ts — the retention clock lives in the DO's `meta`
@@ -110,24 +110,24 @@ async function backdateEndedAt(sessionCode: string, agoMs: number): Promise<void
 const THIRTY_ONE_MINUTES = 31 * 60 * 1000;
 const TWENTY_FIVE_HOURS = 25 * 60 * 60 * 1000;
 
-describe('ballot deletion 30 minutes after a session ends', () => {
-  it('drops ballots and participants but keeps the aggregates, with text anonymized', async () => {
+describe('answer deletion 30 minutes after a session ends', () => {
+  it('drops answers and participants but keeps the aggregates, with text anonymized', async () => {
     const session = await endedSessionWithAnswers();
     const before = await stateJson(session.sessionCode, session.hostToken, 'host');
-    expect(before.ballotsDeletedAt).toBeUndefined();
-    expect(Object.keys(before.ballots.reflect as Record<string, unknown>)).toHaveLength(2);
+    expect(before.answersDeletedAt).toBeUndefined();
+    expect(Object.keys(before.answers.reflect as Record<string, unknown>)).toHaveLength(2);
 
     await backdateEndedAt(session.sessionCode, THIRTY_ONE_MINUTES);
     expect(await runDurableObjectAlarm(stubFor(session.sessionCode))).toBe(true);
 
     const host = await stateJson(session.sessionCode, session.hostToken, 'host');
     expect(host.status).toBe('ended');
-    expect(typeof host.ballotsDeletedAt).toBe('number');
+    expect(typeof host.answersDeletedAt).toBe('number');
     expect(host.revision).toBe((before.revision as number) + 1);
 
-    // Ballots, participants and host identities are gone.
-    expect(host.ballots.warmup).toEqual({});
-    expect(host.ballots.reflect).toEqual({});
+    // Answers, participants and host identities are gone.
+    expect(host.answers.warmup).toEqual({});
+    expect(host.answers.reflect).toEqual({});
     expect(host.participantCount).toBe(0);
     expect(host.hosting).toEqual({ presenterId: '', hosts: [], yourId: '', canPresent: false, canRecover: false });
     expect((await command(session.sessionCode, session.hostToken, { command: 'session.start' })).status).toBe(403);
@@ -142,7 +142,7 @@ describe('ballot deletion 30 minutes after a session ends', () => {
       ],
     });
 
-    // ballot-derived counts survive in the JSON export
+    // answer-derived counts survive in the JSON export
     const exported = await call(`/api/sessions/${session.sessionCode}/export?format=json`, {
       headers: { authorization: `Bearer ${session.hostToken}` },
     });
@@ -155,7 +155,7 @@ describe('ballot deletion 30 minutes after a session ends', () => {
     expect(warmup?.aggregate.total).toBe(2);
   });
 
-  it('answers the per-ballot CSV export with 410 ballots-deleted once deleted', async () => {
+  it('answers the per-answer CSV export with 410 answers-deleted once deleted', async () => {
     const session = await endedSessionWithAnswers();
     await backdateEndedAt(session.sessionCode, THIRTY_ONE_MINUTES);
     await runDurableObjectAlarm(stubFor(session.sessionCode));
@@ -168,11 +168,11 @@ describe('ballot deletion 30 minutes after a session ends', () => {
       'interactionId,prompt,type,status,total,summary',
     );
 
-    const csv = await call(`/api/sessions/${session.sessionCode}/export?format=ballots`, {
+    const csv = await call(`/api/sessions/${session.sessionCode}/export?format=answers`, {
       headers: { authorization: `Bearer ${session.hostToken}` },
     });
     expect(csv.status).toBe(410);
-    expect(await csv.json()).toEqual({ ok: false, error: 'ballots-deleted' });
+    expect(await csv.json()).toEqual({ ok: false, error: 'answers-deleted' });
   });
 
   it('is idempotent: a second alarm run does not delete (or bump the revision) again', async () => {
@@ -185,7 +185,7 @@ describe('ballot deletion 30 minutes after a session ends', () => {
     const twice = await stateJson(session.sessionCode, session.hostToken, 'host');
 
     expect(twice.revision).toBe(once.revision);
-    expect(twice.ballotsDeletedAt).toBe(once.ballotsDeletedAt);
+    expect(twice.answersDeletedAt).toBe(once.answersDeletedAt);
     expect(twice.aggregate).toEqual(once.aggregate);
   });
 });

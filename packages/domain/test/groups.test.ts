@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createSession } from '../src/create-session.js';
 import { applyCommand } from '../src/apply-command.js';
 import { participantSnapshot, hostSnapshot, stageSnapshot } from '../src/snapshots.js';
-import { deleteBallots } from '../src/delete-ballots.js';
+import { deleteAnswers } from '../src/delete-answers.js';
 import type { Command, SessionState } from '../src/types.js';
 import { WORKSHOP_SEQUENCES } from '@openroom/schema';
 
@@ -61,7 +61,7 @@ describe('session-local group responses', () => {
     const original = setup();
     for (const id of ['p2', 'p3']) expect(send(original, answer(), id)).toMatchObject({ ok: false, error: { code: 'E_FORBIDDEN' } });
     const state = ok(original, answer(), 'p1');
-    expect(state.interactions.team!.ballots).toEqual({ 'group:north': { kind: 'text', text: 'Choose a small pilot', hidden: false } });
+    expect(state.interactions.team!.answers).toEqual({ 'group:north': { kind: 'text', text: 'Choose a small pilot', hidden: false } });
     for (const id of ['p1', 'p2']) {
       const view = participantSnapshot(state, id);
       expect(view.yourAnswer).toMatchObject({ text: 'Choose a small pilot' });
@@ -72,7 +72,7 @@ describe('session-local group responses', () => {
     expect(stageSnapshot(state)).toMatchObject({ aggregate: null, answeredCount: 1, participantCount: 3, expectedAnswerCount: 1 });
   });
 
-  it('hands off the same ballot and preserves the recorded group label after a rename', () => {
+  it('hands off the same answer and preserves the recorded group label after a rename', () => {
     let state = ok(setup(), answer(), 'p1');
     state = ok(state, group('p2', 'East'));
     expect(send(state, answer(), 'p1')).toMatchObject({ ok: false });
@@ -93,7 +93,7 @@ describe('session-local group responses', () => {
     expect(stageSnapshot(state).expectedAnswerCount).toBe(3);
   });
 
-  it('moves a spokesperson atomically, keeps old ballots and prevents dissolved id reuse', () => {
+  it('moves a spokesperson atomically, keeps old answers and prevents dissolved id reuse', () => {
     let state = ok(setup(), answer(), 'p1');
     state = ok(state, { command: 'group.set', group: { id: 'south', name: 'South', memberIds: ['p1', 'p3'], spokespersonId: 'p1' } });
     expect(state.groups!.north).toMatchObject({ memberIds: ['p2'], spokespersonId: null });
@@ -119,7 +119,7 @@ describe('session-local group responses', () => {
     expect(send(state, answer(), 'p2')).toMatchObject({ ok: false, error: { code: 'E_FROZEN' } });
     state = ok(state, { command: 'session.end' });
     expect(send(state, group())).toMatchObject({ ok: false, error: { code: 'E_ENDED' } });
-    const deleted = deleteBallots(state, 1000);
+    const deleted = deleteAnswers(state, 1000);
     expect(deleted.groups).toEqual({});
     expect(deleted.interactions.team!.groupNames).toBeUndefined();
     expect(deleted.interactions.team!.aggregate).toMatchObject({ total: 1, entries: [{ participantId: 'deleted-1' }] });

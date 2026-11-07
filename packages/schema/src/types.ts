@@ -115,7 +115,7 @@ export interface BaseInteraction {
   /**
    * Styled spans over `prompt`, authoritative when present and concatenating
    * exactly to it. They live on the interaction rather than the step because
-   * the participant ballot and the stage aggregate both read the prompt from
+   * the participant answer and the stage aggregate both read the prompt from
    * the session — styling it here reaches every surface at once.
    *
    * Forbidden on `fill-the-gaps`: its prompt holds `{{id}}` placeholders, so
@@ -127,7 +127,7 @@ export interface BaseInteraction {
   displayOptions?: DisplayOptions;
   resultVisibility?: ResultVisibility;
   allowAnswerChange?: boolean;
-  /** Group questions accept one shared ballot, submitted by the assigned spokesperson. */
+  /** Group questions accept one shared answer, submitted by the assigned spokesperson. */
   responseMode?: 'individual' | 'group';
   allowDontKnow?: boolean;
   /** Host-only. Never sent to participant or stage. */

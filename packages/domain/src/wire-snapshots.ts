@@ -229,7 +229,7 @@ export function hostWireSnapshot(state: SessionState): Json {
     ...(activeRuntime?.round1 === undefined ? {} : { round1Aggregate: activeRuntime.round1.aggregate }),
     sessionCode: snapshot.code,
     outline: snapshot.outline,
-    ballots: snapshot.ballots,
+    answers: snapshot.answers,
     qna: snapshot.qna,
     ...(snapshot.outline === undefined ? {} : { outline: snapshot.outline }),
     ...(snapshot.marks === undefined ? {} : { marks: snapshot.marks }),
@@ -239,6 +239,6 @@ export function hostWireSnapshot(state: SessionState): Json {
     ...(snapshot.listening === undefined ? {} : { listening: snapshot.listening }),
     ...(snapshot.names === undefined ? {} : { names: snapshot.names }),
     ...(snapshot.endedAt === undefined ? {} : { endedAt: snapshot.endedAt }),
-    ...(snapshot.ballotsDeletedAt === undefined ? {} : { ballotsDeletedAt: snapshot.ballotsDeletedAt }),
+    ...(snapshot.answersDeletedAt === undefined ? {} : { answersDeletedAt: snapshot.answersDeletedAt }),
   };
 }

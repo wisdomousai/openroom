@@ -47,7 +47,7 @@ The live retention clocks begin when the session ends, including an automatic en
 | Time after ending | Available data |
 | --- | --- |
 | First 30 minutes | Live individual responses and participant records remain available for authorized export and recap preparation. |
-| After 30 minutes | Individual ballots and participant records are deleted. Aggregate results and anonymized text remain temporarily available. |
+| After 30 minutes | Individual answers and participant records are deleted. Aggregate results and anonymized text remain temporarily available. |
 | After 24 hours | The live session's stored state is deleted. |
 
 Download needed response data promptly. Anonymized text can still identify a person through its wording; review it before sharing.

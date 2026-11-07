@@ -5,7 +5,7 @@ import type { Session } from '@openroom/schema';
 import {
   hostSnapshot,
   participantSnapshot,
-  deleteBallots,
+  deleteAnswers,
   sortedQuestions,
   stageSnapshot,
 } from '../src/index.js';
@@ -327,7 +327,7 @@ describe('session qna — deletion and back-compat', () => {
     let state = ask(qnaRoom(), 'p1', 'q1', 'keep me', 100);
     state = upvote(state, 'p2', 'q1');
     state = run(state, env({ command: 'session.end' }));
-    const deleted = deleteBallots(state, 9999);
+    const deleted = deleteAnswers(state, 9999);
     const question = deleted.qna.questions['q1'];
     expect(question).toMatchObject({ text: 'keep me', votes: 1, voters: [] });
     expect(question?.participantId).toBe('deleted-1');

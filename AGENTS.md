@@ -18,7 +18,7 @@ When adding a surface, ask: does this help open a deck, share a space, or teach 
 
 - Core and workspace. The **core** makes and presents: `packages/*`, `apps/relay`, `apps/stage`, `apps/participant`, `apps/office` and `apps/desktop` (MIT). The **workspace** organises and hosts: `apps/workspace` (library, spaces and folders, students and classes, Notes, learner page, billing, settings, sign-in, home) and `apps/workspace-worker` (the control plane), plus `apps/site` (AGPL-3.0-only; see `LICENSING.md`). Core code never imports from a workspace app — not by relative path, alias, or package name; `apps/desktop/src/core-boundary.test.ts` enforces this for Desktop. `bun run build:core` must succeed in a checkout with `apps/workspace` and `apps/workspace-worker` deleted, and must produce Desktop's core renderer (`apps/desktop/renderer/core/index.html`); CI checks both.
 - Keep durable business records in D1. Use a Durable Object only for the live state and coordination of one session.
-- Do not put D1, R2, queues, workflows, or model calls on the ballot hot path.
+- Do not put D1, R2, queues, workflows, or model calls on the answer hot path.
 - Two Workers. `apps/relay` (`openroom-relay`) is the live plane: it owns `SessionDO`, the live session routes (state, commands, WebSocket, export, stage token, per-session assets), anonymous/nickname join, and the stage and participant apps. It has no D1 or R2 and runs alone as a complete live system, where `RELAY_KEY` gates `POST /api/sessions`. `apps/workspace-worker` (`openroom`) is the control plane: accounts, spaces, decks, billing, MCP, and every hosted session creation. It binds `SessionDO` cross-script (`script_name: "openroom-relay"`), answers the live API itself through the shared `openroom-relay/live` module with its own authority (D1 rechecks, archives, identified and guest-list joins), and forwards `/join/`, `/stage/` and the `join.` host to the relay over the `RELAY` service binding. Live logic lives once, in `apps/relay/src`; the control plane never copies it. Deploy the relay first.
 - Heavy outline preparation happens in the teacher's **own** agent, through one of two doors:
   an **external agent** (any MCP client, the CLI, or the public API), or the **OpenRoom
@@ -80,7 +80,7 @@ creates sessions on that relay and nothing else. Host tokens a relay issues carr
 a control-plane session never runs under relay rules. Desktop keeps the key in the OS
 keychain and only the main process sends it.
 
-Paid memory (archives, named ballot export, connectors) is a control-plane
+Paid memory (archives, named answer export, connectors) is a control-plane
 entitlement, not a credential. Paddle-managed accounts read verified subscription
 records and the current approved price catalog through `readEntitlements`; only
 billing ingestion/reconciliation writes those records. `users.entitlements` is reserved for manual development grants to

@@ -251,7 +251,7 @@ export class ApiClient {
   async exportRaw(
     sessionCode: string,
     hostToken: string,
-    format: 'csv' | 'json' | 'ballots',
+    format: 'csv' | 'json' | 'answers',
   ): Promise<string> {
     const path = `/api/sessions/${encodeURIComponent(sessionCode)}/export?format=${format}`;
     const url = `${this.baseUrl}${path}`;

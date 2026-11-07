@@ -82,7 +82,7 @@ describe('group responses over HTTP and WebSocket', () => {
       expect((await command(session.code, two.participantToken, { ...submit, answer: { kind: 'text', text: 'Start with one team' } })).status).toBe(200);
       const host = await stateJson(session.code, session.hostToken, 'host');
       expect(host.aggregate).toMatchObject({ total: 1 });
-      expect(host.ballots.decision).toEqual({ 'group:north': { kind: 'text', text: 'Start with one team', hidden: false } });
+      expect(host.answers.decision).toEqual({ 'group:north': { kind: 'text', text: 'Start with one team', hidden: false } });
       expect(host.groups).toEqual([{ ...group, spokespersonId: two.participantId }]);
       await command(session.code, session.hostToken, { command: 'interaction.reveal', interactionId: 'decision' });
       expect((await stateJson(session.code, outside.participantToken, 'participant')).aggregate).toMatchObject({ total: 1, entries: [{ text: 'Start with one team', name: 'North' }] });

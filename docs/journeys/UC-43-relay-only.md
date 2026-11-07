@@ -29,7 +29,7 @@ journey is skipped.
 3. One browser participant joins on the relay join link and picks the correct option.
 4. Two API participants join anonymously and answer `true-hardest` and `false-execution`.
 5. `interaction.close`, `interaction.reveal`.
-6. `GET /api/sessions/<code>/export?format=ballots` with the host token.
+6. `GET /api/sessions/<code>/export?format=answers` with the host token.
 
 ## Acceptance criteria
 
@@ -39,7 +39,7 @@ journey is skipped.
 - `POST /api/join` with a student link → 403 `identified-join-unavailable`.
 - Stage: `3 answers` and no bars before reveal; two bars and the correct mark after.
 - Participant: Results region with both option labels after reveal.
-- Ballots export: three rows for `myth-great-idea`.
+- Answers export: three rows for `myth-great-idea`.
 
 ## Visual notes
 

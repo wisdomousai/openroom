@@ -278,7 +278,7 @@ own.
 `Authorization: Bearer <RELAY_KEY>` and an outline returns the session code, host and
 stage tokens and a join link on the relay. Identified and guest-list sessions are refused
 (they need workspace records), as are identified joins; anonymous and nickname
-sessions run in full, with ballots export and no participant limit unless the request
+sessions run in full, with answers export and no participant limit unless the request
 sets `participantLimit`. Without `RELAY_KEY`, creation is off. The API is in
 `docs/CONTRACTS.md`; deployment is in `docs/DEPLOYMENT.md`.
 

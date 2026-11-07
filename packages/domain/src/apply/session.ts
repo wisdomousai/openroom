@@ -18,7 +18,7 @@ import { INK_COLORS, isKnownTheme, SESSION_THEME_IDS, TOKEN_MARK_KINDS } from '.
 import type {
   AnswerInput,
   ApplyResult,
-  Ballot,
+  Answer,
   Command,
   CommandEnvelope,
   DomainError,

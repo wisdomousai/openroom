@@ -53,7 +53,7 @@ export function buildAgentCard(origin: string): AgentCard {
     description:
       'Validate classroom session outlines, create live sessions, and read aggregate results for ' +
       'polls, quizzes, ranking, Q&A and exit tickets. Participants join with an 8-character ' +
-      'session code and do not need an account. Ballots are deleted 30 minutes after a session ends.',
+      'session code and do not need an account. Answers are deleted 30 minutes after a session ends.',
     version: '0.1.0',
     documentationUrl: `${origin}/llms.txt`,
     provider: {
@@ -115,7 +115,7 @@ export function buildAgentCard(origin: string): AgentCard {
         name: 'Session aggregate results',
         description:
           'Read a session’s aggregate results by join code (counts, distributions, text entries). ' +
-          'Never includes per-participant ballots or pre-reveal answer keys.',
+          'Never includes per-participant answers or pre-reveal answer keys.',
         tags: ['session', 'results', 'aggregates'],
         examples: ['Get results for session ABCD1234'],
         inputModes: ['text/plain', 'application/json'],

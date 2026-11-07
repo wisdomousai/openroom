@@ -132,8 +132,8 @@ describe('session qna — commands and snapshots', () => {
 describe('session qna — participant fan-out carve-out', () => {
   // The deliberate settle/silence windows (1.4s + 1.3s) plus two waitFor
   // rounds put this well past the 5s default.
-  it('pushes a frame to a participant behind a hidden-results poll after qna.ask, while a plain ballot stays silent', { timeout: 20_000 }, async () => {
-    // SMOKE_OUTLINE's warmup normalizes to 'hidden-until-close': ballot ticks must
+  it('pushes a frame to a participant behind a hidden-results poll after qna.ask, while a plain answer stays silent', { timeout: 20_000 }, async () => {
+    // SMOKE_OUTLINE's warmup normalizes to 'hidden-until-close': answer ticks must
     // NOT reach participants (websocket.test.ts guards that). Session Q&A ticks
     // MUST, because the question list is a shared surface.
     const session = await createSessionWithOutline(QNA_OUTLINE);
@@ -152,7 +152,7 @@ describe('session qna — participant fan-out carve-out', () => {
       await new Promise((resolve) => setTimeout(resolve, 1400));
       frames.length = 0;
 
-      // A hidden-results ballot: still silent for participants.
+      // A hidden-results answer: still silent for participants.
       const pollVoter = await join(session.code);
       await command(session.sessionCode, pollVoter.participantToken, {
         command: 'answer.submit',
@@ -212,7 +212,7 @@ describe('session qna — exports', () => {
 
     const csvRes = await worker.fetch(
       new Request(
-        `${BASE}/api/sessions/${session.sessionCode}/export?format=ballots&token=${encodeURIComponent(session.hostToken)}`,
+        `${BASE}/api/sessions/${session.sessionCode}/export?format=answers&token=${encodeURIComponent(session.hostToken)}`,
       ),
       env as never,
     );

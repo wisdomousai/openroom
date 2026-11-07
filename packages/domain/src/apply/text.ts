@@ -8,8 +8,8 @@ import {
   type OutlineTimerStep,
   type NormalizedInteraction,
 } from '@openroom/schema';
-import { buildBallot } from './ballot.js';
-import { groupBallotKey, participantGroup } from '../groups.js';
+import { buildAnswer } from './answer.js';
+import { groupAnswerKey, participantGroup } from '../groups.js';
 
 import { computeAggregate, emptyAggregate } from '../aggregate.js';
 import { applyBlocklist } from '../blocklist.js';
@@ -19,7 +19,7 @@ import { INK_COLORS, isKnownTheme, SESSION_THEME_IDS, TOKEN_MARK_KINDS } from '.
 import type {
   AnswerInput,
   ApplyResult,
-  Ballot,
+  Answer,
   Command,
   CommandEnvelope,
   DomainError,
@@ -66,24 +66,24 @@ export function applyTextCommands(
       if (runtime === undefined || interaction === undefined) {
         return fail('E_UNKNOWN_INTERACTION', `no interaction "${command.interactionId}"`);
       }
-      const ballot = runtime.ballots[command.participantId];
-      if (ballot === undefined || (ballot.kind !== 'text' && ballot.kind !== 'qna')) {
+      const answer = runtime.answers[command.participantId];
+      if (answer === undefined || (answer.kind !== 'text' && answer.kind !== 'qna')) {
         return fail(
           'E_INVALID_ANSWER',
           `participant "${command.participantId}" has no text entry on "${command.interactionId}"`,
         );
       }
       const hidden = command.command === 'text.hide';
-      if (ballot.hidden === hidden) return noop(state);
-      const ballots: Record<string, Ballot> = {
-        ...runtime.ballots,
-        [command.participantId]: { ...ballot, hidden },
+      if (answer.hidden === hidden) return noop(state);
+      const answers: Record<string, Answer> = {
+        ...runtime.answers,
+        [command.participantId]: { ...answer, hidden },
       };
       return commit(
         withRuntime(state, command.interactionId, {
           ...runtime,
-          ballots,
-          aggregate: computeAggregate(interaction, ballots),
+          answers,
+          aggregate: computeAggregate(interaction, answers),
         }),
       );
     }
@@ -102,25 +102,25 @@ export function applyTextCommands(
       if (interaction.responseMode === 'group' && (!group || group.spokespersonId !== participantId || command.groupId !== group.id)) {
         return fail('E_FORBIDDEN', 'Only the assigned group spokesperson can submit this response.');
       }
-      const ballotKey = group ? groupBallotKey(group.id) : participantId;
-      const existing = runtime.ballots[ballotKey];
+      const answerKey = group ? groupAnswerKey(group.id) : participantId;
+      const existing = runtime.answers[answerKey];
       if (existing !== undefined && !interaction.allowAnswerChange) {
         return fail('E_FORBIDDEN', 'answer changes are disabled for this interaction');
       }
-      const built = buildBallot(interaction, command.answer, existing);
+      const built = buildAnswer(interaction, command.answer, existing);
       if ('error' in built) return fail('E_INVALID_ANSWER', built.error);
 
-      const ballots: Record<string, Ballot> = {
-        ...runtime.ballots,
-        [ballotKey]: built.ballot,
+      const answers: Record<string, Answer> = {
+        ...runtime.answers,
+        [answerKey]: built.answer,
       };
       const withParticipant = ensureParticipant(state, participantId, now);
       return commit(
         withRuntime(withParticipant, command.interactionId, {
           ...runtime,
-          ballots,
-          ...(group ? { groupNames: { ...runtime.groupNames, [ballotKey]: runtime.groupNames?.[ballotKey] ?? group.name } } : {}),
-          aggregate: computeAggregate(interaction, ballots),
+          answers,
+          ...(group ? { groupNames: { ...runtime.groupNames, [answerKey]: runtime.groupNames?.[answerKey] ?? group.name } } : {}),
+          aggregate: computeAggregate(interaction, answers),
         }),
       );
     }

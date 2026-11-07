@@ -105,10 +105,10 @@ test('opens retained result files from their deck, downloads a readable report a
     expect(await document.evaluate(() => 'UNSAFE' in window)).toBe(false);
     await document.screenshot({ path: testInfo.outputPath('downloaded-report.png'), fullPage: true }); await document.close();
 
-    await page.route('**/api/my/archives/*?format=ballots', (route) => route.fulfill({ status: 503, body: '{}' }));
+    await page.route('**/api/my/archives/*?format=answers', (route) => route.fulfill({ status: 503, body: '{}' }));
     await page.getByRole('button', { name: 'Download individual responses' }).click();
     await expect(page.getByRole('alert')).toContainText('could not be downloaded');
-    await page.unroute('**/api/my/archives/*?format=ballots');
+    await page.unroute('**/api/my/archives/*?format=answers');
     const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download individual responses' }).click()]);
     const csvPath = testInfo.outputPath('responses.csv'); await csv.saveAs(csvPath);
     expect(readFileSync(csvPath, 'utf8')).toContain('HIDDEN_RESPONSE');

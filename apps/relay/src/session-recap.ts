@@ -2,7 +2,7 @@ import { ensureQna, sessionOf, sortedQuestions, type SessionState } from '@openr
 import { parseRecapSelection, type RecapCandidates, type RecapResult, type SessionRecap } from '@openroom/schema';
 import { json } from './session-do/http.js';
 
-/** Explicit projection. Never spread an aggregate, ballot, interaction, or question. */
+/** Explicit projection. Never spread an aggregate, answer, interaction, or question. */
 export function recapCandidates(input: SessionState): RecapCandidates {
   const state = ensureQna(input);
   const candidates: RecapCandidates = { revision: state.revision, title: sessionOf(state).meta.title, results: [], discussion: [], questions: [] };

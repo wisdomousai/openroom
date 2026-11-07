@@ -172,7 +172,7 @@ describe('gradeFillTheGaps', () => {
 describe('gradeMatch', () => {
   const key = { quai: 'platform', billet: 'ticket' };
 
-  it('grades a ballot against the answer key', () => {
+  it('grades an answer against the answer key', () => {
     expect(gradeMatch(key, { quai: 'platform', billet: 'ticket' }).allCorrect).toBe(true);
     const half = gradeMatch(key, { quai: 'platform', billet: 'platform' });
     expect(half.correctCount).toBe(1);

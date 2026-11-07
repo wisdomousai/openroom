@@ -219,7 +219,7 @@ describe('detectBeat', () => {
     );
   });
 
-  it('does not replay the open beat on every new ballot', () => {
+  it('does not replay the open beat on every new answer', () => {
     expect(detectBeat(state(), state())).toBeNull();
   });
 

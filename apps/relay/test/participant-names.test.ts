@@ -238,7 +238,7 @@ describe('nickname mode', () => {
       { command: 'answer.submit', interactionId: 'chat', answer: { kind: 'text', text: 'hello' } },
     );
 
-    const res = await call(`/api/sessions/${session.sessionCode}/export?format=ballots`, {
+    const res = await call(`/api/sessions/${session.sessionCode}/export?format=answers`, {
       headers: { authorization: `Bearer ${session.hostToken}` },
     });
     expect(res.status).toBe(200);
@@ -248,7 +248,7 @@ describe('nickname mode', () => {
 
     const anonSession = await createLiveSession();
     const anonCsv = await (
-      await call(`/api/sessions/${anonSession.sessionCode}/export?format=ballots`, {
+      await call(`/api/sessions/${anonSession.sessionCode}/export?format=answers`, {
         headers: { authorization: `Bearer ${anonSession.hostToken}` },
       })
     ).text();

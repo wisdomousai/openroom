@@ -7,7 +7,7 @@ import { signToken } from 'openroom-relay/tokens';
 type HostingEnv = ControlEnv & { SESSIONS: DurableObjectNamespace };
 export interface HostAccess { id: string; name: string; canRecover: boolean }
 
-/** Live host controls only. Participant ballots never call D1. */
+/** Live host controls only. Participant answers never call D1. */
 export async function hostAccess(env: ControlEnv, code: string, userId: string): Promise<HostAccess | null> {
   const row = await env.DB.prepare(
     `SELECT l.user_id AS creator_id, l.space_id, s.owner_user_id AS owner_id,

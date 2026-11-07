@@ -2,7 +2,7 @@
  * Host-only session exports.
  *
  * `json` and aggregate `csv` are the free teaching files (counts).
- * `ballots` is the per-person file — gated by `rawExport` or a guest-list session.
+ * `answers` is the per-person file — gated by `rawExport` or a guest-list session.
  */
 
 import {
@@ -10,44 +10,44 @@ import {
   sessionOf,
   sortedQuestions,
   type Aggregate,
-  type Ballot,
+  type Answer,
   type SessionState,
 } from '@openroom/domain';
 import { resolveRevealOrder } from '@openroom/schema';
 import { savedResults } from './saved-results.js';
 
-export type ExportFormat = 'json' | 'csv' | 'ballots';
+export type ExportFormat = 'json' | 'csv' | 'answers';
 
 export function parseExportFormat(raw: string | null): ExportFormat {
-  if (raw === 'json' || raw === 'ballots') return raw;
+  if (raw === 'json' || raw === 'answers') return raw;
   return 'csv';
 }
 
-function answerText(ballot: Ballot): string {
-  switch (ballot.kind) {
+function answerText(answer: Answer): string {
+  switch (answer.kind) {
     case 'choice':
-      return ballot.optionIds.join('|');
+      return answer.optionIds.join('|');
     case 'scale':
     case 'numeric':
-      return String(ballot.value);
+      return String(answer.value);
     case 'text':
     case 'qna':
-      return ballot.text;
+      return answer.text;
     case 'ranking':
       // Best first; the separator matches the CSV's existing multi-value style.
-      return ballot.optionIds.join('|');
+      return answer.optionIds.join('|');
     case 'fill-the-gaps':
-      return Object.entries(ballot.gaps)
+      return Object.entries(answer.gaps)
         .map(([id, text]) => `${id}=${text}`)
         .join('|');
     case 'match':
-      return Object.entries(ballot.pairs)
+      return Object.entries(answer.pairs)
         .map(([left, right]) => `${left}=${right}`)
         .join('|');
     case 'dont-know':
       return "I don't know";
     default: {
-      const never: never = ballot;
+      const never: never = answer;
       return String(never);
     }
   }
@@ -92,8 +92,8 @@ export function exportAggregateCsv(input: SessionState): string {
   return `${lines.join('\n')}\n`;
 }
 
-/** Per-ballot CSV. Prefer the name `exportBallotsCsv` at call sites. */
-export function exportBallotsCsv(input: SessionState): string {
+/** Per-answer CSV. Prefer the name `exportAnswersCsv` at call sites. */
+export function exportAnswersCsv(input: SessionState): string {
   const state = ensureQna(input);
   // Nickname sessions carry a session-local name per participant; identified
   // sessions carry the student display name in the same slot. Anonymous sessions keep
@@ -107,16 +107,16 @@ export function exportBallotsCsv(input: SessionState): string {
   for (const interaction of sessionOf(state).interactions) {
     const runtime = state.interactions[interaction.id];
     if (runtime === undefined) continue;
-    for (const [participantId, ballot] of Object.entries(runtime.ballots)) {
+    for (const [participantId, answer] of Object.entries(runtime.answers)) {
       const hidden =
-        (ballot.kind === 'text' || ballot.kind === 'qna') && ballot.hidden ? 'true' : 'false';
+        (answer.kind === 'text' || answer.kind === 'qna') && answer.hidden ? 'true' : 'false';
       lines.push(
         [
           csvCell(interaction.id),
           csvCell(interaction.prompt),
           csvCell(participantId),
           ...(withNames ? [csvCell(runtime.groupNames?.[participantId] ?? state.participants[participantId]?.name ?? '')] : []),
-          csvCell(answerText(ballot)),
+          csvCell(answerText(answer)),
           hidden,
         ].join(','),
       );

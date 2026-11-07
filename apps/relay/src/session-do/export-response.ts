@@ -1,12 +1,12 @@
 import { sessionOf, type SessionState } from '@openroom/domain';
 
-import { exportAggregateCsv, exportBallotsCsv, exportJson, parseExportFormat } from '../export.js';
+import { exportAggregateCsv, exportAnswersCsv, exportJson, parseExportFormat } from '../export.js';
 import { json } from './http.js';
 
 /**
- * Named ballot export. Pure over the loaded state.
+ * Named answer export. Pure over the loaded state.
  *
- * The Worker has already decided allowBallots from entitlements; guest-list
+ * The Worker has already decided allowAnswers from entitlements; guest-list
  * sessions are allowed here even without that flag.
  */
 export function exportResponse(state: SessionState, url: URL): Response {
@@ -27,21 +27,21 @@ export function exportResponse(state: SessionState, url: URL): Response {
       },
     });
   }
-  // Per-ballot file.
-  const allowBallots = url.searchParams.get('allowBallots') === '1';
+  // Per-answer file.
+  const allowAnswers = url.searchParams.get('allowAnswers') === '1';
   const guestList = sessionOf(state).defaults.identityMode === 'guest-list';
-  if (!allowBallots && !guestList) {
+  if (!allowAnswers && !guestList) {
     return json({ ok: false, error: 'raw-export-required' }, 403);
   }
-  if (state.ballotsDeletedAt !== undefined) {
-    return json({ ok: false, error: 'ballots-deleted' }, 410);
+  if (state.answersDeletedAt !== undefined) {
+    return json({ ok: false, error: 'answers-deleted' }, 410);
   }
-  return new Response(exportBallotsCsv(state), {
+  return new Response(exportAnswersCsv(state), {
     status: 200,
     headers: {
       'content-type': 'text/csv; charset=utf-8',
       'cache-control': 'no-store',
-      'content-disposition': `attachment; filename="openroom-${state.code}-${stamp}-ballots.csv"`,
+      'content-disposition': `attachment; filename="openroom-${state.code}-${stamp}-answers.csv"`,
     },
   });
 }

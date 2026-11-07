@@ -2,7 +2,7 @@
  * Paid memory: snapshot an ended session to R2, then let the Durable Object die.
  *
  * Written from the Worker command path after a successful `session.end` — the DO
- * has no D1 or R2 binding, and this must never execute on the ballot hot path.
+ * has no D1 or R2 binding, and this must never execute on the answer hot path.
  */
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
@@ -32,13 +32,13 @@ export async function expireSessionArchives(env: Pick<ArchiveEnv, 'DB' | 'MEDIA'
 
 export interface SessionArchiveRecord {
   aggregates: unknown;
-  ballotsCsv?: string;
+  answersCsv?: string;
 }
 
 export async function maybeArchiveEndedSession(
   env: ArchiveEnv,
   sessionCode: string,
-  fetchExport: (format: 'json' | 'ballots', allowBallots: boolean) => Promise<Response>,
+  fetchExport: (format: 'json' | 'answers', allowAnswers: boolean) => Promise<Response>,
 ): Promise<void> {
   // One immutable archive per session, including retried end commands from any client.
   const id = sessionCode;
@@ -56,17 +56,17 @@ export async function maybeArchiveEndedSession(
     if (!jsonRes.ok) return;
     const aggregates: unknown = await jsonRes.json();
 
-    let ballotsCsv: string | undefined;
+    let answersCsv: string | undefined;
     if (entitlements.rawExport) {
-      const ballotsRes = await fetchExport('ballots', true);
-      if (ballotsRes.ok) ballotsCsv = await ballotsRes.text();
+      const answersRes = await fetchExport('answers', true);
+      if (answersRes.ok) answersCsv = await answersRes.text();
     }
 
-    const record: SessionArchiveRecord = { aggregates, ...(ballotsCsv === undefined ? {} : { ballotsCsv }) };
+    const record: SessionArchiveRecord = { aggregates, ...(answersCsv === undefined ? {} : { answersCsv }) };
     object = await env.MEDIA.put(key, JSON.stringify(record), {
       onlyIf: new Headers({ 'if-none-match': '*' }),
       httpMetadata: { contentType: 'application/json' },
-      customMetadata: { kind: ballotsCsv === undefined ? 'aggregates' : 'full' },
+      customMetadata: { kind: answersCsv === undefined ? 'aggregates' : 'full' },
     }) ?? await env.MEDIA.head(key);
   }
   if (!object || !['aggregates', 'full'].includes(object.customMetadata?.kind ?? '')) throw new Error('archive-capture-unavailable');
@@ -87,7 +87,7 @@ export async function maybeArchiveEndedSession(
     .run();
 }
 
-export async function archivedBallotsCsv(
+export async function archivedAnswersCsv(
   env: ArchiveEnv,
   sessionCode: string,
 ): Promise<string | null> {
@@ -102,7 +102,7 @@ export async function archivedBallotsCsv(
   const object = await env.MEDIA.get(row.r2_key);
   if (object === null) return null;
   const record = (await object.json()) as SessionArchiveRecord;
-  return record.ballotsCsv ?? null;
+  return record.answersCsv ?? null;
 }
 
 export async function listArchivesRoute(request: Request, env: ArchiveEnv): Promise<Response> {
@@ -177,14 +177,14 @@ export async function downloadArchiveRoute(
     return json({ file: fileView(row), results: summary });
   }
   const format = parseExportFormat(url.searchParams.get('format'));
-  if (format === 'ballots') {
-    if (record.ballotsCsv === undefined) return json({ error: 'ballots-not-kept' }, 404);
-    return new Response(record.ballotsCsv, {
+  if (format === 'answers') {
+    if (record.answersCsv === undefined) return json({ error: 'answers-not-kept' }, 404);
+    return new Response(record.answersCsv, {
       status: 200,
       headers: {
         'content-type': 'text/csv; charset=utf-8',
         'cache-control': 'no-store',
-        'content-disposition': `attachment; filename="openroom-${row.session_code}-ballots.csv"`,
+        'content-disposition': `attachment; filename="openroom-${row.session_code}-answers.csv"`,
       },
     });
   }

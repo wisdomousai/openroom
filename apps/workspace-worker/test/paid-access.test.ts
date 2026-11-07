@@ -22,7 +22,7 @@ describe('paid access across account clients', () => {
     const started = await editor.request(`/api/decks/${source.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() }, 'mcp');
     expect(started.status).toBe(201);
     const live = started.body as Live;
-    expect((await liveRequest(live, 'export?format=ballots')).status).toBe(200);
+    expect((await liveRequest(live, 'export?format=answers')).status).toBe(200);
     for (const key of ['end-first', 'end-repeat']) {
       const ended = await editor.rpc('session_command', { code: live.sessionCode, command: { command: 'session.end' }, idempotencyKey: key });
       expect(ended.error, JSON.stringify(ended.value)).toBe(false);
@@ -39,7 +39,7 @@ describe('paid access across account clients', () => {
       const document = await editor.request(`/api/my/archives/${id}/document`, 'GET', undefined, client);
       expect(document.status).toBe(200);
       expect(document.body).toMatchObject({ file: { deckId: source.body.deck.id, spaceId: owner.spaceId, hasIndividualResponses: true }, results: { questions: [{ prompt: 'Pick one', rows: [{ label: 'A' }, { label: 'B' }] }] } });
-      const csv = await editor.request(`/api/my/archives/${id}?format=ballots`, 'GET', undefined, client);
+      const csv = await editor.request(`/api/my/archives/${id}?format=answers`, 'GET', undefined, client);
       expect(csv.status).toBe(200); expect(csv.body).toContain('interactionId,prompt,participantId');
       expect((await outsider.request(`/api/my/archives/${id}`, 'GET', undefined, client)).status).toBe(404);
     }
@@ -52,7 +52,7 @@ describe('paid access across account clients', () => {
       expect((await editor.request('/api/my/archives', 'GET', undefined, client)).body.archives).toEqual([]);
       expect((await editor.request(`/api/my/archives/${live.sessionCode}`, 'GET', undefined, client)).status).toBe(404);
     }
-    expect((await liveRequest(live, 'export?format=ballots')).status).toBe(403);
+    expect((await liveRequest(live, 'export?format=answers')).status).toBe(403);
   });
 
   it('grants brand-kit writes from the owner’s subscription and retains read, trash and restore after downgrade', async () => {

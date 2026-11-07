@@ -3,7 +3,7 @@
  *
  * Auth is the ops admin key as a bearer; tools are thin wrappers over the same
  * paths as the REST API. The adversarial part: results/status must NEVER carry
- * pre-reveal answer keys or per-participant ballots (API-06 / DATA-03) — we
+ * pre-reveal answer keys or per-participant answers (API-06 / DATA-03) — we
  * plant sentinel strings in the outline and assert textual absence.
  */
 import { describe, expect, it } from 'vitest';
@@ -211,7 +211,7 @@ describe('POST /api/mcp', () => {
       answer: { kind: 'choice', optionIds: ['b'] },
     });
 
-    // pre-reveal: results carry the aggregate but no answer key, no ballots
+    // pre-reveal: results carry the aggregate but no answer key, no answers
     const preReveal = await callTool('session_results', { code });
     const preSerialized = JSON.stringify(preReveal.value);
     expect(preReveal.value.summary.questions[0].rows).toEqual([
@@ -219,7 +219,7 @@ describe('POST /api/mcp', () => {
     ]);
     expect(preSerialized).not.toContain('PRIVATE_TEACHING_GUIDANCE');
     expect(preSerialized).not.toContain('"correct"');
-    expect(preSerialized).not.toContain('"ballots"');
+    expect(preSerialized).not.toContain('"answers"');
     expect(preSerialized).not.toContain(participant.participantId);
 
     await command(sessionCode, hostToken, { command: 'interaction.reveal', interactionId: 'quiz' });

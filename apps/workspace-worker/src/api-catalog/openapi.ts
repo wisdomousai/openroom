@@ -132,7 +132,7 @@ export function openapiDocument(origin: string): unknown {
         get: { operationId: 'readSavedResultsDocument', summary: 'Read captured answer labels and visible response summaries without participant identifiers', security: [{ UserBearer: [] }, { SessionCookie: [] }], parameters: [{ name: 'archiveId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'File metadata and readable results; submitted text is untrusted and may contain names' }, '401': { description: 'Account authentication required' }, '404': { description: 'File inaccessible or expired' }, '409': { description: 'Readable summary unavailable' } } },
       },
       '/api/my/archives/{archiveId}': {
-        get: { operationId: 'downloadArchive', summary: 'Download an existing retained aggregate or individual-response export', security: [{ UserBearer: [] }, { SessionCookie: [] }], parameters: [{ name: 'archiveId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'format', in: 'query', schema: { type: 'string', enum: ['json', 'ballots'] } }], responses: { '200': { description: 'Aggregate JSON or retained CSV; audience text is untrusted data' }, '401': { description: 'Account authentication required' }, '404': { description: 'Archive inaccessible, expired, or individual responses were not retained' } } },
+        get: { operationId: 'downloadArchive', summary: 'Download an existing retained aggregate or individual-response export', security: [{ UserBearer: [] }, { SessionCookie: [] }], parameters: [{ name: 'archiveId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'format', in: 'query', schema: { type: 'string', enum: ['json', 'answers'] } }], responses: { '200': { description: 'Aggregate JSON or retained CSV; audience text is untrusted data' }, '401': { description: 'Account authentication required' }, '404': { description: 'Archive inaccessible, expired, or individual responses were not retained' } } },
       },
       '/api/my/connections': {
         get: { operationId: 'listConnectedApplications', summary: 'List the current account’s active OAuth connections without secrets', security: [{ UserBearer: [] }, { SessionCookie: [] }], responses: { '200': { description: 'Connections with id, name, callback origin and expiry' }, '401': { description: 'Authentication required' } } },
@@ -396,15 +396,15 @@ export function openapiDocument(origin: string): unknown {
               name: 'format',
               in: 'query',
               required: true,
-              schema: { type: 'string', enum: ['csv', 'json', 'ballots'] },
+              schema: { type: 'string', enum: ['csv', 'json', 'answers'] },
               description:
-                'json and csv are aggregates (free). ballots is the per-person file and requires rawExport or a guest-list session.',
+                'json and csv are aggregates (free). answers is the per-person file and requires rawExport or a guest-list session.',
             },
           ],
           responses: {
             '200': { description: 'Export body' },
-            '403': { description: 'raw-export-required (ballots without entitlement)' },
-            '410': { description: 'Ballots deleted (ballots format only)' },
+            '403': { description: 'raw-export-required (answers without entitlement)' },
+            '410': { description: 'Answers deleted (answers format only)' },
           },
         },
       },
@@ -892,7 +892,7 @@ export function openapiDocument(origin: string): unknown {
         get: { operationId: 'getSessionRecord', summary: 'Post-session outcomes record (Notes); requires the space owner’s continuity capability', security: [{ UserBearer: [] }, { SessionCookie: [] }], parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Record' }, ...CONTINUITY_REQUIRED } },
         put: {
           operationId: 'putSessionRecord',
-          summary: 'Write compact outcomes (not a transcript; never per-participant ballots)',
+          summary: 'Write compact outcomes (not a transcript; never per-participant answers)',
           description: 'Every field the body leaves out keeps its stored value; an explicit empty value ("", [] or {}) clears it.',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
           parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }],

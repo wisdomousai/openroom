@@ -17,7 +17,7 @@ import { INK_COLORS, isKnownTheme, SESSION_THEME_IDS, TOKEN_MARK_KINDS } from '.
 import type {
   AnswerInput,
   ApplyResult,
-  Ballot,
+  Answer,
   Command,
   CommandEnvelope,
   DomainError,
@@ -33,29 +33,29 @@ import type {
 } from '../types.js';
 import { fail } from './helpers.js';
 
-/** Ballot construction for answer submissions. */
-export type BuiltBallot = { ballot: Ballot } | { error: string };
+/** Answer construction for answer submissions. */
+export type BuiltAnswer = { answer: Answer } | { error: string };
 
-export function buildBallot(
+export function buildAnswer(
   interaction: NormalizedInteraction,
-  answer: AnswerInput,
-  existing: Ballot | undefined,
-): BuiltBallot {
-  if (answer.kind === 'dont-know') {
+  input: AnswerInput,
+  existing: Answer | undefined,
+): BuiltAnswer {
+  if (input.kind === 'dont-know') {
     if (!interaction.allowDontKnow) {
       return { error: `"I don't know" is not enabled for this interaction` };
     }
-    return { ballot: { kind: 'dont-know' } };
+    return { answer: { kind: 'dont-know' } };
   }
 
-  if (answer.kind !== interaction.type) {
-    return { error: `answer kind "${answer.kind}" does not match type "${interaction.type}"` };
+  if (input.kind !== interaction.type) {
+    return { error: `answer kind "${input.kind}" does not match type "${interaction.type}"` };
   }
 
   switch (interaction.type) {
     case 'choice': {
-      if (answer.kind !== 'choice') return { error: 'expected a choice answer' };
-      const ids = answer.optionIds;
+      if (input.kind !== 'choice') return { error: 'expected a choice answer' };
+      const ids = input.optionIds;
       if (!Array.isArray(ids) || ids.length === 0) {
         return { error: 'select at least one option' };
       }
@@ -72,36 +72,36 @@ export function buildBallot(
       for (const id of ids) {
         if (!valid.has(id)) return { error: `unknown option "${id}"` };
       }
-      return { ballot: { kind: 'choice', optionIds: [...ids] } };
+      return { answer: { kind: 'choice', optionIds: [...ids] } };
     }
     case 'scale': {
-      if (answer.kind !== 'scale') return { error: 'expected a scale answer' };
-      const value = answer.value;
+      if (input.kind !== 'scale') return { error: 'expected a scale answer' };
+      const value = input.value;
       if (!Number.isInteger(value)) return { error: 'scale answers must be whole numbers' };
       if (value < interaction.min || value > interaction.max) {
         return { error: `value must be between ${interaction.min} and ${interaction.max}` };
       }
-      return { ballot: { kind: 'scale', value } };
+      return { answer: { kind: 'scale', value } };
     }
     case 'numeric': {
-      if (answer.kind !== 'numeric') return { error: 'expected a numeric answer' };
-      if (typeof answer.value !== 'number' || !Number.isFinite(answer.value)) {
+      if (input.kind !== 'numeric') return { error: 'expected a numeric answer' };
+      if (typeof input.value !== 'number' || !Number.isFinite(input.value)) {
         return { error: 'value must be a finite number' };
       }
-      return { ballot: { kind: 'numeric', value: answer.value } };
+      return { answer: { kind: 'numeric', value: input.value } };
     }
     case 'text': {
-      if (answer.kind !== 'text') return { error: 'expected a text answer' };
-      const text = answer.text.trim();
+      if (input.kind !== 'text') return { error: 'expected a text answer' };
+      const text = input.text.trim();
       if (text === '') return { error: 'text answers cannot be empty' };
       if (text.length > interaction.maxLength) {
         return { error: `text answers are limited to ${interaction.maxLength} characters` };
       }
-      return { ballot: { kind: 'text', text, hidden: applyBlocklist(text).hidden } };
+      return { answer: { kind: 'text', text, hidden: applyBlocklist(text).hidden } };
     }
     case 'ranking': {
-      if (answer.kind !== 'ranking') return { error: 'expected a ranking answer' };
-      const ids = answer.optionIds;
+      if (input.kind !== 'ranking') return { error: 'expected a ranking answer' };
+      const ids = input.optionIds;
       if (!Array.isArray(ids)) return { error: 'a ranking must be a list of option ids' };
       const valid = interaction.options.map((option) => option.id);
       if (ids.length !== valid.length) {
@@ -114,15 +114,15 @@ export function buildBallot(
       for (const id of ids) {
         if (!allowed.has(id)) return { error: `unknown option "${id}"` };
       }
-      return { ballot: { kind: 'ranking', optionIds: [...ids] } };
+      return { answer: { kind: 'ranking', optionIds: [...ids] } };
     }
     case 'fill-the-gaps': {
-      if (answer.kind !== 'fill-the-gaps') return { error: 'expected a fill-the-gaps answer' };
+      if (input.kind !== 'fill-the-gaps') return { error: 'expected a fill-the-gaps answer' };
       const expected = new Set(interaction.gaps.map((gap) => gap.id));
       const gaps: Record<string, string> = {};
       let hidden = false;
       for (const gap of interaction.gaps) {
-        const raw = answer.gaps[gap.id];
+        const raw = input.gaps[gap.id];
         if (typeof raw !== 'string') return { error: `fill every gap (missing "${gap.id}")` };
         const text = raw.trim();
         if (text === '') return { error: `fill every gap (missing "${gap.id}")` };
@@ -131,36 +131,36 @@ export function buildBallot(
         if (blocked.hidden) hidden = true;
         gaps[gap.id] = text;
       }
-      for (const key of Object.keys(answer.gaps)) {
+      for (const key of Object.keys(input.gaps)) {
         if (!expected.has(key)) return { error: `unknown gap "${key}"` };
       }
-      return { ballot: { kind: 'fill-the-gaps', gaps, hidden } };
+      return { answer: { kind: 'fill-the-gaps', gaps, hidden } };
     }
     case 'match': {
-      if (answer.kind !== 'match') return { error: 'expected a match answer' };
+      if (input.kind !== 'match') return { error: 'expected a match answer' };
       const leftIds = interaction.left.map((item) => item.id);
       const rightIds = new Set(interaction.right.map((item) => item.id));
       const pairs: Record<string, string> = {};
       const used = new Set<string>();
       for (const leftId of leftIds) {
-        const rightId = answer.pairs[leftId];
+        const rightId = input.pairs[leftId];
         if (typeof rightId !== 'string') return { error: 'pair every item' };
         if (!rightIds.has(rightId)) return { error: `unknown match "${rightId}"` };
         if (used.has(rightId)) return { error: 'each match can only be used once' };
         used.add(rightId);
         pairs[leftId] = rightId;
       }
-      return { ballot: { kind: 'match', pairs } };
+      return { answer: { kind: 'match', pairs } };
     }
     case 'qna': {
-      if (answer.kind !== 'qna') return { error: 'expected a question' };
-      const text = answer.text.trim();
+      if (input.kind !== 'qna') return { error: 'expected a question' };
+      const text = input.text.trim();
       if (text === '') return { error: 'questions cannot be empty' };
       if (text.length > 500) return { error: 'questions are limited to 500 characters' };
       // Editing a question keeps the votes it has already collected.
       const previousVoters = existing !== undefined && existing.kind === 'qna' ? existing.voters : [];
       return {
-        ballot: {
+        answer: {
           kind: 'qna',
           text,
           hidden: applyBlocklist(text).hidden,

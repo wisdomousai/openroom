@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { env, expectError, sessionWithOpen, participant, run } from './helpers.js';
 
 describe('answer semantics — replacement not duplication', () => {
-  it('500 sequential submits from the same participant leave exactly 1 ballot and total 1', () => {
+  it('500 sequential submits from the same participant leave exactly 1 answer and total 1', () => {
     let state = sessionWithOpen('mood');
     for (let i = 0; i < 500; i += 1) {
       const value = 1 + (i % 5);
@@ -15,7 +15,7 @@ describe('answer semantics — replacement not duplication', () => {
         ),
       );
     }
-    expect(Object.keys(state.interactions['mood']!.ballots)).toEqual(['p1']);
+    expect(Object.keys(state.interactions['mood']!.answers)).toEqual(['p1']);
     const aggregate = state.interactions['mood']!.aggregate;
     if (aggregate.kind !== 'scale') throw new Error('expected scale aggregate');
     expect(aggregate.total).toBe(1);
@@ -70,7 +70,7 @@ describe('answer semantics — replacement not duplication', () => {
         participant('p1'),
       ),
     );
-    expect(state.interactions['locked-choice']?.ballots['p1']).toMatchObject({ optionIds: ['a'] });
+    expect(state.interactions['locked-choice']?.answers['p1']).toMatchObject({ optionIds: ['a'] });
   });
 
   it('a different participant is unaffected by allowAnswerChange: false', () => {
@@ -89,7 +89,7 @@ describe('answer semantics — replacement not duplication', () => {
         participant('p2'),
       ),
     );
-    expect(state.interactions['locked-choice']?.ballots['p2']).toMatchObject({ optionIds: ['b'] });
+    expect(state.interactions['locked-choice']?.answers['p2']).toMatchObject({ optionIds: ['b'] });
   });
 });
 
@@ -173,7 +173,7 @@ describe('answer semantics — choice validation', () => {
         participant('p1'),
       ),
     );
-    expect(state.interactions['multi-choice']?.ballots['p1']).toMatchObject({
+    expect(state.interactions['multi-choice']?.answers['p1']).toMatchObject({
       optionIds: ['x', 'y'],
     });
   });
@@ -246,8 +246,8 @@ describe('answer semantics — scale validation', () => {
       state,
       env({ command: 'answer.submit', interactionId: 'mood', answer: { kind: 'scale', value: 5 } }, participant('p2')),
     );
-    expect(state.interactions['mood']?.ballots['p1']).toMatchObject({ value: 1 });
-    expect(state.interactions['mood']?.ballots['p2']).toMatchObject({ value: 5 });
+    expect(state.interactions['mood']?.answers['p1']).toMatchObject({ value: 1 });
+    expect(state.interactions['mood']?.answers['p2']).toMatchObject({ value: 5 });
   });
 });
 
@@ -293,7 +293,7 @@ describe('answer semantics — numeric validation', () => {
         participant('p1'),
       ),
     );
-    expect(state.interactions['guess']?.ballots['p1']).toMatchObject({ value: -3.5 });
+    expect(state.interactions['guess']?.answers['p1']).toMatchObject({ value: -3.5 });
   });
 });
 
@@ -325,7 +325,7 @@ describe('answer semantics — text validation', () => {
         participant('p1'),
       ),
     );
-    expect(state.interactions['reflection']?.ballots['p1']).toMatchObject({ text: 'x'.repeat(20) });
+    expect(state.interactions['reflection']?.answers['p1']).toMatchObject({ text: 'x'.repeat(20) });
   });
 
   it('empty (whitespace-only) text -> E_INVALID_ANSWER', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { InteractionView } from '@openroom/sdk';
-import { ballotKey, describeAnswer, insertAt, orderedBy, startingOrder } from './answer';
+import { answerKey, describeAnswer, insertAt, orderedBy, startingOrder } from './answer';
 
 const ranking: InteractionView = {
   id: 'r',
@@ -14,7 +14,7 @@ const ranking: InteractionView = {
 };
 
 describe('orderedBy', () => {
-  it('replays a stored ballot in its submitted order', () => {
+  it('replays a stored answer in its submitted order', () => {
     expect(orderedBy(['c', 'a', 'b'], ranking.type === 'ranking' ? ranking.options : [])).toEqual([
       'c',
       'a',
@@ -22,7 +22,7 @@ describe('orderedBy', () => {
     ]);
   });
 
-  it('never drops an option the ballot did not mention', () => {
+  it('never drops an option the answer did not mention', () => {
     const options = ranking.type === 'ranking' ? ranking.options : [];
     expect(orderedBy(['c'], options)).toEqual(['c', 'a', 'b']);
   });
@@ -45,7 +45,7 @@ describe('describeAnswer', () => {
     expect(describeAnswer(other, { kind: 'ranking', optionIds: ['b', 'a'] })).toBe('b → a');
   });
 
-  it('names a don’t-know ballot in words', () => {
+  it('names a don’t-know answer in words', () => {
     expect(describeAnswer(ranking, { kind: 'dont-know' })).toBe("Don't know");
   });
 
@@ -94,18 +94,18 @@ describe('insertAt', () => {
   });
 });
 
-describe('ballotKey', () => {
+describe('answerKey', () => {
   it('reads the same answer the same way whatever the key order of a refetch', () => {
-    expect(ballotKey({ kind: 'fill-the-gaps', gaps: { g1: 'suis', g2: 'ai' } })).toBe(
-      ballotKey({ kind: 'fill-the-gaps', gaps: { g2: 'ai', g1: 'suis' } }),
+    expect(answerKey({ kind: 'fill-the-gaps', gaps: { g1: 'suis', g2: 'ai' } })).toBe(
+      answerKey({ kind: 'fill-the-gaps', gaps: { g2: 'ai', g1: 'suis' } }),
     );
   });
 
   it('tells a changed answer and a changed order apart', () => {
-    expect(ballotKey({ kind: 'match', pairs: { a: 'x' } })).not.toBe(ballotKey({ kind: 'match', pairs: { a: 'y' } }));
-    expect(ballotKey({ kind: 'ranking', optionIds: ['a', 'b'] })).not.toBe(
-      ballotKey({ kind: 'ranking', optionIds: ['b', 'a'] }),
+    expect(answerKey({ kind: 'match', pairs: { a: 'x' } })).not.toBe(answerKey({ kind: 'match', pairs: { a: 'y' } }));
+    expect(answerKey({ kind: 'ranking', optionIds: ['a', 'b'] })).not.toBe(
+      answerKey({ kind: 'ranking', optionIds: ['b', 'a'] }),
     );
-    expect(ballotKey(null)).toBe('');
+    expect(answerKey(null)).toBe('');
   });
 });

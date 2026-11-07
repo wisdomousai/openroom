@@ -116,7 +116,7 @@ function verifyAnswers(question) {
   assert.equal(snapshot.participantCount, count, 'Reconnect must not create another participant');
   assert.equal(snapshot.aggregate.total, count, 'Each participant must have exactly one counted answer');
   assert.deepEqual(snapshot.aggregate.counts, { a: count / 2, b: count / 2 });
-  assert.equal(Object.keys(snapshot.ballots[question]).length, count, 'No accepted answer may be missing');
+  assert.equal(Object.keys(snapshot.answers[question]).length, count, 'No accepted answer may be missing');
   for (const row of rows) {
     assert.deepEqual(row.client.getSnapshot().ownAnswer, { kind: 'choice', optionIds: [row.index % 2 ? 'b' : 'a'] });
   }
@@ -130,11 +130,11 @@ async function answerRound(id, live) {
   await parallel(rows, async (row) => {
     const sentAt = now();
     const result = await row.client.submit({ command: 'answer.submit', interactionId: id, answer: { kind: 'choice', optionIds: [row.index % 2 ? 'b' : 'a'] } });
-    assert(result.ok, `Ballot rejected: ${result.error?.code}`);
+    assert(result.ok, `Answer rejected: ${result.error?.code}`);
     assert(Number.isFinite(row.serviceMs) && row.serviceMs >= 0, 'Missing local Worker timing');
     accepted.push({ revision: result.revision, acceptedAt: now(), rtt: now() - sentAt, serviceMs: row.serviceMs });
   });
-  report.currentRound = { question: id, acknowledged: accepted.length, ballotRoundTrip: distribution(accepted.map((answer) => answer.rtt)) };
+  report.currentRound = { question: id, acknowledged: accepted.length, answerRoundTrip: distribution(accepted.map((answer) => answer.rtt)) };
   await until(() => host.getSnapshot()?.aggregate?.total === count, `${id}: host receives complete aggregate`);
   await until(() => rows.every((row) => row.client.getSnapshot()?.answered), `${id}: own answers acknowledged`);
   if (live) await until(() => rows.every((row) => row.client.getSnapshot()?.aggregate?.total === count), `${id}: all live aggregates converge`);
@@ -155,9 +155,9 @@ async function answerRound(id, live) {
   await host.refresh();
   verifyAnswers(id);
   report.phases.push({ question: id, visibility: live ? 'live' : 'hidden', accepted: accepted.length, duplicateReplays: duplicateSample.length * 2,
-    ballotRoundTrip: distribution(accepted.map((answer) => answer.rtt)), localWorkerRequest: distribution(accepted.map((answer) => answer.serviceMs)), hostAggregateReceiptAfterAck: distribution(updateLag), participantSnapshotRequests: participantReads - readsBefore });
+    answerRoundTrip: distribution(accepted.map((answer) => answer.rtt)), localWorkerRequest: distribution(accepted.map((answer) => answer.serviceMs)), hostAggregateReceiptAfterAck: distribution(updateLag), participantSnapshotRequests: participantReads - readsBefore });
   const measured = report.phases.at(-1);
-  console.log(`${id}: ${accepted.length} answers, ${duplicateSample.length * 2} duplicate replays; ballot p95 ${measured.ballotRoundTrip.p95Ms} ms (local Worker ${measured.localWorkerRequest.p95Ms} ms); host-update p95 ${measured.hostAggregateReceiptAfterAck.p95Ms} ms.`);
+  console.log(`${id}: ${accepted.length} answers, ${duplicateSample.length * 2} duplicate replays; answer p95 ${measured.answerRoundTrip.p95Ms} ms (local Worker ${measured.localWorkerRequest.p95Ms} ms); host-update p95 ${measured.hostAggregateReceiptAfterAck.p95Ms} ms.`);
 }
 try {
   session = await request('/api/sessions', { relayKey: true, body: { outline: {
@@ -201,7 +201,7 @@ try {
   await command({ command: 'session.end' });
   await until(() => rows.every((row) => row.client.getSnapshot()?.status === 'ended'), 'all clients receive end');
   report.checks = { uniqueParticipants: true, allAcceptedAnswersRetained: true, duplicateCountsPrevented: true, privateDataProtected: true, revealReachedAllClients: true, reconnectPreservedIdentity: true, pollingConverged: true, endReachedAllClients: true };
-  report.localLatencyTargetsMet = report.phases.every((item) => item.ballotRoundTrip.p95Ms < 500 && item.hostAggregateReceiptAfterAck.p95Ms < 1000);
+  report.localLatencyTargetsMet = report.phases.every((item) => item.answerRoundTrip.p95Ms < 500 && item.hostAggregateReceiptAfterAck.p95Ms < 1000);
   report.status = report.localLatencyTargetsMet ? 'passed' : 'latency-target-missed';
   assert(report.localLatencyTargetsMet, 'Local latency targets missed; see capacity/metrics.json. Correctness checks passed.');
 } catch (error) {

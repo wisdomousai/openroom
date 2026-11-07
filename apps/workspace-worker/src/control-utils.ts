@@ -1,6 +1,6 @@
 /**
  * Shared helpers for the control-plane modules (tutoring, delivery).
- * Nothing here touches the ballot hot path.
+ * Nothing here touches the answer hot path.
  */
 import type { ControlEnv, SessionUser } from './auth.js';
 import { ensureWorkspace } from './workspace.js';

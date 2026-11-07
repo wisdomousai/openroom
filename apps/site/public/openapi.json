@@ -276,10 +276,10 @@
               "enum": [
                 "csv",
                 "json",
-                "ballots"
+                "answers"
               ]
             },
-            "description": "json and csv are aggregates (free). ballots is the per-person file and requires rawExport or a guest-list session."
+            "description": "json and csv are aggregates (free). answers is the per-person file and requires rawExport or a guest-list session."
           }
         ],
         "responses": {
@@ -287,10 +287,10 @@
             "description": "Export body"
           },
           "403": {
-            "description": "raw-export-required (ballots without entitlement)"
+            "description": "raw-export-required (answers without entitlement)"
           },
           "410": {
-            "description": "Ballots deleted (ballots format only)"
+            "description": "Answers deleted (answers format only)"
           }
         }
       }
@@ -1457,7 +1457,7 @@
       },
       "put": {
         "operationId": "putSessionRecord",
-        "summary": "Write compact outcomes (not a transcript; never per-participant ballots)",
+        "summary": "Write compact outcomes (not a transcript; never per-participant answers)",
         "security": [
           {
             "UserBearer": []

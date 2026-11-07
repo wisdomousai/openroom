@@ -4,15 +4,15 @@ import {
   seededShuffle,
   splitFillTheGapsPrompt,
 } from '@openroom/schema';
-import type { AnswerInput, Ballot, InteractionView, TextSpanView } from '@openroom/sdk';
+import type { AnswerInput, OwnAnswer, InteractionView, TextSpanView } from '@openroom/sdk';
 import { SpanText } from '@openroom/slides';
 
 /**
- * A submitted ballot as a stable string. Every snapshot refetch hands back a
+ * A submitted answer as a stable string. Every snapshot refetch hands back a
  * new `ownAnswer` object, so a form resets its draft only when this changes:
  * a pause or another learner's answer must not wipe an edit in progress.
  */
-export function ballotKey(ballot: Ballot | null): string {
+export function answerKey(answer: OwnAnswer | null): string {
   const stable = (value: unknown): unknown =>
     Array.isArray(value)
       ? value.map(stable)
@@ -23,7 +23,7 @@ export function ballotKey(ballot: Ballot | null): string {
               .map(([key, entry]) => [key, stable(entry)]),
           )
         : value;
-  return ballot === null ? '' : JSON.stringify(stable(ballot));
+  return answer === null ? '' : JSON.stringify(stable(answer));
 }
 
 /** An option label as the author styled it, or the plain string when unstyled. */
@@ -45,7 +45,7 @@ export function promptFontStyle(
 
 interface Props {
   interaction: InteractionView;
-  ownAnswer: Ballot | null;
+  ownAnswer: OwnAnswer | null;
   /** Seeds per-learner starting orders (ranking). */
   participantId?: string;
   busy: boolean;
@@ -105,7 +105,7 @@ function ChoiceAnswer({
   const [selected, setSelected] = useState<string[]>(initial);
   const multiple = interaction.multiple === true;
 
-  const submitted = ballotKey(ownAnswer);
+  const submitted = answerKey(ownAnswer);
   useEffect(() => {
     setSelected(ownAnswer?.kind === 'choice' ? ownAnswer.optionIds : []);
   }, [interaction.id, submitted]);
@@ -406,8 +406,8 @@ function TextAnswer({
 /* --------------------------------------------------------------- ranking */
 
 /**
- * Order the interaction's options by a previously submitted ballot, keeping any
- * option the ballot did not mention at the end (defensive: a stored ballot is
+ * Order the interaction's options by a previously submitted answer, keeping any
+ * option the answer did not mention at the end (defensive: a stored answer is
  * always a complete permutation, but the UI must never drop an option).
  */
 export function orderedBy(optionIds: string[], options: { id: string; label: string }[]): string[] {
@@ -444,7 +444,7 @@ function RankingAnswer({
 
   const [order, setOrder] = useState<string[]>(initial);
   const [announcement, setAnnouncement] = useState('');
-  const submitted = ballotKey(ownAnswer);
+  const submitted = answerKey(ownAnswer);
   // Keyboard operability: the button that performed a move travels with its
   // item, so focus is restored to it after the list re-renders.
   const focusKey = useRef<string | null>(null);
@@ -582,37 +582,37 @@ export function QnaForm({
 }
 
 /** Human-readable echo of the participant's own accepted answer. */
-export function describeAnswer(interaction: InteractionView, ballot: Ballot): string {
-  switch (ballot.kind) {
+export function describeAnswer(interaction: InteractionView, answer: OwnAnswer): string {
+  switch (answer.kind) {
     case 'dont-know':
       return "Don't know";
     case 'choice': {
-      if (interaction.type !== 'choice') return ballot.optionIds.join(', ');
-      const labels = ballot.optionIds.map(
+      if (interaction.type !== 'choice') return answer.optionIds.join(', ');
+      const labels = answer.optionIds.map(
         (id) => interaction.options.find((o) => o.id === id)?.label ?? id,
       );
       return labels.join(', ');
     }
     case 'scale':
-      return String(ballot.value);
+      return String(answer.value);
     case 'numeric':
       return interaction.type === 'numeric' && interaction.unit
-        ? `${ballot.value} ${interaction.unit}`
-        : String(ballot.value);
+        ? `${answer.value} ${interaction.unit}`
+        : String(answer.value);
     case 'ranking': {
-      if (interaction.type !== 'ranking') return ballot.optionIds.join(' → ');
-      return ballot.optionIds
+      if (interaction.type !== 'ranking') return answer.optionIds.join(' → ');
+      return answer.optionIds
         .map((id) => interaction.options.find((o) => o.id === id)?.label ?? id)
         .join(' → ');
     }
     case 'text':
     case 'qna':
-      return ballot.text;
+      return answer.text;
     case 'fill-the-gaps':
-      return Object.values(ballot.gaps).join(', ');
+      return Object.values(answer.gaps).join(', ');
     case 'match': {
-      if (interaction.type !== 'match') return Object.values(ballot.pairs).join(', ');
-      return Object.entries(ballot.pairs)
+      if (interaction.type !== 'match') return Object.values(answer.pairs).join(', ');
+      return Object.entries(answer.pairs)
         .map(([leftId, rightId]) => {
           const left = interaction.left.find((item) => item.id === leftId)?.label ?? leftId;
           const right = interaction.right.find((item) => item.id === rightId)?.label ?? rightId;
@@ -625,7 +625,7 @@ export function describeAnswer(interaction: InteractionView, ballot: Ballot): st
   }
 }
 
-/** The domain refuses a gap answer over 200 characters (apply/ballot.ts). */
+/** The domain refuses a gap answer over 200 characters (apply/answer.ts). */
 const GAP_MAX = 200;
 
 function FillTheGapsAnswer({
@@ -642,7 +642,7 @@ function FillTheGapsAnswer({
   /** The typed gap the accent keys write into: the one last focused. */
   const [typingGap, setTypingGap] = useState<string | null>(null);
   const caret = useCaretInsert<HTMLInputElement>();
-  const submitted = ballotKey(ownAnswer);
+  const submitted = answerKey(ownAnswer);
   useEffect(() => {
     setGaps(ownAnswer?.kind === 'fill-the-gaps' ? ownAnswer.gaps : {});
     setOpenGap(null);
@@ -829,7 +829,7 @@ export function FillTheGapsOwnResult({
   ownAnswer,
 }: {
   interaction: Extract<InteractionView, { type: 'fill-the-gaps' }>;
-  ownAnswer: Extract<Ballot, { kind: 'fill-the-gaps' }>;
+  ownAnswer: Extract<OwnAnswer, { kind: 'fill-the-gaps' }>;
 }) {
   const grade = gradeFillTheGaps(interaction, ownAnswer.gaps);
   const byId = new Map(grade.gaps.map((row) => [row.id, row]));
@@ -887,7 +887,7 @@ function MatchAnswer({
   const initial = ownAnswer?.kind === 'match' ? ownAnswer.pairs : {};
   const [pairs, setPairs] = useState<Record<string, string>>(initial);
   const [picked, setPicked] = useState<string | null>(null);
-  const submitted = ballotKey(ownAnswer);
+  const submitted = answerKey(ownAnswer);
   useEffect(() => {
     setPairs(ownAnswer?.kind === 'match' ? ownAnswer.pairs : {});
     setPicked(null);

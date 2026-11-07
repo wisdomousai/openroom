@@ -64,7 +64,7 @@ stuck / ready / raise-hand chrome.
 Write a compact curated record: learning outcomes, a short tutor note, an
 optional `nextNote` (what to pick up next time — this becomes the sticky on the
 student), homework, and selected artifact references. Do not store a transcript
-or per-participant ballots. Write what the tutor will want to read in three
+or per-participant answers. Write what the tutor will want to read in three
 weeks.
 
 ## Giving the student access to their own records

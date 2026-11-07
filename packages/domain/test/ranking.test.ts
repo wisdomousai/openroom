@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { computeAggregate, emptyAggregate } from '../src/aggregate.js';
 import { normalizeSession } from '@openroom/schema';
-import type { Aggregate, Ballot } from '../src/types.js';
+import type { Aggregate, Answer } from '../src/types.js';
 import { env, expectError, fixtureSpec, sessionWithOpen, participant, run } from './helpers.js';
 
 /** The normalized `priority` interaction (3 options: alpha, beta, gamma). */
@@ -14,7 +14,7 @@ function rankingAggregate(aggregate: Aggregate): Extract<Aggregate, { kind: 'ran
   return aggregate;
 }
 
-describe('ranking ballots — complete permutations only', () => {
+describe('ranking answers — complete permutations only', () => {
   const answer = (optionIds: string[]) =>
     env(
       { command: 'answer.submit', interactionId: 'priority', answer: { kind: 'ranking', optionIds } },
@@ -23,7 +23,7 @@ describe('ranking ballots — complete permutations only', () => {
 
   it('accepts a complete permutation of the option ids', () => {
     const state = run(sessionWithOpen('priority'), answer(['gamma', 'alpha', 'beta']));
-    expect(state.interactions['priority']?.ballots['p1']).toEqual({
+    expect(state.interactions['priority']?.answers['p1']).toEqual({
       kind: 'ranking',
       optionIds: ['gamma', 'alpha', 'beta'],
     });
@@ -31,7 +31,7 @@ describe('ranking ballots — complete permutations only', () => {
 
   it('accepts any order — there is no correct ranking', () => {
     const state = run(sessionWithOpen('priority'), answer(['alpha', 'beta', 'gamma']));
-    expect(state.interactions['priority']?.ballots['p1']).toMatchObject({ kind: 'ranking' });
+    expect(state.interactions['priority']?.answers['p1']).toMatchObject({ kind: 'ranking' });
   });
 
   it('E_INVALID_ANSWER: a partial ranking', () => {
@@ -101,7 +101,7 @@ describe('ranking ballots — complete permutations only', () => {
         participant('p1'),
       ),
     );
-    expect(state.interactions['priority']?.ballots['p1']).toEqual({
+    expect(state.interactions['priority']?.answers['p1']).toEqual({
       kind: 'ranking',
       optionIds: ['gamma', 'beta', 'alpha'],
     });
@@ -134,7 +134,7 @@ describe('ranking aggregate — Borda scores and average ranks', () => {
    *   beta:  2 + 1 + 3 + 2 = 8   ranks 2,3,1,2 -> mean 8/4  = 2
    *   gamma: 1 + 2 + 1 + 3 = 7   ranks 3,2,3,1 -> mean 9/4  = 2.25
    */
-  const ballots: Record<string, Ballot> = {
+  const answers: Record<string, Answer> = {
     p1: { kind: 'ranking', optionIds: ['alpha', 'beta', 'gamma'] },
     p2: { kind: 'ranking', optionIds: ['alpha', 'gamma', 'beta'] },
     p3: { kind: 'ranking', optionIds: ['beta', 'alpha', 'gamma'] },
@@ -142,20 +142,20 @@ describe('ranking aggregate — Borda scores and average ranks', () => {
   };
 
   it('matches the hand-computed Borda counts and mean 1-based ranks', () => {
-    const aggregate = rankingAggregate(computeAggregate(priority, ballots));
+    const aggregate = rankingAggregate(computeAggregate(priority, answers));
     expect(aggregate.scores).toEqual({ alpha: 9, beta: 8, gamma: 7 });
     expect(aggregate.avgRank).toEqual({ alpha: 1.75, beta: 2, gamma: 2.25 });
     expect(aggregate.total).toBe(4);
     expect(aggregate.dontKnow).toBe(0);
   });
 
-  it('every ballot contributes the same point pool (k*(k+1)/2 per ballot)', () => {
-    const aggregate = rankingAggregate(computeAggregate(priority, ballots));
+  it('every answer contributes the same point pool (k*(k+1)/2 per answer)', () => {
+    const aggregate = rankingAggregate(computeAggregate(priority, answers));
     const sum = Object.values(aggregate.scores).reduce((a, b) => a + b, 0);
     expect(sum).toBe(4 * ((3 * (3 + 1)) / 2));
   });
 
-  it('a single ballot gives k, k-1 … 1 points and ranks 1, 2 … k', () => {
+  it('a single answer gives k, k-1 … 1 points and ranks 1, 2 … k', () => {
     const aggregate = rankingAggregate(
       computeAggregate(priority, { p1: { kind: 'ranking', optionIds: ['beta', 'gamma', 'alpha'] } }),
     );
@@ -178,7 +178,7 @@ describe('ranking aggregate — Borda scores and average ranks', () => {
     expect(aggregate.dontKnow).toBe(2);
   });
 
-  it('avgRank stays null for every option when only dont-know ballots exist', () => {
+  it('avgRank stays null for every option when only dont-know answers exist', () => {
     const aggregate = rankingAggregate(
       computeAggregate(priority, { p1: { kind: 'dont-know' } }),
     );
@@ -187,22 +187,22 @@ describe('ranking aggregate — Borda scores and average ranks', () => {
     expect(aggregate.dontKnow).toBe(1);
   });
 
-  it('is order-independent in the ballot map: only the ballots matter', () => {
-    const reversed = Object.fromEntries(Object.entries(ballots).reverse());
-    expect(computeAggregate(priority, reversed)).toEqual(computeAggregate(priority, ballots));
+  it('is order-independent in the answer map: only the answers matter', () => {
+    const reversed = Object.fromEntries(Object.entries(answers).reverse());
+    expect(computeAggregate(priority, reversed)).toEqual(computeAggregate(priority, answers));
   });
 
   it('is recomputed and stored on every submission', () => {
     let state = sessionWithOpen('priority');
-    for (const [participantId, ballot] of Object.entries(ballots)) {
-      if (ballot.kind !== 'ranking') continue;
+    for (const [participantId, stored] of Object.entries(answers)) {
+      if (stored.kind !== 'ranking') continue;
       state = run(
         state,
         env(
           {
             command: 'answer.submit',
             interactionId: 'priority',
-            answer: { kind: 'ranking', optionIds: ballot.optionIds },
+            answer: { kind: 'ranking', optionIds: stored.optionIds },
           },
           participant(participantId),
         ),

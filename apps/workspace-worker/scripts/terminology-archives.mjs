@@ -1,8 +1,10 @@
 /**
  * One-shot rewrite of R2 session archives (objects `archives/<session code>.json`) for the
- * terminology rename: the participant column of the kept ballots CSV was called `handle`
- * and is now `name` (migration 0002_nickname). Only the header line of `ballotsCsv` changes.
- * Anonymized asker ids in the aggregates were `purged-<n>` and are now `deleted-<n>`.
+ * terminology rename:
+ *  - the key `ballotsCsv` (the kept per-person answers CSV) is now `answersCsv`;
+ *  - the participant column of that CSV was called `handle` and is now `name` (migration
+ *    0002_nickname), so its header line is rewritten;
+ *  - anonymized asker ids in the aggregates were `purged-<n>` and are now `deleted-<n>`.
  * Safe to run twice.
  *
  * It never talks to Cloudflare. Download the archives, run this on the folder, upload them
@@ -21,11 +23,17 @@ export function rewriteArchive(text) {
   const record = JSON.parse(text);
   if (record === null || typeof record !== 'object') return null;
   let changed = false;
+  // The kept per-person CSV was stored under `ballotsCsv`; it is `answersCsv` now.
   if (typeof record.ballotsCsv === 'string') {
-    const newline = record.ballotsCsv.indexOf('\n');
-    const header = newline === -1 ? record.ballotsCsv : record.ballotsCsv.slice(0, newline);
+    if (typeof record.answersCsv !== 'string') record.answersCsv = record.ballotsCsv;
+    delete record.ballotsCsv;
+    changed = true;
+  }
+  if (typeof record.answersCsv === 'string') {
+    const newline = record.answersCsv.indexOf('\n');
+    const header = newline === -1 ? record.answersCsv : record.answersCsv.slice(0, newline);
     if (header === OLD_HEADER) {
-      record.ballotsCsv = NEW_HEADER + (newline === -1 ? '' : record.ballotsCsv.slice(newline));
+      record.answersCsv = NEW_HEADER + (newline === -1 ? '' : record.answersCsv.slice(newline));
       changed = true;
     }
   }

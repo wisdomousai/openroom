@@ -28,7 +28,7 @@ describe('revision discipline — every applied mutation bumps by exactly 1', ()
     expect(state.revision).toBe(r0 + 3);
   });
 
-  it('answer.submit bumps by 1 per applied ballot, including replacements', () => {
+  it('answer.submit bumps by 1 per applied answer, including replacements', () => {
     let state = sessionWithOpen('mood');
     const r0 = state.revision;
     state = run(
@@ -163,7 +163,7 @@ describe('revision discipline — documented no-ops (ok, no bump, checked before
       ),
     );
     // blocklisted text starts hidden already
-    expect(state.interactions['reflection']?.ballots['p1']).toMatchObject({ hidden: true });
+    expect(state.interactions['reflection']?.answers['p1']).toMatchObject({ hidden: true });
 
     // With the correct expectedRevision, re-hiding is a genuine no-op: ok, no bump.
     const result = apply(

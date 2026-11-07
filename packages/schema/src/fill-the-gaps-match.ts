@@ -1,5 +1,5 @@
 /**
- * FillTheGaps prompt tokenisation and ballot grading for the `fill-the-gaps` / `match` lanes.
+ * FillTheGaps prompt tokenisation and answer grading for the `fill-the-gaps` / `match` lanes.
  *
  * The `{{id}}` placeholder grammar is defined once here: the validator, the
  * phone answer form, the projector and the deck editor canvas all read it from this
@@ -220,7 +220,7 @@ function rebuildFillTheGapsPrompt(
   return result;
 }
 
-/** Enough of a fill-the-gaps interaction to grade one ballot against. */
+/** Enough of a fill-the-gaps interaction to grade one answer against. */
 export interface FillTheGapsGrading {
   gaps: readonly { id: string; answers?: readonly string[] }[];
   match?: TextMatchOptions;
@@ -382,7 +382,7 @@ export function gradeFillTheGaps(
 
 export interface MatchPairGrade {
   leftId: string;
-  /** The right item this ballot chose, or undefined when the left was skipped. */
+  /** The right item this answer chose, or undefined when the left was skipped. */
   chosen: string | undefined;
   correct: boolean;
 }
@@ -394,7 +394,7 @@ export interface MatchGrade {
   allCorrect: boolean;
 }
 
-/** Grade one match ballot against the interaction's answer key. */
+/** Grade one match answer against the interaction's answer key. */
 export function gradeMatch(
   correct: Record<string, string>,
   pairs: Record<string, string>,

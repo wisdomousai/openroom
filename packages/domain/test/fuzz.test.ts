@@ -17,8 +17,8 @@ import type { Aggregate, Command, CommandEnvelope, SessionState } from '../src/t
  * Invariants checked after every single `applyCommand` call:
  *  1. revision is monotonic non-decreasing, and strictly +1 whenever the command
  *     actually produced an effect (`effects.length > 0`).
- *  2. for every interaction, aggregate "total" includes don't-know ballots and
- *     equals the number of recorded ballots of that interaction.
+ *  2. for every interaction, aggregate "total" includes don't-know answers and
+ *     equals the number of recorded answers of that interaction.
  *  3. `JSON.parse(JSON.stringify(state))` deep-equals `state` (pure JSON, no
  *     loss of information — the DO persists exactly this).
  *  4. `applyCommand` never throws; on invalid input it returns an error object.
@@ -178,7 +178,7 @@ function randomCommand(
   };
 }
 
-/** Ranking scores must always be the Borda pool implied by the scored (non-don't-know) ballots. */
+/** Ranking scores must always be the Borda pool implied by the scored (non-don't-know) answers. */
 function checkRankingInvariant(state: SessionState, interactionId: string): void {
   const runtime = state.interactions[interactionId];
   if (runtime === undefined || runtime.aggregate.kind !== 'ranking') return;
@@ -250,21 +250,21 @@ describe('property fuzz — seg-camp.yaml, seeded PRNG, 1000 iterations', () => 
           checkRankingInvariant(next, interaction.id);
         }
 
-        // Invariant 2: aggregate total === ballot count (don't-know included).
+        // Invariant 2: aggregate total === answer count (don't-know included).
         for (const interaction of segCampSession.interactions) {
           const runtime = next.interactions[interaction.id];
           if (runtime === undefined) continue;
-          const ballotCount = Object.keys(runtime.ballots).length;
+          const answerCount = Object.keys(runtime.answers).length;
           if (
             runtime.aggregate.kind === 'choice' ||
             runtime.aggregate.kind === 'scale' ||
             runtime.aggregate.kind === 'numeric' ||
             runtime.aggregate.kind === 'ranking'
           ) {
-            expect(aggregateTotal(runtime.aggregate)).toBe(ballotCount);
+            expect(aggregateTotal(runtime.aggregate)).toBe(answerCount);
           } else {
-            // text/qna: one entry per ballot of that kind, dont-know never applies
-            expect(aggregateTotal(runtime.aggregate)).toBe(ballotCount);
+            // text/qna: one entry per answer of that kind, dont-know never applies
+            expect(aggregateTotal(runtime.aggregate)).toBe(answerCount);
           }
         }
 

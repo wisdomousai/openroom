@@ -72,10 +72,10 @@ describe('GET /api/me entitlements', () => {
     expect(body.user.entitlements).toEqual(FREE_ENTITLEMENTS);
   });
 
-  it('refuses the ballot export for a free owner and allows it with rawExport', async () => {
+  it('refuses the answer export for a free owner and allows it with rawExport', async () => {
     const free = await seedUser('{}');
     const freeSession = await createOwnedSession(free);
-    const refused = await call(`/api/sessions/${freeSession.sessionCode}/export?format=ballots`, {
+    const refused = await call(`/api/sessions/${freeSession.sessionCode}/export?format=answers`, {
       headers: { authorization: `Bearer ${freeSession.hostToken}` },
     });
     expect(refused.status).toBe(403);
@@ -91,7 +91,7 @@ describe('GET /api/me entitlements', () => {
 
     const paid = await seedUser(JSON.stringify({ rawExport: true }));
     const paidSession = await createOwnedSession(paid);
-    const allowed = await call(`/api/sessions/${paidSession.sessionCode}/export?format=ballots`, {
+    const allowed = await call(`/api/sessions/${paidSession.sessionCode}/export?format=answers`, {
       headers: { authorization: `Bearer ${paidSession.hostToken}` },
     });
     expect(allowed.status).toBe(200);

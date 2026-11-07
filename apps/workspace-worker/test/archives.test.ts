@@ -23,7 +23,7 @@ describe('session archives', () => {
     expect(await listed.json()).toEqual({ archives: [] });
   });
 
-  it('keeps aggregates and optional ballots after end, downloadable after the DO would have deleted', async () => {
+  it('keeps aggregates and optional answers after end, downloadable after the DO would have deleted', async () => {
     const user = await seedUser(JSON.stringify({ keep: true, rawExport: true }));
     const session = await createOwnedSession(user);
     await command(session.sessionCode, session.hostToken, { command: 'session.start' });
@@ -44,12 +44,12 @@ describe('session archives', () => {
     const snapshot = (await jsonRes.json()) as { code: string };
     expect(snapshot.code).toBe(session.sessionCode);
 
-    const ballots = await asUser(
+    const answers = await asUser(
       user,
-      `/api/my/archives/${body.archives[0]!.id}?format=ballots`,
+      `/api/my/archives/${body.archives[0]!.id}?format=answers`,
     );
-    expect(ballots.status).toBe(200);
-    expect((await ballots.text()).startsWith('interactionId,prompt,participantId')).toBe(true);
+    expect(answers.status).toBe(200);
+    expect((await answers.text()).startsWith('interactionId,prompt,participantId')).toBe(true);
 
     const stranger = await seedUser(JSON.stringify({ keep: true }));
     const stolen = await asUser(stranger, `/api/my/archives/${body.archives[0]!.id}`);
@@ -63,11 +63,11 @@ describe('session archives', () => {
     const listed = await asUser(user, '/api/my/archives');
     const body = (await listed.json()) as { archives: { id: string; kind: string }[] };
     expect(body.archives[0]!.kind).toBe('aggregates');
-    const ballots = await asUser(
+    const answers = await asUser(
       user,
-      `/api/my/archives/${body.archives[0]!.id}?format=ballots`,
+      `/api/my/archives/${body.archives[0]!.id}?format=answers`,
     );
-    expect(ballots.status).toBe(404);
+    expect(answers.status).toBe(404);
   });
 
   it('recovers a captured archive after its database pointer fails without recapturing or extending retention', async () => {
@@ -86,7 +86,7 @@ describe('session archives', () => {
     const saved = listed.archives[0]!;
     expect(saved.createdAt).toBe(object!.uploaded.getTime());
     expect(saved.expiresAt).toBe(object!.uploaded.getTime() + 90 * 86400000);
-    expect(await (await asUser(user, `/api/my/archives/${saved.id}?format=ballots`)).text()).toBe('original responses');
+    expect(await (await asUser(user, `/api/my/archives/${saved.id}?format=answers`)).text()).toBe('original responses');
     expect((await env.MEDIA.head(object!.key))!.etag).toBe(object!.etag);
   });
 

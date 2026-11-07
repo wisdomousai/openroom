@@ -148,7 +148,7 @@ export interface RankingOptionView {
 
 export interface RankingInteractionView extends BaseInteractionView {
   type: 'ranking';
-  /** 2-6 options; a ballot orders all of them. */
+  /** 2-6 options; an answer orders all of them. */
   options: RankingOptionView[];
   display?: RankingDisplay;
   /** Only present once the interaction is revealed (API-06). */
@@ -453,15 +453,15 @@ export interface LearnerOutlineView {
   yourLane?: 0 | 1;
 }
 
-/* ------------------------------------------------------- ballots/aggregates */
+/* ------------------------------------------------------- answers/aggregates */
 
 /**
- * A ballot as its own owner receives it (`ownAnswer` / `ownRound1Answer`) —
- * the domain's `OwnAnswer` projection, not its internal `Ballot`: the Q&A voter
+ * An answer as its own owner receives it (`ownAnswer` / `ownRound1Answer`) —
+ * the domain's `OwnAnswer` projection, not its internal `Answer`: the Q&A voter
  * ledger is stripped, and the fill-the-gaps moderation flag is not sent either (a
  * participant's own fill-the-gaps answer is never hidden from them).
  */
-export type Ballot =
+export type OwnAnswer =
   | { kind: 'choice'; optionIds: string[] }
   | { kind: 'scale'; value: number }
   | { kind: 'numeric'; value: number }
@@ -502,7 +502,7 @@ export type Aggregate =
       total: number;
     }
   /**
-   * `scores` is a Borda count: with k options, position p (0-based) on a ballot
+   * `scores` is a Borda count: with k options, position p (0-based) on an answer
    * is worth k - p points. `avgRank` is the mean 1-based position, null while
    * `total` is 0.
    */
@@ -773,10 +773,10 @@ export interface ParticipantSnapshot {
    * Present only while open with a session `timerSec`.
    */
   closesAt?: number;
-  /** True when this participant has a ballot for the active interaction. */
+  /** True when this participant has an answer for the active interaction. */
   answered: boolean;
-  /** This participant's own current ballot for the active interaction. */
-  ownAnswer: Ballot | null;
+  /** This participant's own current answer for the active interaction. */
+  ownAnswer: OwnAnswer | null;
   /** Present only when results are revealable to participants. */
   aggregate: Aggregate | null;
   /** Peer instruction round of the active interaction. */
@@ -786,8 +786,8 @@ export interface ParticipantSnapshot {
    * has happened; `null` until the interaction is revealed (anti-anchoring).
    */
   round1Aggregate?: Aggregate | null;
-  /** This participant's own round-1 ballot, so they can recall their first vote. */
-  ownRound1Answer?: Ballot | null;
+  /** This participant's own round-1 answer, so they can recall their first vote. */
+  ownRound1Answer?: OwnAnswer | null;
   /** Own session-local name (nickname sessions only); peers' names are never sent. */
   yourName?: string;
   /** Session-wide audience Q&A; present only when the session enables it. */

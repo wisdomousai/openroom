@@ -1,13 +1,13 @@
 /**
- * `deleteBallots` — the pure half of PRD DATA-04 retention.
+ * `deleteAnswers` — the pure half of PRD DATA-04 retention.
  *
  * What must survive a deletion: aggregates (counts, means, the wording of text and
- * Q&A entries). What must not: ballots, participant records, and the link from
+ * Q&A entries). What must not: answers, participant records, and the link from
  * an entry back to the person who wrote it.
  */
 import { describe, expect, it } from 'vitest';
 
-import { deleteBallots } from '../src/index.js';
+import { deleteAnswers } from '../src/index.js';
 import type { SessionState } from '../src/types.js';
 import { env, sessionWithOpen, participant, run } from './helpers.js';
 
@@ -64,25 +64,25 @@ function answeredRoom(): SessionState {
   return run(state, env({ command: 'session.end' }));
 }
 
-describe('deleteBallots', () => {
-  it('removes every ballot from every interaction', () => {
-    const deleted = deleteBallots(answeredRoom(), 5000);
+describe('deleteAnswers', () => {
+  it('removes every answer from every interaction', () => {
+    const deleted = deleteAnswers(answeredRoom(), 5000);
     for (const runtime of Object.values(deleted.interactions)) {
-      expect(runtime.ballots).toEqual({});
+      expect(runtime.answers).toEqual({});
     }
   });
 
   it('drops session-local names along with the participants map', () => {
     const ended = answeredRoom();
     ended.participants['p1'] = { joinedAt: 0, name: 'Amber Fox' };
-    const deleted = deleteBallots(ended, 5000);
+    const deleted = deleteAnswers(ended, 5000);
     expect(deleted.participants).toEqual({});
     expect(JSON.stringify(deleted)).not.toContain('Amber Fox');
   });
 
   it('leaves numeric aggregates untouched', () => {
     const ended = answeredRoom();
-    const deleted = deleteBallots(ended, 5000);
+    const deleted = deleteAnswers(ended, 5000);
     expect(deleted.interactions['single-choice']!.aggregate).toEqual(
       ended.interactions['single-choice']!.aggregate,
     );
@@ -90,7 +90,7 @@ describe('deleteBallots', () => {
   });
 
   it('anonymizes text entries but preserves their content and hidden flag', () => {
-    const deleted = deleteBallots(answeredRoom(), 5000);
+    const deleted = deleteAnswers(answeredRoom(), 5000);
     const aggregate = deleted.interactions['reflection']!.aggregate;
     expect(aggregate.kind).toBe('text');
     if (aggregate.kind !== 'text') throw new Error('expected a text aggregate');
@@ -104,7 +104,7 @@ describe('deleteBallots', () => {
   });
 
   it('anonymizes Q&A entries while keeping their vote counts', () => {
-    const deleted = deleteBallots(answeredRoom(), 5000);
+    const deleted = deleteAnswers(answeredRoom(), 5000);
     const aggregate = deleted.interactions['ask']!.aggregate;
     if (aggregate.kind !== 'qna') throw new Error('expected a qna aggregate');
     expect(aggregate.entries).toEqual([
@@ -115,42 +115,42 @@ describe('deleteBallots', () => {
   it('empties the participant list', () => {
     const ended = answeredRoom();
     expect(Object.keys(ended.participants).length).toBeGreaterThan(0);
-    const deleted = deleteBallots(ended, 5000);
+    const deleted = deleteAnswers(ended, 5000);
     expect(Object.keys(deleted.participants)).toHaveLength(0);
   });
 
-  it('bumps the revision exactly once and stamps ballotsDeletedAt', () => {
+  it('bumps the revision exactly once and stamps answersDeletedAt', () => {
     const ended = answeredRoom();
-    const deleted = deleteBallots(ended, 5000);
+    const deleted = deleteAnswers(ended, 5000);
     expect(deleted.revision).toBe(ended.revision + 1);
-    expect(deleted.ballotsDeletedAt).toBe(5000);
+    expect(deleted.answersDeletedAt).toBe(5000);
     expect(deleted.endedAt).toBe(ended.endedAt);
   });
 
   it('is idempotent: a second deletion returns the same object', () => {
-    const once = deleteBallots(answeredRoom(), 5000);
-    const twice = deleteBallots(once, 9000);
+    const once = deleteAnswers(answeredRoom(), 5000);
+    const twice = deleteAnswers(once, 9000);
     expect(twice).toBe(once);
-    expect(twice.ballotsDeletedAt).toBe(5000);
+    expect(twice.answersDeletedAt).toBe(5000);
     expect(twice.revision).toBe(once.revision);
   });
 
   it('is a no-op on a session that has not ended — the deletion is time-triggered, never racing a live session', () => {
     const live = sessionWithOpen('reflection');
-    const deleted = deleteBallots(live, 5000);
+    const deleted = deleteAnswers(live, 5000);
     expect(deleted).toBe(live);
-    expect(deleted.ballotsDeletedAt).toBeUndefined();
+    expect(deleted.answersDeletedAt).toBeUndefined();
   });
 
   it('survives a JSON roundtrip unchanged', () => {
-    const deleted = deleteBallots(answeredRoom(), 5000);
+    const deleted = deleteAnswers(answeredRoom(), 5000);
     expect(JSON.parse(JSON.stringify(deleted))).toEqual(deleted);
   });
 
   it('does not mutate the input state', () => {
     const ended = answeredRoom();
     const before = JSON.parse(JSON.stringify(ended)) as SessionState;
-    deleteBallots(ended, 5000);
+    deleteAnswers(ended, 5000);
     expect(ended).toEqual(before);
   });
 });

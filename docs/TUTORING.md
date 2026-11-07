@@ -449,10 +449,10 @@ D1 holds durable business records: students, decks (content metadata),
 immutable deck versions, sessions (delivery instances), compact Notes,
 trash state, and short-lived deletion intents.
 The selected outline is copied into a Durable Object only when a session launches.
-The Durable Object owns the live cursor, interaction state, ballots, aggregates,
+The Durable Object owns the live cursor, interaction state, answers, aggregates,
 and synchronization for that session.
 
-The ballot hot path does not read or write D1. Original school files and model
+The answer hot path does not read or write D1. Original school files and model
 conversations are not OpenRoom records.
 
 ## Agent and deletion safety

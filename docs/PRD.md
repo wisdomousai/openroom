@@ -22,10 +22,10 @@ The live runtime is designed for very low infrastructure cost:
 
 - Static browser applications for host, participant, and stage views.
 - One SQLite-backed Cloudflare Durable Object as the authoritative state machine for each live session.
-- HTTP requests for commands and ballot submission.
+- HTTP requests for commands and answer submission.
 - Cloudflare Hibernation WebSockets for state-change notification while allowing inactive session objects to sleep.
 - Adaptive HTTP polling only as a compatibility fallback.
-- No D1 query, Queue message, LLM call, or answer logging on the ballot hot path.
+- No D1 query, Queue message, LLM call, or answer logging on the answer hot path.
 
 ## 2. Source precedence and settled corrections
 
@@ -70,7 +70,7 @@ The implementation already demonstrates the essential experience:
 - Entering a presentation step with a `pollId` activates its question automatically.
 - Leaving that step closes the current question or activates the next one.
 - HTTP requests handle joins, votes, host actions, and immediate acknowledgements.
-- One Durable Object owns active state, participants, ballots, and aggregates.
+- One Durable Object owns active state, participants, answers, and aggregates.
 - The Durable Object uses the Hibernation WebSocket API to update the presentation and participant pages.
 - Participants see the next question automatically and can change a vote while it remains open.
 - The projector surface combines teaching content, QR access, response counts, timers, and results without switching to a separate event dashboard.
@@ -136,7 +136,7 @@ The pricing and complexity hypothesis must still be validated beyond this refere
 - Classroom-first: optimize for formative assessment and teaching decisions, not conference spectacle.
 - The live picture is the product: during hosting the core activity is measuring input and feedback in real time, so stage visualizations must feel alive - smoothly animated, immediately legible from the back of the session, and satisfying to watch fill in - without becoming gamified spectacle.
 - The stage is a cinematic surface, built in three layers: a theme-reactive ambient background (WebGL, subtle), a strictly 2D legible chart layer (**shadcn/ui charts / Recharts**, theme-token colours, motion that respects reduced-motion), and a moment layer for reveal choreography. Data is never rendered in 3D; atmosphere may be. Hard guardrails: 60fps on ordinary projector hardware, reduced-motion collapses to instant updates, no-WebGL falls back to static styling, the high-contrast projector theme mutes the ambient layer, and accessible text summaries always carry the data. Cinematic quality serves comprehension; leaderboards and countdown pressure remain off by default.
-- Free fundamentals: do not paywall basic interaction, moderation, or *aggregate* export. A per-ballot, named, or archived export is paid memory, not a poll-type gate.
+- Free fundamentals: do not paywall basic interaction, moderation, or *aggregate* export. A per-answer, named, or archived export is paid memory, not a poll-type gate.
 - Privacy before analytics: collect operational aggregates, not participant surveillance data.
 - Scale to zero: idle sessions should consume no continuously running compute.
 - Low bandwidth by default: small static applications, compact snapshots, and graceful reconnection.
@@ -264,7 +264,7 @@ A quiz is a choice, numeric, or text interaction with scoring - exact option mat
 
 ### Display styles
 
-Visual variety comes from a `display` attribute on an interaction, not from new interaction types. A display style changes how the stage renders an aggregate; it never changes the ballot shape, the aggregation, or the storage model. Each primitive has a sensible default and a small set of alternates:
+Visual variety comes from a `display` attribute on an interaction, not from new interaction types. A display style changes how the stage renders an aggregate; it never changes the answer shape, the aggregation, or the storage model. Each primitive has a sensible default and a small set of alternates:
 
 | Primitive | Default display | Alternates |
 | --- | --- | --- |
@@ -316,7 +316,7 @@ The schema must be able to express:
 3. Participants join without creating accounts. An identified session additionally requires the tutor-issued student access link for that student; no other session type accepts one.
 4. The host opens an interaction.
 5. Participants submit through an idempotent HTTP command and receive an acknowledgement.
-6. The session Durable Object updates ballots and aggregates.
+6. The session Durable Object updates answers and aggregates.
 7. Connected clients receive coalesced revision notifications through Hibernation WebSockets.
 8. The host closes the interaction and optionally reveals results or the correct answer.
 9. The host advances to the next interaction or ends the session.
@@ -353,7 +353,7 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | --- | --- | --- | --- |
 | LIVE-01 | P0 | A session shall reference exactly one immutable deck version. | Deck edits cannot alter a session already created from an older version. |
 | LIVE-02 | P0 | Session states shall be `draft`, `lobby`, `live`, and `ended`. | Invalid transitions return a structured conflict response. |
-| LIVE-03 | P0 | Interaction states shall be `pending`, `open`, `closed`, and `revealed`. | Ballots are accepted only while the interaction is open. |
+| LIVE-03 | P0 | Interaction states shall be `pending`, `open`, `closed`, and `revealed`. | Answers are accepted only while the interaction is open. |
 | LIVE-04 | P0 | Each mutating command shall include an idempotency key and expected session revision. | Replaying a command cannot apply it twice; stale revisions are rejected deterministically. |
 | LIVE-05 | P0 | The host shall open, close, reveal, advance, freeze, and end from one live console. | All primary controls fit without visiting a settings screen. |
 | LIVE-06 | P0 | The console shall show joined, connected, and answered counts distinctly. | A host can distinguish presence from response completion. |
@@ -361,7 +361,7 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | LIVE-08 | P0 | A panic action shall freeze submissions and hide participant-generated stage content. | One action prevents new submissions and removes all participant-generated content from display. |
 | LIVE-09 | P1 | The host may configure an optional accessible timer. | Timer expiry does not silently close an interaction unless explicitly configured. |
 | LIVE-10 | P0 | The runtime shall support both manual controls and host-sequence-driven activation. | The same session state transitions and authorization checks apply whether a host clicks a control or an integrated deck issues the command. |
-| LIVE-11 | P0 | A host shall be able to recover the live console from another device mid-session. | After a host device failure, re-authenticating on any browser restores full console control of the running session with no lost session state or accepted ballots. |
+| LIVE-11 | P0 | A host shall be able to recover the live console from another device mid-session. | After a host device failure, re-authenticating on any browser restores full console control of the running session with no lost session state or accepted answers. |
 
 ### Participant experience
 
@@ -369,8 +369,8 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | --- | --- | --- | --- |
 | PART-01 | P0 | Every live session shall have a short session code accepted by a universal participant join page. | A participant can enter the displayed code and reach the session without creating an account. A session whose deck selects `identityMode: identified` additionally requires a student access link (403 `student-link-required` without one) and a session the tutor has already started (409 `session-not-started` in the lobby); no account is created in either case. |
 | PART-02 | P0 | The participant view shall show one dominant active interaction. | Unrelated navigation and host controls are absent. |
-| PART-03 | P0 | Each ballot submission shall receive a clear accepted or rejected acknowledgement. | Network retries never create duplicate counted responses. |
-| PART-04 | P0 | Participants may change an answer until close when the deck permits it. | The final accepted ballot replaces the earlier ballot for aggregation. |
+| PART-03 | P0 | Each answer submission shall receive a clear accepted or rejected acknowledgement. | Network retries never create duplicate counted responses. |
+| PART-04 | P0 | Participants may change an answer until close when the deck permits it. | The final accepted answer replaces the earlier answer for aggregation. |
 | PART-05 | P0 | The participant app shall show offline and reconnecting states. | A participant can tell whether the latest answer reached the session. |
 | PART-06 | P0 | The static application shell shall be cacheable. | A previously loaded participant app can render connection state during a transient network loss. |
 | PART-07 | P0 | No third-party advertising, behavioral trackers, or fingerprinting shall run in the participant app. | Automated inspection finds no such third-party requests or persistent cross-session participant identifier. |
@@ -386,7 +386,7 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | STAGE-02 | P0 | Join code and QR code shall occupy a stable, legible area. | Results and question changes do not move the join information unexpectedly. |
 | STAGE-03 | P0 | Results shall remain hidden until the session reaches the configured reveal state. | No result data is included in participant or stage payloads before authorization to reveal. |
 | STAGE-04 | P0 | Participant text is display-first; a built-in blocklist and one-tap removal are the only controls. | Open-text and Q&A content appears on the stage as it arrives. A built-in, always-on blocklist (slurs and profanity, maintained in the product, not configured per session) silently keeps matching submissions off the stage; the host can remove anything that slips through with one action, and panic (LIVE-08) hides everything. There is no approval queue, no moderation dashboard, and no per-session filter settings. |
-| STAGE-05 | P0 | Aggregate updates shall be coalesced and rate-capped. | A burst of ballots does not produce one stage broadcast per ballot. |
+| STAGE-05 | P0 | Aggregate updates shall be coalesced and rate-capped. | A burst of answers does not produce one stage broadcast per answer. |
 | STAGE-06 | P0 | Charts shall have an accessible textual summary. | The current aggregate can be understood without relying only on color or graphics. |
 | STAGE-07 | P0 | The stage experience shall be embeddable beside or inside host-owned presentation content. | PowerPoint, Google Slides, and a web host can render compact session-code, join, response-count, and result components without exposing host authority to the audience. |
 | STAGE-08 | P0 | Live visualizations shall animate smoothly between aggregate states. | Bars, scales, and counters interpolate between coalesced snapshots at a steady frame rate on ordinary projector hardware; values never teleport or flicker, and a full 500-participant burst produces fluid motion, not jank. |
@@ -399,9 +399,9 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | ID | Priority | Requirement | Acceptance condition |
 | --- | --- | --- | --- |
 | DATA-01 | P0 | Aggregate results shall be available after session end according to workspace retention. | Aggregate retrieval never requires raw-results permission. |
-| DATA-02 | P0 | Aggregate JSON and aggregate CSV shall be available without a paid poll-type gate. Per-ballot and named exports require `rawExport` or a guest-list session. | A free host can export counts for every MVP interaction type. A ballot-level CSV is refused without the entitlement (or after deletion, without an archive). |
+| DATA-02 | P0 | Aggregate JSON and aggregate CSV shall be available without a paid poll-type gate. Per-answer and named exports require `rawExport` or a guest-list session. | A free host can export counts for every MVP interaction type. An answer-level CSV is refused without the entitlement (or after deletion, without an archive). |
 | DATA-03 | P0 | Aggregate and raw-result permissions shall be separate. | `results:aggregate` never implies `results:raw`. |
-| DATA-04 | P0 | The default hosted mode shall delete individual ballots after the short operational window while retaining permitted aggregates. | A deletion test confirms ballots are removed on schedule. |
+| DATA-04 | P0 | The default hosted mode shall delete individual answers after the short operational window while retaining permitted aggregates. | A deletion test confirms answers are removed on schedule. |
 | DATA-05 | P0 | Participant answer content shall never be written to application logs. | Log inspection under test traffic contains identifiers and operational counts only. |
 | DATA-06 | P1 | Large or asynchronous exports may be stored temporarily in R2. | Export objects expire automatically and are authorized independently of session join capabilities. |
 
@@ -562,7 +562,7 @@ D1 stores low-frequency control-plane data such as:
 - API tokens and workspace policies.
 - Usage totals and administrative audit events.
 
-D1 must not receive a write for every ballot.
+D1 must not receive a write for every answer.
 
 ### Session Durable Object
 
@@ -573,7 +573,7 @@ It owns:
 - Authoritative session and interaction state.
 - Monotonic session revision.
 - Active participant capabilities and session-local nicknames.
-- Ballots and answer replacement.
+- Answers and answer replacement.
 - Aggregates.
 - Q&A, votes, and moderation state.
 - Idempotency keys.
@@ -646,12 +646,12 @@ Polling is a compatibility path and must not drive the default cost model.
 
 ### Live hot-path invariants
 
-For a ballot submission, the Session Durable Object shall:
+For an answer submission, the Session Durable Object shall:
 
 1. Validate the participant capability.
 2. Validate the current interaction and answer shape.
 3. Check the idempotency key.
-4. Insert or replace the participant's current ballot.
+4. Insert or replace the participant's current answer.
 5. Update the aggregate.
 6. Return an acknowledgement.
 7. Schedule or emit a coalesced session revision notification.
@@ -660,17 +660,17 @@ The hot path shall not:
 
 - Query D1.
 - Call an LLM.
-- Emit a Queue message per ballot.
+- Emit a Queue message per answer.
 - Write participant answer content to application logs.
-- Broadcast a full result snapshot per ballot.
+- Broadcast a full result snapshot per answer.
 - Accept typing events or scale-drag events.
-- Create one R2 object per ballot.
+- Create one R2 object per answer.
 
 ### R2 and Queues
 
 Use R2 only for uploaded media, large requested exports, optional raw-response archives under explicit policy, and limited school branding assets.
 
-Queues are optional for session-close processing, export generation, webhooks, and retention work. Never enqueue every ballot.
+Queues are optional for session-close processing, export generation, webhooks, and retention work. Never enqueue every answer.
 
 ## 11. Identity, privacy, and retention
 
@@ -679,7 +679,7 @@ Queues are optional for session-close processing, export generation, webhooks, a
 - Random, short-lived participant capability.
 - No name or email.
 - No cross-session identity.
-- Ballots retained only for live operation, answer changes, recovery, and the configured short deletion window.
+- Answers retained only for live operation, answer changes, recovery, and the configured short deletion window.
 - Aggregates retained according to the host or workspace policy.
 
 ### Nickname mode - shipped
@@ -687,7 +687,7 @@ Queues are optional for session-close processing, export generation, webhooks, a
 - Random identity stable within one session: the default `defaults.identityMode: nickname` assigns each participant a system-generated session-local name ("Amber Fox 4827") at join. Never user-chosen — no self-declared PII enters the system.
 - The browser stores the session capability by session id and session code for automatic rescans. If an iOS QR window discards that storage, the participant can type the same name to recover the original participant id and receive a fresh session capability. Failed recovery attempts are rate-limited inside the session Durable Object.
 - No linking across classes or sessions: names exist only inside one session's state and die with the DATA-04 deletion.
-- Raw-response retention: shares the DATA-04 defaults (ballots deleted 30 minutes after end, session deleted at 24 hours), stated in the participant notice.
+- Raw-response retention: shares the DATA-04 defaults (answers deleted 30 minutes after end, session deleted at 24 hours), stated in the participant notice.
 - Participant notice: shown immediately after join, before the first answer can be submitted ("In this session you appear as **{name}**. Remember it: you can use it to rejoin if this QR window closes. No name or account is collected, and the name is never linked to other sessions. Individual answers are deleted 30 minutes after the session ends."). Deviation from the original "before joining" wording: the mode is only knowable after session resolution, and joining itself submits no content.
 - Visibility: host console and CSV export only, plus each participant's own name. The stage and other participants never receive names.
 
@@ -768,14 +768,14 @@ The product shall not implement browser fingerprinting. Small-group aggregate su
 
 Anonymous-by-default is a compliance architecture, not only an ethics choice. FERPA, GDPR, and COPPA obligations attach to identifiable personal data; a runtime that never collects participant names, emails, accounts, or cross-session identifiers converts a school's legal review into a short answer. That answer must be written down and published:
 
-- Procurement one-pager: participants join without accounts, no participant PII is collected in the hosted default mode, ballots are deleted on a stated schedule, aggregates contain no identities, and no participant data is sold, profiled, or used for advertising.
+- Procurement one-pager: participants join without accounts, no participant PII is collected in the hosted default mode, answers are deleted on a stated schedule, aggregates contain no identities, and no participant data is sold, profiled, or used for advertising.
 - Under-13 participation: because participants have no accounts and provide no personal information, COPPA consent mechanics are not triggered in anonymous or nickname mode. **Identified mode rests on a different argument, deliberately.** The tutor is the controller: they already know the student, they author `students.display_name`, and they own the records. OpenRoom collects nothing *from* the child — no name field is ever shown to a participant or student, and no marketing, profiling, or advertising use exists. A student account, where one is issued, requests a provider-anonymised identity and grants read access to records the tutor created; it is not the point of collection.
 
   > **⚠ Three items still need a human before this is published.** The controller
   > argument above is the product's position; these are the gaps underneath it.
   >
   > 1. **Retention.** The COPPA answer for anonymous mode is underwritten by the ephemeral
-  >    session: ballots are deleted 30 minutes after end, sessions delete at 24 hours. The durable
+  >    session: answers are deleted 30 minutes after end, sessions delete at 24 hours. The durable
   >    tutoring tables have **no retention policy at all** — the only TTL in the control
   >    plane is the 15-minute deletion-confirmation token. `students.display_name`,
   >    `students.profile_json` and `session_records.notes` persist until a human trashes *and*
@@ -814,7 +814,7 @@ Bespoke legal agreements remain excluded (see School Pro exclusions); the strate
 - Exclude correct answers from pre-reveal payloads.
 - Exclude participant content from logs, traces, and product analytics.
 - Provide workspace-level cost circuit breakers and automatic session expiry.
-- Record administrative and policy changes without recording ballot content.
+- Record administrative and policy changes without recording answer content.
 - Provide a one-click hide-all and freeze action for projector abuse.
 - Treat imported materials and participant submissions as untrusted input to agents.
 
@@ -848,7 +848,7 @@ Leaderboards and countdown pressure are off by default.
 - Session starts and ends.
 - Active session counts.
 - Join success rate.
-- Ballot acknowledgement latency.
+- Answer acknowledgement latency.
 - Aggregate update latency.
 - Deck error and reconnect counts.
 - Durable Object processing time.
@@ -871,10 +871,10 @@ Leaderboards and countdown pressure are off by default.
 These targets require validation under load before they become public commitments:
 
 - Participant join success: at least 99.5 percent for valid session codes.
-- Ballot acknowledgement: p95 under 500 ms excluding client network latency.
-- Aggregate visible to host and stage: p95 under 1 second after accepted ballot.
+- Answer acknowledgement: p95 under 500 ms excluding client network latency.
+- Aggregate visible to host and stage: p95 under 1 second after accepted answer.
 - Duplicate counting after retry: zero.
-- Session recovery after hibernation: no lost accepted ballot or invalid state transition.
+- Session recovery after hibernation: no lost accepted answer or invalid state transition.
 - Supported normal session: 500 simultaneous participants.
 - Raw answer content found in logs: zero.
 
@@ -897,10 +897,10 @@ These targets require validation under load before they become public commitment
 ## 15. Cost guardrails
 
 - No dynamic Worker execution for static assets where Cloudflare static asset routing can serve them directly.
-- No D1 read or write per ballot.
-- No Queue message per ballot.
+- No D1 read or write per answer.
+- No Queue message per answer.
 - No LLM call in a live session unless a host explicitly invokes a separate optional workflow.
-- No success log per ballot; sample operational logs without content.
+- No success log per answer; sample operational logs without content.
 - One coalesced usage update per session or workspace interval, not per event.
 - At most one normal background close job per session.
 - Automatic expiry for abandoned sessions and temporary exports.
@@ -1082,7 +1082,7 @@ Counter-metric: median setup time from deck to live session. Growth achieved by 
 - Median time from source material to a valid deck.
 - Median time from published deck to live session.
 - Participant join completion rate.
-- Ballot acknowledgement latency.
+- Answer acknowledgement latency.
 - Percentage of sessions using more than one interaction.
 - Host reuse within 30 days.
 - Percentage of sessions using anonymous mode.
@@ -1123,9 +1123,9 @@ The strongest conversion signal is: enough educators at one school already use t
 7. HTTP commands are authoritative mutations and acknowledgements.
 8. Hibernating WebSockets are the primary state-change notification channel.
 9. Adaptive HTTP polling is a compatibility fallback.
-10. No D1, Queue, LLM, R2, or content-logging operation occurs per ballot.
+10. No D1, Queue, LLM, R2, or content-logging operation occurs per answer.
 11. Anonymous, session-scoped participation is the hosted default. Identified participation exists, is opt-in per deck, and is reachable only with a tutor-issued student access link — never by self-registration.
-12. Core polling, moderation, and *aggregate* exports are not premium poll-type gates. A per-ballot or named export is paid memory (`rawExport` / guest list), not a locked interaction type.
+12. Core polling, moderation, and *aggregate* exports are not premium poll-type gates. A per-answer or named export is paid memory (`rawExport` / guest list), not a locked interaction type.
 13. There is no slide editor or hosted office conversion service.
 14. School Pro is a shared library and membership product, not an institutional policy engine.
 15. School Pro does not alter the live-session runtime.
@@ -1134,14 +1134,14 @@ The strongest conversion signal is: enough educators at one school already use t
 18. Stage visualizations are a first-class product surface: smoothly animated, projector-legible, and reduced-motion safe (STAGE-08 through STAGE-10).
 19. Charge when the session becomes data. School Pro is legitimacy (shared space, one invoice). Practice and Training are the payers. Agent marketplaces, not comparison SEO, are the cheap global channel. OEM is a license when asked.
 20. Participant text is display-first with a built-in always-on blocklist, one-tap removal, and panic hide. There is no approval queue, moderation dashboard, or per-session filter configuration.
-21. Display style is a presentation attribute of an interaction primitive; it never introduces a new ballot shape, aggregate, or storage model.
+21. Display style is a presentation attribute of an interaction primitive; it never introduces a new answer shape, aggregate, or storage model.
 
 ## 20. Open decisions before implementation
 
 1. ~~Product name, package scope, and primary domain.~~ **Decided:** product is OpenRoom (`@openroom/*` packages); primary domain is `openroom.app`. The working CLI name `poll` almost certainly collides with existing packages and shell conventions; the final CLI binary name follows the product name (still open).
 2. Final license split between web/server, schemas, SDKs, and skills.
 3. Host authentication provider for the hosted MVP.
-4. Exact anonymous-ballot deletion interval and aggregate retention defaults. Implemented defaults (DATA-04) are 30 minutes from session end to ballot deletion and 24 hours from session end to full session deletion; the final hosted defaults, and whether they are configurable per session or per deck, remain open.
+4. Exact anonymous-answer deletion interval and aggregate retention defaults. Implemented defaults (DATA-04) are 30 minutes from session end to answer deletion and 24 hours from session end to full session deletion; the final hosted defaults, and whether they are configurable per session or per deck, remain open.
 5. Whether MVP MCP includes live control or initially ships deck and aggregate operations only.
 6. Final public service-level targets after the load-test baseline.
 7. Free hosted abuse and usage guardrails.

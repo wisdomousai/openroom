@@ -100,7 +100,7 @@ export async function reconcileBillingAccount(env: ControlEnv, config: PaddleCon
   } finally { await env.DB.prepare('UPDATE billing_account_sync SET claim=NULL,lease_until=0 WHERE environment=?1 AND user_id=?2 AND claim=?3').bind(environment, user.id, claim).run(); }
 }
 
-/** Bounded background repair, independent of participation and ballot processing. */
+/** Bounded background repair, independent of participation and answer processing. */
 export async function reconcileBilling(env: ControlEnv): Promise<void> {
   const configured = paddleConfig(env);
   if (!configured) return;

@@ -18,7 +18,7 @@ import Base from '../layouts/Base.astro';
   <h3>Host accounts</h3>
   <p>When you sign in with Google we store your Google subject id, email, and display name, plus the decks, folders, spaces, memberships, students, and compact session notes you create. Personal API tokens are stored as SHA-256 hashes; the raw token is shown once.</p>
   <h3>Live sessions</h3>
-  <p>Each live session holds the session outline, a server-generated participant id, a join timestamp, and — depending on identity mode — a generated nickname or the display name the tutor wrote on the student. It also holds the current ballot per participant per question and the recomputed aggregate. Participants are never asked for a name, email, or password.</p>
+  <p>Each live session holds the session outline, a server-generated participant id, a join timestamp, and — depending on identity mode — a generated nickname or the display name the tutor wrote on the student. It also holds the current answer per participant per question and the recomputed aggregate. Participants are never asked for a name, email, or password.</p>
   <h3>Learner access links</h3>
   <p>A tutor can mint a link that reaches one student’s learner-visible records. We store a SHA-256 of the token, a visible prefix, and creation, expiry, and revocation timestamps. The raw token is shown once and cannot be read back.</p>
   <h3>Public website</h3>
@@ -38,7 +38,7 @@ import Base from '../layouts/Base.astro';
 
   <h2>How long we keep it</h2>
   <ul>
-    <li>Ballots and the participant list are deleted 30 minutes after a session ends. Remaining text and Q&amp;A entries have participant ids replaced so they cannot be tied back to a person.</li>
+    <li>Answers and the participant list are deleted 30 minutes after a session ends. Remaining text and Q&amp;A entries have participant ids replaced so they cannot be tied back to a person.</li>
     <li>The whole live session is deleted 24 hours after it ends.</li>
     <li>Host account data, decks, and compact notes remain until the host deletes them (normal deletion is trash; permanent deletion requires a short-lived browser confirmation).</li>
     <li>Learner links expire after 180 days by default and can be revoked sooner.</li>

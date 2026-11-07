@@ -51,7 +51,7 @@ describe('concurrent session mutations across body decoding', () => {
     expect(result.slow.status).toBe(200);
     const state = await stateJson(session.sessionCode, session.hostToken, 'host');
     expect(state.aggregate).toMatchObject({ total: 2, counts: { a: 1, b: 1 } });
-    expect(state.ballots.warmup).toEqual({
+    expect(state.answers.warmup).toEqual({
       [first.participantId]: { kind: 'choice', optionIds: ['a'] },
       [second.participantId]: { kind: 'choice', optionIds: ['b'] },
     });
