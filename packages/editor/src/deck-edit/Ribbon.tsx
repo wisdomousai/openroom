@@ -105,7 +105,7 @@ const INSERT_ICONS: Record<InsertKind, LucideIcon> = {
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-none flex-col items-center justify-between gap-1 px-3.5">
+    <div className="flex flex-none flex-col items-center justify-between gap-1 px-2.5">
       <div className="flex flex-1 items-center gap-1">{children}</div>
       <span className="text-caption text-muted-foreground">{label}</span>
     </div>
@@ -506,7 +506,7 @@ export function Ribbon(props: RibbonProps) {
                   {/* Freeform inserts lead each group; the rule marks where
                       boxed compositions end and wired layouts begin. Each run
                       stacks two buttons per column, so the tab fits a laptop. */}
-                  {starterRuns(group.items).map((run, runIndex) => (
+                  {starterRuns(group.items).map((run, runIndex, runs) => (
                     <Fragment key={run[0]!.kind}>
                       {runIndex > 0 ? <Rule /> : null}
                       <div className="grid grid-flow-col grid-rows-2 gap-x-1 gap-y-px">
@@ -530,25 +530,26 @@ export function Ribbon(props: RibbonProps) {
                             </Button>
                           );
                         })}
+                        {/* Breakout fills the free slot under Break. */}
+                        {group.group === 'Classroom' && run === runs[runs.length - 1] ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="subtle"
+                            className="h-7 justify-start"
+                            disabled={noBlock || isBreakout}
+                            onClick={() => props.onInsert('statement', { asBreakout: true })}
+                          >
+                            <UsersRound aria-hidden="true" />
+                            Breakout
+                          </Button>
+                        ) : null}
                       </div>
                     </Fragment>
                   ))}
                 </Group>
               </div>
             ))}
-            <Rule />
-            <Group label="Breakout">
-              <Button
-                type="button"
-                size="sm"
-                variant="subtle"
-                disabled={noBlock || isBreakout}
-                onClick={() => props.onInsert('statement', { asBreakout: true })}
-              >
-                <UsersRound aria-hidden="true" />
-                Breakout
-              </Button>
-            </Group>
           </Row>
         </TabsContent>
 

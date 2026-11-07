@@ -284,11 +284,11 @@ test('the rail moves with Up and Down, draws and names an html slide, and the Sl
   await expect(rows.nth(0)).toHaveAttribute('aria-current', 'true');
 
   await page.getByRole('tab', { name: 'Slide', exact: true }).click();
+  await page.screenshot({ path: testInfo.outputPath('slide-ribbon-1440.png') });
   for (const name of ['Match', 'Break', 'Breakout']) {
     const box = await page.getByRole('button', { name, exact: true }).boundingBox();
     expect((box?.x ?? Infinity) + (box?.width ?? 0), `${name} is on screen`).toBeLessThanOrEqual(1440);
   }
-  await page.screenshot({ path: testInfo.outputPath('slide-ribbon-1440.png') });
 
   await page.getByRole('tab', { name: 'Theme', exact: true }).click();
   const pane = page.locator('.deck-editor-properties');
