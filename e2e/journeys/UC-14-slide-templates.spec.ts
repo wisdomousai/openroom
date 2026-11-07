@@ -21,7 +21,7 @@ test('template gallery inserts editable slides without clipping and preserves sa
     if (index === 0) {
       const preview = await gallery.getByRole('button', { name: 'Insert Title', exact: true }).locator('.slide-surface').boundingBox();
       expect(preview!.height).toBeGreaterThan(100);
-      await expect(gallery.getByText('A clear opening and one sentence of student.', { exact: true })).toBeVisible();
+      await expect(gallery.getByText('A clear opening and one sentence of context.', { exact: true })).toBeVisible();
       await gallery.screenshot({ path: testInfo.outputPath('template-gallery.png') });
     }
     await gallery.getByRole('button', { name: `Insert ${template.name}`, exact: true }).click();
