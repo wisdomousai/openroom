@@ -10,7 +10,7 @@ import {
   loadSession,
   loadSessionByCode,
   readContextLink,
-  readRosterInvite,
+  readGuestLink,
   readQuery,
   rememberSessionInUrl,
   saveSession,
@@ -46,7 +46,7 @@ export function App() {
     setJoining(true);
     setError(null);
     const contextLink = readContextLink();
-    const rosterInvite = readRosterInvite();
+    const guestLink = readGuestLink();
     try {
       const normalizedCode = code.trim().toUpperCase();
       if (recoveryHandle === undefined) {
@@ -69,7 +69,7 @@ export function App() {
       const result = await joinSession(BASE_URL, normalizedCode, {
         ...(recoveryHandle === undefined ? {} : { recoveryHandle }),
         ...(contextLink === null ? {} : { contextLink }),
-        ...(rosterInvite === null ? {} : { rosterInvite }),
+        ...(guestLink === null ? {} : { guestLink }),
       });
       if (contextLink !== null) forgetLinkInUrl();
       const next: StoredSession = {
@@ -89,7 +89,7 @@ export function App() {
       // the retry below joins once the session is live. The gate itself is
       // unchanged — the session keeps refusing until then. A dropped
       // connection or a server fault while waiting keeps waiting too.
-      const byLink = contextLink !== null || rosterInvite !== null;
+      const byLink = contextLink !== null || guestLink !== null;
       if (byLink && (isNotStarted(err) || (waitingRef.current && isTransient(err)))) {
         setWaitingForStart(true);
       } else {
@@ -118,7 +118,7 @@ export function App() {
     }
     // Arriving on an access link: the learner has nothing to choose here — the
     // link already says who they are — so the join screen is skipped entirely.
-    if ((readContextLink() !== null || readRosterInvite() !== null) && !autoJoined.current) {
+    if ((readContextLink() !== null || readGuestLink() !== null) && !autoJoined.current) {
       autoJoined.current = true;
       void doJoin(code);
     }

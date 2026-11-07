@@ -20,11 +20,11 @@ Open the personal session-join address your teacher supplied and select **Join**
 
 On your first join to a named lesson, the page says **Your tutor sees your name in this lesson.** once. Named learner sessions admit participants after the teacher starts. If you arrive early, wait and try again once the lesson is live. Keep using your own link so your work stays associated with the correct person.
 
-## Join with a roster invitation
+## Join with a guest link
 
-Open the individual invitation supplied by the host. It identifies your named seat in one session. The name is supplied by the host, so check it before continuing and contact the host if it is wrong.
+Open the guest link the host sent you. It identifies you by the name the host entered, for one session. The name is supplied by the host, so check it before continuing and contact the host if it is wrong.
 
-Roster invitations can admit participants into the lobby before the host starts. They remain specific to their session. For a later session, use its new invitation.
+Guest links can admit participants into the lobby before the host starts. They remain specific to their session. For a later session, use its new guest link.
 
 ## Answer a question
 
@@ -67,6 +67,6 @@ When audience Q&A is enabled, open its question area, type your question, and se
 
 Reloading in the same browser normally restores its saved participation. Restore network access first if the page reports an offline state.
 
-To recover a generated-name session in another browser, enter the session code, select **Rejoin with handle**, enter the displayed name exactly, and select **Rejoin**. For learner or roster participation, reopen the original personal link.
+To recover a generated-name session in another browser, enter the session code, select **Rejoin with handle**, enter the displayed name exactly, and select **Rejoin**. For learner or guest-list participation, reopen the original personal link.
 
-If the host ended the session, use the next session's code or invitation. An expired or revoked personal link requires a replacement from its issuer.
+If the host ended the session, use the next session's code or guest link. An expired or revoked personal link requires a replacement from its issuer.

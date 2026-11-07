@@ -34,7 +34,7 @@
       "type": "skill-md",
       "description": "Plan and run a live OpenRoom session: author questions in simple YAML, start a session from that outline, hand participants the join code, drive the questions live, and read aggregate results. Use when the user wants a live poll, quiz, check-in, ranking, or Q&A with an audience.",
       "url": "/.well-known/agent-skills/run-a-session/SKILL.md",
-      "digest": "sha256:21ea862831f0bcdd122a98ec6c95e5ce40efa3de029f40597b8f02108fc37c28"
+      "digest": "sha256:cb25098db90092ceac9c21ecb4acb3703448d4ba72ab81363c74dd288389dd38"
     }
   ]
 }

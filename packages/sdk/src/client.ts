@@ -619,8 +619,8 @@ export interface JoinSessionOptions {
    * display name on. Never store it alongside the returned session token.
    */
   contextLink?: string;
-  /** Roster invite (`orinv_…`) for a named-seat session. Not a context access link. */
-  rosterInvite?: string;
+  /** Guest link (`orinv_…`) for a named-seat session. Not a context access link. */
+  guestLink?: string;
 }
 
 export async function joinSession(
@@ -637,7 +637,7 @@ export async function joinSession(
     options.fetch ?? ((globalThis as unknown as { fetch: FetchLike }).fetch as FetchLike);
   const recoveryHandle = options.recoveryHandle?.trim();
   const contextLink = options.contextLink?.trim();
-  const rosterInvite = options.rosterInvite?.trim();
+  const guestLink = options.guestLink?.trim();
   const res = await f(`${base}/api/join`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -645,7 +645,7 @@ export async function joinSession(
       code: code.trim().toUpperCase(),
       ...(recoveryHandle ? { recoveryHandle } : {}),
       ...(contextLink ? { contextLink } : {}),
-      ...(rosterInvite ? { rosterInvite } : {}),
+      ...(guestLink ? { guestLink } : {}),
     }),
   });
   if (!res.ok) {

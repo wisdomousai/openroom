@@ -14,7 +14,7 @@ Open **Session menu** in the presenter and choose a download:
 | --- | --- |
 | Download JSON | Structured session results for analysis or processing. |
 | Download counts (CSV) | Aggregate results in a spreadsheet-friendly file. |
-| Download responses (CSV) | Individual answers, available with named-response export access or for a roster session. |
+| Download responses (CSV) | Individual answers, available with named-response export access or for a guest-list session. |
 
 Downloads reflect the responses available at that moment. Download again after the final question for a complete copy. Individual-response exports can contain participant names; free-text answers can also identify a person regardless of the session's identity setting.
 

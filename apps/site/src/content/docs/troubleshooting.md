@@ -30,9 +30,9 @@ Open the presenter and the participant's Reading view. Use reading documents for
 
 ## A participant cannot join
 
-Check the current eight-character code or invitation and the network connection. A session ended by the host or removed by retention requires a new live session.
+Check the current eight-character code or guest link and the network connection. A session ended by the host or removed by retention requires a new live session.
 
-For a named learner session, use the personal learner credential for that context and wait until the host starts. For a roster session, use its individual roster invitation. Ask the issuer to replace an expired or revoked link.
+For a named learner session, use the personal learner credential for that context and wait until the host starts. For a guest-list session, use its individual guest link. Ask the issuer to replace an expired or revoked link.
 
 To restore a generated session name in another browser, use **Rejoin with handle** and enter the exact name shown previously. To retain the current browser's participation, return using the same browser and session address.
 
@@ -92,4 +92,4 @@ For the local PowerPoint preview, keep the HTTPS server running and renew its de
 
 ## Report a reproducible problem
 
-Record the page or task, the exact visible error, the account role, the steps that led to it, and whether a retry changed the result. Include a screenshot only after checking it for private content. Remove personal tokens, learner links, roster invitations, and host-control links before sharing diagnostic material.
+Record the page or task, the exact visible error, the account role, the steps that led to it, and whether a retry changed the result. Include a screenshot only after checking it for private content. Remove personal tokens, learner links, guest links, and host-control links before sharing diagnostic material.

@@ -57,6 +57,6 @@ An already-created collaborative session keeps its collaboration setting if the 
 
 ## Give learners access
 
-Use a [learner access link](/docs/learner-links/) for a student or family who needs their Notes, homework, and feedback. Use a [roster invitation](/docs/participant/#join-with-a-roster-invitation) to give someone a named seat in one live session.
+Use a [learner access link](/docs/learner-links/) for a student or family who needs their Notes, homework, and feedback. Use a [guest link](/docs/participant/#join-with-a-guest-link) to give a named guest access to one live session.
 
 These links have different scopes from a colleague's space invitation. Send the link appropriate to the work the recipient needs to do.

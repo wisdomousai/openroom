@@ -182,7 +182,7 @@ export function GoneScreen({
         <p className="hint">
           {comeBack ??
             (identityMode === undefined
-              ? 'Open the personal link or invite you were sent, or ask your tutor for the join code.'
+              ? 'Open the personal link or guest link you were sent, or ask your tutor for the join code.'
               : 'Ask your tutor for the join code.')}
         </p>
         {comeBack !== null ? null : (

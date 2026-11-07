@@ -41,7 +41,7 @@ Select **Start session** when you want participants to join. You can start direc
 
 Select the join code chip, or open **Session menu → Copy join link** or **Join page**, to obtain the participant address. Share the join link, show the QR code, or give participants the eight-character code. Open the audience display on your projector or shared screen; keep the presenter controls on your own screen.
 
-Participants joining with a code use their phones or computers. A session configured for named learner access requires the learner's access link; a roster session requires its individual roster invitation. See [joining instructions](/docs/participant/).
+Participants joining with a code use their phones or computers. A session configured for named learner access requires the learner's access link; a guest-list session requires its individual guest link. See [joining instructions](/docs/participant/).
 
 ## Collect and reveal answers
 

@@ -105,6 +105,33 @@ after any change to Worker variables or secrets. Local development and the
 isolated browser journeys run with `DEMO_AUTH` set and no `PADDLE_ENVIRONMENT`,
 which is treated as self-hosted.
 
+## Terminology migration
+
+The product dropped internal jargon from names, routes, error codes, stored values and
+database objects. It is a hard break: no alias accepts an old name. Each rename pass adds
+a D1 migration under `apps/workspace-worker/migrations/` that renames objects and rewrites
+stored values, and `node scripts/check-terms.mjs` (part of `scripts/verify.mjs`) fails on any
+retired term outside the migrations and the one-shot scripts. The retired and current
+terms are in [TERMINOLOGY.md](TERMINOLOGY.md).
+
+Before deploying a release that contains these migrations:
+
+- Durable Object state is not migrated. Live sessions running at deploy time end, so
+  deploy outside teaching hours, relay first as usual.
+- Deployment configuration is not rewritten by a migration. Edit the `capabilities`
+  arrays in the `PADDLE_PRICE_CATALOG` secret of every environment (see
+  [BILLING.md](BILLING.md)) to the new entitlement keys listed below, or the catalog is
+  rejected and the plan grants nothing.
+- Local `.openroom` files and drafts saved outside D1 keep the old values and fail
+  validation until someone edits them; D1 decks, versions, drafts and frozen session
+  outlines are rewritten by the migration.
+- R2 session archives hold aggregates and ballot CSV only and carry none of the renamed
+  values, so no R2 rewrite script is needed so far.
+
+| Migration | Rename |
+| --- | --- |
+| `0001_guest_list` | The two session guest tables are renamed to `guest_lists` and `guest_links` (indexes recreated, issued `orinv_…` tokens stay valid). The retired `identityMode` value is rewritten to `guest-list` in `deck_versions.content_json`, `sessions.source_outline_json` and `deck_drafts.content_yaml`. The retired entitlement key in `users.entitlements` is rewritten to `guestList`. The plan catalog capability must be changed to `guestList` by hand (see above). |
+
 ## Website pageviews
 
 `UMAMI_WEBSITE_ID` is optional. The hosted site sets it in

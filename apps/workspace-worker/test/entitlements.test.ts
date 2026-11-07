@@ -19,7 +19,7 @@ const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 
 const ALL_TRUE = {
   keep: true,
-  roster: true,
+  guestList: true,
   rawExport: true,
   branding: true,
   team: true,
@@ -38,7 +38,7 @@ describe('parseEntitlements', () => {
   });
 
   it('sets a flag only on JSON true', () => {
-    expect(parseEntitlements({ keep: true, roster: false, rawExport: 'true' })).toEqual({
+    expect(parseEntitlements({ keep: true, guestList: false, rawExport: 'true' })).toEqual({
       ...FREE_ENTITLEMENTS,
       keep: true,
     });
@@ -56,8 +56,8 @@ describe('parseEntitlements', () => {
   });
 
   it('hasEntitlement reads the parsed object, not the raw blob', () => {
-    const paid = parseEntitlements({ roster: true });
-    expect(hasEntitlement(paid, 'roster')).toBe(true);
+    const paid = parseEntitlements({ guestList: true });
+    expect(hasEntitlement(paid, 'guestList')).toBe(true);
     expect(hasEntitlement(paid, 'keep')).toBe(false);
     expect(hasEntitlement(FREE_ENTITLEMENTS, 'rawExport')).toBe(false);
   });

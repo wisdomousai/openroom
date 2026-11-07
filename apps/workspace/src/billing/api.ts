@@ -59,7 +59,7 @@ export function capabilityLabel(capability: string): string {
     case 'branding': return 'Shared brand kits';
     case 'largeSessions': return `Sessions over ${FREE_SESSION_PARTICIPANT_LIMIT} participants`;
     case 'connectors': return 'Connected workflows';
-    default: return 'Named session invites';
+    default: return 'Guest lists for sessions';
   }
 }
 export function subscriptionLabel(status: string): string {

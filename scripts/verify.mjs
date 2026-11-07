@@ -27,6 +27,7 @@ async function build(project, path = []) {
   built.add(project.name);
 }
 await run(process.execPath, ['scripts/sync-mcp-config.mjs', '--check'], { cwd: root });
+await run(process.execPath, ['scripts/check-terms.mjs'], { cwd: root });
 for (const project of shared.values()) await build(project);
 if (!options.includes('--build-only')) {
   for (const project of projects) if (project.scripts?.typecheck) await run(bun, ['run', 'typecheck'], { cwd: project.directory });

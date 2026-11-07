@@ -90,19 +90,19 @@ Use identifiers from the current outline and session state. Presenter and member
 
 The local `.openroom.json` state file contains session credentials. Keep it private and out of version control. Use a different working directory for another session to keep the control state separate.
 
-## Issue named roster invitations
+## Issue guest links
 
-Roster administration uses the live-session API. Prepare a deck with roster identity, start it using an entitled account, and retain its session code and host capability. Use the current session's host token in these requests.
+Guest-link administration uses the live-session API. Prepare a deck with guest-list identity, start it using an entitled account, and retain its session code and host capability. Use the current session's host token in these requests.
 
 | Request | Purpose |
 | --- | --- |
-| `POST /api/sessions/SESSION_CODE/roster/seats` with JSON `{"displayName":"Alex"}` | Create a named seat and obtain its one-time displayed invitation token. |
-| `GET /api/sessions/SESSION_CODE/roster/seats` | Read the named seats and their redemption/revocation state. |
-| `DELETE /api/sessions/SESSION_CODE/roster/seats/SEAT_ID` | Revoke the invitation for that seat. |
+| `POST /api/sessions/SESSION_CODE/guest-links` with JSON `{"displayName":"Alex"}` | Create a guest link for the named guest and obtain its one-time displayed token. |
+| `GET /api/sessions/SESSION_CODE/guest-links` | Read the guest links and their redemption and revocation state. |
+| `DELETE /api/sessions/SESSION_CODE/guest-links/LINK_ID` | Revoke that guest link. |
 
-Send the requests with `Authorization: Bearer HOST_TOKEN` and a JSON content type for creation. Keep the returned token private. Form the participant address using `https://join.openroom.app/?code=SESSION_CODE&invite=INVITATION_TOKEN`, replacing the origin for your installation.
+Send the requests with `Authorization: Bearer HOST_TOKEN` and a JSON content type for creation. Keep the returned token private. Form the participant address using `https://join.openroom.app/?code=SESSION_CODE&invite=GUEST_LINK_TOKEN`, replacing the origin for your installation.
 
-The roster supports 200 active seats. Names are normalized to single spaces and limited to 64 characters. Send each person their own invitation. Keep the seat identifier so an invitation can be revoked later.
+A guest list supports 200 active guest links. Names are normalized to single spaces and limited to 64 characters. Send each person their own guest link. Keep its identifier so you can revoke it later.
 
 ## Export results
 

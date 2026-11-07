@@ -32,7 +32,7 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Session-wide Q&A, moderation, spotlight | facilitation | `live/QnaDesk.tsx`, `live/SessionAside.tsx` |
 | Group membership, spokesperson, shared responses | facilitation, questions, participant | `live/GroupsPanel.tsx`, domain groups |
 | Co-facilitation, handoff, recovery, revocation | facilitation, sharing | host facilitator strip, `apps/workspace-worker/src/index.ts`, entitlement checks |
-| Anonymous, pseudonymous, identified, roster identity | live-session, participant, cli | schema defaults, participant `session.ts`, Worker `index.ts`, `roster.ts` |
+| Anonymous, pseudonymous, identified, guest-list identity | live-session, participant, cli | schema defaults, participant `session.ts`, Worker `index.ts`, `guest-links.ts` |
 | Learner link creation, replacement, expiry, revocation | learner-links | `pages/tutor/ContextLinks.tsx`, `apps/workspace-worker/src/context-links.ts` |
 | Outcomes, tutor-private notes, next step, artifacts | notes, limits, learner | `pages/tutor/SessionNotes.tsx`, `apps/workspace-worker/src/learner.ts` |
 | Reading, writing, voice, quiz homework and audiences | homework, learner | `packages/schema/src/homework.ts`, Notes form, learner task views |
@@ -52,7 +52,7 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Personal API tokens, connection revocation | account, agents | `pages/SettingsPage.tsx`, `components/ConnectedApps.tsx` |
 | External MCP, account consent, token/stdio setup | agents, cli | `packages/mcp/src/tools.ts`, server instructions, CLI backend selection |
 | CLI validate, author, versions, drafts, facilitate, export | cli | `packages/cli/src/run.ts`, `commands/` |
-| Roster mint/list/revoke API workflow | cli | `apps/workspace-worker/src/roster.ts`, live roster routing in `index.ts` |
+| Guest-link mint/list/revoke API workflow | cli | `apps/workspace-worker/src/guest-links.ts`, live guest-link routing in `index.ts` |
 | Limits, visibility, retention, credential distinctions | limits | schema validators, `session-do.ts`, archives and learner-audio services |
 | Keyboard, Reading view, languages, recovery guidance | shortcuts, troubleshooting | actual input handlers, learner copy, public manual browser checks |
 

@@ -16,7 +16,7 @@ Build an open-source, classroom-first interaction platform for live polls, conce
 
 The core product is not a slide editor. It is a portable interaction runtime. A host defines a session as a versioned `Session` document, publishes it, and runs it through the same domain model from PowerPoint, Google Slides, a web presentation, the host application, CLI, API, or an agent.
 
-The hosted product gives individual educators the complete live interaction experience without charging for fundamental poll types, moderation, or aggregate exports. The session then forgets. Revenue comes from Practice and Training (the session becoming data: branding, roster, kept archive, named export), a small School membership (one shared space, one invoice), and future embedding. The participant experience remains account-free, advertising-free, and free of commercial tracking. Distribution is agent marketplaces, not comparison SEO.
+The hosted product gives individual educators the complete live interaction experience without charging for fundamental poll types, moderation, or aggregate exports. The session then forgets. Revenue comes from Practice and Training (the session becoming data: branding, guest lists, kept archive, named export), a small School membership (one shared space, one invoice), and future embedding. The participant experience remains account-free, advertising-free, and free of commercial tracking. Distribution is agent marketplaces, not comparison SEO.
 
 The live runtime is designed for very low infrastructure cost:
 
@@ -162,7 +162,7 @@ The initial product is not:
 
 - A slide editor, PowerPoint clone, or hosted office suite.
 - A video-conferencing platform.
-- A student information system, roster system, or CRM.
+- A student information system, class-list system, or CRM.
 - An examination, proctoring, or surveillance system.
 - A gradebook or grade-passback product.
 - A native mobile application.
@@ -399,7 +399,7 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | ID | Priority | Requirement | Acceptance condition |
 | --- | --- | --- | --- |
 | DATA-01 | P0 | Aggregate results shall be available after session end according to workspace retention. | Aggregate retrieval never requires raw-results permission. |
-| DATA-02 | P0 | Aggregate JSON and aggregate CSV shall be available without a paid poll-type gate. Per-ballot and named exports require `rawExport` or a roster session. | A free host can export counts for every MVP interaction type. A ballot-level CSV is refused without the entitlement (or after purge, without an archive). |
+| DATA-02 | P0 | Aggregate JSON and aggregate CSV shall be available without a paid poll-type gate. Per-ballot and named exports require `rawExport` or a guest-list session. | A free host can export counts for every MVP interaction type. A ballot-level CSV is refused without the entitlement (or after purge, without an archive). |
 | DATA-03 | P0 | Aggregate and raw-result permissions shall be separate. | `results:aggregate` never implies `results:raw`. |
 | DATA-04 | P0 | The default hosted mode shall purge individual ballots after the short operational window while retaining permitted aggregates. | A deletion test confirms ballots are removed on schedule. |
 | DATA-05 | P0 | Participant answer content shall never be written to application logs. | Log inspection under test traffic contains identifiers and operational counts only. |
@@ -493,7 +493,7 @@ Do not build the following as School Pro features in the initial product:
 - A school teaching profile or organization-wide instructional defaults.
 - Mandatory agent guidance.
 - Per-school deployment or dedicated database.
-- SAML, SCIM, directory synchronization, or roster provisioning.
+- SAML, SCIM, directory synchronization, or attendee-list provisioning.
 - LMS integration, grades, or grade passback. Student *accounts* are no longer excluded — see the participant-data posture — but they stay minimal-collection and never carry a staff role. A context access link remains a revocable capability scoped to one context, and does not silently become an account.
 - Bespoke retention policies or customer-specific data residency.
 - Custom domains, custom CSS, design systems, or white-labeling.
@@ -1125,7 +1125,7 @@ The strongest conversion signal is: enough educators at one school already use t
 9. Adaptive HTTP polling is a compatibility fallback.
 10. No D1, Queue, LLM, R2, or content-logging operation occurs per ballot.
 11. Anonymous, session-scoped participation is the hosted default. Identified participation exists, is opt-in per deck, and is reachable only with a tutor-issued context access link — never by self-registration.
-12. Core polling, moderation, and *aggregate* exports are not premium poll-type gates. A per-ballot or named export is paid memory (`rawExport` / roster), not a locked interaction type.
+12. Core polling, moderation, and *aggregate* exports are not premium poll-type gates. A per-ballot or named export is paid memory (`rawExport` / guest list), not a locked interaction type.
 13. There is no slide editor or hosted office conversion service.
 14. School Pro is a shared library and membership product, not an institutional policy engine.
 15. School Pro does not alter the live-session runtime.

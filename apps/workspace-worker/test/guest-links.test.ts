@@ -1,5 +1,5 @@
 /**
- * Roster sessions: host-typed names, `orinv_…`, not a context access link.
+ * Guest-list sessions: host-typed names, `orinv_…`, not a context access link.
  */
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
@@ -11,10 +11,10 @@ import { BASE, call } from './helpers.js';
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 
-const ROSTER_OUTLINE = {
+const GUEST_LIST_OUTLINE = {
   version: 1,
   meta: { title: 'Committee vote' },
-  defaults: { identityMode: 'roster' },
+  defaults: { identityMode: 'guest-list' },
   interactions: [
     {
       id: 'motion',
@@ -28,35 +28,35 @@ const ROSTER_OUTLINE = {
   ],
 };
 
-describe('roster sessions', () => {
-  it('refuses create without the roster entitlement', async () => {
+describe('guest-list sessions', () => {
+  it('refuses create without the guest list entitlement', async () => {
     const free = await seedUser('{}');
     const res = await asUser(free, '/api/sessions', {
       method: 'POST',
-      body: JSON.stringify({ outline: ROSTER_OUTLINE }),
+      body: JSON.stringify({ outline: GUEST_LIST_OUTLINE }),
     });
     expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ ok: false, error: 'roster-required' });
+    expect(await res.json()).toEqual({ ok: false, error: 'guest-list-required' });
   });
 
-  it('mints orinv_ seats, joins from the lobby, and keeps two same names apart', async () => {
-    const owner = await seedUser(JSON.stringify({ roster: true, rawExport: true }));
+  it('mints orinv_ guest links, joins from the lobby, and keeps two same names apart', async () => {
+    const owner = await seedUser(JSON.stringify({ guestList: true, rawExport: true }));
     const created = await asUser(owner, '/api/sessions', {
       method: 'POST',
-      body: JSON.stringify({ outline: ROSTER_OUTLINE }),
+      body: JSON.stringify({ outline: GUEST_LIST_OUTLINE }),
     });
     expect(created.status).toBe(201);
     const session = (await created.json()) as { sessionCode: string; hostToken: string; code: string };
 
-    const first = await mintSeat(session, owner, 'Alex');
-    const second = await mintSeat(session, owner, 'Alex');
+    const first = await mintLink(session, owner, 'Alex');
+    const second = await mintLink(session, owner, 'Alex');
     expect(first.token.startsWith('orinv_')).toBe(true);
     expect(second.id).not.toBe(first.id);
 
     const joinFirst = await call('/api/join', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: session.code, rosterInvite: first.token }),
+      body: JSON.stringify({ code: session.code, guestLink: first.token }),
     });
     expect(joinFirst.status).toBe(200);
     const a = (await joinFirst.json()) as { participantId: string; handle: string };
@@ -65,7 +65,7 @@ describe('roster sessions', () => {
     const joinSecond = await call('/api/join', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: session.code, rosterInvite: second.token }),
+      body: JSON.stringify({ code: session.code, guestLink: second.token }),
     });
     const b = (await joinSecond.json()) as { participantId: string; handle: string };
     expect(b.handle).toBe('Alex');
@@ -74,7 +74,7 @@ describe('roster sessions', () => {
     const again = await call('/api/join', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: session.code, rosterInvite: first.token }),
+      body: JSON.stringify({ code: session.code, guestLink: first.token }),
     });
     const a2 = (await again.json()) as { participantId: string };
     expect(a2.participantId).toBe(a.participantId);
@@ -104,25 +104,25 @@ describe('roster sessions', () => {
     expect(tutoring.status).toBe(401);
   });
 
-  it('does not let a roster invite identify into a tutoring session', async () => {
-    const owner = await seedUser(JSON.stringify({ roster: true }));
+  it('does not let a guest link identify into a tutoring session', async () => {
+    const owner = await seedUser(JSON.stringify({ guestList: true }));
     const session = await createOwnedAnonymous(owner);
     const other = await asUser(owner, '/api/sessions', {
       method: 'POST',
-      body: JSON.stringify({ outline: ROSTER_OUTLINE }),
+      body: JSON.stringify({ outline: GUEST_LIST_OUTLINE }),
     });
-    const rosterSession = (await other.json()) as { sessionCode: string; hostToken: string; code: string };
-    const seat = await mintSeat(rosterSession, owner, 'Bo');
+    const guestListSession = (await other.json()) as { sessionCode: string; hostToken: string; code: string };
+    const seat = await mintLink(guestListSession, owner, 'Bo');
     const sneak = await call('/api/join', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: session.code, rosterInvite: seat.token }),
+      body: JSON.stringify({ code: session.code, guestLink: seat.token }),
     });
     expect(sneak.status).toBe(403);
   });
 
-  it('lets a space editor mint seats but not a presenter co-facilitator', async () => {
-    const owner = await seedUser(JSON.stringify({ roster: true, team: true }));
+  it('lets a space editor mint guest links but not a presenter co-facilitator', async () => {
+    const owner = await seedUser(JSON.stringify({ guestList: true, team: true }));
     const presenter = await seedUser('{}');
     const space = (await (await asUser(owner, '/api/my/spaces', {
       method: 'POST',
@@ -133,7 +133,7 @@ describe('roster sessions', () => {
       .run();
     const created = await asUser(owner, '/api/sessions', {
       method: 'POST',
-      body: JSON.stringify({ outline: ROSTER_OUTLINE, spaceId: space.id }),
+      body: JSON.stringify({ outline: GUEST_LIST_OUTLINE, spaceId: space.id }),
     });
     expect(created.status).toBe(201);
     const session = (await created.json()) as { sessionCode: string; hostToken: string; code: string };
@@ -141,22 +141,22 @@ describe('roster sessions', () => {
     expect(facilitate.status).toBe(200);
     const { hostToken } = (await facilitate.json()) as { hostToken: string };
 
-    const refused = await call(`/api/sessions/${session.sessionCode}/roster/seats`, {
+    const refused = await call(`/api/sessions/${session.sessionCode}/guest-links`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${hostToken}` },
       body: JSON.stringify({ displayName: 'Mallory' }),
     });
     expect(refused.status).toBe(403);
-    expect(await mintSeat(session, owner, 'Alex')).toMatchObject({ token: expect.stringMatching(/^orinv_/) });
+    expect(await mintLink(session, owner, 'Alex')).toMatchObject({ token: expect.stringMatching(/^orinv_/) });
   });
 });
 
-async function mintSeat(
+async function mintLink(
   session: { sessionCode: string; hostToken: string },
   _owner: { cookie: string },
   displayName: string,
 ): Promise<{ id: string; token: string }> {
-  const res = await call(`/api/sessions/${session.sessionCode}/roster/seats`, {
+  const res = await call(`/api/sessions/${session.sessionCode}/guest-links`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -187,13 +187,13 @@ async function createOwnedAnonymous(
 }
 
 async function seedUser(entitlementsJson: string): Promise<{ userId: string; cookie: string }> {
-  const userId = `ros-${crypto.randomUUID()}`;
+  const userId = `guest-${crypto.randomUUID()}`;
   const now = Date.now();
   await env.DB.prepare(
     `INSERT INTO users (id, google_sub, email, name, created_at, entitlements)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
   )
-    .bind(userId, `sub-${userId}`, `${userId}@example.com`, 'Roster Host', now, entitlementsJson)
+    .bind(userId, `sub-${userId}`, `${userId}@example.com`, 'Guest List Host', now, entitlementsJson)
     .run();
   const sessionId = crypto.randomUUID();
   await env.DB.prepare(

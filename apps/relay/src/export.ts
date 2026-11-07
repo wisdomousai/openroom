@@ -2,7 +2,7 @@
  * Host-only session exports.
  *
  * `json` and aggregate `csv` are the free teaching files (counts).
- * `ballots` is the per-person file — gated by `rawExport` or a roster session.
+ * `ballots` is the per-person file — gated by `rawExport` or a guest-list session.
  */
 
 import {

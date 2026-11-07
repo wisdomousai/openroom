@@ -606,7 +606,7 @@ export const sessionArchives = sqliteTable(
   ],
 );
 
-export const sessionRosters = sqliteTable('session_rosters', {
+export const guestLists = sqliteTable('guest_lists', {
   sessionCode: text('session_code').primaryKey(),
   createdBy: text('created_by')
     .notNull()
@@ -614,20 +614,20 @@ export const sessionRosters = sqliteTable('session_rosters', {
   createdAt: integer('created_at').notNull(),
 });
 
-export const rosterSeats = sqliteTable(
-  'roster_seats',
+export const guestLinks = sqliteTable(
+  'guest_links',
   {
     id: text('id').primaryKey(),
     sessionCode: text('session_code')
       .notNull()
-      .references(() => sessionRosters.sessionCode),
+      .references(() => guestLists.sessionCode),
     displayName: text('display_name').notNull(),
     tokenHash: text('token_hash').notNull().unique(),
     createdAt: integer('created_at').notNull(),
     redeemedAt: integer('redeemed_at'),
     revokedAt: integer('revoked_at'),
   },
-  (table) => [index('idx_roster_seats_session').on(table.sessionCode, table.revokedAt)],
+  (table) => [index('idx_guest_links_session').on(table.sessionCode, table.revokedAt)],
 );
 
 // ---------------------------------------------------------------------------

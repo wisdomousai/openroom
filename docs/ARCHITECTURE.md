@@ -266,7 +266,7 @@ checks the account, the plan and the deck, then initialises the session object t
 its cross-script `SESSIONS` binding (`script_name: "openroom-relay"`) and signs the
 host and stage tokens with the shared `TOKEN_SECRET`. The control plane also answers
 `/api/sessions/:code/*` and `/api/join` itself, so it can check that a connection is
-still active, verify roster invites and learner links against D1, and archive a
+still active, verify guest links and learner links against D1, and archive a
 session when it ends. The session logic it runs is the relay's own module
 (`openroom-relay/live`) with a control-plane authority. The live pages
 (`/join/`, `/stage/`, the `join.` host) are forwarded to the relay over the `RELAY`
@@ -276,7 +276,7 @@ own.
 
 **On a relay deployed alone, the key creates sessions.** `POST /api/sessions` with
 `Authorization: Bearer <RELAY_KEY>` and an outline returns the session code, host and
-stage tokens and a join link on the relay. Identified and roster sessions are refused
+stage tokens and a join link on the relay. Identified and guest-list sessions are refused
 (they need workspace records), as are identified joins; anonymous and pseudonymous
 sessions run in full, with ballots export and no participant limit unless the request
 sets `participantLimit`. Without `RELAY_KEY`, creation is off. The API is in
@@ -341,7 +341,7 @@ little:
   Permanent deletion needs a short-lived confirmation in the browser and cannot be
   completed by CLI, MCP or an API token.
 - **Credentials never convert.** Five credential families (browser session, personal
-  token, live-session capability, learner link, roster invite) are each accepted only
+  token, live-session capability, learner link, guest link) are each accepted only
   where they belong (`AGENTS.md`, "Credential boundary invariant").
 - **The renderer is sandboxed.** It has context isolation, no Node integration and a
   narrow preload bridge (`apps/desktop/src/preload.ts`, `channels.ts`).

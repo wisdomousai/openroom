@@ -253,7 +253,7 @@ const TOOLS: ToolDefinition[] = [
       'Create a live session from an Outline v1 document (YAML/JSON text or object). ' +
       'SimpleSession (title + questions) and classroom poll lists compile to an outline of interaction steps. ' +
       'Returns the join code, hostToken, stageToken and the absolute joinUrl and stageUrl (the projector page). Use session_command for live control. ' +
-      'defaults.identityMode roster requires the roster capability (403 roster-required). ' +
+      'defaults.identityMode guest-list requires the guestList capability (403 guest-list-required). ' +
       'A session created here has no student context, so identified is refused with 422 identified-session-needs-context; use deck_start for an identified lesson. ' +
       AUDIENCE_LIMIT,
     inputSchema: {

@@ -62,7 +62,7 @@ export async function requireContextContinuity(env: ControlEnv, contextId: strin
 
 /**
  * Identified sessions are part of the loop; checked when a session is created or
- * first allocated, never per join — the same rule as named (`roster`) sessions.
+ * first allocated, never per join — the same rule as named (`guest-list`) sessions.
  * `null` owner means the ops admin key, which carries no account.
  */
 export async function requireIdentifiedSessionAccess(

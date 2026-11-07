@@ -117,7 +117,7 @@ function failure(status: number, body: unknown): string {
   if (status === 401) return 'The live server rejected the key.';
   if (error === 'creation-disabled') return 'The live server does not accept new sessions.';
   if (error === 'identity-mode-unavailable') {
-    return 'The live server runs anonymous and pseudonymous sessions only. Sign in for named or roster sessions.';
+    return 'The live server runs anonymous and pseudonymous sessions only. Sign in for named or guest-list sessions.';
   }
   if (status === 422) return 'The live server rejected this file.';
   return `Live server error (HTTP ${String(status)}).`;

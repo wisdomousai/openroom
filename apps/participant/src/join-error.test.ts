@@ -30,11 +30,11 @@ describe('join error message', () => {
     expect(joinErrorMessage('offline')).toBe('Join failed.');
   });
 
-  it('tells a roster seat to use its invite, not the code', () => {
+  it('tells a guest link to use its guest link, not the code', () => {
     expect(
-      joinErrorMessage(new JoinError('This session is only open to people on the roster.', 403, 'roster-invite-required')),
-    ).toBe('Open the invite you were sent to come back to the session.');
-    expect(comeBackLine('roster')).toBe('Open the invite you were sent to come back to the session.');
+      joinErrorMessage(new JoinError('This session is only open to people on the guest list.', 403, 'guest-link-required')),
+    ).toBe('Open the guest link you were sent to come back to the session.');
+    expect(comeBackLine('guest-list')).toBe('Open the guest link you were sent to come back to the session.');
     expect(comeBackLine('identified')).toBe('Open the personal link your tutor sent you to come back to the lesson.');
     expect(comeBackLine('pseudonymous')).toBeNull();
   });

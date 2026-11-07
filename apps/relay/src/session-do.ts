@@ -624,14 +624,14 @@ export class SessionDO implements DurableObject {
       typeof supplied === 'string' ? supplied.trim().replace(/\s+/g, ' ').slice(0, 64) : '';
     const seatKey =
       typeof seatKeyRaw === 'string' ? seatKeyRaw.trim().slice(0, 64) : '';
-    if (identityMode === 'identified' || identityMode === 'roster') {
+    if (identityMode === 'identified' || identityMode === 'guest-list') {
       if (identityName === '') {
         return json(
           {
-            error: identityMode === 'roster' ? 'roster-invite-required' : 'context-link-required',
+            error: identityMode === 'guest-list' ? 'guest-link-required' : 'context-link-required',
             message:
-              identityMode === 'roster'
-                ? 'This session is only open to people on the roster.'
+              identityMode === 'guest-list'
+                ? 'This session is only open to people on the guest list.'
                 : 'This session is only open to people with an access link.',
           },
           403,
@@ -639,14 +639,14 @@ export class SessionDO implements DurableObject {
       }
       /*
        * Each mode admits exactly one credential family (AGENTS.md, credential
-       * boundary): a context link never enters a roster session and a roster
-       * invite never enters an identified one. The refusal is the one the
+       * boundary): a context link never enters a guest-list session and a guest
+       * link never enters an identified one. The refusal is the one the
        * Worker gives for an invalid credential of the kind presented.
        */
-      const expectedKind = identityMode === 'roster' ? 'roster-invite' : 'context-link';
+      const expectedKind = identityMode === 'guest-list' ? 'guest-link' : 'context-link';
       if (identityBody?.kind !== expectedKind) {
-        return identityBody?.kind === 'roster-invite'
-          ? json({ error: 'roster-invite-invalid', message: 'That invite is not valid for this session.' }, 403)
+        return identityBody?.kind === 'guest-link'
+          ? json({ error: 'guest-link-invalid', message: 'That guest link is not valid for this session.' }, 403)
           : json({ error: 'context-link-invalid', message: 'That access link is not valid for this session.' }, 403);
       }
       /*
@@ -730,7 +730,7 @@ export class SessionDO implements DurableObject {
       });
     }
 
-    if (identityMode === 'identified' || identityMode === 'roster') {
+    if (identityMode === 'identified' || identityMode === 'guest-list') {
       // The invite or link *is* the recovery credential: re-entering with the
       // same seat key (never the raw token) must land on the same participant.
       const existing = Object.entries(state.participants).find(
@@ -775,7 +775,7 @@ export class SessionDO implements DurableObject {
     const lane = paired ? ((joinSeq % 2) as 0 | 1) : undefined;
     if (paired) this.#setMeta('joinSeq', joinSeq + 1);
     let handle: string | undefined;
-    if (identityMode === 'identified' || identityMode === 'roster') {
+    if (identityMode === 'identified' || identityMode === 'guest-list') {
       handle = identityName;
     } else if (identityMode === 'pseudonymous') {
       const taken = new Set<string>();
@@ -792,7 +792,7 @@ export class SessionDO implements DurableObject {
         [participantId]: {
           joinedAt: now,
           ...(handle === undefined ? {} : { handle }),
-          ...((identityMode === 'identified' || identityMode === 'roster') && seatKey !== ''
+          ...((identityMode === 'identified' || identityMode === 'guest-list') && seatKey !== ''
             ? { seatKey }
             : {}),
           ...(lane === undefined ? {} : { lane }),

@@ -8,7 +8,7 @@ import { account, clients, configured, member, subscribe } from './paid-fixtures
 const SMOKE_OUTLINE = { ...QUESTION_OUTLINE, steps: [{ id: 'question', kind: 'interaction', interactionId: 'warmup' }] };
 
 interface Live { sessionCode: string; hostToken: string }
-const namedOutline = { ...SMOKE_OUTLINE, defaults: { identityMode: 'roster' } };
+const namedOutline = { ...SMOKE_OUTLINE, defaults: { identityMode: 'guest-list' } };
 const liveRequest = (live: Live, leaf: string, body?: object) => worker.fetch(new Request(`${BASE}/api/sessions/${live.sessionCode}/${leaf}`, {
   method: body ? 'POST' : 'GET', headers: { authorization: `Bearer ${live.hostToken}`, 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}),
 }), configured);
@@ -101,13 +101,13 @@ describe('paid access across account clients', () => {
     const change = await subscribe(owner); await member(owner, invited, 'editor');
     const started = await invited.request('/api/sessions', 'POST', { outline: namedOutline, spaceId: owner.spaceId }, 'oauth');
     expect(started.status).toBe(201);
-    const live = started.body as Live, seats = 'roster/seats';
-    const seat = await liveRequest(live, seats, { displayName: 'Alex' });
+    const live = started.body as Live, links = 'guest-links';
+    const seat = await liveRequest(live, links, { displayName: 'Alex' });
     expect(seat.status).toBe(201); const saved = await seat.json() as { id: string };
     await change('canceled');
-    expect((await liveRequest(live, seats)).status).toBe(200);
-    expect((await liveRequest(live, seats, { displayName: 'Sam' })).status).toBe(403);
-    const revoked = await worker.fetch(new Request(`${BASE}/api/sessions/${live.sessionCode}/${seats}/${saved.id}`, { method: 'DELETE', headers: { authorization: `Bearer ${live.hostToken}` } }), configured);
+    expect((await liveRequest(live, links)).status).toBe(200);
+    expect((await liveRequest(live, links, { displayName: 'Sam' })).status).toBe(403);
+    const revoked = await worker.fetch(new Request(`${BASE}/api/sessions/${live.sessionCode}/${links}/${saved.id}`, { method: 'DELETE', headers: { authorization: `Bearer ${live.hostToken}` } }), configured);
     expect(revoked.status).toBe(200);
   });
 

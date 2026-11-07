@@ -98,8 +98,8 @@ export function readContextLink(): string | null {
   return value !== null && value.trim() !== '' ? value.trim() : null;
 }
 
-/** Roster invite a named seat arrives with (`?invite=orinv_…`). Used once, never stored. */
-export function readRosterInvite(): string | null {
+/** Guest link a named guest arrives with (`?invite=orinv_…`). Used once, never stored. */
+export function readGuestLink(): string | null {
   const value = new URLSearchParams(location.search).get('invite');
   return value !== null && value.trim() !== '' ? value.trim() : null;
 }

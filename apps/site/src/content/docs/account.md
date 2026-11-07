@@ -10,7 +10,7 @@ related: [sharing, agents, results, limits]
 
 Open **Settings** to review the signed-in account. Use the same account for the workspace, Desktop connection, and integrations that should share your decks. Sign out before leaving a shared computer.
 
-Space ownership and membership determine access to shared material. A learner access link and a participant invitation each open their own limited destination; use account sign-in for workspace administration.
+Space ownership and membership determine access to shared material. A learner access link and a guest link each open their own limited destination; use account sign-in for workspace administration.
 
 ## Review available plans
 
@@ -23,7 +23,7 @@ Select **Settings → Open billing**. Review the current plan and the available 
 | Shared brand kits | Store and reuse a space's visual design. |
 | Shared spaces | Invite colleagues to a shared Library and work together. |
 | Connected workflows | Use entitled external account integrations. |
-| Named session invites | Issue individual roster invitations for one session. |
+| Guest lists for sessions | Issue individual guest links for one session. |
 | Sessions over 50 participants | Admit more than 50 participants to one live session. |
 | Homework and Notes | Session Notes, homework, access links, learner work and identified sessions. Without it these places show a **Homework and Notes** lock with a **Plans** button. Students and classes themselves are free. |
 

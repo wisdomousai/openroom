@@ -11,7 +11,7 @@ acceptance, including a provider support investigation, remains open.
 
 Billing is optional. A deployment that sets `PADDLE_ENVIRONMENT=off` has no
 billing at all: `readEntitlements` grants every account every capability
-(`keep`, `roster`, `rawExport`, `branding`, `team`, `continuity`,
+(`keep`, `guestList`, `rawExport`, `branding`, `team`, `continuity`,
 `largeSessions`) except the reserved `connectors`. No subscription, manual grant or customer mapping is read.
 `GET /api/my/billing` answers `{ available: false, selfHosted: true }`, and
 Settings → Billing states that billing is off on this deployment.
@@ -303,7 +303,7 @@ cookies, PATs, connected-client OAuth and MCP requests. The access policy is:
 | Create an identified session | Space owner, or personal creator outside a space, `continuity` | Denied for new sessions; a session already running continues to admit its learners |
 | Learner access (`/api/learner/*`) through a context link | Space owner of the context, `continuity` | The link answers exactly like a revoked link (`401 unauthorized`); it works again when access returns |
 | Create a named session / mint new named invites | Space owner, or personal creator outside a space | Denied; existing invites remain usable and revocable |
-| Admit more than 50 participants to a live session | Space owner, or personal creator outside a space, `largeSessions`, read at session creation | New sessions admit 50; a session already running keeps the limit it started with. The next new participant receives `409 session-full`; re-entry with a recovery handle, access link or roster invite always succeeds |
+| Admit more than 50 participants to a live session | Space owner, or personal creator outside a space, `largeSessions`, read at session creation | New sessions admit 50; a session already running keeps the limit it started with. The next new participant receives `409 session-full`; re-entry with a recovery handle, access link or guest link always succeeds |
 | Export individual live responses | Space owner, or personal creator outside a space | Requires current `rawExport`, except a session already created with named invites |
 | Capture a session archive | Space owner, or personal creator outside a space, `keep` | New captures stop; already-captured files and failed-pointer recovery remain available |
 | Read a retained archive | Current space membership, or personal ownership | Allowed until retention expires; membership removal still revokes access |

@@ -73,7 +73,7 @@ describe('sessions and /api/me', () => {
     expect(body.user.name).toBe('Test Host');
     expect(body.user.entitlements).toEqual({
       keep: false,
-      roster: false,
+      guestList: false,
       rawExport: false,
       branding: false,
       team: false,

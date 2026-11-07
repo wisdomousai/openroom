@@ -48,4 +48,4 @@ Learners can enter the live session after you start it. On their first join they
 
 Without an agent, teach with generated session names: start the deck as usual and share its code.
 
-A named roster invitation belongs to one live session and follows a separate entry path. Use [roster invitations](/docs/participant/#join-with-a-roster-invitation) for a one-session attendance or voting group, and access links for continuing teaching records.
+A named guest link belongs to one live session and follows a separate entry path. Use [guest links](/docs/participant/#join-with-a-guest-link) for a one-session attendance or voting group, and access links for continuing teaching records.

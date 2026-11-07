@@ -19,7 +19,7 @@ When adding a surface, ask: does this help open a deck, share a space, or teach 
 - Core and workspace. The **core** makes and presents: `packages/*`, `apps/relay`, `apps/stage`, `apps/participant`, `apps/office` and `apps/desktop` (MIT). The **workspace** organises and hosts: `apps/workspace` (library, spaces and folders, students and classes, Notes, learner page, billing, settings, sign-in, home) and `apps/workspace-worker` (the control plane), plus `apps/site` (AGPL-3.0-only; see `LICENSING.md`). Core code never imports from a workspace app — not by relative path, alias, or package name; `apps/desktop/src/core-boundary.test.ts` enforces this for Desktop. `bun run build:core` must succeed in a checkout with `apps/workspace` and `apps/workspace-worker` deleted, and must produce Desktop's core renderer (`apps/desktop/renderer/core/index.html`); CI checks both.
 - Keep durable business records in D1. Use a Durable Object only for the live state and coordination of one session.
 - Do not put D1, R2, queues, workflows, or model calls on the ballot hot path.
-- Two Workers. `apps/relay` (`openroom-relay`) is the live plane: it owns `SessionDO`, the live session routes (state, commands, WebSocket, export, stage token, per-session assets), anonymous/pseudonymous join, and the stage and participant apps. It has no D1 or R2 and runs alone as a complete live system, where `RELAY_KEY` gates `POST /api/sessions`. `apps/workspace-worker` (`openroom`) is the control plane: accounts, spaces, decks, billing, MCP, and every hosted session creation. It binds `SessionDO` cross-script (`script_name: "openroom-relay"`), answers the live API itself through the shared `openroom-relay/live` module with its own authority (D1 rechecks, archives, identified and roster joins), and forwards `/join/`, `/stage/` and the `join.` host to the relay over the `RELAY` service binding. Live logic lives once, in `apps/relay/src`; the control plane never copies it. Deploy the relay first.
+- Two Workers. `apps/relay` (`openroom-relay`) is the live plane: it owns `SessionDO`, the live session routes (state, commands, WebSocket, export, stage token, per-session assets), anonymous/pseudonymous join, and the stage and participant apps. It has no D1 or R2 and runs alone as a complete live system, where `RELAY_KEY` gates `POST /api/sessions`. `apps/workspace-worker` (`openroom`) is the control plane: accounts, spaces, decks, billing, MCP, and every hosted session creation. It binds `SessionDO` cross-script (`script_name: "openroom-relay"`), answers the live API itself through the shared `openroom-relay/live` module with its own authority (D1 rechecks, archives, identified and guest-list joins), and forwards `/join/`, `/stage/` and the `join.` host to the relay over the `RELAY` service binding. Live logic lives once, in `apps/relay/src`; the control plane never copies it. Deploy the relay first.
 - Heavy outline preparation happens in the teacher's **own** agent, through one of two doors:
   an **external agent** (any MCP client, the CLI, or the public API), or the **OpenRoom
   Desktop Agent pane**, which executes the agent locally: the Claude / Codex
@@ -54,7 +54,7 @@ credential is ever converted into another. Keep this true in code review:
 | Personal API token `orpat_…` | the same tutor, headless | the same control plane, minus final purge |
 | Session capability token (`apps/relay/src/tokens.ts`) | a seat in one live session | exactly that session |
 | **Context access link `orlnk_…`** | possession of one context's learner credential | exactly that context's learner-visible records |
-| **Roster invite `orinv_…`** | this named seat on one session's roster | join **that one session** as that host-authored name |
+| **Guest link `orinv_…`** | this named guest on one session's guest list | join **that one session** as that host-authored name |
 
 A **context access link is not an account**. It resolves to a `VerifiedContextLink`
 (link id, learner id, context id, display name) and *never* to a `SessionUser`, so it physically
@@ -64,15 +64,15 @@ group do not collapse into one participant. It creates no `users` row, grants no
 membership, carries no role, and is rejected on every `/api/tutoring/*` and `/api/my/*`
 path. The blast radius of a leaked link is exactly one context.
 
-A **roster invite is not a context access link**. It proves a named seat in **one
+A **guest link is not a context access link**. It proves a named seat in **one
 session**, not a context. The host types the names; the participant never types one.
 Join forwards `{ displayName, seatKey }` — never the `orinv_…` token. It creates
 no `users` row, grants no space membership, unlocks no learner records, and is
 rejected on every `/api/tutoring/*`, `/api/learner/*`, and `/api/my/*` path. A
-context link cannot enter a roster session; a roster token cannot enter an
-identified session. Roster sessions may join from the lobby (a committee files in
+context link cannot enter a guest-list session; a guest link cannot enter an
+identified session. Guest-list sessions may join from the lobby (a committee files in
 before the host starts). Do not extend the tutoring start-gate to them. The
-blast radius of a leaked invite is exactly one session.
+blast radius of a leaked guest link is exactly one session.
 
 `RELAY_KEY` is an operator key for one relay deployment, not a sixth family: it
 creates sessions on that relay and nothing else. Host tokens a relay issues carry no

@@ -43,7 +43,7 @@ every kind — are free: create, list, read, edit and file into a space.
   renewal.
 - **Checked at start, not per join.** An identified session needs the capability
   when it is created or first allocated (direct, deck, presentation and MCP
-  creation), the same rule as named (`roster`) sessions. A session already
+  creation), the same rule as named (`guest-list`) sessions. A session already
   running keeps admitting its learners.
 - **What stays free.** Contexts, decks, anonymous and pseudonymous live
   sessions, the results recap, listening recordings, Desktop, the CLI and MCP,

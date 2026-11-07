@@ -112,7 +112,7 @@ describe('purgeBallots', () => {
     ]);
   });
 
-  it('empties the participant roster', () => {
+  it('empties the participant list', () => {
     const ended = answeredRoom();
     expect(Object.keys(ended.participants).length).toBeGreaterThan(0);
     const purged = purgeBallots(ended, 5000);

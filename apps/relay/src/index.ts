@@ -117,9 +117,9 @@ async function createSessionRoute(request: Request, env: Env): Promise<Response>
   if (!validation.ok) return json({ ok: false, errors: validation.errors }, 422);
   const outline = validation.outline;
 
-  // Identified and roster sessions verify invites against workspace records.
+  // Identified and guest-list sessions verify guest links against workspace records.
   const identityMode = outline.defaults?.identityMode;
-  if (identityMode === 'identified' || identityMode === 'roster') {
+  if (identityMode === 'identified' || identityMode === 'guest-list') {
     return json({ ok: false, error: 'identity-mode-unavailable', identityMode }, 422);
   }
 
@@ -152,7 +152,7 @@ async function joinRelayRoute(request: Request, env: Env): Promise<Response> {
   return joinRoute(env, request, normalizeSessionCode, async (body) => {
     if (
       Object.prototype.hasOwnProperty.call(body, 'contextLink') ||
-      Object.prototype.hasOwnProperty.call(body, 'rosterInvite')
+      Object.prototype.hasOwnProperty.call(body, 'guestLink')
     ) {
       return {
         ok: false,

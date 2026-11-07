@@ -68,5 +68,5 @@ deck stores.
   access link, and a live session with no durable session row has no context —
   nobody could join it. Identified delivery belongs to a launched tutoring
   session; see `prepare-a-tutoring-outline`. For named participants in a
-  directly created session, use a roster session instead: the host types the
-  names and each seat gets its own invite.
+  directly created session, use a guest-list session instead: the host types the
+  names and each guest gets their own guest link.

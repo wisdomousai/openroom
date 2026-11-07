@@ -15,7 +15,7 @@ import { billingSubscriptions, subscriptionAccessUntil } from './billing/access'
 
 export const ENTITLEMENT_FLAGS = [
   'keep',
-  'roster',
+  'guestList',
   'rawExport',
   'branding',
   'team',
@@ -30,7 +30,7 @@ export type Entitlements = Record<EntitlementFlag, boolean>;
 
 export const FREE_ENTITLEMENTS: Entitlements = {
   keep: false,
-  roster: false,
+  guestList: false,
   rawExport: false,
   branding: false,
   team: false,
@@ -42,7 +42,7 @@ export const FREE_ENTITLEMENTS: Entitlements = {
 /** Every implemented capability; `connectors` stays reserved even without billing. */
 export const SELF_HOSTED_ENTITLEMENTS: Entitlements = {
   keep: true,
-  roster: true,
+  guestList: true,
   rawExport: true,
   branding: true,
   team: true,

@@ -6,7 +6,7 @@ import { json } from './http.js';
 /**
  * Named ballot export. Pure over the loaded state.
  *
- * The Worker has already decided allowBallots from entitlements; roster
+ * The Worker has already decided allowBallots from entitlements; guest-list
  * sessions are allowed here even without that flag.
  */
 export function exportResponse(state: SessionState, url: URL): Response {
@@ -29,8 +29,8 @@ export function exportResponse(state: SessionState, url: URL): Response {
   }
   // Per-ballot file.
   const allowBallots = url.searchParams.get('allowBallots') === '1';
-  const roster = sessionOf(state).defaults.identityMode === 'roster';
-  if (!allowBallots && !roster) {
+  const guestList = sessionOf(state).defaults.identityMode === 'guest-list';
+  if (!allowBallots && !guestList) {
     return json({ ok: false, error: 'raw-export-required' }, 403);
   }
   if (state.purgedAt !== undefined) {

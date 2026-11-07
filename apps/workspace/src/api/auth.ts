@@ -4,7 +4,7 @@ import { baseUrl, request } from './client';
 
 export interface Entitlements {
   keep: boolean;
-  roster: boolean;
+  guestList: boolean;
   rawExport: boolean;
   branding: boolean;
   team: boolean;

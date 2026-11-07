@@ -1,7 +1,7 @@
 import { JoinError } from '@openroom/sdk';
 
 const LINK_BACK = 'Open the personal link your tutor sent you to come back to the lesson.';
-const INVITE_BACK = 'Open the invite you were sent to come back to the session.';
+const GUEST_LINK_BACK = 'Open the guest link you were sent to come back to the session.';
 
 /**
  * Join failures the participant can act on, keyed by the server's stable
@@ -15,19 +15,19 @@ const MESSAGES: Record<string, string> = {
   'context-link-required': LINK_BACK,
   'context-link-invalid': 'This link no longer works. Ask your tutor for a new one.',
   'invalid-context-link': 'This link no longer works. Ask your tutor for a new one.',
-  'roster-invite-required': INVITE_BACK,
-  'roster-invite-invalid': 'This invite no longer works. Ask for a new one.',
-  'invalid-roster-invite': 'This invite no longer works. Ask for a new one.',
+  'guest-link-required': GUEST_LINK_BACK,
+  'guest-link-invalid': 'This guest link no longer works. Ask the host for a new one.',
+  'invalid-guest-link': 'This guest link no longer works. Ask the host for a new one.',
 };
 
 /**
  * How a learner gets back into a session a code alone cannot open: identified
- * sessions take the personal link, roster sessions the invite. Null for modes
+ * sessions take the personal link, guest-list sessions the guest link. Null for modes
  * the join code opens.
  */
 export function comeBackLine(identityMode: string | undefined): string | null {
   if (identityMode === 'identified') return LINK_BACK;
-  if (identityMode === 'roster') return INVITE_BACK;
+  if (identityMode === 'guest-list') return GUEST_LINK_BACK;
   return null;
 }
 

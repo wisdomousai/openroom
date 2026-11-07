@@ -37,9 +37,9 @@ interface Session {
   version: 1;
   meta: { title: string; description?: string; locale?: string; source?: string };
   defaults?: {
-    identityMode?: 'anonymous' | 'pseudonymous' | 'identified' | 'roster';
+    identityMode?: 'anonymous' | 'pseudonymous' | 'identified' | 'guest-list';
       // default 'pseudonymous'. 'identified' = context access link (see §Context access links).
-      // 'roster' = host-typed seat + `orinv_…` (see §Roster). Roster is specified here
+      // 'guest-list' = host-typed seat + `orinv_…` (see §Guest lists). Guest lists are specified here
       // but not in the shipped JSON Schema until the join path exists — do not author it yet.
     resultVisibility?: 'hidden-until-close' | 'live';  // default 'hidden-until-close'
     allowAnswerChange?: boolean;                   // default true
@@ -326,7 +326,7 @@ POST /api/join                           body { code, recoveryHandle?, contextLi
                                          Re-presenting the same link re-enters as the same participantId.
                                          A new participant past the session's participantLimit (50 unless the
                                          owner held largeSessions at creation) → 409 session-full; re-entry by
-                                         handle, link or roster seat is never refused for size.
+                                         handle, link or guest link is never refused for size.
                                          A live session with no durable session row has no context, hence NO link
                                          can ever identify into it.
 POST /api/mcp                            stateless MCP endpoint (Streamable HTTP, JSON only, no SSE/sessions)
@@ -487,10 +487,10 @@ POST /api/sessions                        Authorization: Bearer <RELAY_KEY>
                                          → 201 { sessionCode, code, hostToken, stageToken, joinUrl }
                                          403 creation-disabled (no RELAY_KEY) · 401 unauthorized (missing/wrong key)
                                          400 invalid-json | missing-outline | invalid-participant-limit · 422 { errors } (invalid outline)
-                                         422 identity-mode-unavailable (identified or roster outline)
+                                         422 identity-mode-unavailable (identified or guest-list outline)
                                          no participant limit unless the body sets one
 POST /api/join                            body { code, recoveryHandle? } — anonymous and pseudonymous sessions, as above
-                                         contextLink or rosterInvite → 403 identified-join-unavailable
+                                         contextLink or guestLink → 403 identified-join-unavailable
                                          409 session-full when participantLimit is reached
 GET  /api/sessions/:code/state            as above
 POST /api/sessions/:code/commands         as above; the host may run every host command
@@ -634,18 +634,18 @@ subscription state; neither client requests nor checkout redirects can grant
 access. Interface preferences live separately in `users.prefs`. Closed allowlist; unknown keys are ignored; only JSON `true` sets a flag:
 
 ```
-{ keep, roster, rawExport, branding, team, continuity, largeSessions, connectors }  // all boolean, default false
+{ keep, guestList, rawExport, branding, team, continuity, largeSessions, connectors }  // all boolean, default false
 ```
 
 | Flag | Unlocks |
 | --- | --- |
 | `keep` | Snapshot the ended session to R2 (`session_archives`); DO still purges at 30 min and dies at 24 h |
-| `roster` | Create a session with `identityMode: roster` and mint `orinv_…` seats |
+| `guestList` | Create a session with `identityMode: guest-list` and mint `orinv_…` guest links |
 | `rawExport` | Per-ballot / named CSV (and ballots inside a `keep` snapshot) |
 | `branding` | Create and edit shared brand kits; existing kits and designs remain readable after downgrade |
 | `team` | Invite and admit new space members; start new shared sessions. Existing paid session collaboration continues while membership remains valid |
 | `continuity` | The teaching loop: session Notes (`/api/sessions/{id}/record`, including `nextNote` and homework), context people and access links, returned and learner work, creating identified sessions, and `/api/learner/*`. Read from the space owner. Denied as `403 continuity-required` (learner routes: the revoked-link `401`). Contexts themselves, trash, restore, permanent deletion and link revocation are never gated |
-| `largeSessions` | A live session admits more than `FREE_SESSION_PARTICIPANT_LIMIT` (50) participants. Read from the space owner (the personal creator outside a space) once, at session creation, and carried into the DO; joins never read D1 and a later lapse changes nothing for that session. Admin-key sessions have no owner and no limit. Without it, a new participant past the limit receives `409 session-full` from `POST /api/join`; re-entry by an admitted participant (recovery handle, access link or roster seat) is always admitted. The host snapshot carries `participantLimit` when one applies |
+| `largeSessions` | A live session admits more than `FREE_SESSION_PARTICIPANT_LIMIT` (50) participants. Read from the space owner (the personal creator outside a space) once, at session creation, and carried into the DO; joins never read D1 and a later lapse changes nothing for that session. Admin-key sessions have no owner and no limit. Without it, a new participant past the limit receives `409 session-full` from `POST /api/join`; re-entry by an admitted participant (recovery handle, access link or guest link) is always admitted. The host snapshot carries `participantLimit` when one applies |
 | `connectors` | Reserved, unimplemented archive delivery workflows; rejected in Paddle price catalogs |
 
 Free hosts see every flag `false`. A deployment with `PADDLE_ENVIRONMENT=off` is
@@ -658,13 +658,13 @@ self-hosted: every account sees every flag `true` except `connectors`
 
 - `format=json` — aggregates only. Free until the DO is wiped.
 - `format=csv` — **aggregate** CSV (one row per interaction, counts). Free until the DO is wiped.
-- `format=ballots` — today's per-ballot CSV (including `handle` when the session is not anonymous). Requires `rawExport` or `identityMode === 'roster'`. `410 ballots-purged` after DATA-04 unless a `keep` archive exists.
+- `format=ballots` — today's per-ballot CSV (including `handle` when the session is not anonymous). Requires `rawExport` or `identityMode === 'guest-list'`. `410 ballots-purged` after DATA-04 unless a `keep` archive exists.
 
 `session_results` (MCP) stays the JSON aggregate shape. Do not add a ballot tool on the free MCP path.
 
-### Named session invites
+### Guest lists
 
-A host types display names for **one session**. Each `orinv_…` token is shown once.
+A host types the names of the guests for **one session**. Each `orinv_…` guest link is shown once.
 The Worker verifies it against that session code and forwards only the display
 name and seat key into the DO. Lobby join is allowed. Direct, deck and MCP creation
 check the paid capability before allocating an audience. In a space this belongs
@@ -760,7 +760,7 @@ Session lookup is **exactly one D1 read per request and nothing is cached** — 
 | Personal API token | `Authorization: Bearer orpat_…` | the same tutor, headless | control plane minus final purge |
 | Deck capability token | `Authorization: Bearer <signed>` | a seat in one live session | exactly that session |
 | **Context access link** | `Authorization: Bearer orlnk_…` | possession of one context's learner credential | exactly that context's learner-visible records |
-| **Roster invite** | `orinv_…` | this named seat on one session's roster | join that one session as that host-authored name |
+| **Guest link** | `orinv_…` | this named guest on one session's guest list | join that one session as that host-authored name |
 
 `orlnk_<id>_<secret>` (id 16 bytes, secret 32 bytes, both base64url) deliberately mirrors `orpat_` so the two are distinguishable in logs and cannot be confused by a shape check. Only `sha256Hex(token)` is stored; `token_prefix` (first 12 chars) is what the listing shows. Liveness is entirely in the SQL — the row must exist, be unrevoked, be unexpired, and point at a context that is not trashed — so there is no code path where a dead link resolves. Purging a context deletes its links outright.
 
@@ -857,7 +857,7 @@ covers the same four.
 
 ### Space collaboration
 
-Three roles, enforced in the control plane only (the session plane stays capability-token-only): **owner** manages the space and its members, **editor** creates and edits material, **presenter** may read decks and create sessions (`POST /api/sessions` with a `spaceId` requires any role on that space) but gets **403 `forbidden`** on every mutation. No school hierarchy, rosters, or org admin.
+Three roles, enforced in the control plane only (the session plane stays capability-token-only): **owner** manages the space and its members, **editor** creates and edits material, **presenter** may read decks and create sessions (`POST /api/sessions` with a `spaceId` requires any role on that space) but gets **403 `forbidden`** on every mutation. No school hierarchy, guest lists, or org admin.
 
 ```
 GET    /api/my/spaces/:id/members          → { role, members:[{userId,email,name,role,invitedBy}], invites?:[…] }  invites only for owners

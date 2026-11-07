@@ -212,7 +212,7 @@
             "anonymous",
             "pseudonymous",
             "identified",
-            "roster"
+            "guest-list"
           ]
         },
         "resultVisibility": {

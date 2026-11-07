@@ -115,7 +115,7 @@
             "description": "Unknown session or recovery handle"
           },
           "409": {
-            "description": "Handle recovery is unavailable for this session, a context link was offered to a session that is not identified (identified-join-unavailable), or the identified session has not been started yet (session-not-started), or the session admits no new participant (session-full): without the space owner's largeSessions capability at start a session admits 50 participants. Re-entry with an existing recovery handle, access link or roster invite is never refused for size"
+            "description": "Handle recovery is unavailable for this session, a context link was offered to a session that is not identified (identified-join-unavailable), or the identified session has not been started yet (session-not-started), or the session admits no new participant (session-full): without the space owner's largeSessions capability at start a session admits 50 participants. Re-entry with an existing recovery handle, access link or guest link is never refused for size"
           },
           "429": {
             "description": "Too many failed recovery attempts"
@@ -279,7 +279,7 @@
                 "ballots"
               ]
             },
-            "description": "json and csv are aggregates (free). ballots is the per-person file and requires rawExport or a roster session."
+            "description": "json and csv are aggregates (free). ballots is the per-person file and requires rawExport or a guest-list session."
           }
         ],
         "responses": {

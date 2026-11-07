@@ -67,12 +67,12 @@ import {
 } from './mcp-oauth.js';
 import { contextIdForSessionCode, verifyContextLink } from './context-links.js';
 import {
-  listRosterSeats,
-  mintRosterSeat,
+  listGuestLinks,
+  mintGuestLink,
   requireNamedSessionAccess,
-  revokeRosterSeat,
-  verifyRosterInvite,
-} from './roster.js';
+  revokeGuestLink,
+  verifyGuestLink,
+} from './guest-links.js';
 import { handleLearnerApi } from './learner.js';
 import { cleanupRetainedMedia } from './operations/retention.js';
 import { absolutizeJoinUrl, isJoinHost } from 'openroom-relay/join-url';
@@ -234,7 +234,7 @@ export async function createSessionFromOutline(
 ): Promise<{ ok: true; session: CreatedSession } | { ok: false; response: Response }> {
   // Durable launches check before reservation. Every direct creation, including MCP,
   // comes through this check before a live audience can be allocated.
-  if (!options.reservedCode && outline.defaults?.identityMode === 'roster') {
+  if (!options.reservedCode && outline.defaults?.identityMode === 'guest-list') {
     const blocked = await requireNamedSessionAccess(env, options.entitlementOwnerId ?? options.user?.id ?? null);
     if (blocked) return { ok: false, response: blocked };
   }
@@ -307,7 +307,7 @@ export async function launchSessionForUser(
     }
   }
   if (!reserved) {
-    if (validation.outline.defaults?.identityMode === 'roster') {
+    if (validation.outline.defaults?.identityMode === 'guest-list') {
       const blocked = await requireNamedSessionAccess(env, entitlementOwnerId);
       if (blocked) return blocked;
     }
@@ -500,23 +500,23 @@ async function resolveJoinIdentity(
    */
   if (
     Object.prototype.hasOwnProperty.call(body, 'contextLink') &&
-    Object.prototype.hasOwnProperty.call(body, 'rosterInvite')
+    Object.prototype.hasOwnProperty.call(body, 'guestLink')
   ) {
     return { ok: false, response: json({ error: 'conflicting-credentials', message: 'Use one kind of invite.' }, 400) };
   }
 
-  if (Object.prototype.hasOwnProperty.call(body, 'rosterInvite')) {
-    if (typeof body.rosterInvite !== 'string' || body.rosterInvite === '') {
-      return { ok: false, response: json({ error: 'invalid-roster-invite', message: 'That invite is not valid.' }, 400) };
+  if (Object.prototype.hasOwnProperty.call(body, 'guestLink')) {
+    if (typeof body.guestLink !== 'string' || body.guestLink === '') {
+      return { ok: false, response: json({ error: 'invalid-guest-link', message: 'That guest link is not valid.' }, 400) };
     }
-    const seat = await verifyRosterInvite(env, body.rosterInvite, code);
+    const seat = await verifyGuestLink(env, body.guestLink, code);
     if (seat === null) {
       return {
         ok: false,
-        response: json({ error: 'roster-invite-invalid', message: 'That invite is not valid for this session.' }, 403),
+        response: json({ error: 'guest-link-invalid', message: 'That guest link is not valid for this session.' }, 403),
       };
     }
-    return { ok: true, identity: { displayName: seat.displayName, seatKey: seat.seatId, kind: 'roster-invite' } };
+    return { ok: true, identity: { displayName: seat.displayName, seatKey: seat.linkId, kind: 'guest-link' } };
   }
   if (Object.prototype.hasOwnProperty.call(body, 'contextLink')) {
     if (typeof body.contextLink !== 'string' || body.contextLink === '') {
@@ -954,18 +954,18 @@ export default {
       return json({ error: 'method-not-allowed' }, 405);
     }
 
-    const rosterSeatMatch = /^\/api\/sessions\/([^/]+)\/roster\/seats(?:\/([^/]+))?$/.exec(path);
-    if (rosterSeatMatch !== null) {
-      const sessionCode = normalizeSessionCode(decodeURIComponent(rosterSeatMatch[1] as string));
-      const seatId = rosterSeatMatch[2] ? decodeURIComponent(rosterSeatMatch[2]) : null;
+    const guestLinkMatch = /^\/api\/sessions\/([^/]+)\/guest-links(?:\/([^/]+))?$/.exec(path);
+    if (guestLinkMatch !== null) {
+      const sessionCode = normalizeSessionCode(decodeURIComponent(guestLinkMatch[1] as string));
+      const linkId = guestLinkMatch[2] ? decodeURIComponent(guestLinkMatch[2]) : null;
       const auth = await authenticate(request, url, env, sessionCode, 'host');
       if (!auth.ok) return auth.response;
       const owner = await sessionEntitlementOwner(env, sessionCode);
       if (!owner?.userId) return json({ error: 'not-found' }, 404);
-      if (seatId === null && request.method === 'GET') {
-        return json({ seats: await listRosterSeats(env, sessionCode) });
+      if (linkId === null && request.method === 'GET') {
+        return json({ guestLinks: await listGuestLinks(env, sessionCode) });
       }
-      if (seatId === null && request.method === 'POST') {
+      if (linkId === null && request.method === 'POST') {
         const blocked = await requireNamedSessionAccess(env, owner.userId);
         if (blocked !== null) return blocked;
         // Minting a credential is a privilege escalation primitive, so in a space
@@ -978,15 +978,15 @@ export default {
         }
         const body = await readJson(request);
         const name = typeof body?.displayName === 'string' ? body.displayName : '';
-        const minted = await mintRosterSeat(env, sessionCode, auth.payload.userId ?? owner.userId, name);
+        const minted = await mintGuestLink(env, sessionCode, auth.payload.userId ?? owner.userId, name);
         if (!minted.ok) return json({ error: minted.error }, minted.status);
         return json(
-          { id: minted.seatId, displayName: minted.displayName, token: minted.token },
+          { id: minted.linkId, displayName: minted.displayName, token: minted.token },
           201,
         );
       }
-      if (seatId !== null && request.method === 'DELETE') {
-        const revoked = await revokeRosterSeat(env, sessionCode, seatId);
+      if (linkId !== null && request.method === 'DELETE') {
+        const revoked = await revokeGuestLink(env, sessionCode, linkId);
         if (!revoked) return json({ error: 'not-found' }, 404);
         return json({ ok: true });
       }

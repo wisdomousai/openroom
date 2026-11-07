@@ -228,7 +228,7 @@ export interface ParticipantQnaQuestion {
   votedByYou: boolean;
   /** only ever true on the participant's OWN moderated question */
   hidden: boolean;
-  /** asker's host-authored name (identified and roster sessions only); never a pseudonymous handle */
+  /** asker's host-authored name (identified and guest-list sessions only); never a pseudonymous handle */
   handle?: string;
 }
 
@@ -259,7 +259,7 @@ export interface HostQnaView {
 
 /**
  * A pseudonymous handle is also its owner's recovery credential (`recoveryHandle`
- * on join), so it reaches only the host and its owner. Identified and roster
+ * on join), so it reaches only the host and its owner. Identified and guest-list
  * names are host-authored and recovered by seat key, so they may be shown.
  */
 function handlesArePublic(state: SessionState): boolean {

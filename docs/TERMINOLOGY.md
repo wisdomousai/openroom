@@ -110,15 +110,14 @@ These are **filed work**, not peer nav apps. Only decks appear as folder rows.
 | --- | --- | --- | --- |
 | **Access link** (full: **context access link**) | `orlnk_…` bearer; D1 `context_access_links`; `/api/tutoring/contexts/:id/links*` | A revocable capability the tutor mints for **one** context and hands to that student or family. Shown once at mint; default 180 days; max 10 live per context; revoked, never hard-deleted. | **Not an account** — no user row, no sign-in, no space membership, no email. Not a personal API token (`orpat_…`, tutor-side). Not a session join code. |
 | **Learner view** | `/api/learner/*` (`me`, `sessions`, practice, writing, voice, feedback, audio trash and restore) | The student-facing surface an access link unlocks: their own sessions and curated session records, and their own work (practice grades, writing, voice responses). | Not the host console, not a second workspace, and never a place tutor-side records are written. |
-
-| **Roster invite** | `orinv_…` bearer; D1 `roster_seats`; mint on the session | A one-session named seat the host typed. Shown once; redeemed into that session as that display name. The job is a roll (club vote, board, training attendance). | **Not** a context access link. **Not** a space invite. No context, no learner page, no account. |
+| **Guest link** (a session's **guest list**) | `orinv_…` bearer; D1 `guest_links` and `guest_lists`; `identityMode: guest-list`; `/api/sessions/:code/guest-links*`; entitlement `guestList` | A one-session personal link for a guest the host named. Shown once; redeemed into that session as that display name. The job is a named list (club vote, board, training attendance). | **Not** a context access link. **Not** a space invite. No context, no learner page, no account. |
 
 Write **access link** in UI copy; say **context access link** in docs and code review where
 the scope matters. Do not call it a "student account", "student login", "invite", or
 "share link" — an invite grants space membership to a colleague, which this deliberately
 never does. Say the tutor **issues** or **revokes** a link, not "adds a student".
-A **roster invite** is the only invite that names a person in a session; say **roster**
-in UI, never "access link" and never "context."
+A **guest link** is the only link that names a person in a session; say **guest link** (and
+**guest list** for the set of them) in UI, never "access link" and never "context."
 
 **Credential boundary.** A live session with no durable session row has no
 context. Live join codes and `session_codes` are never exposed through learner
@@ -318,6 +317,7 @@ Facts only. Noun labels and bare verbs. No first-person, no narrative, no metaph
 | Run (as a noun for a started teaching) | **Session** |
 | Run record | **Notes** (UI); `record` stays the API/DB word |
 | Room (as an object you start, edit or end) | **Deck** (the file) or **Session** (the started instance) — “room” is only the brand **OpenRoom** and the `.openroom` extension |
+| Roster / roster invite / roster seat / roster session | **Guest list** (the named people), **guest link** (one person's link), **guest-list session** |
 | Collection + create form on one screen | Dedicated `#/decks/new` and `#/decks/:id` routes; the deck's sole editor is at `#/decks/:id/edit` |
 
 ---

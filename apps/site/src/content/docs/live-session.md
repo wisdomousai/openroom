@@ -15,9 +15,9 @@ Prepare the deck's identity policy through a connected agent or the typed outlin
 | Anonymous | Join with the session code; individual names are withheld. |
 | Pseudonymous | Join with the code and receive a generated session name, with handle-based recovery. |
 | Identified | Use a personal learner credential belonging to the deck's context; joining opens after the teacher starts. |
-| Roster | Use a host-issued invitation naming one seat in one session; lobby entry is available. |
+| Guest list | Use a personal guest link the host issued for one named guest in one session; lobby entry is available. |
 
-An identified deck needs a real student, group, or class context: file the deck under that student before starting it. Identified mode is set in the outline by a connected agent; the browser has no control for it. Named roster sessions require the named-invitation entitlement. See [access links](/docs/learner-links/#use-named-live-participation) and [roster administration](/docs/cli/#issue-named-roster-invitations) to prepare the corresponding entry addresses.
+An identified deck needs a real student, group, or class context: file the deck under that student before starting it. Identified mode is set in the outline by a connected agent; the browser has no control for it. Named guest-list sessions require the **Guest lists for sessions** entitlement. See [access links](/docs/learner-links/#use-named-live-participation) and [guest link administration](/docs/cli/#issue-guest-links) to prepare the corresponding entry addresses.
 
 ## Start and share entry
 
@@ -25,7 +25,7 @@ Select **Start session** from a deck in the Library, the deck editor, or the pre
 
 While a session of the deck is running, **Live now** and **Rejoin** appear beside **Start session**. Pressing **Start session** then asks once, in **This deck is live now**: select **Rejoin** to return to the running session, **Start another** to start a second one, or **Cancel**.
 
-For code-based participation, select the join code chip to copy its link, or open **Session menu → Copy join link** or **Join page**. Share the code or QR code with the audience. In an identified session the header shows the student's name instead of the code, and the audience display shows no code or QR; the student joins with the address the agent returned, which carries their [access link](/docs/learner-links/). A roster session uses individual invitations for its named seats.
+For code-based participation, select the join code chip to copy its link, or open **Session menu → Copy join link** or **Join page**. Share the code or QR code with the audience. In an identified session the header shows the student's name instead of the code, and the audience display shows no code or QR; the student joins with the address the agent returned, which carries their [access link](/docs/learner-links/). A guest-list session gives each named guest an individual guest link.
 
 Select **Stage** in the session menu to open the audience display. If its link has not loaded, select **Stage — retry**.
 

@@ -91,8 +91,8 @@ describe('POST /api/sessions', () => {
     expect(response.status).toBe(201);
   });
 
-  it('refuses identified and roster sessions', async () => {
-    for (const mode of ['identified', 'roster']) {
+  it('refuses identified and guest-list sessions', async () => {
+    for (const mode of ['identified', 'guest-list']) {
       const response = await call('/api/sessions', createRequest(withOutlineMode(mode)));
       expect(response.status).toBe(422);
       expect(await response.json()).toMatchObject({ error: 'identity-mode-unavailable', identityMode: mode });
@@ -126,9 +126,9 @@ describe('POST /api/join', () => {
     expect(again.participantId).toBe(first.participantId);
   });
 
-  it('refuses context links and roster invites', async () => {
+  it('refuses context links and guest links', async () => {
     const created = await createSessionWithOutline(SMOKE_OUTLINE);
-    for (const credential of [{ contextLink: 'cl_x' }, { rosterInvite: 'ri_x' }]) {
+    for (const credential of [{ contextLink: 'cl_x' }, { guestLink: 'ri_x' }]) {
       const response = await joinBody({ code: created.code, ...credential });
       expect(response.status).toBe(403);
       expect(await response.json()).toMatchObject({ error: 'identified-join-unavailable' });
@@ -137,7 +137,7 @@ describe('POST /api/join', () => {
 
   it('admits each invited mode only with its own credential family', async () => {
     // The control plane verifies the credential; the session binds its kind to the mode.
-    const seat = async (identityMode: 'roster' | 'identified', kind: string) => {
+    const seat = async (identityMode: 'guest-list' | 'identified', kind: string) => {
       const compiled = compileToOutline(withOutlineMode(identityMode));
       if (!compiled.ok) throw new Error('outline');
       const sessionCode = generateSessionCode();
@@ -148,9 +148,9 @@ describe('POST /api/join', () => {
       });
       return { status: response.status, body: await response.json() };
     };
-    expect(await seat('roster', 'context-link')).toMatchObject({ status: 403, body: { error: 'context-link-invalid' } });
-    expect(await seat('identified', 'roster-invite')).toMatchObject({ status: 403, body: { error: 'roster-invite-invalid' } });
-    expect(await seat('roster', 'roster-invite')).toMatchObject({ status: 200, body: { handle: 'Camille' } });
+    expect(await seat('guest-list', 'context-link')).toMatchObject({ status: 403, body: { error: 'context-link-invalid' } });
+    expect(await seat('identified', 'guest-link')).toMatchObject({ status: 403, body: { error: 'guest-link-invalid' } });
+    expect(await seat('guest-list', 'guest-link')).toMatchObject({ status: 200, body: { handle: 'Camille' } });
   });
 
   it('answers an unissued code with 404 and leaves no storage behind', async () => {

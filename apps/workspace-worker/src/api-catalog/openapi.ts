@@ -255,7 +255,7 @@ export function openapiDocument(origin: string): unknown {
                 'session has not been started yet (session-not-started), or the session admits no new ' +
                 'participant (session-full): without the space owner\'s largeSessions capability at start a ' +
                 `session admits ${FREE_SESSION_PARTICIPANT_LIMIT} participants. Re-entry with an existing ` +
-                'recovery handle, access link or roster invite is never refused for size',
+                'recovery handle, access link or guest link is never refused for size',
             },
             '429': { description: 'Too many failed recovery attempts' },
           },
@@ -398,7 +398,7 @@ export function openapiDocument(origin: string): unknown {
               required: true,
               schema: { type: 'string', enum: ['csv', 'json', 'ballots'] },
               description:
-                'json and csv are aggregates (free). ballots is the per-person file and requires rawExport or a roster session.',
+                'json and csv are aggregates (free). ballots is the per-person file and requires rawExport or a guest-list session.',
             },
           ],
           responses: {
@@ -738,7 +738,7 @@ export function openapiDocument(origin: string): unknown {
           },
           responses: {
             '201': LAUNCHED,
-            '403': { description: 'team-required, roster-required or continuity-required (identified sessions), from the space owner' },
+            '403': { description: 'team-required, guest-list-required or continuity-required (identified sessions), from the space owner' },
             '404': { description: 'deck-not-found' },
             '409': { description: 'request-id-conflict, deck-content-not-found or session-already-ended' },
             '410': { description: 'session-expired' },
@@ -822,7 +822,7 @@ export function openapiDocument(origin: string): unknown {
                 },
               },
             },
-            '403': { description: 'team-required, roster-required (identityMode roster) or continuity-required (identityMode identified), from the space owner or the creating account' },
+            '403': { description: 'team-required, guest-list-required (identityMode guest-list) or continuity-required (identityMode identified), from the space owner or the creating account' },
             '404': { description: 'deck, context, or folder not found' },
             '422': { description: 'invalid-deck-version, status-server-owned, or identified-session-needs-context (an outline body has no student context, so identified is refused; start a deck filed under the student instead)' },
           },
@@ -882,7 +882,7 @@ export function openapiDocument(origin: string): unknown {
           },
           responses: {
             '201': LAUNCHED,
-            '403': { description: 'team-required, roster-required or continuity-required (identified sessions), from the space owner' },
+            '403': { description: 'team-required, guest-list-required or continuity-required (identified sessions), from the space owner' },
             '409': { description: 'session-already-live or deck-content-not-found' },
             '422': { description: 'identified-session-needs-context (an identified deck must be filed under a student) or invalid-presentation-cursor' },
           },

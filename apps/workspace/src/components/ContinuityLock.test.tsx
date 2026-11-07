@@ -62,6 +62,6 @@ describe('continuity lock', () => {
     expect(isContinuityRequired(new ApiError(403, 'forbidden'))).toBe(false);
     expect(isContinuityRequired(new Error('continuity-required'))).toBe(false);
     expect(sessionStartMessage(new ApiError(403, 'continuity-required'), 'x')).toBe('Identified sessions are part of a paid plan.');
-    expect(sessionStartMessage(new ApiError(403, 'roster-required'), 'x')).toBe('roster-required');
+    expect(sessionStartMessage(new ApiError(403, 'guest-list-required'), 'x')).toBe('guest-list-required');
   });
 });

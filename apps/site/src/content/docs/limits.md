@@ -14,7 +14,7 @@ related: [sharing, learner-links, results, homework, account]
 | Personal API token | The issuing account's control-plane authority. Store it as an account secret. |
 | Live host, stage, and remote links | Their designated role in one live session. Keep host and remote links with the facilitators. |
 | Access link | One named learner's records within one context, including assigned tasks and published feedback. |
-| Roster invitation | One host-named seat in one session. |
+| Guest link | One personal link for a guest the host named, valid for one session. |
 | Uploaded deck media | Anyone possessing its asset URL. |
 | Learner voice work | The submitting learner and authorized workspace reviewers, through authenticated access. |
 
@@ -38,7 +38,7 @@ Check outcomes, question text, homework, and feedback for private information be
 
 ## Session size
 
-A live session admits **50 participants** unless the space owner's plan includes **Sessions over 50 participants** when the session starts. A plan change during the session does not change its limit. Once the session is full, a new participant sees **This session is full.**; a participant already admitted can always return with the same browser, handle, access link, or roster invitation. Installations without billing have no limit.
+A live session admits **50 participants** unless the space owner's plan includes **Sessions over 50 participants** when the session starts. A plan change during the session does not change its limit. Once the session is full, a new participant sees **This session is full.**; a participant already admitted can always return with the same browser, handle, access link, or guest link. Installations without billing have no limit.
 
 ## Live-session retention
 
@@ -74,7 +74,7 @@ Revocation or expiry prevents further access through the affected link. A replac
 | Short text response | 200 characters by default; configurable up to 500 |
 | Accepted short-text answers | 20 |
 | Gaps in one exercise | 1–8 |
-| Active roster seats in one session | 200; each name up to 64 characters |
+| Active guest links in one session | 200; each name up to 64 characters |
 | Slide masters in a deck | 20 |
 | Master content margin | 3%–12% |
 | Uploaded media or one packaged resource | 20 MiB |
