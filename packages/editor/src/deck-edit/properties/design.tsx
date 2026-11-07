@@ -89,7 +89,7 @@ export function DesignState(props: PropertiesPanelProps & { step: OutlineStep })
             })}
           </div>
           <p className="text-caption text-muted-foreground">
-            Named arrangements. An agent fills the same ones.
+            Choose how the slide is arranged.
           </p>
         </Section>
       ) : null}

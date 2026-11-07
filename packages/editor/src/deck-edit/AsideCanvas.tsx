@@ -159,7 +159,7 @@ export function AsideCanvas({
             Add a quiz
           </Button>
           {quizable.length > 0 ? (
-            <label className="flex min-w-0 max-w-full flex-wrap items-center gap-2 text-sm">
+            <label className="flex min-w-0 max-w-full flex-wrap items-center gap-2 text-secondary">
               <span className="text-muted-foreground">or reuse</span>
               {/* Action picker: value stays '' so the placeholder returns after each add. */}
               <Select value="" onValueChange={(id) => add(() => onAddQuiz?.(id))}>

@@ -8,7 +8,7 @@ import { useForm } from '@tanstack/react-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { snapshotHomework, publishedHomeworkOf, type HomeworkAudience, type PublishedHomeworkTask } from '@openroom/schema';
+import { NEXT_NOTE_MAX, snapshotHomework, publishedHomeworkOf, type HomeworkAudience, type PublishedHomeworkTask } from '@openroom/schema';
 
 import {
   ApiError,
@@ -199,6 +199,11 @@ function SessionNotesForm({
           setError(isContinuityRequired(cause) ? CONTINUITY_REQUIRED : cause.status === 401 ? `Your sign-in expired, so these notes were not saved. ${kept} Then sign in again.` : `Your access changed, so these notes were not saved. ${kept}`);
           return;
         }
+        const notSaved = (cause instanceof ApiError && cause.status >= 500) || cause instanceof TypeError;
+        if (notSaved) {
+          setError('Notes were not saved. Check your connection and try again.');
+          return;
+        }
         setError(cause instanceof ApiError && cause.status === 409 ? 'Another tutor changed the homework. Copy your edits before reloading.' : cause instanceof ApiError && cause.message === 'invalid-homework-audience' ? 'Check the selected learners. Each individual task needs at least one person from this context.' : messageOf(cause, 'Could not save notes'));
       }
     },
@@ -213,7 +218,7 @@ function SessionNotesForm({
           <CardContent className="flex flex-col gap-5 p-6">
             <fieldset disabled={accessLost} className="contents">
             <form.Field name="outcomes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-outcomes">Outcomes (one per line)</Label><Textarea id="record-outcomes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
-            <form.Field name="nextNote">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-next">Next session</Label>{contextName ? <p id="record-next-help" className="text-secondary text-muted-foreground">Tutors only. Shown with {contextName} in the Library and at the top of their next deck.</p> : null}<Textarea id="record-next" aria-describedby={contextName ? 'record-next-help' : undefined} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
+            <form.Field name="nextNote">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-next">Next session</Label>{contextName ? <p id="record-next-help" className="text-secondary text-muted-foreground">Tutors only. Shown with {contextName} in the Library and at the top of their next deck.</p> : null}<Textarea id="record-next" maxLength={NEXT_NOTE_MAX} aria-describedby={contextName ? 'record-next-help' : undefined} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
             <form.Field name="notes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-notes">{notesLabel}</Label><Textarea id="record-notes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => { field.handleChange(event.currentTarget.value); writeSessionNotes(sessionId, event.currentTarget.value); }} /></div>}</form.Field>
             {hasContext ? <form.Subscribe selector={(state) => state.isSubmitting}>{(busy) => <HomeworkAssignments tasks={tasks} audience={audience} learners={learners} onTasks={setTasks} onAudience={setAudience} disabled={busy} />}</form.Subscribe> : null}
             </fieldset>

@@ -27,7 +27,7 @@ export function TemplateGallery({ open, onOpenChange, outline, onPick, onWorksho
           const preview: Outline = { ...outline, steps: [template.step], interactions: template.interaction ? [template.interaction] : [] };
           return <button key={template.id} type="button" className="flex h-max flex-col overflow-hidden rounded-lg border border-border text-left hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" aria-label={`Insert ${template.name}`} onClick={() => onPick(template.id)}>
             <span className="block w-full shrink-0 border-b border-border" style={{ aspectRatio: outline.design?.aspectRatio.replace(':', '/') ?? '16 / 9' }}><SlideThumbnail outline={preview} step={template.step} /></span>
-            <span className="grid shrink-0 gap-1 p-3"><span className="font-semibold">{template.name}</span><span className="text-sm text-muted-foreground">{template.description}</span></span>
+            <span className="grid shrink-0 gap-1 p-3"><span className="font-semibold">{template.name}</span><span className="text-secondary text-muted-foreground">{template.description}</span></span>
           </button>;
         })}
         {workshops.map((workshop) => {
@@ -35,8 +35,8 @@ export function TemplateGallery({ open, onOpenChange, outline, onPick, onWorksho
           return <button key={workshop.id} type="button" className="flex h-max flex-col overflow-hidden rounded-lg border border-border text-left hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             aria-label={`Insert ${workshop.name} workshop`} onClick={() => onWorkshop(workshop.id)}>
             <span className="block w-full shrink-0 border-b border-border" style={{ aspectRatio: outline.design?.aspectRatio.replace(':', '/') ?? '16 / 9' }}><SlideThumbnail outline={preview} step={workshop.steps[0]!} /></span>
-            <span className="grid gap-1 p-3"><span className="font-semibold">{workshop.name}</span><span className="text-sm text-muted-foreground">{workshop.description}</span>
-              <span className="mt-1 text-xs text-muted-foreground">{workshop.steps.length} slides · about {workshop.minutes} minutes · facilitator notes</span></span>
+            <span className="grid gap-1 p-3"><span className="font-semibold">{workshop.name}</span><span className="text-secondary text-muted-foreground">{workshop.description}</span>
+              <span className="mt-1 text-caption text-muted-foreground">{workshop.steps.length} slides · about {workshop.minutes} minutes · facilitator notes</span></span>
           </button>;
         })}
         {templates.length === 0 && workshops.length === 0 ? <p className="col-span-full py-8 text-center text-muted-foreground">No templates match that search.</p> : null}

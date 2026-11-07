@@ -64,7 +64,7 @@ export function LiveServerFields({
     }
   };
 
-  if (status === null) return <p className="text-xs text-muted-foreground">{error ?? 'Loading…'}</p>;
+  if (status === null) return <p className="text-caption text-muted-foreground">{error ?? 'Loading…'}</p>;
   const locked = status.fromEnv;
 
   return (
@@ -90,12 +90,12 @@ export function LiveServerFields({
           disabled={locked || busy || !status.keychain}
           onChange={(event) => setKey(event.target.value)}
         />
-        {locked ? <p className="text-xs text-muted-foreground">Set by OPENROOM_RELAY_ORIGIN and OPENROOM_RELAY_KEY.</p> : null}
+        {locked ? <p className="text-caption text-muted-foreground">Set by OPENROOM_RELAY_ORIGIN and OPENROOM_RELAY_KEY.</p> : null}
         {!locked && !status.keychain ? (
-          <p className="text-xs text-muted-foreground">No OS keychain on this computer. Set OPENROOM_RELAY_ORIGIN and OPENROOM_RELAY_KEY instead.</p>
+          <p className="text-caption text-muted-foreground">No OS keychain on this computer. Set OPENROOM_RELAY_ORIGIN and OPENROOM_RELAY_KEY instead.</p>
         ) : null}
       </div>
-      {error === null ? null : <p className="text-sm text-destructive" role="alert">{error}</p>}
+      {error === null ? null : <p className="text-secondary text-destructive" role="alert">{error}</p>}
       <div className="flex flex-wrap justify-end gap-2">
         {footer?.({ busy })}
         {status.origin !== null && !locked ? (
@@ -143,9 +143,9 @@ export function LiveServerDialog({
 export function LiveServerCard({ bridge }: { bridge: OpenRoomDesktopBridge }) {
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Live server</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-section">Live server</CardTitle></CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-secondary text-muted-foreground">
           The OpenRoom relay this computer starts live sessions on while signed out. Anonymous and pseudonymous sessions only.
         </p>
         <LiveServerFields bridge={bridge} />

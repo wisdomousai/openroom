@@ -15,6 +15,12 @@ export function LearnerLanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = locale;
     return () => { document.documentElement.lang = previous; };
   }, [locale]);
+  // A neutral localised title; the token and the student's name stay out of it.
+  useEffect(() => {
+    const previous = document.title;
+    document.title = `${learnerCopy[locale].learning} · OpenRoom`;
+    return () => { document.title = previous; };
+  }, [locale]);
   const value = useMemo(() => ({ locale, copy: learnerCopy[locale], setLocale: (next: LearnerLocale) => {
     updateLocale(next);
     // Only the interface choice is persisted, never credentials, identity or work.

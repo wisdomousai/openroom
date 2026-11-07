@@ -162,7 +162,7 @@ export function DesktopLinkDialog({
           <div className="grid gap-2 sm:grid-cols-2">
             <Button variant={contextId === null ? 'default' : 'outline'} onClick={() => setContextId(null)}>No student</Button>
             {contexts.filter((context) => context.spaceId === spaceId).map((context) => (
-              <button key={context.id} type="button" aria-pressed={contextId === context.id} className={`rounded-md border p-3 text-left text-sm ${contextId === context.id ? 'border-foreground bg-muted' : 'border-border'}`} onClick={() => setContextId(context.id)}>
+              <button key={context.id} type="button" aria-pressed={contextId === context.id} className={`rounded-md border p-3 text-left text-secondary ${contextId === context.id ? 'border-foreground bg-muted' : 'border-border'}`} onClick={() => setContextId(context.id)}>
                 {context.displayName}
               </button>
             ))}
@@ -177,15 +177,15 @@ export function DesktopLinkDialog({
           </div>
           {spaceId === null ? null : (
             <div className="mt-3 rounded-md border border-border p-2" aria-label="Folder tree">
-              <button type="button" aria-pressed={folderId === null} className={`block w-full rounded px-2 py-1.5 text-left text-sm ${folderId === null ? 'bg-muted font-medium' : ''}`} onClick={() => setFolderId(null)}>Space root</button>
+              <button type="button" aria-pressed={folderId === null} className={`block w-full rounded px-2 py-1.5 text-left text-secondary ${folderId === null ? 'bg-muted font-semibold' : ''}`} onClick={() => setFolderId(null)}>Space root</button>
               {choices.map((folder) => (
-                <button key={folder.id} type="button" aria-pressed={folderId === folder.id} className={`block w-full rounded px-2 py-1.5 text-left text-sm ${folderId === folder.id ? 'bg-muted font-medium' : ''}`} style={{ paddingLeft: `${String(8 + folder.depth * 18)}px` }} onClick={() => setFolderId(folder.id)}>↳ {folder.name}</button>
+                <button key={folder.id} type="button" aria-pressed={folderId === folder.id} className={`block w-full rounded px-2 py-1.5 text-left text-secondary ${folderId === folder.id ? 'bg-muted font-semibold' : ''}`} style={{ paddingLeft: `${String(8 + folder.depth * 18)}px` }} onClick={() => setFolderId(folder.id)}>↳ {folder.name}</button>
               ))}
             </div>
           )}
         </section>
         </>}
-        {error === null ? null : <p className="text-sm text-destructive" role="alert">{error}</p>}
+        {error === null ? null : <p className="text-secondary text-destructive" role="alert">{error}</p>}
         <DialogFooter>
           <Button variant="ghost" disabled={busy} onClick={onCancel}>Cancel</Button>
           {signedIn === false ? (

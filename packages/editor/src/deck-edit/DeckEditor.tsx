@@ -714,7 +714,7 @@ export function DeckEditor({
             unsavedDraft={unsavedDraft}
             revealFocus={revealFocus}
             paneTab={paneTab}
-            learnerFeedback={learnerWork === undefined ? undefined : <>{pickupQuery.isError ? <div className="grid gap-2 border-t border-hairline px-[18px] py-4"><p role="alert" className="text-sm">Learner work could not be loaded.</p><Button variant="outline" size="sm" disabled={pickupQuery.isFetching} onClick={() => void pickupQuery.refetch()}>Retry learner work</Button></div> : null}<FeedbackPicker corrections={pickupQuery.data?.corrections ?? []} onInsert={(correction) => {
+            learnerFeedback={learnerWork === undefined ? undefined : <>{pickupQuery.isError ? <div className="grid gap-2 border-t border-hairline px-[18px] py-4"><p role="alert" className="text-secondary">Learner work could not be loaded.</p><Button variant="outline" size="sm" disabled={pickupQuery.isFetching} onClick={() => void pickupQuery.refetch()}>Retry learner work</Button></div> : null}<FeedbackPicker corrections={pickupQuery.data?.corrections ?? []} onInsert={(correction) => {
               const inserted = insertCorrection(outline, step?.id ?? null, correction);
               if (!inserted.stepId) return;
               apply(inserted.outline);

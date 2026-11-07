@@ -322,12 +322,12 @@ export function AskDialog({
                 <ChipRow label="Word bank extras" values={fillTheGapsBank} onChange={setFillTheGapsBank} />
               ) : null}
               {fillTheGapsIssue ? (
-                <p className="text-caption font-medium text-destructive" role="alert">
+                <p className="text-caption font-semibold text-destructive" role="alert">
                   {fillTheGapsIssue}
                 </p>
               ) : null}
               {fillTheGapsWarning ? (
-                <p className="text-caption font-medium text-destructive" role="alert">
+                <p className="text-caption font-semibold text-destructive" role="alert">
                   {fillTheGapsWarning}
                 </p>
               ) : null}

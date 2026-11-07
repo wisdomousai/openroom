@@ -65,7 +65,7 @@ function DeadLink() {
   const { copy } = useLearnerLanguage();
   return (
     <Frame>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">{copy.deadLink}</h1>
+      <h1 className="font-display text-screen-title font-semibold tracking-tight">{copy.deadLink}</h1>
       <p className="text-base">
         {copy.newLink}
       </p>
@@ -77,7 +77,7 @@ function TooManyAttempts() {
   const { copy } = useLearnerLanguage();
   return (
     <Frame>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">{copy.tooManyAttempts}</h1>
+      <h1 className="font-display text-screen-title font-semibold tracking-tight">{copy.tooManyAttempts}</h1>
       <p className="text-base">
         {copy.rateLimit}
       </p>
@@ -89,7 +89,7 @@ function LoadFailed({ onRetry }: { onRetry: () => void }) {
   const { copy } = useLearnerLanguage();
   return (
     <Frame>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">{copy.pageLoadFailed}</h1>
+      <h1 className="font-display text-screen-title font-semibold tracking-tight">{copy.pageLoadFailed}</h1>
       <p className="text-base">{copy.pageLoadHelp}</p>
       <Button type="button" variant="outline" className="min-h-11 w-fit" onClick={onRetry}>{copy.tryAgain}</Button>
     </Frame>
@@ -180,7 +180,7 @@ function LearnerContent({ token }: { token: string | null }) {
   return (
     <Frame>
       <header className="flex flex-col gap-1">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
+        <h1 className="font-display text-screen-title font-semibold tracking-tight">
           {identityQuery.data.displayName}
         </h1>
       </header>
@@ -217,17 +217,17 @@ function LearnerContent({ token }: { token: string | null }) {
         </TabsContent>
         <TabsContent forceMount value="practice" className="mt-5 grid gap-5 data-[state=inactive]:hidden">
           {practiceQuery.isError ? <p role="alert">{copy.practiceLoadError}</p> : null}
-          {practiceQuery.isPending ? <p role="status">{copy.loadingPractice}</p> : token ? <PracticePile token={token} items={pile} onDone={() => { void queryClient.invalidateQueries({ queryKey: ['learner', 'practice'] }); }} /> : null}
-          {sessions?.some((session) => asHomework(session.record?.homework).some((task) => task.kind === 'quiz')) ? <details><summary className="cursor-pointer font-medium">{copy.revisit}</summary><div className="mt-4 grid gap-4">{sessions.map((session) => asHomework(session.record?.homework).filter((task) => task.kind === 'quiz').map((task) => <HomeworkTaskView key={`${session.id}:${task.id}`} token={token} sessionId={session.id} task={task} />))}</div></details> : null}
+          {practiceQuery.isPending ? <p role="status">{copy.loadingPractice}</p> : practiceQuery.isSuccess && token ? <PracticePile token={token} items={pile} onDone={() => { void queryClient.invalidateQueries({ queryKey: ['learner', 'practice'] }); }} /> : null}
+          {sessions?.some((session) => asHomework(session.record?.homework).some((task) => task.kind === 'quiz')) ? <details><summary className="cursor-pointer font-semibold">{copy.revisit}</summary><div className="mt-4 grid gap-4">{sessions.map((session) => asHomework(session.record?.homework).filter((task) => task.kind === 'quiz').map((task) => <HomeworkTaskView key={`${session.id}:${task.id}`} token={token} sessionId={session.id} task={task} />))}</div></details> : null}
         </TabsContent>
         <TabsContent forceMount value="feedback" className="mt-5 grid gap-5 data-[state=inactive]:hidden">
           {feedbackQuery.isPending ? <p role="status">{copy.loadingFeedback}</p> : feedbackQuery.isError ? <QueryError error={feedbackQuery.error} message={copy.feedbackLoadError} onRetry={() => void feedbackQuery.refetch()} /> : feedbackQuery.data?.length === 0 ? <p className="text-muted-foreground">{copy.feedbackEmpty}</p> : feedbackQuery.data?.map((item) => <Card key={item.submissionId}>
-            <CardHeader><CardTitle className="text-lg">{item.task.title ?? (item.task.kind === 'writing' || item.task.kind === 'voice' ? item.task.prompt : copy.feedback)}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-section">{item.task.title ?? (item.task.kind === 'writing' || item.task.kind === 'voice' ? item.task.prompt : copy.feedback)}</CardTitle></CardHeader>
             <CardContent className="grid gap-5">
               <p className="whitespace-pre-wrap text-base leading-relaxed">{item.feedback.message}</p>
-              {item.feedback.corrections.map((correction, index) => <div key={index} className="grid gap-2 rounded-lg border border-border p-4"><p className="text-sm text-muted-foreground">{copy.yourWords}</p><p className="whitespace-pre-wrap text-base">{correction.original}</p><p className="text-sm text-muted-foreground">{copy.tryThis}</p><p className="whitespace-pre-wrap text-base font-medium">{correction.replacement}</p><p className="whitespace-pre-wrap text-base leading-relaxed">{correction.explanation}</p></div>)}
+              {item.feedback.corrections.map((correction, index) => <div key={index} className="grid gap-2 rounded-lg border border-border p-4"><p className="text-sm text-muted-foreground">{copy.yourWords}</p><p className="whitespace-pre-wrap text-base">{correction.original}</p><p className="text-sm text-muted-foreground">{copy.tryThis}</p><p className="whitespace-pre-wrap text-base font-semibold">{correction.replacement}</p><p className="whitespace-pre-wrap text-base leading-relaxed">{correction.explanation}</p></div>)}
               {item.audio && token ? <PrivateAudio key={item.submissionId} submissionId={item.submissionId} {...item.audio} token={token} comments={item.feedback.audioComments} onChanged={() => Promise.all([feedbackQuery.refetch(), sessionsQuery.refetch()])} /> : null}
-              {item.task.kind === 'writing' ? <details><summary className="cursor-pointer text-sm font-medium">{copy.yourResponse}</summary><p className="mt-3 whitespace-pre-wrap text-base leading-relaxed">{item.body}</p></details> : null}
+              {item.task.kind === 'writing' ? <details><summary className="cursor-pointer text-sm font-semibold">{copy.yourResponse}</summary><p className="mt-3 whitespace-pre-wrap text-base leading-relaxed">{item.body}</p></details> : null}
             </CardContent>
           </Card>)}
         </TabsContent>

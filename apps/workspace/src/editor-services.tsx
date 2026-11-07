@@ -111,7 +111,7 @@ function useReturned(contextId: string | null) {
 }
 
 function useBrandKits(spaceId: string) {
-  return useQuery({ queryKey: ['brand-kits', spaceId, false], queryFn: () => listBrandKits(spaceId) });
+  return useQuery({ queryKey: ['brand-kits', spaceId, false], queryFn: () => listBrandKits(spaceId), staleTime: 0, refetchOnWindowFocus: 'always' });
 }
 
 const CLOUD_SLOTS: EditorSlots = {

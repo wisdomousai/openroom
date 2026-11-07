@@ -298,10 +298,10 @@ export function ThumbnailRail({
                         </span>
                         <span className="block h-[25px] w-10 shrink-0 overflow-hidden rounded-[3px] border border-dashed border-input bg-card"><SlideThumbnail outline={outline} step={child} /></span>
                         <span className="flex min-w-0 flex-1 flex-col gap-px">
-                          <span className="truncate text-[12px] leading-snug text-secondary">
+                          <span className="truncate text-caption leading-snug">
                             {stepTitle(outline, child)}
                           </span>
-                          <span className="text-[11px] text-muted-foreground">Only if they need it</span>
+                          <span className="text-caption text-muted-foreground">Only if they need it</span>
                         </span>
                       </button>
                     </ContextMenuTrigger>

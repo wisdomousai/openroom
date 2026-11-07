@@ -59,8 +59,8 @@ export function AudioSection({ media, spaceId, onChange, onEmbedded }: {
     <fieldset disabled={busy} className="grid min-w-0 gap-3">
       {(bridge && onEmbedded) || spaceId ? <Button type="button" variant="outline" onClick={() => bridge && onEmbedded ? void file() : input.current?.click()}>{busy ? 'Adding audio…' : 'Choose audio file'}</Button> : null}
       <input ref={input} type="file" accept="audio/mpeg,audio/mp4,audio/wav,audio/x-wav,.mp3,.m4a,.wav" className="hidden" aria-label="Audio file" onChange={(event) => { const selected = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (selected) void file(selected); }} />
-      {embedded && !editingAddress ? <div className="grid gap-1"><p className="text-xs text-muted-foreground">Audio saved in this deck.</p><Button variant="ghost" size="sm" onClick={() => { setAddress(''); setEditingAddress(true); }}>Use an audio address</Button></div> : <label className="grid gap-1 text-sm">Audio address<Input value={address} onChange={(event) => setAddress(event.currentTarget.value)} onBlur={commitAddress} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commitAddress(); } }} /></label>}
-      <label className="grid gap-1 text-sm">Recording label<Input placeholder="A short listening clip" maxLength={500} value={label ?? media.alt} onFocus={() => setLabel(media.alt)} onChange={(event) => setLabel(event.currentTarget.value)} onBlur={() => { if (label !== null) onChange({ ...media, alt: label.trim() }); setLabel(null); }} /></label>
+      {embedded && !editingAddress ? <div className="grid gap-1"><p className="text-caption text-muted-foreground">Audio saved in this deck.</p><Button variant="ghost" size="sm" onClick={() => { setAddress(''); setEditingAddress(true); }}>Use an audio address</Button></div> : <label className="grid gap-1 text-secondary">Audio address<Input value={address} onChange={(event) => setAddress(event.currentTarget.value)} onBlur={commitAddress} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commitAddress(); } }} /></label>}
+      <label className="grid gap-1 text-secondary">Recording label<Input placeholder="A short listening clip" maxLength={500} value={label ?? media.alt} onFocus={() => setLabel(media.alt)} onChange={(event) => setLabel(event.currentTarget.value)} onBlur={() => { if (label !== null) onChange({ ...media, alt: label.trim() }); setLabel(null); }} /></label>
       <div data-editor-target="caption"><CommitTextarea ariaLabel="Caption" value={media.caption ?? ''} onCommit={(caption) => onChange({ ...media, caption: caption || undefined })} /></div>
       <div role="group" aria-label="Listening mode" className="flex flex-wrap gap-1">
         {/* The same selected pill as Place: fill, weight and a check mark, never fill alone. */}
@@ -73,13 +73,13 @@ export function AudioSection({ media, spaceId, onChange, onEmbedded }: {
           </button>;
         })}
       </div>
-      <p className="text-xs text-muted-foreground">Room audio plays from the tutor's device. Individual listening gives learners their own controls.</p>
-      <div className="grid gap-1 text-sm"><label htmlFor={transcriptId}>Transcript</label><textarea id={transcriptId} className="min-h-28 rounded-md border border-input bg-background p-2" maxLength={12000} value={transcript ?? settings.transcript ?? ''}
+      <p className="text-caption text-muted-foreground">Room audio plays from the tutor's device. Individual listening gives learners their own controls.</p>
+      <div className="grid gap-1 text-secondary"><label htmlFor={transcriptId}>Transcript</label><textarea id={transcriptId} className="min-h-28 rounded-md border border-input bg-background p-2" maxLength={12000} value={transcript ?? settings.transcript ?? ''}
         onFocus={() => setTranscript(settings.transcript ?? '')} onChange={(event) => setTranscript(event.currentTarget.value)}
         onBlur={() => { if (transcript !== null) onChange({ ...media, listening: { ...settings, transcript } }); setTranscript(null); }} /></div>
-      <p className="text-xs text-muted-foreground">Hidden from learners until you choose Show transcript while presenting.</p>
+      <p className="text-caption text-muted-foreground">Hidden from learners until you choose Show transcript while presenting.</p>
       {media.url && !media.url.includes('openroom-pending') ? <AudioPlayer src={media.url} label={`Preview: ${media.alt}`} /> : null}
     </fieldset>
-    {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+    {error ? <p role="alert" className="text-secondary text-destructive">{error}</p> : null}
   </Section>;
 }

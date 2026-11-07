@@ -21,7 +21,8 @@ function voiceUploadTimeoutMs(bytes: number): number {
 }
 
 async function prepareAudio(blob: Blob, recorded: boolean): Promise<{ wav: Blob; durationMs: number }> {
-  if (!blob.size || blob.size > VOICE_SOURCE_MAX_BYTES) throw new AudioPreparationError('audioTooLarge');
+  if (!blob.size) throw new AudioPreparationError('audioEmpty');
+  if (blob.size > VOICE_SOURCE_MAX_BYTES) throw new AudioPreparationError('audioTooLarge');
   const decoder = new AudioContext();
   try {
     const decoded = await decoder.decodeAudioData(await blob.arrayBuffer());
@@ -165,10 +166,10 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
     <h3 className="font-semibold">{task.title ?? copy.voiceResponse}</h3>
     <p className="whitespace-pre-wrap text-base">{task.prompt}</p>
     {task.guidance ? <p className="whitespace-pre-wrap text-sm text-muted-foreground">{task.guidance}</p> : null}
-    {sent ? <div className="grid gap-2 rounded-lg border border-border p-3"><p ref={sentStatus} tabIndex={-1} className="text-sm font-medium outline-none" role="status">{copy.responseSent}</p><PrivateAudio key={sent.submissionId} {...sent} token={token} onChanged={() => queryClient.invalidateQueries({ queryKey: ['learner'] })} /></div> : null}
+    {sent ? <div className="grid gap-2 rounded-lg border border-border p-3"><p ref={sentStatus} tabIndex={-1} className="text-sm font-semibold outline-none" role="status">{copy.responseSent}</p><PrivateAudio key={sent.submissionId} {...sent} token={token} onChanged={() => queryClient.invalidateQueries({ queryKey: ['learner'] })} /></div> : null}
     <div className="flex flex-wrap items-center gap-2">
       {recording ? <><Button ref={stopButton} type="button" className="min-h-11" onClick={() => stop('learner')}>{copy.stopRecording}</Button><span role="timer" aria-label={copy.recordingTime} className="font-mono">{audioTime(seconds * 1000)} / 5:00</span></> : canRecord ? <Button ref={recordButton} type="button" variant="outline" className="min-h-11" disabled={busy} onClick={() => void record()}>{audio ? copy.recordAgain : sent ? copy.recordAnother : copy.recordResponse}</Button> : null}
-      <label className={`relative inline-flex min-h-11 items-center rounded-md border border-input px-4 text-sm font-medium focus-within:ring-2 focus-within:ring-ring ${busy ? 'opacity-50' : 'cursor-pointer hover:bg-accent'}`}>
+      <label className={`relative inline-flex min-h-11 items-center rounded-md border border-input px-4 text-sm font-semibold focus-within:ring-2 focus-within:ring-ring ${busy ? 'opacity-50' : 'cursor-pointer hover:bg-accent'}`}>
         {copy.chooseFile}<input type="file" accept="audio/*" aria-label={copy.chooseFile} disabled={busy} className="absolute inset-0 w-full cursor-pointer opacity-0" onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void prepare(file); }} />
       </label>
     </div>

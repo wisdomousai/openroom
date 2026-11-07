@@ -11,6 +11,8 @@ The audit and layout reports are docs/qa/2026-11-06-tutoring-ux.md and docs/qa/2
 
 ## Deferred low-severity findings
 
+The quick low-severity pass on 7 November fixed these, fully or in part: voice-media-08 (cn() knows the nine type tokens), desktop-14, learner-page-03 (no "done for now" beside a load error), learner-page-11, learner-page-13 (localised page title), review-next-14 and voice-media-06 (empty recording message), notes-homework-02 (plain save-failure text), second-lesson-04 (field stops at 2,000 characters, no counter yet), notes-homework-11, review-next-11, onboarding-12, editor-authoring-15, editor-media-15, agent-path-15, editor-media-13, live-console-12, review-next-07 (confirmation only) and the plan.yaml tooltip from agent-path-12. live-console-14, second-lesson-06 and voice-media-10 were already fixed. The rest below is still open. Not included in the pass: GP-F06, GP-F08, GP-F09, AT-F12, AT-F16 and TP-19.
+
 The user deferred low-severity findings in the live-console, agent-surface, notes-learner, deck-editor and desktop clusters to save quota.
 
 ### live-console

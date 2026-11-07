@@ -546,8 +546,8 @@ export function DesktopFileEditor() {
         </BarNote>
       ) : null}
         {syncConflict === null ? null : (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-destructive/5 px-5 py-2" role="alert">
-            <p className="text-xs"><span className="font-semibold">This file and the online copy changed in the same place.</span> Both are preserved in online version history until you choose.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-2" role="alert">
+            <p className="text-caption"><span className="font-semibold">This file and the online copy changed in the same place.</span> Both are preserved in online version history until you choose.</p>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => void resolveSyncConflict('online')}>Use online copy</Button>
               <Button size="sm" onClick={() => void resolveSyncConflict('local')}>Keep this file</Button>

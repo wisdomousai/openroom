@@ -716,7 +716,7 @@ function PlanYamlChip({ deckId }: { deckId: string }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          title="deck.yaml"
+          title="plan.yaml"
           className="mb-0 inline-flex h-8 items-center rounded-lg px-2.5 text-caption text-muted-foreground hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           {PLAN_FILE}

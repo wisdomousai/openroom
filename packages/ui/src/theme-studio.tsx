@@ -146,7 +146,7 @@ export function ThemeStudio({
           <DialogTitle>Theme &amp; branding</DialogTitle>
           <DialogDescription>
             {live
-              ? 'Applies to the projector and participant screens.'
+              ? 'Applies to the projector, participant screens and this console. Kept as this device’s theme.'
               : 'Applies to this console. In a running session it applies to every surface.'}
           </DialogDescription>
         </DialogHeader>

@@ -116,9 +116,9 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
               <h3 className="text-row-title">Content that does not fit</h3>
               <ul className="grid max-h-40 gap-1 overflow-y-auto overscroll-contain">
                 {props.overflowIssues?.map((issue) => <li key={issue.target}>
-                  <button type="button" className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-chrome focus-visible:outline-2 focus-visible:outline-ring [overflow-wrap:anywhere]" onClick={() => props.onOverflowSelect?.(issue)}>
-                    <span className="font-medium">{issue.label}</span>
-                    <span className="block text-xs text-muted-foreground">{issue.reason === 'bounds' ? 'Outside its visible area' : 'Content exceeds its box'}</span>
+                  <button type="button" className="w-full rounded-md px-2 py-2 text-left text-secondary hover:bg-chrome focus-visible:outline-2 focus-visible:outline-ring [overflow-wrap:anywhere]" onClick={() => props.onOverflowSelect?.(issue)}>
+                    <span className="font-semibold">{issue.label}</span>
+                    <span className="block text-caption text-muted-foreground">{issue.reason === 'bounds' ? 'Outside its visible area' : 'Content exceeds its box'}</span>
                   </button>
                 </li>)}
               </ul>
