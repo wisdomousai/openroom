@@ -276,9 +276,10 @@ export function partKeysForStep(
       break;
     case 'statement':
       // The stage draws the stat as its own block above the title, so it is a
-      // part in its own right — "here is the claim … here is the number" is the
-      // whole reason to sequence a statement.
-      if (step.stat !== undefined) keys.push('stat');
+      // part in its own right, and it comes first in the reveal order as it
+      // does on the slide: a stat revealed after the heading would appear
+      // above a heading already shown.
+      if (step.stat !== undefined) keys.unshift('stat');
       keys.push('body');
       break;
     case 'cards':

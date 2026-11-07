@@ -94,10 +94,10 @@ describe('partKeysForStep — derived from the step, not authored', () => {
       'header',
       'body',
     ]);
-    // "Here is the claim … here is the number" is the reason to sequence one.
+    // The reveal order follows the drawn order, so the stat never appears above a heading already shown.
     expect(
       partKeysForStep({ id: 'a', kind: 'statement', title: 'T', stat: '45', body: 'B' }),
-    ).toEqual(['header', 'stat', 'body']);
+    ).toEqual(['stat', 'header', 'body']);
   });
 
   it('cards and steps: one cell per item', () => {
