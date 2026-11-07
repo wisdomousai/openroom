@@ -98,7 +98,7 @@ test('group learners keep private work across link replacement and same-tab swit
   await learner.route('**/api/learner/me', (route) => route.abort());
   await learner.reload();
   await expect(learner.getByRole('heading', { name: 'Your page could not be loaded', exact: true })).toBeVisible();
-  await expect(learner.getByText('Check your connection and try again. Your link still works.', { exact: true })).toBeVisible();
+  await expect(learner.getByText('Check your connection and try again.', { exact: true })).toBeVisible();
   await learner.screenshot({ path: testInfo.outputPath('learner-load-failed-phone.png'), fullPage: true });
   await learner.unroute('**/api/learner/me');
   await learner.getByRole('button', { name: 'Try again', exact: true }).click();
