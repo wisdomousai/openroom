@@ -29,14 +29,23 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await expect(learner.getByRole('button', { name: 'Send response', exact: true })).toBeEnabled();
   await expect(learner.getByLabel('Preview your response', { exact: true })).toHaveJSProperty('duration', 4);
   let failOnce = true;
+  // The retry waits here until the progress bar has been checked.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
   await learner.route('**/api/learner/voice?*', async (route) => {
     expect(route.request().headers().authorization).toBe(`Bearer ${lea}`);
     expect(route.request().headers().cookie).toBeUndefined();
-    if (failOnce) { failOnce = false; await route.abort(); } else await route.continue();
+    if (failOnce) { failOnce = false; await route.abort(); } else { await held; await route.continue(); }
   });
   await learner.getByRole('button', { name: 'Send response', exact: true }).click();
   await expect(learner.getByRole('alert')).toContainText('could not be sent');
   await learner.getByRole('button', { name: 'Send response', exact: true }).click();
+  // Sending shows how much has been sent: a determinate bar and a percentage.
+  const sending = learner.getByRole('progressbar', { name: 'Sending recording…', exact: true });
+  await expect(sending).toHaveJSProperty('max', 100);
+  expect(await sending.evaluate((element: HTMLProgressElement) => element.position)).toBeGreaterThanOrEqual(0);
+  await expect(learner.getByText(/^\d+\s?%$/)).toBeVisible();
+  release();
   await expect(learner.getByText('Response sent', { exact: true })).toBeVisible();
   await learner.getByRole('button', { name: 'Listen · 0:04', exact: true }).click();
   await expect(learner.getByLabel('Voice response', { exact: true })).toHaveJSProperty('duration', 4);

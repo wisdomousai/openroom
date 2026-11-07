@@ -14,6 +14,8 @@ and deliberately shares comments tied to positions in that response.
   Lesson tab, hiding the page, or leaving it releases microphone tracks.
 - Learner requests carry the personal link in an authorization header and omit cookies.
   No credential or public audio URL is handed to the player.
+- Sending shows a determinate progress bar named "Sending recording…", the share
+  sent as a percentage, and the time taken so far.
 - A failed upload leaves the preview and download available. Retrying the same
   submission is idempotent; it never replaces an earlier recording.
 - Only the submitting learner and context editors can read, trash or restore audio.
