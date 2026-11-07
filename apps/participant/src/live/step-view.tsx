@@ -110,6 +110,10 @@ export function StepView({
         <button type="button" aria-pressed={!reading} onClick={() => onView('slide')}>Slide</button>
         <button type="button" aria-pressed={reading} onClick={() => onView('reading')}>Reading</button>
       </div>
+      {/* Reading drops the tutor's pen strokes (they sit on slide geometry), so say they exist. */}
+      {reading && marks?.some((mark) => mark.kind === 'pen') ? (
+        <p className="learner-slide__ink-hint">Your tutor drew on this slide. Switch to Slide to see it.</p>
+      ) : null}
       {laneNamed ? <p className="step__lane">{lane === 0 ? 'Partner A' : 'Partner B'}</p> : null}
       {/* Ink is a sibling of the step, not the page shell: token marks re-measure
           against this plate so underlines sit under the words, not in the gutter. */}
