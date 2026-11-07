@@ -48,7 +48,7 @@ If a save fails after checking, retry from the retained answer. If the task has 
 4. Listen to the preview. Record again if needed, or download a personal copy.
 5. Send the response and wait for confirmation.
 
-Source audio files can be up to 20 MiB. Conversion to the submission format happens on your device. Use the file choice if the browser cannot access your microphone. Leaving the Lesson tab or hiding the page stops microphone capture.
+Source audio files can be up to 20 MiB. Conversion to the submission format happens on your device. Use the file choice if the browser cannot access your microphone. Leaving the Lesson tab, hiding the page, reaching five minutes, or a microphone that stops ends the recording. The page then says why, for example **Recording stopped at 0:07 because the page was hidden. Listen to it, then send it or record again.** If nothing was recorded, it says **Nothing was recorded. Check your microphone and try again, or choose an audio file.**
 
 A failed upload keeps the preview available. Retry the same submission rather than recording it again solely because the response was lost. Each task supports up to 10 retained recordings, including recordings in recoverable trash.
 

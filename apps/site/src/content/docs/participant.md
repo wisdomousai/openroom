@@ -18,7 +18,7 @@ In a session using generated names, note the name shown under **Your session nam
 
 Open the personal session-join address your teacher supplied and select **Join**. It combines the current session code with your learner credential. The displayed name comes from the learner identity attached to that credential. Keep the separate lesson-page link for homework and feedback.
 
-Named learner sessions admit participants after the teacher starts. If you arrive early, wait and try again once the lesson is live. Keep using your own link so your work stays associated with the correct person.
+On your first join to a named lesson, the page says **Your tutor sees your name in this lesson.** once. Named learner sessions admit participants after the teacher starts. If you arrive early, wait and try again once the lesson is live. Keep using your own link so your work stays associated with the correct person.
 
 ## Join with a roster invitation
 
@@ -51,7 +51,7 @@ Ask the host to assign a group or spokesperson if the page is waiting for one. F
 
 ## Read slides and listen
 
-**Slide** preserves the projected slide's layout. Select **Reading** for a reading-oriented view of its content. Text highlights follow the words in both views; freehand pen marks belong to Slide view.
+**Slide** preserves the projected slide's layout. Select **Reading** for a reading-oriented view of its content. On a phone narrower than 640 px, card, step, activity and debrief slides open in Reading until you choose a view. Text highlights follow the words in both views; freehand pen marks belong to Slide view. When Reading is on and the tutor draws on the slide, the page says **Your tutor drew on this slide. Switch to Slide to see it.**
 
 ![Phone Reading view with a complete French passage and the Slide and Reading controls](/docs/images/phone-reading.png)
 
