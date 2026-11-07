@@ -15,6 +15,7 @@ import {
   scaleLinear,
   TanStackChart,
   text,
+  useWallType,
 } from '../tanstack';
 
 export function rankingSummary(p: {
@@ -87,6 +88,8 @@ export function RankingBarsChart({
   const config = useMemo(() => countsChartConfig(rows), [rows]);
   const maximum = Math.max(1, ...rows.map((row) => row.count));
   const compact = size === 'compact';
+  const [root, wall] = useWallType<HTMLDivElement>();
+  const valueSize = wall?.value ?? (compact ? 12 : 14);
 
   const definition = useMemo(
     () =>
@@ -116,7 +119,7 @@ export function RankingBarsChart({
             text: 'display',
             key: 'key',
             fill: 'var(--foreground)',
-            fontSize: compact ? 12 : 14,
+            fontSize: valueSize,
             fontWeight: 700,
             anchor: 'start',
             dx: 8,
@@ -129,16 +132,18 @@ export function RankingBarsChart({
           scale: () => scaleBand<string>().padding(0.14),
           axis: false,
         },
-        margin: { top: 0, right: compact ? 80 : 130, bottom: 0, left: 0 },
+        // "3 pts · avg 2.3" prints after the bars, in the right margin.
+        margin: { top: 0, right: wall ? Math.round(valueSize * 9.3) : compact ? 80 : 130, bottom: 0, left: 0 },
         theme: chartTheme,
         svgAnimation: chartAnimation(reduced),
       }),
-    [rows, maximum, compact, reduced],
+    [rows, maximum, compact, reduced, valueSize, wall],
   );
 
   return (
     <Frame summary={rankingSummary({ interaction, scores, avgRank, total, dontKnow, revealed })}>
       <div
+        ref={root}
         className={cn('or-bars-chart or-rank-chart', compact && 'or-chart--compact')}
         style={{ '--or-rows': rows.length } as React.CSSProperties}
         data-or-chart="ordered-bars"

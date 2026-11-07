@@ -20,6 +20,7 @@ import {
   scaleBand,
   scaleLinear,
   TanStackChart,
+  useWallType,
 } from '../tanstack';
 import { choiceSummary } from './bars';
 
@@ -66,6 +67,8 @@ export function ChoiceRadialChart({
   const maximum = Math.max(1, ...rows.map((row) => row.count));
   const compact = size === 'compact';
   const plotLabels = rows.every((row) => row.label.length <= PLOT_LABEL_MAX);
+  const [root, wall] = useWallType<HTMLDivElement>();
+  const labelSize = wall?.value ?? (compact ? 10 : 13);
 
   const definition = useMemo(
     () =>
@@ -109,7 +112,7 @@ export function ChoiceRadialChart({
                       text: 'label',
                       key: 'key',
                       fill: 'var(--foreground)',
-                      fontSize: compact ? 10 : 13,
+                      fontSize: labelSize,
                       fontWeight: 700,
                       anchor: 'middle',
                       radiusOffset: -12,
@@ -122,12 +125,13 @@ export function ChoiceRadialChart({
         theme: chartTheme,
         svgAnimation: chartAnimation(reduced),
       }),
-    [rows, maximum, compact, reduced, plotLabels],
+    [rows, maximum, reduced, plotLabels, labelSize],
   );
 
   return (
     <Frame summary={choiceSummary({ interaction, counts, total, dontKnow, revealed })}>
       <div
+        ref={root}
         className={cn('or-radial-chart', compact ? 'or-chart--compact' : 'or-polar-chart--side')}
         data-or-chart="radial"
       >
