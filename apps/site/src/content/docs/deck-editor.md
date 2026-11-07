@@ -10,6 +10,8 @@ related: [slides, questions, design, media, desktop]
 
 Select a deck in the Library and choose **Open**. The editor contains a slide rail, the slide canvas, and a task pane. The ribbon contains commands for the selected slide or object. The title bar provides **Present** and **Start session**. For a deck filed under a student, it also names the student. While a session of this deck is running, **Live now** and **Rejoin** appear beside **Start session**; see [rejoin a running session](/docs/live-session/#start-and-share-entry).
 
+In a window narrower than 1024 px, the task pane is closed. Choose **Slide pane** in the status bar to open it over the canvas, and press Escape to close it. In a window narrower than 768 px, the editor shows only a notice to open the deck on a larger screen. **Present** and **Start session** work at every width.
+
 Select a thumbnail to edit that slide. Select text, a picture, or another slide part to show its applicable controls. Choose an empty part of the slide to return to slide-level controls.
 
 ![Deck editor showing the slide rail, reading slide, ribbon, and Design task pane](/docs/images/deck-editor.png)

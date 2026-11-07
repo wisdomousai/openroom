@@ -223,7 +223,7 @@ Two shadows, and only these two:
 | Token | Value | Only on |
 | --- | --- | --- |
 | `--shadow-page` | `0 1px 2px rgba(0,0,0,0.12), 0 6px 20px rgba(0,0,0,0.10)` | A page or slide floating on the desk |
-| `--shadow-overlay` | `0 8px 32px rgba(0,0,0,0.26)` | Dialogs, menus, and anything over a scrim |
+| `--shadow-overlay` | `0 8px 32px rgba(0,0,0,0.26)` | Dialogs, menus, the deck editor's overlay task pane, and anything over a scrim |
 
 `projector` sets both to `none`: it fills the viewport, so there is no desk to
 float above and nothing to cast onto.
@@ -293,11 +293,13 @@ session's Notes and Review learner work fit any width: the sidebar hides below
 `md` and the search field below `lg`.
 
 Deck editor: authoring is a desktop task, and teaching from a tablet is not.
-Below `lg` the task pane collapses to an overlay; below `md` the editor shows a
-notice to open the deck on a larger screen to edit it. **Present** and **Start
-session** stay usable at every width. This is decided (D8) and not built yet:
-the editor currently keeps its three panes and scrolls sideways in a narrow
-window.
+From `lg` up the rail, canvas and task pane sit side by side. Below `lg` the
+task pane starts closed and **Slide pane** in the status bar opens it as an
+overlay over the right of the canvas, with `--shadow-overlay`; Escape or the
+same toggle closes it, and the rail and canvas stay usable. Below `md` the
+editor body is replaced by one line, "Open this deck on a larger screen to
+edit it." The title bar keeps **Present** and **Start session** at every
+width.
 
 Observed rhythm: `2 / 4 / 6 / 8 / 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 / 44 / 56`.
 
@@ -366,7 +368,7 @@ named in the written summary.
 
 ### Don't
 - **Don't** put a shadow anywhere except `--shadow-page` on the desk and
-  `--shadow-overlay` on a dialog or menu.
+  `--shadow-overlay` on a dialog, a menu or the overlay task pane.
 - **Don't** use gradients, blur, backdrop-filter, or glow — anywhere, in any
   theme, including WebGL.
 - **Don't** add kickers above headings, nested cards, or icon+heading+text
