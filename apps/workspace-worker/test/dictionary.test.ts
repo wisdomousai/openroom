@@ -301,6 +301,19 @@ describe('resolveEntry', () => {
     expect(seen).toContain(wordPath('dewiktionary/Französisch', word));
   });
 
+  it('does not keep a meaning outage as the answer once upstream is back', async () => {
+    const word = unique('aller');
+    const meaningUrl = wordPath('dewiktionary/Französisch', word);
+    const routes: Record<string, string | number> = {
+      [wordPath('dictionary/French', word)]: jsonl({ word, pos: 'verb', lang_code: 'fr', forms: [{ form: 'vais', tags: ['present'] }], senses: [{ glosses: ['to go'] }] }),
+      [meaningUrl]: 503,
+    };
+    const { fetch: impl } = upstream(routes);
+    expect((await resolveEntry({ word, lang: 'fr', meaningLang: 'de' }, impl)).meaning).toBeNull();
+    routes[meaningUrl] = jsonl({ word, pos: 'verb', lang_code: 'fr', forms: [], senses: [{ glosses: ['gehen'] }] });
+    expect((await resolveEntry({ word, lang: 'fr', meaningLang: 'de' }, impl)).meaning).toBe('gehen');
+  });
+
   it('uses the entry’s own sense when both languages are the same', async () => {
     const word = unique('gehen');
     const { fetch: impl } = upstream({
