@@ -105,7 +105,11 @@ export function DeckDesignPanel({ outline, step, onDeckDesign, onSlideDesign, sp
         </SelectContent>
       </Select>
       <label className="grid gap-1 text-secondary">Footer<Input key={`${master.id}-${master.footer ?? ''}`} defaultValue={master.footer ?? ''} maxLength={120} onBlur={(event) => updateMaster({ footer: event.currentTarget.value })} /></label>
+    </Section>
+    <Section title={`Logo · ${master.name}`}>
       <LogoFields key={`${master.id}-logo`} logo={master.logo} spaceId={spaceId} onEmbeddedResource={onEmbeddedResource} onChange={(logo) => updateMaster({ logo })} />
+    </Section>
+    <Section title={`Background · ${master.name}`}>
       <BackgroundFields key={master.id} background={master.background ?? { kind: 'solid', color: design.theme.colors.background }} palette={(master.theme ?? design.theme).colors} spaceId={spaceId} onEmbeddedResource={onEmbeddedResource} onChange={(background) => updateMaster({ background })} />
       <Button size="sm" variant="subtle" onClick={() => updateMaster({ background: undefined })}>Use theme background</Button>
     </Section>
