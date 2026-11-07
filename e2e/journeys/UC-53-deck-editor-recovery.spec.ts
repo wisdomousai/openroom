@@ -277,7 +277,7 @@ test('the homework page names its student and Start shows the unfinished quiz', 
   await expect(homework.locator('[data-homework-recipient]')).toHaveText('For Camille · shared when you save Notes after the lesson');
   await expect(homework.getByLabel('Quiz question', { exact: true })).toBeFocused();
   await expect(page.locator('footer')).toContainText('Homework · one task');
-  await expect(page.getByText('Homework is a page, not a slide.', { exact: false })).toBeVisible();
+  await expect(page.getByText('These tools work on slides. Select a slide in the rail to use them.', { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('homework-recipient.png') });
 
   // Reuse lists gaps as blanks and refuses a ranking without a correct order.

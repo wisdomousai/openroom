@@ -396,8 +396,34 @@ test('a focused button keeps Space, Hide results shows its state, and only the s
   await page.keyboard.press('ArrowLeft');
   await expect(sessionTab).toHaveAttribute('aria-selected', 'true');
 
-  // A question inserted live can carry its correct answer, and the ribbon goes back to Home.
+  // Insert offers Term, Statement and Question; From library is gone.
   await page.getByRole('tab', { name: 'Insert', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'From library' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Term', exact: true }).click();
+  const termDialog = page.getByRole('dialog', { name: 'Insert term', exact: true });
+  await termDialog.getByLabel('Term', { exact: true }).fill('der Himmel');
+  await termDialog.getByLabel('Meaning', { exact: true }).fill('the sky');
+  await termDialog.getByRole('button', { name: 'Insert on stage', exact: true }).click();
+  await expect(mirror.getByText('der Himmel', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Statement', exact: true }).click();
+  const statementDialog = page.getByRole('dialog', { name: 'Insert statement', exact: true });
+  await statementDialog.getByLabel('Heading', { exact: true }).fill('Pause');
+  await statementDialog.getByLabel('Text', { exact: true }).fill('Kurz durchatmen.');
+  await statementDialog.getByRole('button', { name: 'Insert on stage', exact: true }).click();
+  await expect(mirror.getByText('Pause', { exact: true })).toBeVisible();
+
+  // Change on the inserted statement opens it filled in and replaces it on screen.
+  await page.getByRole('button', { name: 'Change', exact: true }).click();
+  const changeDialog = page.getByRole('dialog', { name: 'Change statement', exact: true });
+  await expect(changeDialog.getByLabel('Heading', { exact: true })).toHaveValue('Pause');
+  await expect(changeDialog.getByLabel('Text', { exact: true })).toHaveValue('Kurz durchatmen.');
+  await changeDialog.getByLabel('Heading', { exact: true }).fill('Kurze Pause');
+  await changeDialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(mirror.getByText('Kurze Pause', { exact: true })).toBeVisible();
+  await expect(mirror.getByRole('heading', { name: 'Pause', exact: true })).toHaveCount(0);
+
+  // A question inserted live can carry its correct answer, and the ribbon goes back to Home.
   await page.getByRole('button', { name: 'Question', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Insert question', exact: true });
   await dialog.getByLabel('Question', { exact: true }).fill('Welche Farbe hat der Himmel?');

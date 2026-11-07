@@ -208,8 +208,11 @@ export interface OpenRoomDesktopBridge {
   clearRecovery(fileId: string): Promise<void>;
   /** Unsaved changes in this window: the close prompt and the macOS edited dot follow it. */
   setEdited(edited: boolean): void;
-  /** Close this window without the unsaved-changes prompt. */
-  closeWindow(): Promise<void>;
+  /**
+   * Ends the close prompt's Save. True closes this window without asking again
+   * (and resumes the Quit that asked for the save); false keeps it open and ends that Quit.
+   */
+  finishSaveAndClose(saved: boolean): Promise<void>;
   onMenuCommand(listener: (command: DesktopMenuCommand) => void): () => void;
   /** A desktop sign-in finished, from any window. */
   onSignedIn(listener: () => void): () => void;

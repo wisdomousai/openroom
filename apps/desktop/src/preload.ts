@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld('openroomDesktop', {
   saveRecovery: (fileId: string, source: string) => ipcRenderer.invoke('desktop:save-recovery', fileId, source),
   clearRecovery: (fileId: string) => ipcRenderer.invoke('desktop:clear-recovery', fileId),
   setEdited: (edited: boolean) => ipcRenderer.send('desktop:set-edited', edited),
-  closeWindow: () => ipcRenderer.invoke('desktop:close-window'),
+  finishSaveAndClose: (saved: boolean) => ipcRenderer.invoke('desktop:finish-save-and-close', saved),
   onMenuCommand: (listener: Listener<string>) => subscribe('desktop:menu-command', listener),
   onSignedIn: (listener: Listener<void>) => subscribe('desktop:signed-in', listener),
   openFile: () => ipcRenderer.invoke('desktop:open-file'),

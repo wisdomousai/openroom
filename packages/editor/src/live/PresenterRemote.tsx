@@ -19,6 +19,7 @@ import { cn } from '@openroom/ui/utils';
 import { EndSessionDialog } from './EndSessionDialog';
 import { onInteractionSlide } from './snapshot';
 import { slideLabel } from './slide-label';
+import { fillTheGapsPromptText } from '@openroom/schema';
 import type { ConnectionStatus, StoredSession } from '../types';
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -167,17 +168,28 @@ export function PresenterRemote({
   const isTimer = timerStep !== null;
   const clockLabel = ticking.label ?? (timerStep ? formatClock(timerStep.seconds) : null);
   /*
-   * The heading names the slide on screen. The last question stays active
-   * after the tutor moves on, so on an outline its prompt is used only on its
-   * own slide; any other slide goes by its own name.
+   * The heading names the slide on screen. A question slide goes by its
+   * prompt, as the wall shows it, even when the slide has a title. The last
+   * question stays active after the tutor moves on, so on an outline its
+   * prompt is used only on its own slide; any other slide goes by its own name.
    */
   const onActiveSlide = onInteractionSlide(host.snapshot, host.activeId);
+  const stepInteractionId = outlineStep?.kind === 'interaction' ? outlineStep.interactionId : null;
+  const stepInteractionPrompt = stepInteractionId === null
+    ? ''
+    : fillTheGapsPromptText(outline?.content.interactions.find((item) => item.id === stepInteractionId)?.prompt ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
   const outlinePrompt =
     outlineStep === undefined
       ? null
-      : outlineStep.kind === 'timer' && !('title' in outlineStep && outlineStep.title?.trim())
-        ? formatClock(outlineStep.seconds)
-        : slideLabel(outlineStep, outline?.content.interactions);
+      : stepInteractionId !== null
+        ? stepInteractionPrompt ||
+          (focus?.id === stepInteractionId ? focus.prompt?.trim() : '') ||
+          slideLabel(outlineStep, outline?.content.interactions)
+        : outlineStep.kind === 'timer' && !('title' in outlineStep && outlineStep.title?.trim())
+          ? formatClock(outlineStep.seconds)
+          : slideLabel(outlineStep, outline?.content.interactions);
   const focusPrompt =
     (outline ? outlinePrompt : null) ||
     focus?.prompt?.trim() ||
@@ -403,7 +415,8 @@ export function PresenterRemote({
           }}
         >
           {/* One toggle, as on the console ribbon: pressed while the results are hidden. */}
-          {canToggleResults && !host.audienceSeesResults ? '✓ Hide results' : 'Hide results'}
+          {canToggleResults && !host.audienceSeesResults ? <span aria-hidden="true">✓ </span> : null}
+          Hide results
         </Button>
 
         {host.qna ? (
