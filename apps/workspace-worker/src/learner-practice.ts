@@ -16,6 +16,7 @@ import {
   publishedHomeworkOf,
   homeworkForLearner,
   parseLearnerFeedback,
+  practiceLocale,
   type PublishedHomeworkTask,
 } from '@openroom/schema';
 import { gradeSrs, newSrsState, type SrsGrade, type SrsState } from '@openroom/domain';
@@ -90,9 +91,11 @@ export async function publishedForContext(
 }
 
 function quizCard(sessionId: string, revision: number, task: Extract<PublishedHomeworkTask, { kind: 'quiz' }>) {
+  const locale = practiceLocale(task.interaction);
   return {
     itemId: homeworkItemId(sessionId, task.id), assignmentRevision: revision,
     ...(task.title !== undefined ? { title: task.title } : {}),
+    ...(locale !== undefined ? { locale } : {}),
     interaction: task.interaction,
   };
 }

@@ -4,7 +4,7 @@ export { isPresentationPosition, type PresentationPosition } from './presentatio
 export { parseHomeworkAudience, homeworkForLearner, type HomeworkAudience } from './homework-audience.js';
 export { VOICE_SAMPLE_RATE, VOICE_MAX_SECONDS, VOICE_SOURCE_MAX_BYTES, VOICE_WAV_MAX_BYTES, VOICE_RETENTION_DAYS, VOICE_TRASH_DAYS, VOICE_MAX_RECORDINGS_PER_TASK, encodeVoiceWav, voiceWavDuration } from './voice-audio.js';
 export { parseLearnerFeedback, type LearnerFeedback, type LearnerCorrection, type AudioComment } from './learner-feedback.js';
-export { assessHomework, initialHomeworkAnswer, parseHomeworkPracticeAnswer, type HomeworkAssessment, type HomeworkPracticeAnswer, type HomeworkPracticeInteraction } from './homework-practice.js';
+export { assessHomework, initialHomeworkAnswer, parseHomeworkPracticeAnswer, practiceLocale, type HomeworkAssessment, type HomeworkPracticeAnswer, type HomeworkPracticeInteraction } from './homework-practice.js';
 export {
   DISPLAY_STYLES,
   displaysFor,

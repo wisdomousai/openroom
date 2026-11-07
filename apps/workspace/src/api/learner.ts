@@ -31,6 +31,8 @@ export interface LearnerPracticeItem {
   itemId: string;
   assignmentRevision: number;
   title?: string;
+  /** BCP 47 language of a typed answer, when the exercise names one. */
+  locale?: string;
   interaction: HomeworkPracticeInteraction;
 }
 

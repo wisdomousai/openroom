@@ -70,3 +70,11 @@ export function initialHomeworkAnswer(interaction: HomeworkPracticeInteraction):
     case 'ranking': return { kind: 'ranking', order: interaction.options.map((option) => option.id) };
   }
 }
+
+/** The canonical BCP 47 language of a typed answer, when the exercise names a valid one. */
+export function practiceLocale(interaction: HomeworkPracticeInteraction): string | undefined {
+  if (interaction.type !== 'text' && interaction.type !== 'fill-the-gaps') return undefined;
+  const locale = interaction.match?.locale?.trim();
+  if (!locale) return undefined;
+  try { return Intl.getCanonicalLocales(locale)[0]; } catch { return undefined; }
+}
