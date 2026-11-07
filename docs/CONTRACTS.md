@@ -395,7 +395,7 @@ GET|POST /api/sessions              list or create sessions (one delivery of a d
                                          live/completed statuses are server-owned (422 status-server-owned)
 GET|PATCH|DELETE /api/sessions/:id
                                          detail, metadata edit, or recoverable trash
-GET|PUT /api/sessions/:id/record    curated outcomes, notes, nextNote (Card sticky), homework (string[] or typed tasks), selected artifacts; never transcript/ballots
+GET|PUT /api/sessions/:id/record    curated outcomes, notes, nextNote (the Next session note), homework (string[] or typed tasks), selected artifacts; never transcript/ballots
 POST /api/sessions/:id/launch       create an outline-aware session from the selected version;
                                          409 session-already-live when the session is already live
 POST /api/sessions/:id/restore      restore from trash
