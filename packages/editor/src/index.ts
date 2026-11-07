@@ -21,6 +21,7 @@ export { Presenter, type PresentationPosition } from './presenter/Presenter';
 export { PresentStage, presentableSteps } from './presenter/PresentationStage';
 
 export { LiveHost } from './live/LiveHost';
+export { LiveNowButton, LiveStartDialog, type LiveNowCue } from './live/LiveStart';
 export { PresenterRemote } from './live/PresenterRemote';
 export { QnaDesk } from './live/QnaDesk';
 export { useStageMirror } from './live/useStageMirror';

@@ -106,7 +106,7 @@ Collections and forms stay on separate routes (CRUD invariant). **Exception:** f
 7. During the session, the tutor uses the host console, tablet, CLI, direct API,
    or `session_command` to move between semantic steps and existing interactions.
 8. After the session, the tutor saves a short record. This is an outcome record,
-   not a transcript. **For next time** writes a sticky on the context so the next
+   not a transcript. **Next session** writes a sticky on the context so the next
    session for that person opens with it. Homework on the record is what the
    student can do on their access-link page (reading, quiz, writing). Missed
    quiz items come back on that page later; the teacher never sees due dates.

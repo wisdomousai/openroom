@@ -11,6 +11,7 @@ import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { MoveTreePicker } from './MoveTreePicker';
 import { SavedResultsLinks } from './SavedResultsLinks';
+import { LiveNowButton, type LiveNowCue } from '@openroom/editor';
 
 export type PanelItem = { kind: 'deck'; data: SpaceTreeDeck };
 
@@ -44,6 +45,8 @@ interface Props {
   aside?: DeckAside | null;
   records?: SpaceTreeRecord[];
   onSaveCopy?: (item: PanelItem) => void;
+  /** A recoverable session of this deck and its student is running. */
+  live?: LiveNowCue | null;
 }
 
 /**
@@ -91,6 +94,7 @@ export function ItemDetailPanel({
   aside,
   records = [],
   onSaveCopy,
+  live = null,
 }: Props) {
   const title = item.data.title;
   const openTo = to.deckEditor(item.data.id);
@@ -206,6 +210,7 @@ export function ItemDetailPanel({
           >
             {busy ? 'Starting…' : 'Start session'}
           </Button>
+          {live ? <LiveNowButton live={live} /> : null}
         </div>
       ) : (
         <div className="px-[18px] pb-[18px]">

@@ -16,6 +16,19 @@ export async function currentCloudDocument(deckId: string) {
   return { detail, outline };
 }
 
+/**
+ * What the inspector summarises: the rolling draft when it sits on the current
+ * version and parses, as the editor shows it; otherwise the saved version.
+ */
+export async function inspectedOutline(deckId: string): Promise<Outline | null> {
+  const [detail, draft] = await Promise.all([getDeck(deckId), getDeckDraft(deckId)]);
+  if (draft !== null && draft.baseVersion === detail.deck.currentVersion) {
+    const parsed = parseOutline(draft.source, 'yaml');
+    if (parsed.ok) return parsed.outline;
+  }
+  return detail.content ?? null;
+}
+
 export async function renameCloudDocument(deckId: string, title: string) {
   const { detail, outline } = await currentCloudDocument(deckId);
   return addDeckVersion(deckId, renameDeck(outline, title), detail.deck.currentVersion);

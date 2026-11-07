@@ -1,23 +1,25 @@
-import { downloadCloudDocument, renameCloudDocument } from '../lib/cloud-document';
+import { downloadCloudDocument, inspectedOutline, renameCloudDocument } from '../lib/cloud-document';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import {
   copyFolder,
   createFolder,
+  facilitateSession,
   getContext,
-  getDeck,
   getDeckFileLink,
   getSpaceMembers,
   getSpaceTree,
   linkDeckFile,
   listAllSpaces,
   listContexts,
+  listMySessions,
   restoreContext,
   trashDeck,
   trashFolder,
   updateDeck,
   updateFolder,
+  type MySession,
   type SpaceTree,
 } from '../api';
 import { ContextLinksCard } from './tutor/ContextLinks';
@@ -37,6 +39,7 @@ import {
 import {
   EmptyInspector,
   ItemDetailPanel,
+  labelRecords,
   type PanelItem,
   type DeckAside,
 } from '../components/ItemDetailPanel';
@@ -54,7 +57,8 @@ import { parseRows, ROW_DRAG_MIME, type DragRow } from '../lib/row-drag';
 import { to } from '../destinations';
 import { invalidateManagementData } from '../query-client';
 import type { AuthSession } from '../useAuth';
-import type { StoredSession } from '@openroom/editor';
+import { LiveStartDialog, type LiveNowCue, type StoredSession } from '@openroom/editor';
+import { liveSessionOf } from '../lib/live-sessions';
 import { stringifyOpenRoomFile, type OpenRoomFileV1 } from '@openroom/schema';
 
 interface Props {
@@ -92,6 +96,9 @@ export function SpacePage({
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState('');
   const [dropTarget, setDropTarget] = useState<string | 'root' | null>(null);
+  /** The deck whose Start waits on "rejoin or start another". */
+  const [confirmLive, setConfirmLive] = useState<PanelItem | null>(null);
+  const [rejoining, setRejoining] = useState(false);
 
   const signedIn = session.user !== null && session.user !== undefined;
   const currentFolderId = folderIdProp ?? null;
@@ -150,6 +157,9 @@ export function SpacePage({
 
   const activeItemId = itemIdProp ?? null;
 
+  // Shares its cache with the Live now strip above the list.
+  const liveQuery = useQuery({ queryKey: ['sessions', 'live-now'], queryFn: listMySessions, refetchInterval: 15_000, enabled: signedIn });
+
   const goTo = useCallback(
     (next: { folderId?: string | null; itemId?: string | null; contextId?: string | null }, replace = false) => {
       if (!spaceId) return;
@@ -180,6 +190,21 @@ export function SpacePage({
     }
   }, [activeItemId, currentContextId, currentFolderId, navigate, spaceId, spaceIdProp]);
 
+  /*
+   * A student's own space opens as that student's view, so New deck there
+   * carries the student (`AGENTS.md`: only an explicit person view supplies
+   * contextId) and no deck of theirs sits outside it.
+   */
+  const ownerContextId = tree?.space.context?.id ?? null;
+  useEffect(() => {
+    if (spaceId && ownerContextId && currentContextId === null) {
+      void navigate({
+        ...to.library({ spaceId, folderId: currentFolderId, itemId: activeItemId, contextId: ownerContextId }),
+        replace: true,
+      });
+    }
+  }, [activeItemId, currentContextId, currentFolderId, navigate, ownerContextId, spaceId]);
+
   const refresh = useCallback(async () => {
     await treeQuery.refetch();
     if (currentContextId) await personQuery.refetch();
@@ -198,7 +223,8 @@ export function SpacePage({
 
   const allRows = useMemo((): (LibraryRow & { folderId: string | null; contextId: string | null })[] => {
     return decks
-      .filter((d) => currentContextId === null || d.contextId === currentContextId)
+      // In the student's own space every deck is theirs, linked or not.
+      .filter((d) => currentContextId === null || d.contextId === currentContextId || (!d.contextId && currentContextId === ownerContextId))
       .map((d) => {
         const who = contextNames.get(d.contextId ?? '') ?? null;
         const contents = d.contents;
@@ -214,7 +240,7 @@ export function SpacePage({
           asksTheClass: (contents?.askTheClass ?? 0) > 0,
         };
       });
-  }, [decks, contextNames, currentContextId]);
+  }, [decks, contextNames, currentContextId, ownerContextId]);
 
   const idsInFolder = useCallback(
     (folderId: string | null): Set<string> => {
@@ -277,12 +303,12 @@ export function SpacePage({
   const outlineQuery = useQuery({
     queryKey: ['decks', activeItemId, 'outline'] as const,
     enabled: activeItemId !== null,
-    queryFn: () => getDeck(activeItemId!),
+    queryFn: () => inspectedOutline(activeItemId!),
   });
-  const aside: DeckAside | null = outlineQuery.data?.content
+  const aside: DeckAside | null = outlineQuery.data
     ? {
-        homework: outlineQuery.data.content.homework ?? null,
-        recap: outlineQuery.data.content.recap ?? null,
+        homework: outlineQuery.data.homework ?? null,
+        recap: outlineQuery.data.recap ?? null,
       }
     : null;
 
@@ -295,6 +321,12 @@ export function SpacePage({
       return session?.deckId === deckId;
     });
   }, [activePanelItem, records, tree?.sessions]);
+
+  /** The person's quiet Notes group: titles only, most recent first, no dates. */
+  const personNotes = useMemo(
+    () => (currentContextId === null ? [] : labelRecords(records.filter((record) => record.contextId === currentContextId))),
+    [currentContextId, records],
+  );
 
   const renameItem = async (item: PanelItem, name: string) => {
     try {
@@ -361,6 +393,30 @@ export function SpacePage({
     } finally {
       setBusyId(null);
     }
+  };
+
+  const rejoin = async (live: MySession) => {
+    setRejoining(true);
+    try {
+      onOpenSession({ ...await facilitateSession(live.sessionCode), title: live.title ?? undefined });
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not join the session.', 'error');
+    } finally {
+      setRejoining(false);
+    }
+  };
+
+  const liveCue = (item: PanelItem | null): LiveNowCue | null => {
+    const live = item ? liveSessionOf(liveQuery.data ?? [], item.data) : null;
+    return live
+      ? { label: live.shared ? 'Join' : 'Rejoin', who: live.contextName ?? null, onRejoin: () => void rejoin(live), rejoining }
+      : null;
+  };
+
+  /** Start files a new session; while one of this deck and student runs, it asks once first. */
+  const requestStart = (item: PanelItem) => {
+    if (liveCue(item)) setConfirmLive(item);
+    else void startItem(item);
   };
 
   const duplicateItem = async (item: PanelItem) => {
@@ -469,7 +525,7 @@ export function SpacePage({
     ? {
         onStart: (deckId) => {
           const deck = decks.find((d) => d.id === deckId);
-          if (deck) void startItem({ kind: 'deck', data: deck });
+          if (deck) requestStart({ kind: 'deck', data: deck });
         },
         onDuplicate: (row) => {
           if (row.kind === 'folder') { void folderActions.onCopyFolder(row.id); return; }
@@ -546,7 +602,8 @@ export function SpacePage({
       place={{ spaceId, folderId: currentFolderId }}
       canEdit={canEdit}
       busy={busyId === activePanelItem.data.id}
-      onStart={(item) => void startItem(item)}
+      onStart={requestStart}
+      live={liveCue(activePanelItem)}
       onDuplicate={(item) => void duplicateItem(item)}
       onTrash={(item) => {
         setPendingDelete({ kind: item.kind, id: item.data.id, label: item.data.title });
@@ -652,7 +709,7 @@ export function SpacePage({
           ) : null}
 
           {welcome
-            ? <SpaceWelcome spaceId={spaceId} contextId={currentContextId} experience={space?.settings?.experience ?? 'classroom'} /> : null}
+            ? <SpaceWelcome spaceId={spaceId} contextId={currentContextId} experience={space?.settings?.experience ?? 'classroom'} experienceSaved={space?.experienceSaved ?? true} /> : null}
 
           <LibraryList
             crumbs={crumbs}
@@ -671,7 +728,8 @@ export function SpacePage({
             createTo={canEdit ? createTo : null}
             shareTo={personView ? null : shareTo}
             settingsTo={personView || !canEdit ? null : settingsTo}
-            samplesTo={canEdit && space?.settings?.experience === 'tutoring' ? to.lessonExamples(spaceId, { folderId: currentFolderId, contextId: currentContextId }) : null}
+            /* The welcome card carries Sample lessons while it shows. */
+            samplesTo={canEdit && !welcome && space?.settings?.experience === 'tutoring' ? to.lessonExamples(spaceId, { folderId: currentFolderId, contextId: currentContextId }) : null}
             onDragEnd={() => setDropTarget(null)}
             chrome="browser"
             /* The welcome card is this place's empty state; the list does not add a second one. */
@@ -681,6 +739,21 @@ export function SpacePage({
             scroll={personView ? 'page' : 'list'}
             {...(rowActions ? { rowActions } : {})}
           />
+
+          {personView && personNotes.length > 0 ? (
+            <section aria-labelledby="person-notes" className="mx-8 mb-6 flex flex-col gap-0.5">
+              <h2 id="person-notes" className="mb-1.5 px-2 text-caption text-muted-foreground">Notes</h2>
+              {personNotes.map((record) => (
+                <Link
+                  key={record.id}
+                  {...to.sessionNotes(record.sessionId)}
+                  className="w-fit max-w-full truncate rounded-md px-2 py-1.5 text-rail font-normal hover:bg-chrome"
+                >
+                  {record.label}
+                </Link>
+              ))}
+            </section>
+          ) : null}
 
           {/* Below the decks, which are what a tutor opens this page for; open, so a link's state is seen without a click. */}
           {personView && canEdit && currentContextId ? (
@@ -693,6 +766,13 @@ export function SpacePage({
 
         {inspector}
       </div>
+
+      <LiveStartDialog
+        live={liveCue(confirmLive)}
+        open={confirmLive !== null}
+        onOpenChange={(open) => { if (!open) setConfirmLive(null); }}
+        onStartAnother={() => { if (confirmLive) void startItem(confirmLive); }}
+      />
 
       <ConfirmActionDialog
         open={pendingDelete !== null}
@@ -714,6 +794,10 @@ export function SpacePage({
 }
 
 function cnLibrary(_personView: boolean): string {
-  /* Narrower rail and inspector at lg, so the list keeps room at 1024 px. */
-  return 'grid h-full min-h-0 flex-1 grid-cols-1 overflow-hidden bg-background lg:grid-cols-[180px_minmax(0,1fr)_248px] xl:grid-cols-[200px_minmax(0,1fr)_300px]';
+  /*
+   * Three columns at every width: the shell never gets narrower than 980 px
+   * (below that the page scrolls under a notice), so the columns never stack.
+   * Narrower rail and inspector below xl keep the list room.
+   */
+  return 'grid h-full min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)_248px] overflow-hidden bg-background xl:grid-cols-[200px_minmax(0,1fr)_300px]';
 }

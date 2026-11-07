@@ -31,10 +31,18 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await password.press('Tab');
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
-  await page.getByRole('link', { name: 'Choose experience', exact: true }).click();
-  await page.getByRole('radio', { name: /^Tutoring / }).check();
-  await page.getByRole('button', { name: 'Save experience', exact: true }).click();
-  await page.getByRole('link', { name: 'Add student or group', exact: true }).click();
+  // The first-run card offers the choice until an experience is saved (an earlier run on this database saved one).
+  const choose = page.getByRole('link', { name: 'Choose experience', exact: true });
+  const addStudent = page.getByRole('link', { name: 'Add student or group', exact: true });
+  await expect(choose.or(addStudent).first()).toBeVisible();
+  if (await choose.isVisible()) {
+    await choose.click();
+    await page.getByRole('radio', { name: /^Tutoring / }).check();
+    await page.getByRole('button', { name: 'Save experience', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Workspace', exact: true }).getByRole('link', { name: 'Library', exact: true }).click();
+    await expect(choose).toHaveCount(0);
+  }
+  await addStudent.click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Enter a name.');
   // The message sits on the field and the field takes focus.

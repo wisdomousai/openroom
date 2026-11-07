@@ -10,15 +10,18 @@ import { PresentStage, presentableSteps } from './PresentationStage';
 import { advance, atEnd, atStart, openCursor, retreat, type PresentCursor } from './cursor';
 import type { StoredSession } from '../types';
 import { ListeningControls, type ListeningSettings } from '../live/ListeningControls';
+import { LiveNowButton, LiveStartDialog, type LiveNowCue } from '../live/LiveStart';
 
 export type { PresentationPosition } from '@openroom/schema';
 
 /** One presenter for a document, optionally connected to a live session. */
-export function Presenter({ outline, fromStep = 0, startImmediately = false, documentSource, onStart, onClose }: {
+export function Presenter({ outline, fromStep = 0, startImmediately = false, documentSource, liveNow = null, onStart, onClose }: {
   outline: Outline;
   fromStep?: number;
   startImmediately?: boolean;
   documentSource?: string | null;
+  /** A recoverable session of this deck is running: shown beside Start session, and Start asks first. */
+  liveNow?: LiveNowCue | null;
   onStart: (cursor: PresentationPosition) => Promise<StoredSession>;
   onClose: (stepId?: string) => void;
 }) {
@@ -36,6 +39,7 @@ export function Presenter({ outline, fromStep = 0, startImmediately = false, doc
   const [live, setLive] = useState<StoredSession | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmStart, setConfirmStart] = useState(false);
   const startPromise = useRef<Promise<StoredSession> | null>(null);
   const [displays, setDisplays] = useState<DesktopDisplay[]>([]);
   const [audienceOpen, setAudienceOpen] = useState(false);
@@ -97,7 +101,7 @@ export function Presenter({ outline, fromStep = 0, startImmediately = false, doc
     const unsubscribe = bridge?.onPresentationCommand(command);
     return () => unsubscribe?.();
   }, [bridge, close, counts, live, starting]);
-  usePresentationKeys({ enabled: !live && !starting, close,
+  usePresentationKeys({ enabled: !live && !starting && !confirmStart, close,
     next: () => setCursor((current) => advance(counts, current)),
     previous: () => setCursor((current) => retreat(counts, current)),
   });
@@ -128,8 +132,10 @@ export function Presenter({ outline, fromStep = 0, startImmediately = false, doc
         <span className="flex-1" />
         {bridge ? <Button size="sm" variant="outline" onClick={() => void presentOn()}>Audience screen</Button> : null}
         {displays.filter((display) => display.external).map((display) => <Button key={display.id} size="sm" variant="outline" onClick={() => void presentOn(display.id)}>{display.label}</Button>)}
-        <Button size="sm" variant="live" disabled={starting || !step} onClick={() => void start()}>{starting ? 'Starting…' : 'Start session'}</Button>
+        {liveNow ? <LiveNowButton live={liveNow} /> : null}
+        <Button size="sm" variant="live" disabled={starting || !step} onClick={() => { if (liveNow) setConfirmStart(true); else void start(); }}>{starting ? 'Starting…' : 'Start session'}</Button>
       </header>
+      <LiveStartDialog live={liveNow} open={confirmStart} onOpenChange={setConfirmStart} onStartAnother={() => void start()} />
       {error ? <p role="alert" className="px-4 py-2 text-destructive">{error}</p> : null}
       <main className="flex min-h-0 flex-1 items-center justify-center gap-6 bg-desk px-6 py-5" style={{ containerType: 'size' }}>
         <div className="stage-mirror relative flex min-w-0 flex-col overflow-hidden rounded-lg bg-card shadow-[var(--shadow-page)]" style={{

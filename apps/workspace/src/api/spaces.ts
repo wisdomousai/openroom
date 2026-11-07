@@ -73,6 +73,8 @@ export interface SpaceTreeRecord {
 export interface SpaceTree {
   space: {
     id: string; name: string; role: SpaceRole; settings?: SpaceSettings;
+    /** False until the owner saves an experience; the Personal space starts without one. */
+    experienceSaved?: boolean;
     /** The student whose own space this is; null for a space of decks. */
     context?: { id: string; displayName: string } | null;
   };

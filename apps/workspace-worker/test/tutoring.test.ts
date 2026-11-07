@@ -748,6 +748,37 @@ describe('deck drafts', () => {
     expect((await asBrowser(cookie, `/api/decks/${deckId}/draft`)).status).toBe(404);
   });
 
+  it('summarises the draft in the Library row, and the saved version when the draft does not parse', async () => {
+    const { cookie } = await seedSession();
+    const { deckId } = await createDeckWithSession(cookie, await createContext(cookie));
+    const { deck } = await (await asBrowser(cookie, `/api/decks/${deckId}`)).json() as { deck: { spaceId: string } };
+    const row = async () => {
+      const tree = await (await asBrowser(cookie, `/api/my/spaces/${deck.spaceId}`)).json() as {
+        decks: { id: string; contents: { slides: number; askTheClass: number; homework: boolean } }[];
+      };
+      return tree.decks.find((d) => d.id === deckId)!.contents;
+    };
+    expect(await row()).toMatchObject({ slides: 3, askTheClass: 1, homework: false });
+
+    // JSON is YAML: a draft with one more slide and homework.
+    const drafted = {
+      ...SAMPLE_CONTENT,
+      steps: [...SAMPLE_CONTENT.steps, { id: 'bye', kind: 'title', title: 'À bientôt' }],
+      homework: { title: 'Homework', body: 'Write three sentences.' },
+    };
+    await asBrowser(cookie, `/api/decks/${deckId}/draft`, {
+      method: 'PUT',
+      body: JSON.stringify({ source: JSON.stringify(drafted), baseVersion: 1 }),
+    });
+    expect(await row()).toMatchObject({ slides: 4, askTheClass: 1, homework: true });
+
+    await asBrowser(cookie, `/api/decks/${deckId}/draft`, {
+      method: 'PUT',
+      body: JSON.stringify({ source: 'steps: [unclosed', baseVersion: 1 }),
+    });
+    expect(await row()).toMatchObject({ slides: 3, askTheClass: 1, homework: false });
+  });
+
   it('stamping a version clears the draft and never feeds delivery', async () => {
     const { cookie } = await seedSession();
     const { deckId, sessionId } = await createDeckWithSession(cookie, await createContext(cookie));
