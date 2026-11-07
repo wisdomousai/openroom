@@ -421,7 +421,7 @@ test('a focused button keeps Space, Hide results shows its state, and only the s
   await changeDialog.getByLabel('Heading', { exact: true }).fill('Kurze Pause');
   await changeDialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(mirror.getByText('Kurze Pause', { exact: true })).toBeVisible();
-  await expect(mirror.getByText('Pause', { exact: true })).toHaveCount(0);
+  await expect(mirror.getByRole('heading', { name: 'Pause', exact: true })).toHaveCount(0);
 
   // A question inserted live can carry its correct answer, and the ribbon goes back to Home.
   await page.getByRole('button', { name: 'Question', exact: true }).click();
