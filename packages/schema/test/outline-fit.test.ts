@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   defaultDeckDesign,
+  SLIDE_TEMPLATES,
   validateOutline,
   type DeckAspectRatio,
   type DeckDesign,
@@ -172,5 +173,24 @@ describe('W_SPAN_SIZE and W_INTERACTION_FIELDS', () => {
     expect(warning).toMatchObject({ code: 'W_INTERACTION_FIELDS', path: '/steps/0' });
     expect(warning!.message).toContain('title, body');
     expect(codes({ id: 'q', kind: 'interaction', interactionId: 'q1' })).toEqual([]);
+  });
+
+  it('says nothing about layout poll, which the wall draws, and names layout split', () => {
+    expect(codes({ id: 'q', kind: 'interaction', interactionId: 'q1', layout: 'poll' })).toEqual([]);
+    const [warning] = check({ id: 'q', kind: 'interaction', interactionId: 'q1', layout: 'split' }).warnings;
+    expect(warning!.message).toContain('ignores its layout');
+  });
+
+  it('gives no question template the warning', () => {
+    for (const template of SLIDE_TEMPLATES) {
+      const result = validateOutline({
+        version: 1,
+        meta: { title: template.name },
+        steps: [template.step],
+        interactions: template.interaction === undefined ? [] : [template.interaction],
+      });
+      if (!result.ok) throw new Error(`${template.name}: ${JSON.stringify(result.errors)}`);
+      expect((result.warnings ?? []).filter((warning) => warning.code === 'W_INTERACTION_FIELDS'), template.name).toEqual([]);
+    }
   });
 });

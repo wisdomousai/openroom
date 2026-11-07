@@ -647,11 +647,12 @@ function spanWarnings(outline: Outline): OutlineWarning[] {
 
 function interactionWarning(step: OutlineStep, index: number): OutlineWarning | null {
   if (step.kind !== 'interaction') return null;
+  // `poll` is the layout the wall draws, so naming it ignores nothing.
   const fields = [
     ...(step.title !== undefined ? ['title'] : []),
     ...(step.body !== undefined ? ['body'] : []),
     ...(step.media !== undefined ? ['media'] : []),
-    ...(step.layout !== undefined ? ['layout'] : []),
+    ...(step.layout !== undefined && resolvedStepLayout(step) !== 'poll' ? ['layout'] : []),
   ];
   if (fields.length === 0) return null;
   return {
