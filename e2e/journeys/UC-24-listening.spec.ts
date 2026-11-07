@@ -24,6 +24,8 @@ test('author a recording, choose the playback audience, reveal the transcript an
   await page.goto(`/host/#/decks/${deck.id}/edit`);
   await page.getByLabel('Audio file', { exact: true }).setInputFiles({ name: 'appointment.wav', mimeType: 'audio/wav', buffer: tone });
   await expect(page.getByLabel('Audio address', { exact: true })).toHaveValue(/\/api\/assets\//);
+  // Students read the label as the block's title, so it starts without the file extension.
+  await expect(page.getByLabel('Recording label', { exact: true })).toHaveValue('appointment');
   await page.getByLabel('Recording label', { exact: true }).fill('A changed appointment');
   await page.getByLabel('Transcript', { exact: true }).fill(transcript);
   await page.getByLabel('Transcript', { exact: true }).press('Tab');

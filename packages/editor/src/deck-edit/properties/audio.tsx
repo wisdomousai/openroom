@@ -6,6 +6,7 @@ import { isServiceError, useEditorServices } from '../../services';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { CommitTextarea, Section } from './shared';
+import { mediaLabelFromFileName } from '../media-label';
 
 export function AudioSection({ media, spaceId, onChange, onEmbedded }: {
   media: OutlineMedia;
@@ -34,12 +35,12 @@ export function AudioSection({ media, spaceId, onChange, onEmbedded }: {
         const result = await bridge.pickAudio();
         if (!result || !mounted.current) return;
         onEmbedded(result.resourceId, result.resource);
-        onChange({ ...content, url: `https://local.openroom.invalid/${result.resourceId}`, alt: result.resource.name });
+        onChange({ ...content, url: `https://local.openroom.invalid/${result.resourceId}`, alt: mediaLabelFromFileName(result.resource.name) });
       } else if (selected && spaceId) {
         const asset = await assets.upload(spaceId, selected);
         if (!mounted.current) return;
         if (asset.kind !== 'audio') throw new Error('Choose an audio recording.');
-        onChange({ ...content, assetId: asset.id, url: assets.url(asset.id), alt: asset.name });
+        onChange({ ...content, assetId: asset.id, url: assets.url(asset.id), alt: mediaLabelFromFileName(asset.name) });
       }
     } catch (cause) {
       if (mounted.current) setError(isServiceError(cause) && cause.code === 'unsupported-media-type'
