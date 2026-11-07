@@ -26,7 +26,7 @@ Moving focus away from an edited item title also commits its name. Use the detai
 
 ## Deck editor
 
-Use **Up** and **Down** within the slide rail to navigate thumbnails. Use the slide context menu or ribbon to duplicate, delete, and insert slides. Select a slide part to reach its corresponding property fields.
+In the slide rail, **Up** and **Down** select the previous or next slide, and **Alt+Up** and **Alt+Down** move the selected slide one place. Use the slide context menu or ribbon to duplicate, delete, and insert slides. Select a slide part to reach its corresponding property fields.
 
 For canvas objects, **Delete** or **Backspace** removes the selected removable object when text editing is inactive. When typing, those keys retain their ordinary text-editing behavior.
 

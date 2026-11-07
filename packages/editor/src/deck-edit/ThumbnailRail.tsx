@@ -152,6 +152,20 @@ export function ThumbnailRail({
   const [dragOver, setDragOver] = useState<number | null>(null);
   const selectedStepId = selection.kind === 'step' ? selection.id : null;
 
+  /** Up and Down move to the next slide in the rail, breakouts included. */
+  const onRailArrow = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    const rows = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[data-rail-row]')];
+    const at = rows.findIndex((row) => row === event.target);
+    if (at === -1) return;
+    const next = rows[at + (event.key === 'ArrowDown' ? 1 : -1)];
+    event.preventDefault();
+    if (next === undefined) return;
+    next.focus();
+    next.click();
+  };
+
   const onKeyDown = (event: React.KeyboardEvent, index: number, stepId: string) => {
     if (!event.altKey) return;
     if (event.key === 'ArrowUp') {
@@ -199,7 +213,7 @@ export function ThumbnailRail({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-3">
-      <ol className="flex flex-col gap-px" aria-label="Slides">
+      <ol className="flex flex-col gap-px" aria-label="Slides" onKeyDown={onRailArrow}>
         {blocks.map((block, index) => {
           const selected = block.step.id === selectedStepId;
           const meta = slideMeta(outline, block.step);
@@ -224,6 +238,7 @@ export function ThumbnailRail({
                 <ContextMenuTrigger asChild>
                   <button
                     type="button"
+                    data-rail-row=""
                     draggable
                     className={cn(
                       'flex w-full items-center gap-[9px] rounded-lg p-1.5 text-left',
@@ -284,6 +299,7 @@ export function ThumbnailRail({
                     <ContextMenuTrigger asChild>
                       <button
                         type="button"
+                        data-rail-row=""
                         className={cn(
                           'flex w-full items-center gap-2 rounded-lg py-1.5 pl-7 pr-1.5 text-left',
                           'hover:bg-chrome focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
