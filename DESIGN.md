@@ -192,12 +192,25 @@ outside these nine steps: `text-[13px]` and friends are a defect.
 
 `text-label` is **deleted**. Do not revive uppercase tracked caps.
 
-Wall type. Result text on the stage scales with the slide in `cqw`, on a small
-ramp: label, value, tick and note. Chart labels do not go below about 1.1 cqw
-(about 20 px on a 1920 px wall), and the correct-answer badge is a fixed token.
-The console tokens above do not apply on the wall. This is decided (LD12) and
-not built yet: the ramp needs the height the question plate gives back to the
-chart first.
+Wall type (LD12). Result text on the stage scales with the stage width on a
+small `cqw` ramp, defined once on `.stage__grid` in `apps/stage/src/stage-ui.css`.
+The tokens are registered as lengths (`@property`), so they resolve against the
+stage and reach a chart as px; `useWallType` in `@openroom/charts` reads them for
+SVG text and its margins. Off the wall they are `0px` and a chart keeps its own
+sizes. The console tokens above do not apply on the wall.
+
+| Token | Size | Job |
+| --- | --- | --- |
+| `--wall-label` | 1.8cqw | An option name at its largest; it shrinks with its row |
+| `--wall-label-floor` | 1.1cqw | The floor for every chart text (about 21 px at 1920) |
+| `--wall-value` | 1.4cqw | Counts and percents on the marks, the mean, peer numbers, answer cards |
+| `--wall-tick` | 1.25cqw | Axis numbers, the scale's end labels, the gauge caption |
+| `--wall-note` | 1.2cqw | The one-line results caption and the notes under a chart |
+| `--wall-badge` | 1.1cqw | The `✓ correct` badge, whatever the size of its label |
+
+Label sizes clamp between the floor and `--wall-label`. The question plate's
+block padding stops at 4cqw (LD11) so eight long options fit at the floor; the
+safe area still holds at the sides, and a slide footer keeps its band.
 
 Counts, codes, timers and tallies keep `font-variant-numeric: tabular-nums`.
 
@@ -315,7 +328,8 @@ Observed rhythm: `2 / 4 / 6 / 8 / 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 / 44 / 5
 | `--stack-gap` | Tight stacks (rail blocks, legends) |
 | `--chart-frame` | On `.plate__body`: `min(100cqmin, 100%)` so viz fills the body cell |
 
-Do not add rem/vh caps on individual charts. A content slide has **no rail**.
+Do not add rem/vh caps on individual charts; chart text sizes come from the
+wall type ramp above. A content slide has **no rail**.
 The waiting board is the only screen that prints the join address; resolve it
 with `resolveJoinUrl` / `localJoinUrl` — never hardcode. An identified session
 prints no code, address or QR anywhere on the stage: the rail says **Waiting for

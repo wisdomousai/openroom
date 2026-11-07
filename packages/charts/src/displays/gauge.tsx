@@ -14,6 +14,7 @@ import {
   radialText,
   scaleLinear,
   TanStackChart,
+  useWallType,
 } from '../tanstack';
 
 /** Gauge via TanStack's native partial-pie and radial-text marks. */
@@ -38,6 +39,8 @@ export function ScaleGaugeChart({
   const value = mean ?? min;
   const frac = max > min ? Math.min(1, Math.max(0, (value - min) / (max - min))) : 0;
   const compact = size === 'compact';
+  const [root, wall] = useWallType<HTMLDivElement>();
+  const captionSize = wall?.tick ?? (compact ? 12 : 18);
   const config = {
     mean: { label: 'Average', color: 'var(--chart-1)' },
   } satisfies ChartConfig;
@@ -94,7 +97,7 @@ export function ScaleGaugeChart({
               text: 'text',
               key: 'id',
               fill: 'var(--muted-foreground)',
-              fontSize: compact ? 12 : 18,
+              fontSize: captionSize,
               fontWeight: 600,
               anchor: 'middle',
               baseline: 'middle',
@@ -106,11 +109,12 @@ export function ScaleGaugeChart({
       theme: chartTheme,
       svgAnimation: chartAnimation(reduced),
     });
-  }, [frac, mean, min, max, total, compact, reduced]);
+  }, [frac, mean, min, max, total, compact, reduced, captionSize]);
 
   return (
     <Frame summary={scaleSummary({ interaction, counts, total, mean, dontKnow })}>
       <div
+        ref={root}
         className={cn('or-gauge-chart', compact && 'or-chart--compact')}
         data-or-chart="gauge"
       >

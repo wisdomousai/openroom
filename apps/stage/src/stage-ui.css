@@ -69,7 +69,33 @@
   pointer-events: none;
 }
 
+/*
+ * Wall type ramp (DESIGN.md, decision LD12). Registered as lengths, so each
+ * token resolves once, here, against the stage width (`.stage` is the size
+ * container), and reaches a chart as px however deep its own containers sit.
+ * Off the wall the tokens are 0px, and a chart keeps its own sizes.
+ */
+@property --wall-label { syntax: '<length>'; inherits: true; initial-value: 0px; }
+@property --wall-label-floor { syntax: '<length>'; inherits: true; initial-value: 0px; }
+@property --wall-value { syntax: '<length>'; inherits: true; initial-value: 0px; }
+@property --wall-tick { syntax: '<length>'; inherits: true; initial-value: 0px; }
+@property --wall-note { syntax: '<length>'; inherits: true; initial-value: 0px; }
+@property --wall-badge { syntax: '<length>'; inherits: true; initial-value: 0px; }
+
 .stage__grid {
+  /* An option name at its largest; it shrinks with its row down to the floor. */
+  --wall-label: 1.8cqw;
+  /* No chart text is smaller: about 20 px on a 1920 px wall. */
+  --wall-label-floor: 1.1cqw;
+  /* Counts and percents on the marks, the mean, peer numbers, answer cards. */
+  --wall-value: 1.4cqw;
+  /* Axis numbers and the scale's end labels. */
+  --wall-tick: 1.25cqw;
+  /* The one-line caption and the notes under a chart. */
+  --wall-note: 1.2cqw;
+  /* The correct-answer badge, whatever the size of the label it follows. */
+  --wall-badge: 1.1cqw;
+
   position: relative;
   z-index: 1;
   height: 100%;
@@ -597,7 +623,7 @@
   contain: inline-size;
   padding-top: 14px;
   border-top: 1px solid var(--hairline, var(--border));
-  font-size: 19px;
+  font-size: var(--wall-note);
   line-height: 1.4;
   color: var(--muted-foreground);
 }
@@ -776,8 +802,8 @@
 
 /* ====================================================================== */
 /* Projector scale for @openroom/charts vocabulary                         */
-/* Base look lives in @openroom/charts/charts.css; the plate only sizes it */
-/* up so labels and numbers read from the back row.                        */
+/* Base look lives in @openroom/charts/charts.css; the plate sizes it on   */
+/* the wall type ramp (on .stage__grid) so it reads from the back row.     */
 /* ====================================================================== */
 
 .plate .or-chart-legend .barrow {
@@ -796,34 +822,30 @@
 }
 
 .plate .barrow__label {
-  font-size: min(3.2cqw, calc(var(--or-row, 5.5rem) * 0.26));
+  font-size: clamp(var(--wall-label-floor), calc(var(--or-row, 5.5rem) * 0.26), var(--wall-label));
 }
 
 /* Column names share the plate width, so their size follows the column count. */
 .plate .or-cols-chart__labels .barrow__label {
-  font-size: min(clamp(1.2cqw, calc(11cqw / var(--or-cols, 4)), 2.4cqw), 7cqh);
+  font-size: clamp(var(--wall-label-floor), min(calc(11cqw / var(--or-cols, 4)), 7cqh), var(--wall-label));
 }
 
-.plate .or-bar-value {
-  font-size: clamp(0.9rem, 1.3vw, 1.5rem);
-}
-
-.plate .or-correct-note {
-  font-size: clamp(0.95rem, 1.6vw, 1.7rem);
+.plate .tag-correct {
+  font-size: var(--wall-badge);
 }
 
 .plate .shiftrow__label,
-.plate .shiftrow__nums {
-  font-size: clamp(1rem, 1.8vw, 1.7rem);
-}
-
-.plate .shiftnote {
-  font-size: clamp(0.8rem, 1.1vw, 1.1rem);
+.plate .shiftrow__nums,
+.plate .card {
+  font-size: var(--wall-value);
 }
 
 .plate .card {
-  font-size: clamp(0.9rem, 1.4vw, 1.5rem);
   line-height: 1.3;
+}
+
+.plate .shiftnote {
+  font-size: var(--wall-note);
 }
 
 .plate .or-peer-chart {
@@ -839,25 +861,24 @@
  * (half the options). Room for about three wrapped lines per row.
  */
 .plate .or-chart-legend--columns .barrow__label {
-  font-size: min(1.9cqw, calc(100cqh / (var(--or-rows, 2) * 3.9)));
+  font-size: clamp(var(--wall-label-floor), calc(100cqh / (var(--or-rows, 2) * 3.9)), var(--wall-label));
 }
 
-/* Sized from the chart body, not the window, so the console mirror keeps the same proportions. */
 .plate .or-scale-ends {
-  font-size: 2.2cqw;
+  font-size: var(--wall-tick);
 }
 
 .plate .or-hist-note {
-  font-size: 2cqw;
+  font-size: var(--wall-note);
 }
 
 .plate .or-mean-chip {
-  font-size: clamp(1rem, 1.5vw, 1.5rem);
+  font-size: var(--wall-value);
 }
 
 /* Match pairs: one line per pair, sized so every row of the grid fits the body. */
 .plate .or-pairs-chart {
-  font-size: min(2.4cqw, calc(100cqh / (var(--or-rows, 4) * 1.75)));
+  font-size: clamp(var(--wall-label-floor), calc(100cqh / (var(--or-rows, 4) * 1.75)), var(--wall-label));
 }
 
 .plate .or-emoji-item {
@@ -1116,7 +1137,12 @@
   font-size: 0.8em;
 }
 
-/* Live results inherit the same master and type scale as authored content. */
-.slide-surface > .plate { padding: var(--slide-safe-area); padding-bottom: max(var(--slide-safe-area), var(--slide-footer-band, 0px)); background: transparent; border: 0; border-radius: 0; box-shadow: none; gap: 2cqw; }
+/*
+ * Live results inherit the same master and type scale as authored content.
+ * The plate keeps the safe area at the sides, but its block padding stops at
+ * 4cqw (decision LD11): the results need that height, and a footer still keeps
+ * its band.
+ */
+.slide-surface > .plate { --plate-block: min(var(--slide-safe-area), 4cqw); padding: var(--plate-block) var(--slide-safe-area); padding-bottom: max(var(--plate-block), var(--slide-footer-band, 0px)); background: transparent; border: 0; border-radius: 0; box-shadow: none; gap: 2cqw; }
 .slide-surface .prompt { font-size: 4cqw; max-width: none; line-height: 1.15; }
 .slide-surface .plate__body { background: transparent; }

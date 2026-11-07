@@ -3,11 +3,13 @@
 Status: green on local Chromium.
 
 Purpose: on the wall a ranking names every item next to its rank, a column
-chart names every column under it, a scale keeps both end labels apart, and a
-number histogram marks the correct value and says it in its note. Nothing
-overlaps and nothing leaves the plate at 1920 and 1280 wide.
+chart names every column under it, eight long options keep their names beside
+their bars, a scale keeps both end labels apart, and a number histogram marks
+the correct value and says it in its note. Nothing overlaps, nothing leaves the
+plate, and no chart text is smaller than the wall's label floor (DESIGN.md,
+LD12) at 1920 and 1280 wide.
 
-Fixture: a session "Wall labels" with `resultVisibility: 'live'` and four
+Fixture: a session "Wall labels" with `resultVisibility: 'live'` and five
 interactions, each on its own step, answered by five participants, then closed
 and revealed:
 
@@ -16,6 +18,10 @@ and revealed:
 - `cols`: a choice with display `columns`, "Welcher Satz ist am höflichsten?",
   the fifth sentence ("Könnten Sie mir bitte sagen, wie ich zum Hauptbahnhof
   komme?") marked correct.
+- `bars`: a choice with the default bars display, "Welcher Satz ist am
+  höflichsten, wenn man im Restaurant nach einem Tisch fragt?", the six
+  sentences and two more, the fourth ("Der Bundesgesundheitsminister hat die
+  Verordnung unterschrieben") marked correct.
 - `scale`: "Wie sicher fühlen Sie sich beim Konjunktiv II?", 0 to 10, with a long
   label at each end.
 - `year`: a numeric question with display `number`, "In welchem Jahr fiel die
@@ -32,18 +38,26 @@ Acceptance:
 
 Every check is made at both sizes. "Laid out" means every measured box lies
 inside `.plate` and no two boxes overlap (one pixel of rounding allowed).
+"Readable" means every visible element in `.plate__body` with its own text,
+SVG text included, has a computed font size of at least 1.1 percent of the
+`.stage` width.
 
 - Ranking: `.or-rank-chart` has 6 `.barrow__label` rows. Each full sentence is
-  visible. The first row's rank reads "1.". The rows are laid out.
+  visible. The first row's rank reads "1.". The rows are laid out. The chart
+  is readable.
 - Columns: `.or-cols-chart__labels` has 6 `.barrow` entries. The one marked
   `data-or-correct` contains "Hauptbahnhof". The column labels are laid out.
+  The chart is readable.
+- Bars: `.or-bars-chart` has 8 `.barrow__label` rows. The row marked
+  `data-or-correct` contains "Bundesgesundheitsminister". The labels and the
+  value texts are laid out. The chart is readable.
 - Scale: `.or-scale-ends__min` contains "überhaupt nicht" and
   `.or-scale-ends__max` contains "freier Rede". There are 11 tick labels. Ticks
   and both end labels are laid out, and both end labels sit at or below the
-  lowest tick.
+  lowest tick. The chart is readable.
 - Number histogram: `.or-hist-note` contains "5 answers" and
   `.or-hist-note__correct` contains "1989". The chart has one line in the
-  `numeric-correct` mark. The note is laid out.
+  `numeric-correct` mark. The note is laid out. The chart is readable.
 
 Visual notes: the spec saves a screenshot per chart and size to the test
 output without comparing it. The layout checks are the assertions above.

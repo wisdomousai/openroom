@@ -21,6 +21,7 @@ import {
   scaleLinear,
   TanStackChart,
   text,
+  useWallType,
 } from '../tanstack';
 
 export function ScaleBarsChart({
@@ -75,6 +76,9 @@ export function ScaleBarsChart({
   const config = useMemo(() => countsChartConfig(rows), [rows]);
   const maximum = Math.max(1, ...rows.map((row) => row.count));
   const compact = size === 'compact';
+  const [root, wall] = useWallType<HTMLDivElement>();
+  const valueSize = wall?.value ?? (compact ? 12 : 14);
+  const tickSize = wall?.tick ?? (compact ? 12 : 22);
 
   const definition = useMemo(() => {
     const labels = rows.filter((row) => row.display.length > 0);
@@ -107,7 +111,7 @@ export function ScaleBarsChart({
                 text: 'display',
                 key: 'key',
                 fill: 'var(--foreground)',
-                fontSize: compact ? 12 : 14,
+                fontSize: valueSize,
                 fontWeight: 700,
                 anchor: 'middle',
                 dy: -8,
@@ -130,21 +134,25 @@ export function ScaleBarsChart({
         axis: {
           line: true,
           ticks: { size: 0, padding: 8 },
-          tickLabels: { fontSize: compact ? 12 : 22, fontWeight: 700, thin: false },
+          tickLabels: { fontSize: tickSize, fontWeight: 700, thin: false },
         },
       },
       y: { scale: scaleLinear, axis: false },
       // The tick numbers draw in the bottom margin, so it holds their line;
-      // the end labels then start on a row of their own below it.
-      margin: { top: 28, right: 12, bottom: compact ? 24 : 36, left: 12 },
+      // the end labels then start on a row of their own below it. The counts
+      // print above the bars, in the top margin.
+      margin: wall
+        ? { top: valueSize + 14, right: 12, bottom: Math.round(tickSize * 1.2 + 10), left: 12 }
+        : { top: 28, right: 12, bottom: compact ? 24 : 36, left: 12 },
       theme: chartTheme,
       svgAnimation: chartAnimation(reduced),
     });
-  }, [rows, maximum, compact, mean, reduced, showCount]);
+  }, [rows, maximum, compact, mean, reduced, showCount, wall, valueSize, tickSize]);
 
   return (
     <Frame summary={scaleSummary({ interaction, counts, total, mean, dontKnow })}>
       <div
+        ref={root}
         className={cn('or-scale-chart', compact && 'or-chart--compact')}
         data-or-chart="scale"
       >

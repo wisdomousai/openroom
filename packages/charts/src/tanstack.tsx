@@ -50,6 +50,54 @@ export function chartAnimation(reduced?: boolean) {
     : false;
 }
 
+/** The wall type ramp's SVG sizes, in px (DESIGN.md, LD12). */
+export interface WallType {
+  /** Counts and percents drawn on the marks. */
+  value: number;
+  /** Axis numbers. */
+  tick: number;
+}
+
+function wallLength(style: CSSStyleDeclaration, name: string): number | null {
+  // The stage registers the tokens as lengths, so they compute to px there.
+  const raw = style.getPropertyValue(name).trim();
+  const px = raw.endsWith('px') ? Number.parseFloat(raw) : Number.NaN;
+  return px > 0 ? Math.round(px * 10) / 10 : null;
+}
+
+/**
+ * Reads the wall type ramp at the element the ref is on, again on every resize.
+ * Null off the wall (no stage tokens), where a chart keeps its own sizes.
+ */
+export function useWallType<T extends Element>() {
+  const ref = useRef<T>(null);
+  const [type, setType] = useState<WallType | null>(null);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const read = () => {
+      const style = getComputedStyle(element);
+      const value = wallLength(style, '--wall-value');
+      const tick = wallLength(style, '--wall-tick');
+      setType((current) =>
+        value === null || tick === null
+          ? null
+          : current?.value === value && current.tick === tick
+            ? current
+            : { value, tick },
+      );
+    };
+    read();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(read);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, type] as const;
+}
+
 export function TanStackChart<
   TDatum,
   TXValue extends ChartValue,

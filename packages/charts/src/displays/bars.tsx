@@ -22,6 +22,7 @@ import {
   scaleLinear,
   TanStackChart,
   text,
+  useWallType,
 } from '../tanstack';
 
 /** Left and right plot margin of the columns chart, in px; the label row matches it. */
@@ -92,6 +93,8 @@ export function ChoiceBarsChart({
   const config = useMemo(() => countsChartConfig(rows), [rows]);
   const compact = size === 'compact';
   const maximum = Math.max(1, ...rows.map((row) => row.count));
+  const [root, wall] = useWallType<HTMLDivElement>();
+  const valueSize = wall?.value ?? (compact ? 12 : 14);
 
   const definition = useMemo(() => {
     const labels = rows.filter((row) => row.display.length > 0);
@@ -122,7 +125,7 @@ export function ChoiceBarsChart({
           text: 'display',
           key: 'key',
           fill: 'var(--foreground)',
-          fontSize: compact ? 12 : 14,
+          fontSize: valueSize,
           fontWeight: 700,
           anchor: 'middle',
           dy: -8,
@@ -135,11 +138,12 @@ export function ChoiceBarsChart({
         axis: { line: true, ticks: false, tickLabels: false },
       },
       y: { scale: scaleLinear, axis: false },
-      margin: { top: compact ? 24 : 34, right: COLUMN_INSET, bottom: 0, left: COLUMN_INSET },
+      // The values print above the columns, in the top margin.
+      margin: { top: wall ? valueSize + 20 : compact ? 24 : 34, right: COLUMN_INSET, bottom: 0, left: COLUMN_INSET },
       theme: chartTheme,
       svgAnimation: chartAnimation(reduced),
     });
-  }, [rows, maximum, compact, reduced]);
+  }, [rows, maximum, compact, reduced, valueSize, wall]);
 
   const horizontalDefinition = useMemo(() => {
     const labels = rows.filter((row) => row.display.length > 0);
@@ -170,7 +174,7 @@ export function ChoiceBarsChart({
           text: 'display',
           key: 'key',
           fill: 'var(--foreground)',
-          fontSize: compact ? 12 : 14,
+          fontSize: valueSize,
           fontWeight: 700,
           anchor: 'start',
           dx: 8,
@@ -181,16 +185,18 @@ export function ChoiceBarsChart({
         scale: () => scaleBand<string>().padding(0.14),
         axis: false,
       },
-      margin: { top: 0, right: compact ? 64 : 110, bottom: 0, left: 0 },
+      // The values print after the bars, in the right margin.
+      margin: { top: 0, right: wall ? Math.round(valueSize * 7.9) : compact ? 64 : 110, bottom: 0, left: 0 },
       theme: chartTheme,
       svgAnimation: chartAnimation(reduced),
     });
-  }, [rows, maximum, compact, reduced]);
+  }, [rows, maximum, compact, reduced, valueSize, wall]);
 
   if (vertical) {
     return (
       <Frame summary={choiceSummary({ interaction, counts, total, dontKnow, revealed })}>
         <div
+          ref={root}
           className={cn('or-cols-chart', compact && 'or-chart--compact')}
           style={
             {
@@ -245,6 +251,7 @@ export function ChoiceBarsChart({
   return (
     <Frame summary={choiceSummary({ interaction, counts, total, dontKnow, revealed })}>
       <div
+        ref={root}
         className={cn('or-bars-chart', compact && 'or-chart--compact')}
         style={{ '--or-rows': rows.length } as React.CSSProperties}
         data-or-chart="bars"

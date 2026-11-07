@@ -13,6 +13,7 @@ import {
   scaleBand,
   scaleLinear,
   TanStackChart,
+  useWallType,
 } from '../tanstack';
 
 function numericSummary(p: {
@@ -86,6 +87,8 @@ export function NumericHistogramChart({
   const showMedian = interaction.displayOptions?.showMedian !== false;
   const compact = size === 'compact';
   const maximum = Math.max(1, ...rows.map((row) => row.count));
+  const [root, wall] = useWallType<HTMLDivElement>();
+  const tickSize = wall?.tick ?? (compact ? 11 : 15);
 
   const definition = useMemo(() => {
     const meanLabel =
@@ -147,23 +150,24 @@ export function NumericHistogramChart({
         axis: {
           line: false,
           ticks: { size: 0, padding: 8 },
-          tickLabels: { fontSize: compact ? 11 : 15, fontWeight: 600, thin: true },
+          tickLabels: { fontSize: tickSize, fontWeight: 600, thin: true },
         },
       },
       y: { scale: scaleLinear, grid: true, axis: false },
       // The tick values draw in the bottom margin; it holds their line so the
       // note below never prints over them.
-      margin: { top: 16, right: 12, bottom: compact ? 22 : 28, left: 12 },
+      margin: { top: 16, right: 12, bottom: wall ? Math.round(tickSize * 1.2 + 10) : compact ? 22 : 28, left: 12 },
       theme: chartTheme,
       svgAnimation: chartAnimation(reduced),
     });
-  }, [rows, bins, mean, median, showMean, showMedian, compact, reduced]);
+  }, [rows, bins, mean, median, showMean, showMedian, compact, reduced, wall, tickSize]);
 
   return (
     <Frame
       summary={numericSummary({ interaction, total, mean, median, dontKnow, revealed })}
     >
       <div
+        ref={root}
         className={cn('or-hist-chart', compact && 'or-chart--compact')}
         data-or-chart="histogram"
       >
