@@ -1,5 +1,5 @@
 ---
-title: Issue and replace learner links
+title: Issue and replace access links
 description: Give each learner private access to their work and preserve identity when replacing a link.
 section: Teaching and follow-up
 order: 140
@@ -8,10 +8,10 @@ related: [contexts, learner, sharing, limits]
 
 ## Create a link
 
-**Required:** editor or owner access to the context's space.
+**Required:** editor or owner access to the context's space, and a plan that includes **Homework and Notes**. Without the plan, the card shows a **Homework and Notes** lock with a **Plans** button.
 
-1. Open the student's or class's Library and expand **Student access links**.
-2. Select **Create link**.
+1. Open the student's or class's place in the Library and find the **Access links** card below the decks.
+2. Select **Create link**. The page **Create an access link** opens.
 3. Choose the **Learner**. For a new member of a group, choose **New learner** and enter their **Display name**.
 4. Choose **Expires**. The default is 180 days.
 5. Select **Create link**.
@@ -36,20 +36,16 @@ Choosing the existing learner preserves their writing and practice history. Choo
 
 ## Revoke or renew access
 
-In **Learner access links**, find the link by learner, prefix, and expiry. Select **Revoke** and confirm. Further requests through that link are denied.
+In **Access links**, find the link by learner, prefix, and expiry. Select **Revoke**, then **Revoke link** to confirm. Further requests through that link are denied.
 
 An expired link is renewed by creating a replacement for the same learner. A context supports at most 10 active links. Revoke an unused active link before creating another when the limit is reached.
 
 ## Use named live participation
 
-Set the deck's identity mode to identified through its prepared outline when the session should admit only linked learners. Start the deck from its real context. Learners can enter the live session after it starts, using their personal credentials.
+A named (identified) live lesson is prepared through a connected agent or the [command line](/docs/cli/). The browser has no control to set identified mode or to build the join address. The agent sets the identity mode in the outline, files the deck under the student, and starts it. It then asks OpenRoom for the student's access link for that session and returns the finished join address, which already carries the link. Send that address only to that learner.
 
-The current named-join workflow uses a personal participant address. Combine the session's join code and the learner token from their issued link:
+Learners can enter the live session after you start it. On their first join they see **Your tutor sees your name in this lesson.** once. The live console shows the student's name in place of the join code, and the audience display shows no code or QR. After a successful join, the participant page uses a credential limited to the live session. Keep the lesson-page link for ongoing homework and feedback.
 
-```text
-https://join.openroom.app/?code=SESSION_CODE&link=LEARNER_TOKEN
-```
+Without an agent, teach with generated session names: start the deck as usual and share its code.
 
-Replace both placeholders and send the completed address only to that learner. Use the participant origin of your installation if it differs. The learner token is the `token` value in the lesson-page link issued by **Create link**; it begins with `orlnk_`. Keep that lesson-page link for ongoing homework and feedback. After a successful join, the participant page uses a credential limited to the live session.
-
-A named roster invitation belongs to one live session and follows a separate entry path. Use [roster invitations](/docs/participant/#join-with-a-roster-invitation) for a one-session attendance or voting group, and learner links for continuing teaching records.
+A named roster invitation belongs to one live session and follows a separate entry path. Use [roster invitations](/docs/participant/#join-with-a-roster-invitation) for a one-session attendance or voting group, and access links for continuing teaching records.

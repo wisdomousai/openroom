@@ -28,18 +28,20 @@ Read its slides, questions, teacher notes, and homework. Replace names or exampl
 
 ## Set teaching languages
 
+Each student has their own space, and the language pair belongs to that space, so every student has their own pair. A new student starts without one: their place says that word lookup needs a language pair, with a **Set language** link.
+
 Open **Space settings** or the context panel's **Set language** link. Select **Students’ language**, then **Teaching**, and save the language pair.
 
 The first selection narrows the supported teaching languages. Changing it may clear an incompatible teaching selection. This pair drives dictionary lookup. The learner's interface-language selector separately controls the labels on their own page.
 
 ## Prepare the next lesson
 
-Read the previous private **Next session** in the context panel. Open Notes for the relevant lesson to review outcomes and homework. Select **Review learner work** for submitted writing and voice responses.
+Read the private **Next session** note in the context panel; select **Show all** for a long note. Open the lesson's Notes from the **Notes** group below the student's decks to review outcomes and homework. Select **Review learner work** for submitted writing and voice responses.
 
 In a context-linked deck, open the editor's **Notes** pane to find **Practice to revisit** and **From learner feedback**. Inspect an item before copying it into the new deck. The [review instructions](/docs/review/#bring-selected-work-into-the-next-deck) explain which material becomes visible when copied.
 
 ## Manage access and removal
 
-Use **Student access links** to create individual learner credentials. For a group or class, create a separate named learner link for each person whose work should remain separate.
+Use the **Access links** card on the student's place to create individual learner credentials; see [access links](/docs/learner-links/). For a group or class, create a separate named access link for each person whose work should remain separate.
 
-Move a context to Trash through its management action when it is no longer in active use. Restore it before issuing new learner links. Review the browser confirmation carefully before permanent deletion; the context owns learner work and related access.
+Select **Move to trash** on the student's place when the student is no longer taught. The dialog **Move {student} to trash** names the decks, access links and learner work that go with them. The place then says **{student} is in Trash.**; select **Restore** to bring it back. Restore it before issuing new access links. Review the browser confirmation carefully before permanent deletion; the context owns learner work and related access.

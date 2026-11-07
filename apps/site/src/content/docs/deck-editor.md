@@ -8,7 +8,7 @@ related: [slides, questions, design, media, desktop]
 
 ## Open the editor
 
-Select a deck in the Library and choose **Open**. The editor contains a slide rail, the slide canvas, and a task pane. The ribbon contains commands for the selected slide or object. The title bar provides **Present** and **Start session**.
+Select a deck in the Library and choose **Open**. The editor contains a slide rail, the slide canvas, and a task pane. The ribbon contains commands for the selected slide or object. The title bar provides **Present** and **Start session**. For a deck filed under a student, it also names the student. While a session of this deck is running, **Live now** and **Rejoin** appear beside **Start session**; see [rejoin a running session](/docs/live-session/#start-and-share-entry).
 
 Select a thumbnail to edit that slide. Select text, a picture, or another slide part to show its applicable controls. Choose an empty part of the slide to return to slide-level controls.
 
@@ -20,7 +20,7 @@ Select a thumbnail to edit that slide. Select text, a picture, or another slide 
 | --- | --- |
 | Design | Content, arrangement, timing, media, response mode, and reveal controls for the selection. |
 | Theme | Deck colors, fonts, slide size, masters, and slide overrides. |
-| Notes | Presenter notes and available learner-work insertion tools. |
+| Notes | Presenter notes, saved with the deck and never shown to students, and available learner-work insertion tools. |
 | History | Saved versions and restoration. |
 
 ## Write and format content
@@ -55,7 +55,7 @@ The **plan.yaml** menu copies the command-line commands that read this deck into
 
 ## Save changes
 
-Cloud editing saves a rolling draft after a short pause. The status shows **Unsaved changes**, **Saving…**, **Saved**, or a save error. Wait for **Saved** before closing the tab. A failed save retries automatically; if the error remains, keep the editor open, restore the connection, and make a further edit to retry.
+Cloud editing saves a rolling draft after a short pause. The status shows **Unsaved changes**, **Saving…**, **Saved**, or a save error. Wait for **Saved** before closing the tab. A failed save retries automatically and shows **Couldn’t save — retrying**. If the status stays at **Couldn’t save**, keep the editor open, restore the connection, and make a further edit to retry. If the deck was changed somewhere else, the editor shows the conflict banner instead; see [resolve a conflicting draft](#resolve-a-conflicting-draft).
 
 Drafts preserve unfinished fields so you can return to them. Starting participation validates the content and saves a version first. Complete any question named in the readiness message before starting the session. A draft can be readable in the editor while its unfinished question still needs an answer or prompt.
 
@@ -65,19 +65,19 @@ The **Save a copy** and **Copy embed code** actions also save the current conten
 
 1. Open **History** in the task pane.
 2. Find the version you want by its number and saved date.
-3. Select **Restore**.
+3. Select **Restore**. Any version can be restored, the latest included.
 4. Review the restored content in the editor.
 
 Restored content becomes your working draft. Starting or exporting saves it through the normal versioned workflow. Later versions remain available in History.
 
 ## Resolve a conflicting draft
 
-If another client saved a newer version, the editor preserves your draft and displays two choices:
+If the deck was changed in another tab, another client or by an agent, the editor keeps your edits and shows **This deck was changed somewhere else since you opened it. Your edits are kept below.** with two choices:
 
 - **Keep this draft:** continue with the visible content, based on the latest saved version.
 - **Use saved version:** replace the working text with the latest saved content.
 
-Review the difference before choosing. Copy important text elsewhere if you need to combine overlapping changes manually. Starting participation waits until the conflict is resolved.
+When you return to the tab and nothing in it is unsaved, the editor loads the newer content without asking. Review the difference before choosing. Copy important text elsewhere if you need to combine overlapping changes manually. Starting participation waits until the conflict is resolved.
 
 ## Review overflow
 

@@ -8,9 +8,13 @@ related: [deck-editor, live-session, learner, desktop, account, limits]
 
 ## A deck has unsaved changes
 
-Keep the editor open and restore the connection. Wait for the save status. If the automatic retries have finished, make a further edit to retry. Preserve important text locally before closing a page that still reports a save error.
+Keep the editor open and restore the connection. Wait for the save status. If it stays at **Couldn’t save** after the automatic retries, make a further edit to retry. Preserve important text locally before closing a page that still reports a save error.
 
-For a version conflict, review **Keep this draft** and **Use saved version**. Choose the intended content only after considering the other client's changes. In Desktop, save a separate local copy before resolving a cloud synchronization conflict.
+If the editor says **This deck was changed somewhere else since you opened it.**, choose **Keep this draft** or **Use saved version**. Choose the intended content only after considering the other client's changes. In Desktop, save a separate local copy before resolving a cloud synchronization conflict.
+
+## The live console is gone after a reload
+
+A reload, or opening the session address on another device, can show **This session is not open on this device.** The session is still running. Sign in on this device and select **Rejoin** under **Live now** in the Library, or in the deck editor of that deck. Do not select **Start session** again: it asks **This deck is live now**, and **Start another** starts a second session.
 
 ## Start session is blocked
 
@@ -40,9 +44,9 @@ Complete all required parts of a ranking, gap, or matching answer. Follow the nu
 
 ## The host or stage stops updating
 
-Restore the network and check the host's connection label. **Polling** is a fallback connection with periodic updates. **Offline** requires recovery before relying on new commands.
+Restore the network and check the host's connection label. **Connected** means commands and answers get through by periodic requests, a little later than **Live**. **Offline** requires recovery before relying on new commands.
 
-Use **Live now** to resume the same session through the Library. If a stage link failed to load, use **Stage — retry**. Permit the new window when the browser blocks it. Open the stage on the intended projector or shared screen.
+Use **Rejoin** under **Live now** in the Library or the deck editor to resume the same session. If a stage link failed to load, use **Stage — retry**. Permit the new window when the browser blocks it. Open the stage on the intended projector or shared screen.
 
 For co-facilitation, check the current presenter. Pass presentation to the correct person or use the available recovery action.
 

@@ -22,7 +22,7 @@ Your agent runs in your chosen client. OpenRoom receives the resulting deck and 
 
 In a compatible client, add the MCP URL as a connection. Follow the browser sign-in flow, review the requested access, and approve the intended account. Return to the client and refresh its available tools.
 
-Client support and account requirements vary. For a client that requests a token header instead, use the token procedure below. Manage consent-based connections in [Connected apps](/docs/account/#manage-connected-apps).
+Client support and account requirements vary. For a client that requests a token header instead, use the token procedure below. Manage consent-based connections in [Connected applications](/docs/account/#manage-connected-applications).
 
 ## Connect with a personal token
 

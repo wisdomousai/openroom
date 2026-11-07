@@ -19,6 +19,7 @@ Shortcuts involving letters or arrows are suspended while typing in text fields.
 | Space on a focused item | Select the item and show its details. |
 | Enter on a focused item | Open the item. |
 | Shift+F10 | Open the focused row's context menu. |
+| F2 on a focused folder | Rename the folder. |
 | Enter while renaming | Commit the name. |
 | Escape while renaming | Cancel the edit. |
 
@@ -39,8 +40,8 @@ Use **Review overflow** to locate content that exceeds its available area. Suppl
 | Right arrow | Next reveal or slide | Next |
 | Left arrow | Previous reveal or slide | Previous |
 | Space | Next reveal or slide | The currently available primary action |
-| Escape | Close the presenter | Dismiss the active overlay where applicable |
-| H | — | Show or hide the current result |
+| Escape | Close the presenter, or first close the **This deck is live now** question | Dismiss the active overlay where applicable |
+| H | — | **Hide results**: hide or show the current question's results on the audience display |
 | F | — | Freeze or unfreeze participation |
 
 Live shortcuts require presenter authority. A presenter opened inside the deck editor uses its own navigation handling. Check the visible action label before pressing Space: it follows the current question state.
@@ -51,8 +52,11 @@ Live shortcuts require presenter authority. A presenter opened inside the deck e
 | --- | --- | --- |
 | New file | Command+N | Ctrl+N |
 | Open file | Command+O | Ctrl+O |
+| Save | Command+S | Ctrl+S |
+| Save As | Shift+Command+S | Shift+Ctrl+S |
+| Present | Option+Command+P | Alt+Ctrl+P |
 
-Use the editor's **File → Save** and **Save as…** buttons to save local decks. Use the installed application's File menu to confirm available keyboard commands on that platform.
+These commands are in the application's **File** menu. The editor's **File** tab offers the same saves.
 
 ## Participant reading and input
 

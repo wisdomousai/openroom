@@ -58,4 +58,4 @@ When recovery is permitted, **Take back presentation** restores presenter contro
 
 ## Prepare a workshop recap
 
-Open **Session menu → Prepare workshop recap**. Select the results and public material to include, preview the recap, and download it. Review selected free-text material before sharing. See [results and recaps](/docs/results/) for refresh behavior and exports.
+Open **Session menu → Prepare recap**. A session on your own live server (relay) has no recap. Select the results and public material to include, preview the recap, and download it. Review selected free-text material before sharing. See [results and recaps](/docs/results/) for refresh behavior and exports.

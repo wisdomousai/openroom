@@ -17,28 +17,28 @@ Prepare the deck's identity policy through a connected agent or the typed outlin
 | Identified | Use a personal learner credential belonging to the deck's context; joining opens after the teacher starts. |
 | Roster | Use a host-issued invitation naming one seat in one session; lobby entry is available. |
 
-An identified deck needs a real student, group, or class context. Named roster sessions require the named-invitation entitlement. See [learner links](/docs/learner-links/#use-named-live-participation) and [roster administration](/docs/cli/#issue-named-roster-invitations) to prepare the corresponding entry addresses.
+An identified deck needs a real student, group, or class context: file the deck under that student before starting it. Identified mode is set in the outline by a connected agent; the browser has no control for it. Named roster sessions require the named-invitation entitlement. See [access links](/docs/learner-links/#use-named-live-participation) and [roster administration](/docs/cli/#issue-named-roster-invitations) to prepare the corresponding entry addresses.
 
 ## Start and share entry
 
-Select **Start session** from a deck or its presenter. The current deck content is saved and captured for the session. The host header shows the connection state, joined count, and answered count for the current question.
+Select **Start session** from a deck in the Library, the deck editor, or the presenter. The current deck content is saved and captured for the session. The host header shows the connection state, joined count, and answered count for the current question.
 
-For code-based participation, select the join code to copy its link, or open **Session menu → Join page**. Share the code or QR code with the audience. A named learner session uses personal [learner access links](/docs/learner-links/). A roster session uses individual invitations for its named seats.
+While a session of the deck is running, **Live now** and **Rejoin** appear beside **Start session**. Pressing **Start session** then asks once, in **This deck is live now**: select **Rejoin** to return to the running session, **Start another** to start a second one, or **Cancel**.
+
+For code-based participation, select the join code chip to copy its link, or open **Session menu → Copy join link** or **Join page**. Share the code or QR code with the audience. In an identified session the header shows the student's name instead of the code, and the audience display shows no code or QR; the student joins with the address the agent returned, which carries their [access link](/docs/learner-links/). A roster session uses individual invitations for its named seats.
 
 Select **Stage** in the session menu to open the audience display. If its link has not loaded, select **Stage — retry**.
 
 ## Open, close, and reveal a question
 
-Select the question in the rail and open it on the audience display. The selected preview and the active audience question may differ; use the open/show action when you intend to change the audience's current question.
+A question opens for answers when its slide becomes the current slide. Returning to a question slide opens it again with its existing answers. The selected preview in the rail and the audience's current slide may differ; move to the slide when you intend to change what the audience sees.
 
-| Action | Result |
+| Control | Result |
 | --- | --- |
-| Open | Make the question active and accept responses. |
-| Close | Stop accepting responses. Aggregates follow the configured visibility policy. |
-| Reveal results / Call out the correct answer | Show the result and configured correctness information. |
-| Hide results | Hide the revealed result while retaining received responses. |
-| Reopen | Accept responses again for that question, retaining its existing answers. |
-| Next | Reveal the next content group or continue to the next slide/question. |
+| **Close answering** | Stop accepting responses. Aggregates follow the configured visibility policy. |
+| **Reveal results** / **Call out the correct answer** | Show the result and, where the question has one, the correct answer. |
+| **Hide results** (H) | Hide or show this question's results on the audience display. Received responses are kept. While pressed, the ribbon says **Results hidden**. |
+| **Next** (→) | Reveal the next content group or continue to the next slide. **Back** (←) returns. |
 
 A question countdown closes responses automatically when time runs out. Closing a question and ending the session are different operations.
 
@@ -54,16 +54,16 @@ For a choice question prepared with peer instruction:
 
 1. Collect and close the first vote.
 2. Let participants discuss their reasoning.
-3. Start the second vote using the revote control.
+3. Select **Second vote**.
 4. Close the second vote and compare the rounds.
 
-The first-round aggregate is retained for comparison. **Undo revote** restores the first round and discards the second round.
+The first-round aggregate is retained for comparison. **Back to first vote** restores the first round and discards the second round.
 
 ## Freeze participation
 
-Select **Freeze** to pause submissions and hide participant text on the audience display. Use **Unfreeze** to resume. This is useful when a response needs moderation or the room needs your attention.
+Select **Freeze** (F) to pause submissions and hide participant text on the audience display. Use **Unfreeze** to resume. This is useful when a response needs moderation or the room needs your attention. In a narrow window, **Freeze** and **End session** are in the Session menu.
 
-Use the ordinary question-close action when only the current question should stop receiving answers. Use **Blank** to toggle the current question's audience result visibility.
+Use **Close answering** when only the current question should stop receiving answers. Use **Hide results** to hide the current question's results from the audience display.
 
 ## Control from a phone
 
@@ -77,10 +77,10 @@ The remote link carries host authority. Send participant links to the audience a
 | --- | --- |
 | Connecting | Wait for the session connection to initialize. |
 | Live | The session is receiving live updates. |
-| Polling | Updates are arriving through periodic requests. Continue, allowing for a short delay. |
+| Connected | Commands and answers get through by periodic requests. Continue; updates can arrive a little later. |
 | Offline | Restore network access. Check the latest slide and question state after reconnecting before sending another action. |
 
-Use the same browser to retain its session connection. On another device, sign in and use **Live now** in the relevant Library. Shared facilitators should also re-enter through their shared space.
+Use the same browser to retain its session connection. After a reload, or on another device, sign in and use **Rejoin** under **Live now** in the Library or in the deck editor. A colleague in a shared space sees **Join session** there instead. If a device opens the session address without its credentials, it says **This session is not open on this device.**
 
 If an operation fails, read the error and wait for reconnection before retrying. Check whether the intended slide or response state has already changed. Starting again deliberately creates another audience session; use recovery to return to the existing one.
 

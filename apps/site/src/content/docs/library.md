@@ -22,7 +22,7 @@ Where **List** and **Tiles** are offered, choose the view that helps you find th
 
 ## Create and rename folders
 
-Use **New folder** in the folder browser, type its name, and confirm. To rename a folder, open its context menu and select **Rename**. Enter the new name and press **Enter** or move focus elsewhere to commit it. **Escape** cancels the edit.
+Use **New folder** in the folder browser, type its name, and confirm. To rename a folder, open its context menu and select **Rename**, or focus the folder and press **F2**. Enter the new name and press **Enter** or move focus elsewhere to commit it. **Escape** cancels the edit.
 
 Folder creation takes place in the current location. Use the tree and breadcrumb to check that location first.
 
@@ -41,7 +41,9 @@ To rename a deck from the Library:
 
 To move a deck, drag it onto its destination folder or use **Move** in the details panel. The move picker presents the folder hierarchy; filter it to find a destination. Select the intended location and finish the move.
 
-Right-click a row to open its action menu. Keyboard users can select the row and press **Shift+F10**. The details panel also provides the deck's main actions.
+Right-click a row to open its action menu: **Open**, **Start session**, **Duplicate** and **Move to trash** on a deck, and **Open**, **Rename**, **Duplicate** and **Move to trash** on a folder. Keyboard users can select the row and press **Shift+F10**. The details panel also provides the deck's main actions.
+
+A row and the details panel summarise the deck's current draft when it has one, so they match what the editor shows.
 
 ## Duplicate and download
 
@@ -55,16 +57,18 @@ The Library details panel also offers **Save a copy on this computer** for the s
 
 ## Return to teaching and Notes
 
-Use **Live now** to rejoin an ongoing session. A deck's details and its person's folder provide links to saved results and Notes where available. Follow the **Write the notes** prompt to complete the session record.
+While a session is running, the **Live now** row above the list names the deck and the student and offers **Rejoin** (**Join session** for a colleague's session in a shared space). The deck's details panel shows **Live now** and **Rejoin** beside **Start session**; pressing **Start session** then asks whether to rejoin or start another session.
+
+A student's place lists their session Notes by title in a **Notes** group below the decks. Follow the prompt **Write the notes for {student}’s session, {deck}** to complete an ended session's record. The deck's details panel links to saved results where available.
 
 Use the person's **Review learner work** link to read homework submissions and publish feedback.
 
 ## Trash and restore
 
-Select **Move to trash** in the deck's details panel and confirm. Folder trash is also available through the folder actions. Read the confirmation to check which item and contents are affected.
+Select **Move to trash** in the deck's details panel and confirm. To trash a folder, use **Move to trash** in its context menu. **Move folder to trash** moves the folder, the folders inside it and their decks, with their sessions, to Trash; restoring the folder brings them back together.
 
-Open **Trash**, find the item, and select **Restore**. Notes follow the session they belong to; restoring that session restores access to its Notes. Brand kits have their own Trash under **Space settings → Brand kits**.
+Open **Trash**, find the item, and select **Restore**. A deck restored on its own from a folder that is still in Trash appears at the top of the space. Notes follow the session they belong to; restoring that session restores access to its Notes. Brand kits have their own Trash under **Space settings → Brand kits**.
 
-For permanent removal, choose the permanent-delete action in Trash. Complete the final confirmation in the signed-in browser before the confirmation link expires. Permanent deletion removes the selected record and its dependent data according to the confirmation shown. An expired confirmation requires a new request.
+For permanent removal, choose the permanent-delete action in Trash. Complete the final confirmation in the signed-in browser before the confirmation link expires. The confirmation page names what is deleted. Permanently deleting a folder deletes the decks in it that are in Trash, with their sessions, Notes and learner work; decks in it that are not in Trash are kept and move to the top of the space. An expired or used confirmation link shows **This confirmation link no longer works.** and needs a new request. If the item was restored in the meantime, the page says **Nothing was deleted.**
 
 Editing and trash actions depend on your role in the space. See [sharing and permissions](/docs/sharing/).

@@ -68,4 +68,4 @@ Result styles depend on the interaction type. Choice supports bars, columns, don
 
 In live controls, open the chart/display menu to choose an applicable style and its available presentation options. Use short option labels and inspect the audience display before revealing a result.
 
-For peer instruction, close the first vote, discuss the question, then start the second vote. Compare the rounds after the second response window closes. **Undo revote** restores the first round and discards the second round's responses.
+For peer instruction, close the first vote, discuss the question, then start the second vote. Compare the rounds after the second response window closes. **Back to first vote** restores the first round and discards the second round's responses.

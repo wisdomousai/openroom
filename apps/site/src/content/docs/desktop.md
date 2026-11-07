@@ -37,7 +37,11 @@ Repository launches use local configuration and storage. Use the account and ser
 | Open… | Choose another `.openroom` file. |
 | Show in folder | Reveal the saved file in the operating system's file manager. |
 
-Use **Save** before closing or moving a file. Follow the unsaved-change prompt when closing a changed deck. If **Unsaved decks found** appears after reopening Desktop, choose **Recover** to reopen the recoverable work or **Discard** to remove that recovery copy. Save a recovered deck to retain it as a normal file.
+The application's **File** menu has **Save** (Command+S or Ctrl+S), **Save As…** and **Present**. Each file window is titled with its file name.
+
+Use **Save** before closing or moving a file. Closing a changed file asks **Do you want to save the changes to {file}?**: choose **Save**, **Don't Save** or **Cancel**. Until you save, Desktop keeps a recovery copy of your changes. If Desktop closed without saving, it offers that copy when it starts (**Unsaved changes found**, with **Recover** and **Discard**) or when you open the file again (**{file} has changes that were not saved to the file.**). A recovered window says **Recovered changes that had not been saved to the file.** Save it to keep the changes; **Don't Save** deletes the recovery copy.
+
+A file that is not an OpenRoom deck shows **{file} could not be opened. The file is damaged or is not an OpenRoom deck.**
 
 Keep one writer in charge of a local file. A file already open elsewhere can be locked against writes; finish or close the other editing session before retrying.
 
@@ -70,7 +74,9 @@ Save a separate copy first if you need to retain both variants. A conflict requi
 
 ## Start an online session
 
-Select **Start session** from the local deck. Sign in and choose a cloud location if needed. OpenRoom uploads the material required for the session before opening participation.
+Select **Start session** from the local deck. OpenRoom uploads the material required for the session before opening participation.
+
+A live session needs a sign-in or your own live server. Signed out with no live server, the file window says **Live sessions need a sign-in or a live server.** with **Sign in** and **Live server…**, and **Start session** is off. **Live server…** sets the address and key of an OpenRoom relay; signed out, Desktop then starts sessions there. **Save to workspace…** asks you to sign in first.
 
 Continue with the same presenter and participant controls described in [running a live session](/docs/live-session/). End the session before returning to local editing when the audience has finished.
 

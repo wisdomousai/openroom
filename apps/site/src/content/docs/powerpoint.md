@@ -36,7 +36,7 @@ The development certificate lasts 30 days. Rerun the installer to renew it. To r
 
 Open **OpenRoom for PowerPoint**, select the sign-in action, complete sign-in in the opened browser, and approve the connection for the intended account. Return to PowerPoint after the connection succeeds.
 
-Use the same server address throughout sign-in and presentation. If the pane reloads and asks to reconnect, reconnect before resuming the existing session. Revoke an old connection in OpenRoom **Settings → Connected apps** when needed.
+Use the same server address throughout sign-in and presentation. If the pane reloads and asks to reconnect, reconnect before resuming the existing session. Revoke an old connection in OpenRoom **Settings → Connected applications** when needed.
 
 ## Insert an OpenRoom slide
 

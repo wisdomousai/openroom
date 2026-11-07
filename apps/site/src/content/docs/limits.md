@@ -13,7 +13,7 @@ related: [sharing, learner-links, results, homework, account]
 | Space and its folder tree | Current members, according to owner, editor, or presenter role. |
 | Personal API token | The issuing account's control-plane authority. Store it as an account secret. |
 | Live host, stage, and remote links | Their designated role in one live session. Keep host and remote links with the facilitators. |
-| Learner access link | One named learner's records within one context, including assigned tasks and published feedback. |
+| Access link | One named learner's records within one context, including assigned tasks and published feedback. |
 | Roster invitation | One host-named seat in one session. |
 | Uploaded deck media | Anyone possessing its asset URL. |
 | Learner voice work | The submitting learner and authorized workspace reviewers, through authenticated access. |
@@ -60,7 +60,7 @@ Decks, Notes, assigned homework, and learner work use their own durable records 
 
 Voice work is retained for **90 days**. A trashed recording can be restored for **7 days**, within its original retention period. Up to **10 retained recordings per learner and task** count toward the limit, including recordings in Trash.
 
-Each context supports **10 active learner links**. The default link lifetime is **180 days**; choose the expiry shown in the creation form. Replace a link by selecting its existing learner identity to preserve that learner's work.
+Each context supports **10 active access links**. The default link lifetime is **180 days**; choose the expiry shown in the creation form. Replace a link by selecting its existing learner identity to preserve that learner's work.
 
 Revocation or expiry prevents further access through the affected link. A replacement link and a space invitation are separate credentials with separate destinations.
 

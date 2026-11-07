@@ -20,7 +20,7 @@ During a live session, open **Session menu → Stage**. Move the audience window
 
 Desktop provides **Audience screen** and buttons for detected external displays. Choose the intended display to open the separate audience window. Check the image and audio output before beginning.
 
-The audience display follows the host's live navigation and reveal state. It shows audience material and results; private teaching notes stay on host surfaces. For an active question, **Blank** toggles audience result visibility while retaining the received answers.
+The audience display follows the host's live navigation and reveal state. It shows audience material and results; private teaching notes stay on host surfaces. For an active question, **Hide results** (H) hides or shows its results on the audience display while keeping the received answers.
 
 ## Mark text and draw
 

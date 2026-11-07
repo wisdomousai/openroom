@@ -25,6 +25,7 @@ Select **Settings → Open billing**. Review the current plan and the available 
 | Connected workflows | Use entitled external account integrations. |
 | Named session invites | Issue individual roster invitations for one session. |
 | Sessions over 50 participants | Admit more than 50 participants to one live session. |
+| Homework and Notes | Session Notes, homework, access links, learner work and identified sessions. Without it these places show a **Homework and Notes** lock with a **Plans** button. Students and classes themselves are free. |
 
 For shared-space work, the relevant owner entitlement supplies paid features. Invitees use their assigned space role; they do not each need a separate licence for that shared workspace.
 
@@ -53,8 +54,8 @@ The full token is displayed once. The token list shows its label, prefix, creati
 
 A personal token carries your workspace authority. Treat it as an account secret. Use a separate labelled token for each client so that one integration can be revoked independently.
 
-## Manage connected apps
+## Manage connected applications
 
-Review **Connected apps** in Settings. Revoke a connection that is no longer needed or belongs to an untrusted client. Revocation stops that connection and host credentials issued through it. Reconnect through the app's consent flow if you need to use it again.
+Review **Connected applications** in Settings. Revoke a connection that is no longer needed or belongs to an untrusted client. Revocation stops that connection and host credentials issued through it. Reconnect through the app's consent flow if you need to use it again.
 
 Personal API tokens and connected-app authorizations are managed separately. Revoke the credential actually used by the client.

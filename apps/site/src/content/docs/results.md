@@ -37,7 +37,7 @@ Saved results remain available for **90 days**. Download a copy for longer reten
 
 ## Prepare a workshop recap
 
-1. Open **Session menu → Prepare workshop recap**.
+1. Open **Session menu → Prepare recap**.
 2. Enter the recap title.
 3. Select the results, discussion contributions, and questions to include. Review the actual text before selecting it.
 4. Add a **Discussion summary** and **Shared follow-up** as needed.
