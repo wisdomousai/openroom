@@ -350,6 +350,7 @@ export const EDIT_READS = [
   'elementLayoutsFor',
   'LIST_TARGETS',
   'STEP_KIND_WORDS',
+  'stepKindWord',
   'SPLITTABLE_KINDS',
   'orderedBlocks',
   'stepMinutes',

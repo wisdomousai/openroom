@@ -13,6 +13,17 @@ export function writeNotesLabel(row: Pick<HomeNeedsRecord, 'contextName' | 'titl
   return row.contextName ? `Write the notes for ${row.contextName}’s session, ${row.title}` : `Write the notes for ${row.title}`;
 }
 
+/** Prompts that would read the same get a silent ordinal (" · 2"), like the person view's Notes group. */
+export function numberedLabels<Row extends Pick<HomeNeedsRecord, 'contextName' | 'title'>>(rows: readonly Row[]): { row: Row; label: string }[] {
+  const seen = new Map<string, number>();
+  return rows.map((row) => {
+    const label = writeNotesLabel(row);
+    const count = (seen.get(label) ?? 0) + 1;
+    seen.set(label, count);
+    return { row, label: count === 1 ? label : `${label} · ${String(count)}` };
+  });
+}
+
 /** Invitations and unfinished Notes remain reachable from the Library. */
 export function WorkspaceUpdates({ contextId }: { contextId: string | null }) {
   const navigate = useNavigate();
@@ -31,6 +42,6 @@ export function WorkspaceUpdates({ contextId }: { contextId: string | null }) {
       <Button size="sm" variant="outline" disabled={accept.isPending} onClick={() => accept.mutate(invite.id)}>Accept invitation</Button>
     </div>)}
     {accept.error ? <p role="alert" className="text-destructive">{accept.error.message}</p> : null}
-    {notes.map((row) => <Link key={row.sessionId} {...to.sessionNotes(row.sessionId)} className="w-fit underline underline-offset-4">{writeNotesLabel(row)}</Link>)}
+    {numberedLabels(notes).map(({ row, label }) => <Link key={row.sessionId} {...to.sessionNotes(row.sessionId)} className="w-fit underline underline-offset-4">{label}</Link>)}
   </section>;
 }

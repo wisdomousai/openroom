@@ -594,3 +594,9 @@ export const STEP_KIND_WORDS: Record<OutlineStep['kind'], string> = {
   blank: 'Empty slide',
   interaction: 'Question',
 };
+
+/** Wording for a step's kind; a freeform slide with something on it reads Freeform slide. */
+export function stepKindWord(step: OutlineStep): string {
+  if (step.kind === 'blank' && freeformSlideName(stepElements(step)) !== 'Empty slide') return 'Freeform slide';
+  return STEP_KIND_WORDS[step.kind];
+}

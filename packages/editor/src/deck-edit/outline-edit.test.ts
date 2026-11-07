@@ -38,6 +38,7 @@ import {
   INSERT_TOP,
   starterStep,
   stepTitle,
+  stepKindWord,
   addListItem,
   canAddListItem,
   canRemoveListItem,
@@ -228,6 +229,13 @@ describe('insert catalog', () => {
     expect(stepTitle(image.outline, stepOf(image.outline, image.stepId))).toBe('Empty slide');
     const empty = insertAfter(base(), 'welcome', 'blank');
     expect(stepTitle(empty.outline, stepOf(empty.outline, empty.stepId))).toBe('Empty slide');
+  });
+
+  it('calls a freeform slide with content a Freeform slide and an empty one an Empty slide', () => {
+    const empty = insertAfter(base(), 'welcome', 'blank');
+    expect(stepKindWord(stepOf(empty.outline, empty.stepId))).toBe('Empty slide');
+    const filled: OutlineStep = { id: 'free', kind: 'blank', elements: [{ id: 't', type: 'text', text: 'Bonjour', box: { x: 10, y: 10, w: 50, h: 20 } }] };
+    expect(stepKindWord(filled)).toBe('Freeform slide');
   });
 });
 

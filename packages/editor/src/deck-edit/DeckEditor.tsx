@@ -93,7 +93,7 @@ import {
   setTutorNotes,
   stepMedia,
   stepMinutes,
-  STEP_KIND_WORDS,
+  stepKindWord,
   totalMinutes,
   type InsertKind,
   type PictureTarget,
@@ -533,7 +533,7 @@ export function DeckEditor({
   const slideNumber = slideIndex === -1 ? 1 : slideIndex + 1;
   const asks = askTheClassCount(outline);
   const minutes = step === null ? null : stepMinutes(step);
-  const kindWord = step === null ? null : STEP_KIND_WORDS[step.kind];
+  const kindWord = step === null ? null : stepKindWord(step);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

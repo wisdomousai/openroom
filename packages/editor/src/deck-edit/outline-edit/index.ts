@@ -14,6 +14,7 @@ export {
 export {
   type Block,
   STEP_KIND_WORDS,
+  stepKindWord,
   askTheClassCount,
   asksTheClass,
   clearPairWork,

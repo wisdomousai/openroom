@@ -18,7 +18,7 @@ import { SlideThumbnail } from './SlideThumbnail';
 import {
   INSERT_CATALOG,
   INSERT_TOP,
-  STEP_KIND_WORDS,
+  stepKindWord,
   asideMeta,
   asksTheClass,
   orderedBlocks,
@@ -118,7 +118,7 @@ export function BlockInsertMenu({
 function slideMeta(outline: Outline, step: OutlineStep): { text: string; asks: boolean } {
   if (asksTheClass(step)) return { text: 'Question', asks: true };
   const minutes = stepMinutes(step);
-  const kind = STEP_KIND_WORDS[step.kind];
+  const kind = stepKindWord(step);
   if (minutes === null) return { text: kind, asks: false };
   return { text: `${kind} · ${String(minutes)} min`, asks: false };
 }
