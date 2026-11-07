@@ -1,4 +1,5 @@
 import { ApiError, baseUrl } from './client';
+import { postWithProgress } from './upload';
 import type { HomeworkPracticeInteraction, LearnerFeedback, PublishedHomeworkTask } from '@openroom/schema';
 
 /* ----------------------------------------------------------- learner side */
@@ -83,17 +84,15 @@ export async function fetchLearnerFeedback(token: string): Promise<PublishedLear
   return (await learnerRequest<{ feedback: PublishedLearnerFeedback[] }>('/api/learner/feedback', token)).feedback;
 }
 
-export async function uploadLearnerVoice(token: string, input: { sessionId: string; taskId: string; submissionId: string; assignmentRevision: number }, audio: Blob, signal: AbortSignal): Promise<{ submissionId: string; durationMs: number }> {
+/** Sends a recording and reports the share of its bytes sent, so the learner sees real progress. */
+export async function uploadLearnerVoice(token: string, input: { sessionId: string; taskId: string; submissionId: string; assignmentRevision: number }, audio: Blob, signal: AbortSignal, onProgress: (fraction: number) => void): Promise<{ submissionId: string; durationMs: number }> {
   const query = new URLSearchParams({ ...input, assignmentRevision: String(input.assignmentRevision) });
-  const response = await fetch(`${baseUrl}/api/learner/voice?${query}`, {
-    method: 'POST', credentials: 'omit', signal,
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'audio/wav' }, body: audio,
+  const response = await postWithProgress(`${baseUrl}/api/learner/voice?${query}`, {
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'audio/wav' }, body: audio, signal, onProgress,
   });
-  if (!response.ok) {
-    const body = await response.json().catch(() => null) as { error?: string } | null;
-    throw new ApiError(response.status, 'Could not send recording', body?.error);
-  }
-  return response.json();
+  const body = response.body as { error?: string; submissionId?: string; durationMs?: number } | null;
+  if (response.status < 200 || response.status >= 300 || !body?.submissionId) throw new ApiError(response.status, 'Could not send recording', body?.error);
+  return body as { submissionId: string; durationMs: number };
 }
 
 export async function fetchLearnerSessions(token: string): Promise<LearnerSession[]> {

@@ -37,7 +37,7 @@ async function prepareAudio(blob: Blob, recorded: boolean): Promise<{ wav: Blob;
 }
 
 export function VoiceTask({ token, sessionId, task, active }: { token: string; sessionId: string; task: LearnerHomeworkTask; active: boolean }) {
-  const { copy } = useLearnerLanguage();
+  const { copy, locale } = useLearnerLanguage();
   const queryClient = useQueryClient();
   const [audio, setAudio] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -48,6 +48,8 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
   const [uploading, setUploading] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [sendSeconds, setSendSeconds] = useState(0);
+  // Share of the recording's bytes the browser has sent, from 0 to 1.
+  const [sendProgress, setSendProgress] = useState(0);
   const [error, setError] = useState<LearnerMessage | null>(null);
   // Set when the recorder ended without the learner's Stop; shown beside the preview.
   const [cutShort, setCutShort] = useState<{ reason: RecordingStopReason; durationMs: number } | null>(null);
@@ -148,12 +150,12 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
   };
   const send = async () => {
     if (!audio) return;
-    focusAfter.current = 'sent'; setUploading(true); setError(null);
+    focusAfter.current = 'sent'; setUploading(true); setSendProgress(0); setError(null);
     const controller = new AbortController(); upload.current = controller;
     let timedOut = false;
     const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, voiceUploadTimeoutMs(audio.size));
     try {
-      const saved = await uploadLearnerVoice(token, { sessionId, taskId: task.id, submissionId, assignmentRevision: task.assignmentRevision! }, audio, controller.signal);
+      const saved = await uploadLearnerVoice(token, { sessionId, taskId: task.id, submissionId, assignmentRevision: task.assignmentRevision! }, audio, controller.signal, (fraction) => { if (mounted.current) setSendProgress(fraction); });
       setSent({ ...saved, available: true }); setAudio(null); setCutShort(null);
       void queryClient.invalidateQueries({ queryKey: ['learner', 'sessions'] });
     } catch (cause) {
@@ -176,7 +178,7 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
     {preparing ? <p role="status" className="text-sm">{copy.preparing}</p> : null}
     {preview && cutShort ? <p role="status" className="text-sm">{copy.recordingCutShort(audioTime(cutShort.durationMs), cutShort.reason)}</p> : null}
     {preview ? <div className="grid min-w-0 gap-3"><audio src={preview} controls aria-label={copy.preview} className="h-12 w-full min-w-0" /><div className="flex flex-wrap items-center gap-3"><Button ref={sendButton} type="button" className="min-h-11" disabled={busy} onClick={() => void send()}>{copy.sendResponse}</Button><a href={preview} download="my-response.wav" className="inline-flex min-h-11 items-center text-sm underline">{copy.download}</a></div></div> : null}
-    {uploading ? <div className="grid gap-1"><div className="flex items-baseline justify-between gap-3"><span role="status"><label htmlFor={`voice-progress-${task.id}`} className="text-sm">{copy.sending}</label></span><span role="timer" aria-label={copy.sendingTime} className="font-mono text-sm tabular-nums">{audioTime(sendSeconds * 1000)}</span></div><progress id={`voice-progress-${task.id}`} className="w-full" /></div> : null}
+    {uploading ? <div className="grid gap-1"><div className="flex items-baseline justify-between gap-3"><span role="status"><label htmlFor={`voice-progress-${task.id}`} className="text-sm">{copy.sending}</label></span><span className="flex gap-3 font-mono text-sm tabular-nums"><span aria-hidden="true">{new Intl.NumberFormat(locale, { style: 'percent' }).format(sendProgress)}</span><span role="timer" aria-label={copy.sendingTime}>{audioTime(sendSeconds * 1000)}</span></span></div><progress id={`voice-progress-${task.id}`} className="w-full" max={100} value={Math.round(sendProgress * 100)} /></div> : null}
     {error ? <p role="alert" className="text-sm text-destructive">{copy[error]}</p> : null}
     <p className="text-xs leading-relaxed text-muted-foreground">{copy.voicePrivacy}</p>
   </section>;
