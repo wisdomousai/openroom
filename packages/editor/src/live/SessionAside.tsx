@@ -141,8 +141,8 @@ export function SessionAside({
               onClick={() => setPane(entry.id)}
               className={
                 selected
-                  ? 'inline-flex h-[30px] items-center rounded-md bg-accent px-3 text-sm font-semibold text-accent-foreground'
-                  : 'inline-flex h-[30px] items-center rounded-md px-3 text-sm text-foreground hover:bg-chrome'
+                  ? 'inline-flex h-[30px] items-center rounded-md bg-accent px-3 text-row-title text-accent-foreground'
+                  : 'inline-flex h-[30px] items-center rounded-md px-3 text-secondary text-foreground hover:bg-chrome'
               }
             >
               {entry.label}
@@ -213,7 +213,7 @@ export function SessionAside({
                           <span className="absolute left-[8%] top-[36%] h-[12%] w-[74%] bg-live-tint" />
                         </span>
                         <span className="flex min-w-0 flex-1 flex-col gap-px">
-                          <span className="truncate text-sm font-semibold">{slideLabel(step, outline?.content.interactions)}</span>
+                          <span className="truncate text-row-title">{slideLabel(step, outline?.content.interactions)}</span>
                           {current ? (
                             <span className="text-caption text-live-tint-foreground">On screen now</span>
                           ) : null}
@@ -240,7 +240,7 @@ export function SessionAside({
                         <span className="w-3.5 text-right text-caption tabular-nums text-muted-foreground">
                           {index + 1}
                         </span>
-                        <span className="min-w-0 flex-1 truncate text-sm">{item.prompt}</span>
+                        <span className="min-w-0 flex-1 truncate text-secondary">{item.prompt}</span>
                       </button>
                     );
                   })}
@@ -248,7 +248,7 @@ export function SessionAside({
 
             {entries !== null && entries.length > 0 ? (
               <section aria-label={isWordCloud ? 'Word cloud control' : 'Entries'} className="border-t border-hairline px-4 py-3">
-                <h2 className="mb-2 text-sm font-semibold">
+                <h2 className="mb-2 text-row-title">
                   {isWordCloud ? 'Word cloud control' : 'Moderate responses'}
                 </h2>
                 <ul className="flex flex-col divide-y divide-hairline">
@@ -257,8 +257,8 @@ export function SessionAside({
                       key={entry.participantId}
                       className={
                         entry.hidden
-                          ? 'flex items-start justify-between gap-2 py-1.5 text-sm text-muted-foreground line-through'
-                          : 'flex items-start justify-between gap-2 py-1.5 text-sm'
+                          ? 'flex items-start justify-between gap-2 py-1.5 text-secondary text-muted-foreground line-through'
+                          : 'flex items-start justify-between gap-2 py-1.5 text-secondary'
                       }
                     >
                       <span>
@@ -311,7 +311,7 @@ export function SessionAside({
                 />
               </>
             ) : (
-              <p className="px-3.5 text-sm text-muted-foreground">
+              <p className="px-3.5 text-secondary text-muted-foreground">
                 Audience Q&A is not on for this session.
               </p>
             )}
@@ -320,9 +320,9 @@ export function SessionAside({
       </div>
 
       <div className="flex max-h-[45%] shrink-0 flex-col gap-2 overflow-y-auto border-t border-hairline px-[18px] py-3.5">
-        <span className="text-sm font-semibold">Private notes</span>
+        <span className="text-row-title">Private notes</span>
         {notesText ? (
-          <p className="text-sm leading-snug text-foreground">{notesText}</p>
+          <p className="text-secondary leading-snug text-foreground">{notesText}</p>
         ) : null}
         {scratchpad === undefined ? null : (
           <>

@@ -25,7 +25,7 @@ export function ListeningControls({ media, value, onChange, disabled = false }: 
   const ready = media.url && !media.url.includes('openroom-pending');
   return <section aria-label="Listening controls" className="mx-auto grid w-full max-w-4xl gap-3 border-t border-border bg-card p-4">
     <div className="flex flex-wrap items-center gap-3">
-      <strong className="text-sm">Listening</strong>
+      <strong className="text-row-title">Listening</strong>
       <div role="group" aria-label="Listening mode" className="flex gap-1">
         {/* The chosen mode carries a check as well as the selected fill, so it does not rest on colour. */}
         {(['room', 'individual'] as const).map((mode) => {
@@ -39,10 +39,10 @@ export function ListeningControls({ media, value, onChange, disabled = false }: 
       {media.listening?.transcript ? <Button size="sm" variant="outline" disabled={busy || disabled}
         onClick={() => void update({ transcriptShown: !value.transcriptShown })}>{value.transcriptShown ? 'Hide transcript' : 'Show transcript'}</Button> : null}
     </div>
-    <p className="text-xs text-muted-foreground">{value.mode === 'room' ? 'Play from this device. The projector and learner devices stay silent.' : 'Learners control playback on their own devices. Room playback is off.'}</p>
+    <p className="text-caption text-muted-foreground">{value.mode === 'room' ? 'Play from this device. The projector and learner devices stay silent.' : 'Learners control playback on their own devices. Room playback is off.'}</p>
     {!disabled && value.mode === 'room' && ready ? <AudioPlayer key={`${value.stepId}:${media.url}`} src={media.url!} label={media.alt} /> : null}
-    {!ready ? <p className="text-sm">Choose an audio file or address in the deck editor.</p> : null}
-    {media.listening?.transcript ? <details className="text-sm"><summary className="cursor-pointer">Private transcript</summary><p className="max-h-28 overflow-y-auto whitespace-pre-wrap pt-2">{media.listening.transcript}</p></details> : null}
-    {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+    {!ready ? <p className="text-secondary">Choose an audio file or address in the deck editor.</p> : null}
+    {media.listening?.transcript ? <details className="text-secondary"><summary className="cursor-pointer">Private transcript</summary><p className="max-h-28 overflow-y-auto whitespace-pre-wrap pt-2">{media.listening.transcript}</p></details> : null}
+    {error ? <p role="alert" className="text-secondary text-destructive">{error}</p> : null}
   </section>;
 }
