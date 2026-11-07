@@ -756,8 +756,9 @@
   border-right: 1px solid var(--border);
 }
 
-.slide-surface .outline-step--has-picture[data-picture-place='top'] [data-part='image'],
-.slide-surface .outline-step--has-picture[data-picture-place='bottom'] [data-part='image'] {
+/* On split, top and bottom draw as right: the picture fills its column. */
+.slide-surface .outline-step--has-picture[data-picture-place='top']:not(.outline-step--layout-split) [data-part='image'],
+.slide-surface .outline-step--has-picture[data-picture-place='bottom']:not(.outline-step--layout-split) [data-part='image'] {
   max-height: var(--picture-size, 42%);
   width: auto;
   max-width: 100%;
