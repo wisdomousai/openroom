@@ -7,7 +7,7 @@
  * moved, would leak one tutoring client's records to another.
  */
 import { encodeVoiceWav, VOICE_WAV_MAX_BYTES, VOICE_MAX_RECORDINGS_PER_TASK } from '@openroom/schema';
-import { expireLearnerAudio, purgeLearnerAudio } from '../src/learner-audio.js';
+import { expireLearnerAudio, deleteLearnerAudioPermanently } from '../src/learner-audio.js';
 import { learnerPracticePost } from '../src/learner-practice.js';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
@@ -802,7 +802,7 @@ describe('learner practice writes', () => {
     expect(await env.DB.prepare('SELECT version, reps, last_attempt_id FROM learner_srs WHERE item_id = ?1').bind(input.itemId).first()).toEqual({ version: 1, reps: 1, last_attempt_id: winningId });
   });
 
-  it.each(['session', 'student'])('purges private attempts with their %s after browser confirmation', async (kind) => {
+  it.each(['session', 'student'])('permanently deletes private attempts with their %s after browser confirmation', async (kind) => {
     const { cookie } = await seedSession();
     const studentId = await createStudent(cookie, 'Camille');
     const sessionId = await createSession(cookie, studentId);
@@ -1141,11 +1141,11 @@ describe('private voice responses', () => {
     expect(await expireLearnerAudio(env as never, Date.now() + 91 * 86_400_000)).toBeGreaterThan(0);
     expect(await (env as unknown as { MEDIA: R2Bucket }).MEDIA.get(expired!.object_key)).toBeNull();
     expect((await asLearner(lea, '/api/learner/submissions/voice-revised/audio')).status).toBe(410);
-    expect((await upload(lea, 'voice-purged', bytes, 2)).status).toBe(200);
-    const purged = await env.DB.prepare('SELECT object_key FROM learner_audio WHERE submission_id = ?1').bind('voice-purged').first<{ object_key: string }>();
-    await purgeLearnerAudio(env as never, 'student_id', studentId);
-    expect(await (env as unknown as { MEDIA: R2Bucket }).MEDIA.get(purged!.object_key)).toBeNull();
-    expect(await env.DB.prepare('SELECT submission_id FROM learner_audio WHERE submission_id = ?1').bind('voice-purged').first()).toBeNull();
+    expect((await upload(lea, 'voice-deleted', bytes, 2)).status).toBe(200);
+    const deleted = await env.DB.prepare('SELECT object_key FROM learner_audio WHERE submission_id = ?1').bind('voice-deleted').first<{ object_key: string }>();
+    await deleteLearnerAudioPermanently(env as never, 'student_id', studentId);
+    expect(await (env as unknown as { MEDIA: R2Bucket }).MEDIA.get(deleted!.object_key)).toBeNull();
+    expect(await env.DB.prepare('SELECT submission_id FROM learner_audio WHERE submission_id = ?1').bind('voice-deleted').first()).toBeNull();
     for (let i = 0; i < VOICE_MAX_RECORDINGS_PER_TASK; i++) expect((await upload(lea, `voice-budget-${i}`, bytes, 2)).status).toBe(200);
     expect((await upload(lea, 'voice-over-budget', bytes, 2)).status).toBe(429);
     expect(await env.DB.prepare('SELECT id FROM learner_submissions WHERE id = ?1').bind('voice-over-budget').first()).toBeNull();

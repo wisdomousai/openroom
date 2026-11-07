@@ -23,7 +23,7 @@ describe('session archives', () => {
     expect(await listed.json()).toEqual({ archives: [] });
   });
 
-  it('keeps aggregates and optional ballots after end, downloadable after the DO would have purged', async () => {
+  it('keeps aggregates and optional ballots after end, downloadable after the DO would have deleted', async () => {
     const user = await seedUser(JSON.stringify({ keep: true, rawExport: true }));
     const session = await createOwnedSession(user);
     await command(session.sessionCode, session.hostToken, { command: 'session.start' });

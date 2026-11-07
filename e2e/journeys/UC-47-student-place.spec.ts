@@ -5,7 +5,7 @@
  * addresses land in the Library, a missing student says so, Live now names the
  * student, every list row has a context menu reachable from the keyboard,
  * folders rename in place, trashing a folder takes its decks along, and the
- * purge page names what it deletes. At laptop sizes the access links are open,
+ * permanent-deletion page names what it deletes. At laptop sizes the access links are open,
  * a group keeps its whole name, a long Next session note stays short, the
  * decks scroll with the page, a search with no match says so, a deck found
  * from the top search opens in the student's place, and a student moves to
@@ -35,7 +35,7 @@ async function json<T>(response: Promise<{ status(): number; json(): Promise<unk
   return await res.json() as T;
 }
 
-test('a student place: addresses, menus, rename, folder trash and purge', async ({ page }) => {
+test('a student place: addresses, menus, rename, folder trash and permanent deletion', async ({ page }) => {
   const api = await signIn(page);
   const stamp = Date.now();
   const studentName = `Mara ${stamp}`;
@@ -133,7 +133,7 @@ test('a student place: addresses, menus, rename, folder trash and purge', async 
   const tree = await json<{ decks: { id: string }[] }>(api.get(`/api/my/spaces/${spaceId}`), 200);
   expect(tree.decks.map((deck) => deck.id)).not.toContain(filed.deck.id);
 
-  // The purge page names what goes, in the workspace's own type.
+  // The permanent-deletion page names what goes, in the workspace's own type.
   const { confirmationUrl } = await json<{ confirmationUrl: string }>(
     api.post(`/api/my/folders/${folder.id}/permanent-deletion`, { headers: CSRF }), 202);
   await page.goto(new URL(confirmationUrl).pathname);

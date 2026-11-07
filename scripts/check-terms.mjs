@@ -47,6 +47,12 @@ export const BANNED = [
     exceptPaths: [/(?:^|\/)LICENSE$/],
     use: 'host, co-host, hosting (hostId, hosts, HostAccess, hosting, /co-host, session_co_host, session co-host, /__host)',
   },
+  {
+    name: 'purge',
+    // Catches camelCase and UPPER_CASE identifiers too (purgeDeck, PURGE_AFTER_MS). No third-party purge call exists in the repository.
+    pattern: /purg(?:e|ed|es|ing)(?![a-z])|Purg(?:e|ed|es|ing)(?![a-z])|PURGE/,
+    use: 'permanent delete / delete permanently (deleteDeckPermanently, requestDeckPermanentDeletion, /permanent-deletion), deleted (the timed removal of answers)',
+  },
 ];
 
 const ALLOWED_PATHS = [

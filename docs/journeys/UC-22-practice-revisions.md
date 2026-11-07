@@ -25,7 +25,7 @@ deliberately load the updated exercise. Finally withdraw an exercise and continu
 - Failed refresh keeps its retry action. An unavailable exercise allows continuation.
 - Completed current exercises remain completed after reload; no horizontal phone overflow.
 - Worker tests separately prove transactional revision/state races, immutable snapshots,
-  recipient and credential boundaries, content-change resets and permanent purge.
+  recipient and credential boundaries, content-change resets and permanent deletion.
 
 ## Visual notes and evidence
 
@@ -36,7 +36,7 @@ The phone revision screenshot was inspected without clipping or horizontal overf
 Green in Chromium on 2026-09-18:
 `e2e/journeys/UC-22-practice-revisions.spec.ts` (3.4 seconds).
 UC-16, UC-19 and both UC-20 journeys also passed in the same run (five tests total).
-Worker student-link suite: 36 passed, including deliberate write interleavings and purge.
+Worker student-link suite: 36 passed, including deliberate write interleavings and deletion.
 The broader Worker student-link/tutoring/workspace run passed 64 before those final
 three tests were added. Host suite: 345 passed. Focused schema/package tests: 22 passed.
 Host/Worker typechecks, schema/host build and Worker asset collection passed.

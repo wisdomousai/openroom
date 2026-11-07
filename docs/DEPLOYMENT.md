@@ -168,6 +168,15 @@ Before deploying a release that contains these migrations:
   `facilitation` object in session snapshots must switch to `/co-host`, `session_co_host`,
   `session co-host`, `hostId` and `hosting`. Host tokens kept in an old `.openroom.json`
   file of the CLI stop working; run `openroom session co-host <code>` again.
+- "Purge" is now "permanent delete" (browser-confirmed removal) or "deleted" (the timed
+  removal of individual answers 30 minutes after a session ends). No D1 table, column or
+  stored value carries the old word, so there is no D1 migration for it. Cached OpenAPI
+  clients that use the operation ids `requestStudentPurge`, `requestDeckPurge` or
+  `requestSessionPurge` must switch to `requestStudentPermanentDeletion`,
+  `requestDeckPermanentDeletion` and `requestSessionPermanentDeletion`; the HTTP routes
+  (`.../permanent-deletion`) did not change. The error `recap-source-purged` is now
+  `recap-source-deleted`. Anonymized asker ids that the timed removal wrote as `purged-<n>`
+  are `deleted-<n>`; `terminology-archives.mjs` rewrites them in archived aggregates.
 
 | Migration | Rename |
 | --- | --- |

@@ -33,7 +33,7 @@ and deliberately shares comments tied to positions in that response.
 - Up to ten retained recordings per learner/task, including recoverable trash. Cleanup frees space.
 - Trash denies playback and allows restoration for seven days, within the 90-day
   retention limit. Cleanup permanently removes bytes after either deadline.
-  Browser-confirmed student/session purge removes indexed bytes. Feedback remains.
+  Browser-confirmed student/session deletion removes indexed bytes. Feedback remains.
 - The 390px view has no horizontal overflow and usable playback/delete controls.
 
 ## Evidence
@@ -45,7 +45,7 @@ with Chromium's fake capture device (`--use-fake-device-for-media-stream`), chec
 that tab changes stop its track.
 
 Worker tests cover ownership, credential-family denial, invalid/oversized content,
-range responses, immutable uploads, revision conflicts, retention, purge and limits.
+range responses, immutable uploads, revision conflicts, retention, deletion and limits.
 Schema tests validate the PCM header, sample conversion, and duration bound. Editor
 fuzz exercises adding voice homework through the structured write path.
 

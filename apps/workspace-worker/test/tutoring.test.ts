@@ -243,7 +243,7 @@ describe('folder-scoped decks and sessions', () => {
     expect((await asBrowser(editor.cookie, `/api/sessions/${sessionId}`, { method: 'DELETE' })).status).toBe(200);
   });
 
-  it('lets a presenter read a student but not change, trash, restore or purge it', async () => {
+  it('lets a presenter read a student but not change, trash, restore or permanently delete it', async () => {
     const owner = await seedSession();
     const presenter = await seedSession();
     const spaces = (await (await asBrowser(owner.cookie, '/api/my/spaces')).json()) as { spaces: { id: string }[] };
@@ -409,7 +409,7 @@ describe('folder-scoped decks and sessions', () => {
     expect(put.status).toBe(200);
   });
 
-  it('uses recoverable trash and browser permanent purge for students', async () => {
+  it('uses recoverable trash and browser permanent deletion for students', async () => {
     const { cookie } = await seedSession();
     const studentId = await createStudent(cookie);
 
@@ -593,7 +593,7 @@ describe('control plane hardening', () => {
     expect(relaunch.status).toBe(409);
   });
 
-  it('permanent purge of a deck detaches sessions that recorded it', async () => {
+  it('permanent deletion of a deck detaches sessions that recorded it', async () => {
     const { cookie } = await seedSession();
     const { deckId, sessionId } = await createDeckWithSession(cookie, await createStudent(cookie));
     const launch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
@@ -623,7 +623,7 @@ describe('control plane hardening', () => {
     expect(after?.deck_version).toBeNull();
   });
 
-  it('student purge detaches sessions that re-linked the student from other decks', async () => {
+  it('permanent deletion of a student detaches sessions that re-linked the student from other decks', async () => {
     const { cookie } = await seedSession();
     const studentId = await createStudent(cookie);
     // Deck B belongs to a different student, in its own space.
@@ -645,7 +645,7 @@ describe('control plane hardening', () => {
      * Re-linked in the table, not through the API: a session's student must now be
      * the one its deck's space holds, so the route refuses to build this
      * state. Rows that predate that rule still exist, and detaching them is
-     * exactly what purge is for — so the fixture writes what the API will not.
+     * exactly what permanent deletion is for — so the fixture writes what the API will not.
      */
     await env.DB.prepare('UPDATE sessions SET student_id = ?1 WHERE id = ?2')
       .bind(studentId, sessionB)
@@ -663,9 +663,9 @@ describe('control plane hardening', () => {
     expect((await sessionAfter.json() as { session: { studentId: string | null } }).session.studentId).toBeNull();
   });
 
-  it('student purge removes the student space when nothing else is filed in it', async () => {
+  it('permanent deletion of a student removes the student space when nothing else is filed in it', async () => {
     const { cookie } = await seedSession();
-    const purge = async (studentId: string) => {
+    const deletePermanently = async (studentId: string) => {
       await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'DELETE' });
       const intent = await asBrowser(cookie, `/api/tutoring/students/${studentId}/permanent-deletion`, { method: 'POST' });
       const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
@@ -681,7 +681,7 @@ describe('control plane hardening', () => {
     // A lesson run there: its saved results must stay reachable once the space is gone.
     await env.DB.prepare("INSERT INTO live_sessions (code, user_id, title, created_at, ended, space_id) VALUES ('LIVE01', NULL, 'Lesson', 0, 1, ?1)")
       .bind(emptiedSpace).run();
-    await purge(emptied);
+    await deletePermanently(emptied);
     expect(await listed()).not.toContain(emptiedSpace);
     expect((await asBrowser(cookie, `/api/my/spaces/${emptiedSpace}`)).status).toBe(404);
     const live = await env.DB.prepare("SELECT space_id FROM live_sessions WHERE code = 'LIVE01'").first<{ space_id: string | null }>();
@@ -693,12 +693,12 @@ describe('control plane hardening', () => {
     const loose = await asBrowser(cookie, '/api/decks', { method: 'POST', body: JSON.stringify({ title: 'Loose', outline: SAMPLE_CONTENT, spaceId: keptSpace }) });
     expect(loose.status).toBe(201);
     const looseId = (await loose.json() as { deck: { id: string } }).deck.id;
-    await purge(kept);
+    await deletePermanently(kept);
     expect(await listed()).toContain(keptSpace);
     expect((await asBrowser(cookie, `/api/decks/${looseId}`)).status).toBe(200);
   });
 
-  it('PAT cannot confirm a permanent purge', async () => {
+  it('PAT cannot confirm a permanent deletion', async () => {
     const { cookie } = await seedSession();
     const studentId = await createStudent(cookie);
     await asBrowser(cookie, `/api/tutoring/students/${studentId}`, { method: 'DELETE' });

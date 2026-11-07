@@ -187,12 +187,12 @@ export function TrashList({
   title,
   rows,
   onRestore,
-  onPurge,
+  onDeletePermanently,
 }: {
   title: string;
   rows: { id: string; label: string }[];
   onRestore: (id: string) => void;
-  onPurge: (id: string) => void;
+  onDeletePermanently: (id: string) => void;
 }) {
   return (
     <Card>
@@ -206,7 +206,7 @@ export function TrashList({
                 <Button variant="outline" size="sm" onClick={() => onRestore(row.id)}>
                   <ArchiveRestore /> Restore
                 </Button>
-                <Button variant="outline" size="sm" className="text-destructive" onClick={() => onPurge(row.id)}>
+                <Button variant="outline" size="sm" className="text-destructive" onClick={() => onDeletePermanently(row.id)}>
                   <Trash2 /> Permanently delete
                 </Button>
               </div>

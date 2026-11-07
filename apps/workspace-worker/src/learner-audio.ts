@@ -138,8 +138,8 @@ export async function expireLearnerAudio(env: ControlEnv, now = Date.now()): Pro
   return results?.length ?? 0;
 }
 
-/** Delete bytes before the control-plane purge removes their only index. */
-export async function purgeLearnerAudio(env: ControlEnv, scope: 'student_id' | 'session_id', id: string): Promise<void> {
+/** Delete bytes before the control-plane permanent deletion removes their only index. */
+export async function deleteLearnerAudioPermanently(env: ControlEnv, scope: 'student_id' | 'session_id', id: string): Promise<void> {
   const { results } = await env.DB.prepare(`SELECT a.submission_id, a.object_key FROM learner_audio a JOIN learner_submissions w ON w.id = a.submission_id WHERE w.${scope} = ?1`)
     .bind(id).all<{ submission_id: string; object_key: string | null }>();
   for (const row of results ?? []) {

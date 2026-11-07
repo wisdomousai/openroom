@@ -1,5 +1,5 @@
 /**
- * Retention schedule (PRD DATA-04): ballots purged 30 min after a session ends,
+ * Retention schedule (PRD DATA-04): ballots deleted 30 min after a session ends,
  * the whole session deleted 24 h after.
  *
  * Same shape as expiry.test.ts — the retention clock lives in the DO's `meta`
@@ -110,11 +110,11 @@ async function backdateEndedAt(sessionCode: string, agoMs: number): Promise<void
 const THIRTY_ONE_MINUTES = 31 * 60 * 1000;
 const TWENTY_FIVE_HOURS = 25 * 60 * 60 * 1000;
 
-describe('ballot purge 30 minutes after a session ends', () => {
+describe('ballot deletion 30 minutes after a session ends', () => {
   it('drops ballots and participants but keeps the aggregates, with text anonymized', async () => {
     const session = await endedSessionWithAnswers();
     const before = await stateJson(session.sessionCode, session.hostToken, 'host');
-    expect(before.purgedAt).toBeUndefined();
+    expect(before.ballotsDeletedAt).toBeUndefined();
     expect(Object.keys(before.ballots.reflect as Record<string, unknown>)).toHaveLength(2);
 
     await backdateEndedAt(session.sessionCode, THIRTY_ONE_MINUTES);
@@ -122,7 +122,7 @@ describe('ballot purge 30 minutes after a session ends', () => {
 
     const host = await stateJson(session.sessionCode, session.hostToken, 'host');
     expect(host.status).toBe('ended');
-    expect(typeof host.purgedAt).toBe('number');
+    expect(typeof host.ballotsDeletedAt).toBe('number');
     expect(host.revision).toBe((before.revision as number) + 1);
 
     // Ballots, participants and host identities are gone.
@@ -137,8 +137,8 @@ describe('ballot purge 30 minutes after a session ends', () => {
       kind: 'text',
       total: 2,
       entries: [
-        { participantId: 'purged-1', text: 'curious', hidden: false },
-        { participantId: 'purged-2', text: 'hopeful', hidden: false },
+        { participantId: 'deleted-1', text: 'curious', hidden: false },
+        { participantId: 'deleted-2', text: 'hopeful', hidden: false },
       ],
     });
 
@@ -155,7 +155,7 @@ describe('ballot purge 30 minutes after a session ends', () => {
     expect(warmup?.aggregate.total).toBe(2);
   });
 
-  it('answers the per-ballot CSV export with 410 ballots-purged once purged', async () => {
+  it('answers the per-ballot CSV export with 410 ballots-deleted once deleted', async () => {
     const session = await endedSessionWithAnswers();
     await backdateEndedAt(session.sessionCode, THIRTY_ONE_MINUTES);
     await runDurableObjectAlarm(stubFor(session.sessionCode));
@@ -172,10 +172,10 @@ describe('ballot purge 30 minutes after a session ends', () => {
       headers: { authorization: `Bearer ${session.hostToken}` },
     });
     expect(csv.status).toBe(410);
-    expect(await csv.json()).toEqual({ ok: false, error: 'ballots-purged' });
+    expect(await csv.json()).toEqual({ ok: false, error: 'ballots-deleted' });
   });
 
-  it('is idempotent: a second alarm run does not purge (or bump the revision) again', async () => {
+  it('is idempotent: a second alarm run does not delete (or bump the revision) again', async () => {
     const session = await endedSessionWithAnswers();
     await backdateEndedAt(session.sessionCode, THIRTY_ONE_MINUTES);
     await runDurableObjectAlarm(stubFor(session.sessionCode));
@@ -185,7 +185,7 @@ describe('ballot purge 30 minutes after a session ends', () => {
     const twice = await stateJson(session.sessionCode, session.hostToken, 'host');
 
     expect(twice.revision).toBe(once.revision);
-    expect(twice.purgedAt).toBe(once.purgedAt);
+    expect(twice.ballotsDeletedAt).toBe(once.ballotsDeletedAt);
     expect(twice.aggregate).toEqual(once.aggregate);
   });
 });

@@ -20,7 +20,7 @@ export function groupSpaces(spaces: MySpace[]): GroupedSpaces {
 /**
  * Spaces the nav lists. A student's own space (`sp_ctx_…`) is left out while
  * that student is in Trash (the trashed place is reached through Trash), and
- * when no student and no deck is left in it. A space whose student was purged
+ * when no student and no deck is left in it. A space whose student was deleted
  * with decks still filed in it is listed like any other. Lists not loaded yet
  * hide nothing.
  */

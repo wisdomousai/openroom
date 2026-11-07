@@ -237,7 +237,7 @@ Full agent skill index: ${origin}/.well-known/agent-skills/index.json (includes 
 - **Personal API token:** DELETE ${revokePat} while signed in (CSRF required). Immediate.
 - **OAuth connection:** revoke in Settings → Connected applications, or DELETE ${origin}/api/my/connections/{id} using the owning account (cookie writes require CSRF). GET ${origin}/api/my/connections lists active connections without secrets. Revocation also disables host capabilities obtained through that connection.
 - **OAuth token:** POST ${origin}/api/mcp/revoke with form fields \`token\` and \`client_id\`. Repeated or unknown tokens return success without disclosing whether a connection existed.
-- **Sessions:** end with \`session.end\`; ballots purge 30 minutes after end; session deleted at 24 hours.
+- **Sessions:** end with \`session.end\`; ballots are deleted 30 minutes after end; session deleted at 24 hours.
 
 ## Scope inventory
 

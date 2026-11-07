@@ -315,7 +315,7 @@ validating; the field is silently dropped, not rejected.
 
 Permanent deletion is the deliberate exception to full agent
 control: `openroom_api` can request its short-lived confirmation URL, but only
-a signed-in browser can complete the irreversible purge.
+a signed-in browser can complete the permanent deletion.
 
 ## Decks, headlessly
 

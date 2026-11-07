@@ -5,7 +5,7 @@ Status: green on local Chromium.
 Purpose: a tutor opens one student's place and works there without detours.
 Stale addresses land in the Library, a missing student says so, Live now names
 the student, list rows have context menus reachable from the keyboard, folders
-rename in place, trashing a folder takes its decks along, the purge page names
+rename in place, trashing a folder takes its decks along, the permanent-deletion page names
 what it deletes, and a student can be moved to Trash and restored.
 
 Fixture: demo account alice (cookie re-added without `Secure`). Test 1 makes a
@@ -18,15 +18,15 @@ saved to the first session's record.
 
 Surfaces: Library at `/host/#/space/{spaceId}?studentId={id}`: Live now, folder
 tree rail, Library list, row menus, deck toolbar, student header, Edit student,
-Trash dialogs, the purge confirmation page.
+Trash dialogs, the permanent-deletion confirmation page.
 
 Lifecycle: test 1 opens stale addresses, then the place, then renames and
-trashes a folder and purges it. Test 2 opens the group, then the student,
+trashes a folder and deletes it. Test 2 opens the group, then the student,
 searches, edits the name, trashes the student and restores it.
 
 Acceptance:
 
-Test 1, addresses, menus, rename, folder trash and purge:
+Test 1, addresses, menus, rename, folder trash and permanent deletion:
 
 - `/host/#/nonsense` leaves the nonsense address and shows the Library list or
   the "Sample deck" heading, never "Page not found".

@@ -40,11 +40,11 @@ function recapOperations(account: boolean) {
   const security = account ? [{ SessionCookie: [] }, { UserBearer: [] }] : [{ BearerAuth: [] }];
   const name = account ? 'Account' : 'Host';
   return {
-    get: { operationId: `get${name}RecapCandidates`, summary: `Choose recap content (${account ? 'current account/space access' : 'host capability'})`, parameters, security, responses: { '200': { description: 'Revision, title, identity-free results, visible discussion and Q&A candidates. Nothing is selected.' }, '401': { description: 'Authentication required' }, '403': { description: 'Host access required' }, '404': { description: 'Session unavailable' }, '410': { description: 'Source responses purged' } } },
+    get: { operationId: `get${name}RecapCandidates`, summary: `Choose recap content (${account ? 'current account/space access' : 'host capability'})`, parameters, security, responses: { '200': { description: 'Revision, title, identity-free results, visible discussion and Q&A candidates. Nothing is selected.' }, '401': { description: 'Authentication required' }, '403': { description: 'Host access required' }, '404': { description: 'Session unavailable' }, '410': { description: 'Source responses deleted' } } },
     post: { operationId: `prepare${name}Recap`, summary: 'Prepare selected recap JSON without saving or publishing', parameters, security: account ? [{ SessionCookie: [], CsrfHeader: [] }, { UserBearer: [] }] : security,
       requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', additionalProperties: false, required: ['revision', 'title', 'resultIds', 'discussionIds', 'questionIds', 'discussion', 'followUp'], properties: {
         revision: { type: 'integer', minimum: 0 }, title: { type: 'string', minLength: 1, maxLength: 160 }, resultIds: { type: 'array', items: { type: 'string' }, maxItems: 200 }, discussionIds: { type: 'array', items: { type: 'string' }, maxItems: 200 }, questionIds: { type: 'array', items: { type: 'string' }, maxItems: 200 }, discussion: { type: 'string', maxLength: 10000 }, followUp: { type: 'string', maxLength: 10000 },
-      } } } } }, responses: { '200': { description: 'Only selected results, discussion points, questions, authored summary and follow-up; excludes source ids and private teaching data' }, '401': { description: 'Authentication required' }, '403': { description: 'Host access or CSRF header required' }, '404': { description: 'Session unavailable' }, '409': { description: 'recap-source-changed; fetch and reselect' }, '410': { description: 'Source responses purged' }, '422': { description: 'Invalid, unavailable, empty or oversized selection' } },
+      } } } } }, responses: { '200': { description: 'Only selected results, discussion points, questions, authored summary and follow-up; excludes source ids and private teaching data' }, '401': { description: 'Authentication required' }, '403': { description: 'Host access or CSRF header required' }, '404': { description: 'Session unavailable' }, '409': { description: 'recap-source-changed; fetch and reselect' }, '410': { description: 'Source responses deleted' }, '422': { description: 'Invalid, unavailable, empty or oversized selection' } },
     },
   };
 }
@@ -404,7 +404,7 @@ export function openapiDocument(origin: string): unknown {
           responses: {
             '200': { description: 'Export body' },
             '403': { description: 'raw-export-required (ballots without entitlement)' },
-            '410': { description: 'Ballots purged (ballots format only)' },
+            '410': { description: 'Ballots deleted (ballots format only)' },
           },
         },
       },
@@ -520,9 +520,9 @@ export function openapiDocument(origin: string): unknown {
       },
       '/api/tutoring/students/{studentId}/permanent-deletion': {
         post: {
-          operationId: 'requestStudentPurge',
+          operationId: 'requestStudentPermanentDeletion',
           summary: 'Request a short-lived browser confirmation URL',
-          description: 'The purge cannot be completed through this API, MCP, or CLI. A signed-in user must open and confirm the returned URL.',
+          description: 'The permanent deletion cannot be completed through this API, MCP, or CLI. A signed-in user must open and confirm the returned URL.',
           security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }],
           parameters: [{ name: 'studentId', in: 'path', required: true, schema: { type: 'string' } }],
           responses: { '202': { description: 'Browser confirmation required' } },
@@ -750,7 +750,7 @@ export function openapiDocument(origin: string): unknown {
         post: { operationId: 'restoreDeck', summary: 'Restore deck from trash', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], parameters: [{ name: 'deckId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Restored' } } },
       },
       '/api/decks/{deckId}/permanent-deletion': {
-        post: { operationId: 'requestDeckPurge', summary: 'Browser confirmation URL for permanent delete', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], parameters: [{ name: 'deckId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '202': { description: 'Confirmation required' } } },
+        post: { operationId: 'requestDeckPermanentDeletion', summary: 'Browser confirmation URL for permanent delete', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], parameters: [{ name: 'deckId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '202': { description: 'Confirmation required' } } },
       },
       '/api/sessions': {
         get: {
@@ -934,7 +934,7 @@ export function openapiDocument(origin: string): unknown {
         post: { operationId: 'restoreSession', summary: 'Restore session from trash', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Restored' } } },
       },
       '/api/sessions/{sessionId}/permanent-deletion': {
-        post: { operationId: 'requestSessionPurge', summary: 'Browser confirmation URL', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '202': { description: 'Confirmation required' } } },
+        post: { operationId: 'requestSessionPermanentDeletion', summary: 'Browser confirmation URL', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '202': { description: 'Confirmation required' } } },
       },
       '/api/tutoring/spaces/{spaceId}/assets': {
         get: {

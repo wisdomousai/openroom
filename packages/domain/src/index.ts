@@ -37,7 +37,7 @@ export {
   type SrsGrade,
   type SrsState,
 } from './srs.js';
-export { purgeBallots } from './purge.js';
+export { deleteBallots } from './delete-ballots.js';
 export {
   generateSessionCode,
   isValidSessionCode,

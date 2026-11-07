@@ -21,6 +21,6 @@ export {
   endSessionForCode,
   launchSessionRoute,
   createDeliveryDeletionIntentRoute,
-  purgeDeck,
+  deleteDeckPermanently,
   confirmDeliveryDeletion,
 } from './sessions.js';

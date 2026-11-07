@@ -51,7 +51,7 @@ credential is ever converted into another. Keep this true in code review:
 | Credential | Proves | Unlocks |
 | --- | --- | --- |
 | `or_session` cookie (+ CSRF header on writes) | who the tutor is | the control plane only |
-| Personal API token `orpat_…` | the same tutor, headless | the same control plane, minus final purge |
+| Personal API token `orpat_…` | the same tutor, headless | the same control plane, minus permanent deletion |
 | Session capability token (`apps/relay/src/tokens.ts`) | a seat in one live session | exactly that session |
 | **Student access link `orlnk_…`** | possession of one student's learner credential | exactly that student's learner-visible records |
 | **Guest link `orinv_…`** | this named guest on one session's guest list | join **that one session** as that host-authored name |

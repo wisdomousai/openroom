@@ -25,7 +25,7 @@ the host flips.
 | **Aside** | Outline steps + Q&A queue | Session steps + private notes |
 | **Controls** | Open, close, reveal, second vote, next | Back, Next, Reveal, Close (live ribbon) |
 | **Learner app** | Join by code, one tap to answer | No code; follows the tutor step by step |
-| **After** | Aggregates purged, nothing kept | Short outcome record on the person |
+| **After** | Aggregates deleted, nothing kept | Short outcome record on the person |
 
 **Note on the tutoring aside.** It is *session steps + private notes* — deliberately not
 an in-session "record draft". Composing a durable, named-learner record from inside the

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createSession } from '../src/create-session.js';
 import { applyCommand } from '../src/apply-command.js';
 import { participantSnapshot, hostSnapshot, stageSnapshot } from '../src/snapshots.js';
-import { purgeBallots } from '../src/purge.js';
+import { deleteBallots } from '../src/delete-ballots.js';
 import type { Command, SessionState } from '../src/types.js';
 import { WORKSHOP_SEQUENCES } from '@openroom/schema';
 
@@ -108,7 +108,7 @@ describe('session-local group responses', () => {
     expect(hostSnapshot(state).groups.map((g) => g.id)).toEqual(['south']);
   });
 
-  it('honors answer-change, revision, freeze and end gates; purge removes group membership and names', () => {
+  it('honors answer-change, revision, freeze and end gates; deletion removes group membership and names', () => {
     let state = setup();
     state.outline.content.interactions[0]!.allowAnswerChange = false;
     state = ok(state, answer(), 'p1');
@@ -119,9 +119,9 @@ describe('session-local group responses', () => {
     expect(send(state, answer(), 'p2')).toMatchObject({ ok: false, error: { code: 'E_FROZEN' } });
     state = ok(state, { command: 'session.end' });
     expect(send(state, group())).toMatchObject({ ok: false, error: { code: 'E_ENDED' } });
-    const purged = purgeBallots(state, 1000);
-    expect(purged.groups).toEqual({});
-    expect(purged.interactions.team!.groupNames).toBeUndefined();
-    expect(purged.interactions.team!.aggregate).toMatchObject({ total: 1, entries: [{ participantId: 'purged-1' }] });
+    const deleted = deleteBallots(state, 1000);
+    expect(deleted.groups).toEqual({});
+    expect(deleted.interactions.team!.groupNames).toBeUndefined();
+    expect(deleted.interactions.team!.aggregate).toMatchObject({ total: 1, entries: [{ participantId: 'deleted-1' }] });
   });
 });

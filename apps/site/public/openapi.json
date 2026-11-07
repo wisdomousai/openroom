@@ -290,7 +290,7 @@
             "description": "raw-export-required (ballots without entitlement)"
           },
           "410": {
-            "description": "Ballots purged (ballots format only)"
+            "description": "Ballots deleted (ballots format only)"
           }
         }
       }
@@ -555,9 +555,9 @@
     },
     "/api/tutoring/students/{studentId}/permanent-deletion": {
       "post": {
-        "operationId": "requestStudentPurge",
+        "operationId": "requestStudentPermanentDeletion",
         "summary": "Request a short-lived browser confirmation URL",
-        "description": "The purge cannot be completed through this API, MCP, or CLI. A signed-in user must open and confirm the returned URL.",
+        "description": "The permanent deletion cannot be completed through this API, MCP, or CLI. A signed-in user must open and confirm the returned URL.",
         "security": [
           {
             "UserBearer": []
@@ -1096,7 +1096,7 @@
     },
     "/api/decks/{deckId}/permanent-deletion": {
       "post": {
-        "operationId": "requestDeckPurge",
+        "operationId": "requestDeckPermanentDeletion",
         "summary": "Browser confirmation URL for permanent delete",
         "security": [
           {
@@ -1563,7 +1563,7 @@
     },
     "/api/sessions/{sessionId}/permanent-deletion": {
       "post": {
-        "operationId": "requestSessionPurge",
+        "operationId": "requestSessionPermanentDeletion",
         "summary": "Browser confirmation URL",
         "security": [
           {

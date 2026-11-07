@@ -33,8 +33,8 @@ export function exportResponse(state: SessionState, url: URL): Response {
   if (!allowBallots && !guestList) {
     return json({ ok: false, error: 'raw-export-required' }, 403);
   }
-  if (state.purgedAt !== undefined) {
-    return json({ ok: false, error: 'ballots-purged' }, 410);
+  if (state.ballotsDeletedAt !== undefined) {
+    return json({ ok: false, error: 'ballots-deleted' }, 410);
   }
   return new Response(exportBallotsCsv(state), {
     status: 200,

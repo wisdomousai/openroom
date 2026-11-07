@@ -77,7 +77,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
     },
   });
 
-  const purge = async (type: 'student' | 'deck' | 'session', id: string) => {
+  const deletePermanently = async (type: 'student' | 'deck' | 'session', id: string) => {
     try {
       const intent = await requestPermanentDeletion(type, id);
       location.href = intent.confirmationUrl;
@@ -86,7 +86,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
     }
   };
 
-  const purgeFolder = async (id: string) => {
+  const deleteFolderPermanently = async (id: string) => {
     try {
       const intent = await requestFolderPermanentDeletion(id);
       location.href = intent.confirmationUrl;
@@ -112,7 +112,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
               title="Decks"
               rows={decks.map((row) => ({ id: row.id, label: row.title }))}
               onRestore={(id) => restoreMutation.mutate({ type: 'deck', id })}
-              onPurge={(id) => void purge('deck', id)}
+              onDeletePermanently={(id) => void deletePermanently('deck', id)}
             />
           ) : null}
           {folders.length > 0 ? (
@@ -120,7 +120,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
               title="Folders"
               rows={folders.map((row) => ({ id: row.id, label: row.name }))}
               onRestore={(id) => restoreMutation.mutate({ type: 'folder', id })}
-              onPurge={(id) => void purgeFolder(id)}
+              onDeletePermanently={(id) => void deleteFolderPermanently(id)}
             />
           ) : null}
           {students.length > 0 ? (
@@ -128,7 +128,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
               title="People"
               rows={students.map((row) => ({ id: row.id, label: row.displayName }))}
               onRestore={(id) => restoreMutation.mutate({ type: 'student', id })}
-              onPurge={(id) => void purge('student', id)}
+              onDeletePermanently={(id) => void deletePermanently('student', id)}
             />
           ) : null}
           {records.length > 0 ? (
@@ -136,7 +136,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
               title="Notes"
               rows={records.map((row) => ({ id: row.sessionId, label: row.title }))}
               onRestore={(id) => restoreMutation.mutate({ type: 'session', id })}
-              onPurge={(id) => void purge('session', id)}
+              onDeletePermanently={(id) => void deletePermanently('session', id)}
             />
           ) : null}
           {sessions.length > 0 ? (
@@ -144,7 +144,7 @@ export function TutoringTrashPage({ notify }: { notify: Notify }) {
               title="Other"
               rows={sessions.map((row) => ({ id: row.id, label: row.title }))}
               onRestore={(id) => restoreMutation.mutate({ type: 'session', id })}
-              onPurge={(id) => void purge('session', id)}
+              onDeletePermanently={(id) => void deletePermanently('session', id)}
             />
           ) : null}
         </>

@@ -81,9 +81,9 @@ describe('navigableSpaces', () => {
   const personal = space({ id: 'sp_home' });
   const live = space({ id: 'sp_ctx_live' });
   const trashed = space({ id: 'sp_ctx_trashed' });
-  const purgedEmpty = space({ id: 'sp_ctx_gone' });
-  const purgedWithDeck = space({ id: 'sp_ctx_kept' });
-  const all = [personal, live, trashed, purgedEmpty, purgedWithDeck];
+  const deletedEmpty = space({ id: 'sp_ctx_gone' });
+  const deletedWithDeck = space({ id: 'sp_ctx_kept' });
+  const all = [personal, live, trashed, deletedEmpty, deletedWithDeck];
   const ids = (spaces: MySpace[]) => spaces.map((s) => s.id);
 
   it('leaves out a trashed student space and an empty one with no student', () => {

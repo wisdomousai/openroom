@@ -138,7 +138,7 @@ export async function verifyStudentLink(
  *    a code to a student, and accepting a link on the strength of "it is a valid
  *    link" would let one student's holder identify into every session in the
  *    product.
- *  - `purgeSession` nulls `live_sessions.session_id`, which correctly severs the
+ *  - `deleteSessionPermanently` nulls `live_sessions.session_id`, which correctly severs the
  *    association.
  *
  * Returns null when the live session does not exist, was not launched from a

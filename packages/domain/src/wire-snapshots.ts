@@ -239,6 +239,6 @@ export function hostWireSnapshot(state: SessionState): Json {
     ...(snapshot.listening === undefined ? {} : { listening: snapshot.listening }),
     ...(snapshot.names === undefined ? {} : { names: snapshot.names }),
     ...(snapshot.endedAt === undefined ? {} : { endedAt: snapshot.endedAt }),
-    ...(snapshot.purgedAt === undefined ? {} : { purgedAt: snapshot.purgedAt }),
+    ...(snapshot.ballotsDeletedAt === undefined ? {} : { ballotsDeletedAt: snapshot.ballotsDeletedAt }),
   };
 }

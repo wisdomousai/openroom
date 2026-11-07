@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { applyCommand } from '../src/apply-command.js';
-import { purgeBallots } from '../src/purge.js';
+import { deleteBallots } from '../src/delete-ballots.js';
 import { hostSnapshot, participantSnapshot, stageSnapshot } from '../src/snapshots.js';
 import type { Aggregate, SessionState } from '../src/types.js';
 import { apply, env, expectError, host, sessionWithOpen, participant, run } from './helpers.js';
@@ -430,7 +430,7 @@ describe('interaction.revote — anti-anchoring snapshot gating', () => {
   });
 });
 
-describe('purgeBallots with peer-instruction rounds', () => {
+describe('deleteBallots with peer-instruction rounds', () => {
   function endedRound2(): SessionState {
     let state = revote(afterRound1());
     state = run(
@@ -448,17 +448,17 @@ describe('purgeBallots with peer-instruction rounds', () => {
   }
 
   it('drops the round-1 ballots and keeps the round-1 aggregate', () => {
-    const purged = purgeBallots(endedRound2(), 5_000);
-    const runtime = purged.interactions['pi-vote']!;
+    const deleted = deleteBallots(endedRound2(), 5_000);
+    const runtime = deleted.interactions['pi-vote']!;
     expect(runtime.ballots).toEqual({});
     expect(runtime.round1?.ballots).toEqual({});
     expect(choiceCounts(runtime.round1?.aggregate)).toEqual({ right: 1, wrong: 2 });
     expect(runtime.round).toBe(2);
-    expect(purged.purgedAt).toBe(5_000);
+    expect(deleted.ballotsDeletedAt).toBe(5_000);
   });
 
-  it('no participant id survives anywhere in the purged session', () => {
-    const serialized = JSON.stringify(purgeBallots(endedRound2(), 5_000));
+  it('no participant id survives anywhere in the deleted session', () => {
+    const serialized = JSON.stringify(deleteBallots(endedRound2(), 5_000));
     for (const id of ['p1', 'p2', 'p3']) {
       expect(serialized).not.toContain(`"${id}"`);
     }
@@ -475,14 +475,14 @@ describe('purgeBallots with peer-instruction rounds', () => {
       ),
     );
     state = run(state, env({ command: 'session.end' }));
-    const purged = purgeBallots(state, 1);
-    const aggregate = purged.interactions['reflection']!.aggregate;
+    const deleted = deleteBallots(state, 1);
+    const aggregate = deleted.interactions['reflection']!.aggregate;
     if (aggregate.kind !== 'text') throw new Error('expected text');
-    expect(aggregate.entries[0]).toEqual({ participantId: 'purged-1', text: 'hello', hidden: false });
+    expect(aggregate.entries[0]).toEqual({ participantId: 'deleted-1', text: 'hello', hidden: false });
   });
 
   it('stays idempotent with rounds present', () => {
-    const once = purgeBallots(endedRound2(), 5_000);
-    expect(purgeBallots(once, 6_000)).toBe(once);
+    const once = deleteBallots(endedRound2(), 5_000);
+    expect(deleteBallots(once, 6_000)).toBe(once);
   });
 });

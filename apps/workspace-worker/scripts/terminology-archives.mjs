@@ -1,8 +1,9 @@
 /**
  * One-shot rewrite of R2 session archives (objects `archives/<session code>.json`) for the
  * terminology rename: the participant column of the kept ballots CSV was called `handle`
- * and is now `name` (migration 0002_nickname). Only the header line of `ballotsCsv` changes;
- * the archived aggregates carry no renamed value. Safe to run twice.
+ * and is now `name` (migration 0002_nickname). Only the header line of `ballotsCsv` changes.
+ * Anonymized asker ids in the aggregates were `purged-<n>` and are now `deleted-<n>`.
+ * Safe to run twice.
  *
  * It never talks to Cloudflare. Download the archives, run this on the folder, upload them
  * back; docs/DEPLOYMENT.md, section "Terminology migration", has the commands.
@@ -18,12 +19,21 @@ const NEW_HEADER = 'interactionId,prompt,participantId,name,answer,hidden';
 /** Returns the rewritten archive text, or null when nothing in it needs to change. */
 export function rewriteArchive(text) {
   const record = JSON.parse(text);
-  if (record === null || typeof record !== 'object' || typeof record.ballotsCsv !== 'string') return null;
-  const newline = record.ballotsCsv.indexOf('\n');
-  const header = newline === -1 ? record.ballotsCsv : record.ballotsCsv.slice(0, newline);
-  if (header !== OLD_HEADER) return null;
-  record.ballotsCsv = NEW_HEADER + (newline === -1 ? '' : record.ballotsCsv.slice(newline));
-  return JSON.stringify(record);
+  if (record === null || typeof record !== 'object') return null;
+  let changed = false;
+  if (typeof record.ballotsCsv === 'string') {
+    const newline = record.ballotsCsv.indexOf('\n');
+    const header = newline === -1 ? record.ballotsCsv : record.ballotsCsv.slice(0, newline);
+    if (header === OLD_HEADER) {
+      record.ballotsCsv = NEW_HEADER + (newline === -1 ? '' : record.ballotsCsv.slice(newline));
+      changed = true;
+    }
+  }
+  // The timed deletion of individual answers labelled askers `purged-<n>`; it now writes `deleted-<n>`.
+  const before = JSON.stringify(record);
+  const after = before.replace(/"purged-(\d+)"/g, '"deleted-$1"');
+  if (after !== before) changed = true;
+  return changed ? after : null;
 }
 
 async function main() {

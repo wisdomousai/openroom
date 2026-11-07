@@ -36,7 +36,7 @@ questions, then collect a single shared response from each explicitly assigned g
 - Hidden group-result updates reach only verified group members. A forged participant
   query parameter cannot change WebSocket tags. Pending private updates survive the
   existing simulated-wake test hook; this is distinct from a hosted idle-hibernation trial.
-- Group labels and membership disappear in the normal privacy purge; anonymous aggregates remain.
+- Group labels and membership disappear in the normal privacy deletion; anonymous aggregates remain.
 - Repeated workshop insertion preserves private guidance, question content, unique
   references and YAML round-trip validity through the same writes as the editor.
 - The think/discuss/revote sequence hides round one until deliberate reveal and retains

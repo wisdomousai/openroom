@@ -27,7 +27,7 @@ import { requireControlUser } from '../control-auth.js';
 import { DELETION_INTENT_TTL_MS, compactArray, memberOfSpace, parseJson, plainObject, randomId, randomToken, readJson, resolveSpace } from '../control-utils.js';
 import { folderAccess, spaceRole, roleAtLeast } from '../members.js';
 import { ensureWorkspace } from '../workspace.js';
-import { purgeLearnerAudio } from '../learner-audio.js';
+import { deleteLearnerAudioPermanently } from '../learner-audio.js';
 import { requireSpaceContinuity } from '../continuity-access.js';
 
 import {
@@ -524,24 +524,24 @@ export async function createDeliveryDeletionIntentRoute(
   }, 202);
 }
 
-export async function purgeDeck(env: ControlEnv, deckId: string): Promise<void> {
+export async function deleteDeckPermanently(env: ControlEnv, deckId: string): Promise<void> {
   const { results: sessions } = await env.DB.prepare('SELECT id FROM sessions WHERE deck_id = ?1')
     .bind(deckId).all<{ id: string }>();
-  for (const session of sessions ?? []) await purgeSession(env, session.id);
+  for (const session of sessions ?? []) await deleteSessionPermanently(env, session.id);
   await env.DB.batch([
-    // Detach sessions that recorded this deck so no row points at a purged deck.
+    // Detach sessions that recorded this deck so no row points at a deleted deck.
     env.DB.prepare('UPDATE live_sessions SET deck_id = NULL, deck_version = NULL WHERE deck_id = ?1').bind(deckId),
     env.DB.prepare('DELETE FROM deck_versions WHERE deck_id = ?1').bind(deckId),
     env.DB.prepare('DELETE FROM deck_drafts WHERE deck_id = ?1').bind(deckId),
-    // Tags have no life of their own: a purged item takes its tags with it,
+    // Tags have no life of their own: a deleted item takes its tags with it,
     // otherwise the space facet list keeps counting rows nothing can reach.
     env.DB.prepare("DELETE FROM item_tags WHERE item_type = 'deck' AND item_id = ?1").bind(deckId),
     env.DB.prepare('DELETE FROM decks WHERE id = ?1').bind(deckId),
   ]);
 }
 
-async function purgeSession(env: ControlEnv, sessionId: string): Promise<void> {
-  await purgeLearnerAudio(env, 'session_id', sessionId);
+async function deleteSessionPermanently(env: ControlEnv, sessionId: string): Promise<void> {
+  await deleteLearnerAudioPermanently(env, 'session_id', sessionId);
   await env.DB.batch([
     env.DB.prepare(
       'UPDATE live_sessions SET session_id = NULL, deck_id = NULL, deck_version = NULL WHERE session_id = ?1',
@@ -569,13 +569,13 @@ export async function confirmDeliveryDeletion(
   if (resourceType === 'deck') {
     const resource = await deckAccess(env, userId, resourceId);
     if (resource === null || resource.deleted_at === null) return false;
-    await purgeDeck(env, resource.id);
+    await deleteDeckPermanently(env, resource.id);
     return true;
   }
   if (resourceType === 'session') {
     const resource = await sessionAccess(env, userId, resourceId);
     if (resource === null || resource.deleted_at === null) return false;
-    await purgeSession(env, resource.id);
+    await deleteSessionPermanently(env, resource.id);
     return true;
   }
   return false;

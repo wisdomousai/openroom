@@ -28,7 +28,7 @@ import { ensureWorkspace } from '../workspace.js';
  * JSON builders, folder resolution.
  *
  * Everything exported here is internal to `delivery/`; the barrel only
- * re-exports the route handlers and launch/purge API.
+ * re-exports the route handlers and launch/permanent-deletion API.
  */
 
 

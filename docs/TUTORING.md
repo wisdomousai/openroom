@@ -464,7 +464,7 @@ recoverable trash.
 An agent may request permanent deletion, but the response is only a short-lived
 confirmation URL. The signed-in tutor must open that URL in a browser and press
 the permanent-delete button. A personal token, CLI, or MCP client cannot perform
-the final purge.
+the permanent deletion.
 
 ## Explicit non-goals
 

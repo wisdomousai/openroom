@@ -325,7 +325,7 @@ The schema must be able to express:
 
 1. Ending the session freezes the final session state.
 2. Aggregate results remain available according to retention policy.
-3. Raw responses are purged or retained according to the explicit identity and retention mode.
+3. Raw responses are deleted or retained according to the explicit identity and retention mode.
 4. The host can export CSV and JSON.
 5. An agent may summarize aggregate results within its granted scope.
 6. The host may copy or revise the deck for later reuse.
@@ -399,9 +399,9 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | ID | Priority | Requirement | Acceptance condition |
 | --- | --- | --- | --- |
 | DATA-01 | P0 | Aggregate results shall be available after session end according to workspace retention. | Aggregate retrieval never requires raw-results permission. |
-| DATA-02 | P0 | Aggregate JSON and aggregate CSV shall be available without a paid poll-type gate. Per-ballot and named exports require `rawExport` or a guest-list session. | A free host can export counts for every MVP interaction type. A ballot-level CSV is refused without the entitlement (or after purge, without an archive). |
+| DATA-02 | P0 | Aggregate JSON and aggregate CSV shall be available without a paid poll-type gate. Per-ballot and named exports require `rawExport` or a guest-list session. | A free host can export counts for every MVP interaction type. A ballot-level CSV is refused without the entitlement (or after deletion, without an archive). |
 | DATA-03 | P0 | Aggregate and raw-result permissions shall be separate. | `results:aggregate` never implies `results:raw`. |
-| DATA-04 | P0 | The default hosted mode shall purge individual ballots after the short operational window while retaining permitted aggregates. | A deletion test confirms ballots are removed on schedule. |
+| DATA-04 | P0 | The default hosted mode shall delete individual ballots after the short operational window while retaining permitted aggregates. | A deletion test confirms ballots are removed on schedule. |
 | DATA-05 | P0 | Participant answer content shall never be written to application logs. | Log inspection under test traffic contains identifiers and operational counts only. |
 | DATA-06 | P1 | Large or asynchronous exports may be stored temporarily in R2. | Export objects expire automatically and are authorized independently of session join capabilities. |
 
@@ -420,7 +420,7 @@ Priority meanings: P0 is required for MVP launch; P1 is required soon after MVP;
 | API-09 | P1 | Canonical agent skills shall be provider-neutral and stored once. | Provider-specific discovery paths reference the canonical skill source. |
 | API-10 | P0 | A small web SDK shall expose session creation, session-code display, session state, commands, and embeddable result primitives. | The summer-camp interaction pattern can be rebuilt without importing the product's host application. |
 | API-11 | P0 | Every tutoring business operation shall be available to browser, API, CLI, and MCP peer clients through the same user-scoped application service. | A PAT integration test creates a student and deck, launches it, and controls the owned session through MCP; CLI wire tests cover the same routes and outline commands. |
-| API-12 | P0 | Normal deletion shall be recoverable; permanent deletion shall require an expiring signed-in browser confirmation. | MCP/CLI may request and return the confirmation URL but cannot call the purge endpoint; anonymous/PAT confirmation fails. |
+| API-12 | P0 | Normal deletion shall be recoverable; permanent deletion shall require an expiring signed-in browser confirmation. | MCP/CLI may request and return the confirmation URL but cannot call the permanent-deletion endpoint; anonymous/PAT confirmation fails. |
 | API-13 | P0 | External preparation agents shall receive original school material directly and OpenRoom shall store only derived typed outlines and curated records. | No source-document upload or model-wrapper route exists; outline provenance contains labels only. |
 | API-14 | P0 | Collection, create, detail, edit, and deck editor surfaces shall be separate routes. | A collection route never renders a create/edit form, CRUD drawer, or modal. A selected row may open an entity panel that edits only the item's identity — rename, tags, filing — and routes every typed field to the item's own route. |
 
@@ -679,15 +679,15 @@ Queues are optional for session-close processing, export generation, webhooks, a
 - Random, short-lived participant capability.
 - No name or email.
 - No cross-session identity.
-- Ballots retained only for live operation, answer changes, recovery, and the configured short purge window.
+- Ballots retained only for live operation, answer changes, recovery, and the configured short deletion window.
 - Aggregates retained according to the host or workspace policy.
 
 ### Nickname mode - shipped
 
 - Random identity stable within one session: the default `defaults.identityMode: nickname` assigns each participant a system-generated session-local name ("Amber Fox 4827") at join. Never user-chosen — no self-declared PII enters the system.
 - The browser stores the session capability by session id and session code for automatic rescans. If an iOS QR window discards that storage, the participant can type the same name to recover the original participant id and receive a fresh session capability. Failed recovery attempts are rate-limited inside the session Durable Object.
-- No linking across classes or sessions: names exist only inside one session's state and die with the DATA-04 purge.
-- Raw-response retention: shares the DATA-04 defaults (ballots purged 30 minutes after end, session deleted at 24 hours), stated in the participant notice.
+- No linking across classes or sessions: names exist only inside one session's state and die with the DATA-04 deletion.
+- Raw-response retention: shares the DATA-04 defaults (ballots deleted 30 minutes after end, session deleted at 24 hours), stated in the participant notice.
 - Participant notice: shown immediately after join, before the first answer can be submitted ("In this session you appear as **{name}**. Remember it: you can use it to rejoin if this QR window closes. No name or account is collected, and the name is never linked to other sessions. Individual answers are deleted 30 minutes after the session ends."). Deviation from the original "before joining" wording: the mode is only knowable after session resolution, and joining itself submits no content.
 - Visibility: host console and CSV export only, plus each participant's own name. The stage and other participants never receive names.
 
@@ -757,7 +757,7 @@ is never reachable by a participant deciding to identify themselves.
   scoped to exactly one student and is withdrawn by revoking it.
 - **Re-entry is the link.** Presenting the same link again lands on the same
   participant id, so a page reload does not fork a student into two identities.
-- Retention is unchanged: DATA-04 purge applies, and the identified name dies with
+- Retention is unchanged: DATA-04 deletion applies, and the identified name dies with
   the participant records like any other name.
 - Open: identified mode must ship its own participant notice text before launch (see
   the bullet at the end of this section) — that text does not yet exist.
@@ -768,18 +768,18 @@ The product shall not implement browser fingerprinting. Small-group aggregate su
 
 Anonymous-by-default is a compliance architecture, not only an ethics choice. FERPA, GDPR, and COPPA obligations attach to identifiable personal data; a runtime that never collects participant names, emails, accounts, or cross-session identifiers converts a school's legal review into a short answer. That answer must be written down and published:
 
-- Procurement one-pager: participants join without accounts, no participant PII is collected in the hosted default mode, ballots are purged on a stated schedule, aggregates contain no identities, and no participant data is sold, profiled, or used for advertising.
+- Procurement one-pager: participants join without accounts, no participant PII is collected in the hosted default mode, ballots are deleted on a stated schedule, aggregates contain no identities, and no participant data is sold, profiled, or used for advertising.
 - Under-13 participation: because participants have no accounts and provide no personal information, COPPA consent mechanics are not triggered in anonymous or nickname mode. **Identified mode rests on a different argument, deliberately.** The tutor is the controller: they already know the student, they author `students.display_name`, and they own the records. OpenRoom collects nothing *from* the child — no name field is ever shown to a participant or student, and no marketing, profiling, or advertising use exists. A student account, where one is issued, requests a provider-anonymised identity and grants read access to records the tutor created; it is not the point of collection.
 
   > **⚠ Three items still need a human before this is published.** The controller
   > argument above is the product's position; these are the gaps underneath it.
   >
   > 1. **Retention.** The COPPA answer for anonymous mode is underwritten by the ephemeral
-  >    session: ballots purge 30 minutes after end, sessions delete at 24 hours. The durable
+  >    session: ballots are deleted 30 minutes after end, sessions delete at 24 hours. The durable
   >    tutoring tables have **no retention policy at all** — the only TTL in the control
   >    plane is the 15-minute deletion-confirmation token. `students.display_name`,
   >    `students.profile_json` and `session_records.notes` persist until a human trashes *and*
-  >    purges them. A child's records survive indefinitely by default. This is the widest
+  >    deletes them. A child's records survive indefinitely by default. This is the widest
   >    gap and it is an engineering one, not a legal one.
   > 2. **Age floor on the account path.** Sign in with Apple and Google both effectively
   >    require 13+. An account-based student path therefore cannot serve under-13s at all,
@@ -1141,7 +1141,7 @@ The strongest conversion signal is: enough educators at one school already use t
 1. ~~Product name, package scope, and primary domain.~~ **Decided:** product is OpenRoom (`@openroom/*` packages); primary domain is `openroom.app`. The working CLI name `poll` almost certainly collides with existing packages and shell conventions; the final CLI binary name follows the product name (still open).
 2. Final license split between web/server, schemas, SDKs, and skills.
 3. Host authentication provider for the hosted MVP.
-4. Exact anonymous-ballot purge interval and aggregate retention defaults. Implemented defaults (DATA-04) are 30 minutes from session end to ballot purge and 24 hours from session end to full session deletion; the final hosted defaults, and whether they are configurable per session or per deck, remain open.
+4. Exact anonymous-ballot deletion interval and aggregate retention defaults. Implemented defaults (DATA-04) are 30 minutes from session end to ballot deletion and 24 hours from session end to full session deletion; the final hosted defaults, and whether they are configurable per session or per deck, remain open.
 5. Whether MVP MCP includes live control or initially ships deck and aggregate operations only.
 6. Final public service-level targets after the load-test baseline.
 7. Free hosted abuse and usage guardrails.

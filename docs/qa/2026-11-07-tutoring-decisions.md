@@ -120,12 +120,12 @@ Findings: student-place-01, site-manual-03
 
 ### D12 (workspace-library): What happens to a folder decks when the folder is trashed?
 
-Chosen: Cascade. It keeps Trash a recoverable place and matches the file model. Regardless of the choice, counts and search ignore decks under a trashed folder and the purge confirmation matches what is deleted.
+Chosen: Cascade. It keeps Trash a recoverable place and matches the file model. Regardless of the choice, counts and search ignore decks under a trashed folder and the permanent-deletion confirmation matches what is deleted.
 
 Findings: student-place-02
 
-- Cascade: Trashing a folder moves its decks and sessions to Trash with it; Restore brings them back; purge deletes them and the confirm names the contents. Matches a file manager.
-- Re-file at trash time: Decks move to the space root when the folder is trashed, the confirm says so, and the purge page says the decks are kept. Simple, but Restore does not return decks to the folder.
+- Cascade: Trashing a folder moves its decks and sessions to Trash with it; Restore brings them back; permanent deletion deletes them and the confirm names the contents. Matches a file manager.
+- Re-file at trash time: Decks move to the space root when the folder is trashed, the confirm says so, and the permanent-deletion page says the decks are kept. Simple, but Restore does not return decks to the folder.
 - Block trashing a non-empty folder: The tutor must move or trash the decks first. Safest, adds friction.
 
 ### D13 (workspace-library): Should New deck inside a student own space link the deck to that student?

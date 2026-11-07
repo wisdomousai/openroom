@@ -52,7 +52,7 @@ import {
   ensureQna,
   generateParticipantName,
   participantLimitReached,
-  purgeBallots,
+  deleteBallots,
   resultsVisible,
   sessionOf,
   type Command,
@@ -96,12 +96,12 @@ export const RECOVERY_FAILURE_LIMIT = 20;
 /**
  * Retention schedule (PRD DATA-04). Both clocks start when the session reaches
  * `ended` — by host command or by the 12 h idle auto-end.
- *   PURGE_AFTER_MS  ballots and participant records are dropped; aggregates and
+ *   BALLOTS_DELETE_AFTER_MS  ballots and participant records are dropped; aggregates and
  *                   anonymized text survive and stay exportable as JSON.
  *   DELETE_AFTER_MS the whole Durable Object storage is wiped; the session then
  *                   404s exactly like a code that was never issued.
  */
-export const PURGE_AFTER_MS = 30 * 60 * 1000; // 30min
+export const BALLOTS_DELETE_AFTER_MS = 30 * 60 * 1000; // 30min
 export const DELETE_AFTER_MS = 24 * 60 * 60 * 1000; // 24h
 const ASSET_CHUNK_BYTES = 1024 * 1024;
 
@@ -386,7 +386,7 @@ export class SessionDO implements DurableObject {
     if (pendingResultsAt > 0) candidates.push(pendingResultsAt);
     const endedAt = this.#metaNumber('endedAt', 0);
     if (endedAt > 0) {
-      if (this.#load()?.purgedAt === undefined) candidates.push(endedAt + PURGE_AFTER_MS);
+      if (this.#load()?.ballotsDeletedAt === undefined) candidates.push(endedAt + BALLOTS_DELETE_AFTER_MS);
       candidates.push(endedAt + DELETE_AFTER_MS);
     }
     return Math.min(...candidates);
@@ -475,17 +475,17 @@ export class SessionDO implements DurableObject {
       }
     }
 
-    // retention (PRD DATA-04): purge ballots, then delete the session outright
+    // retention (PRD DATA-04): delete ballots, then delete the session outright
     const endedAt = this.#metaNumber('endedAt', 0);
     if (state !== null && endedAt > 0) {
       if (now - endedAt >= DELETE_AFTER_MS) {
         await this.#wipe();
         return; // nothing left to schedule; deleteAll took the alarm with it
       }
-      if (now - endedAt >= PURGE_AFTER_MS) {
-        const purged = purgeBallots(state, now);
-        if (purged !== state) {
-          state = purged;
+      if (now - endedAt >= BALLOTS_DELETE_AFTER_MS) {
+        const deleted = deleteBallots(state, now);
+        if (deleted !== state) {
+          state = deleted;
           this.#persist(state);
           this.#broadcastNow(state.revision, now);
         }
@@ -523,7 +523,7 @@ export class SessionDO implements DurableObject {
         const body = request.method === 'POST' ? await readRecapBody(request) : null;
         const state = this.#load();
         if (!state) return json({ error: 'session-not-found' }, 404);
-        if (state.purgedAt !== undefined) return json({ error: 'recap-source-purged' }, 410);
+        if (state.ballotsDeletedAt !== undefined) return json({ error: 'recap-source-deleted' }, 410);
         if (request.method === 'GET') return json(recapCandidates(state));
         if (request.method === 'POST') return selectedRecap(state, body);
         return json({ error: 'method-not-allowed' }, 405);
@@ -761,7 +761,7 @@ export class SessionDO implements DurableObject {
     const participantId = crypto.randomUUID();
     /*
      * Pair-work lanes come from a monotonic join counter in `meta`, never from
-     * the size of the participant map: the map shrinks (retention purge), so
+     * the size of the participant map: the map shrinks (retention deletion), so
      * parity over it would hand two consecutive joiners the same lane. The
      * counter only advances for a genuinely new participant — the rejoin paths
      * above return before this point, so a returning learner keeps the lane

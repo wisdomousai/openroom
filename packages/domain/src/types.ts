@@ -268,8 +268,8 @@ export interface SessionState {
   /** panic: no submissions, participant text hidden on stage */
   frozen: boolean;
   endedAt?: number;
-  /** set by `purgeBallots` once the per-person layer has been dropped (PRD DATA-04) */
-  purgedAt?: number;
+  /** set by `deleteBallots` once the per-person layer has been dropped (PRD DATA-04) */
+  ballotsDeletedAt?: number;
 }
 
 export type TimerPlacement = 'slide' | 'corner';

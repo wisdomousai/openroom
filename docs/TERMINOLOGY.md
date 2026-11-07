@@ -24,7 +24,7 @@ place, a link, or a piece of live state.
 
 **Session covers both planes.** The durable row (`/api/sessions*`, filed, has an
 id) and the ephemeral live plane (`/api/sessions/:code/*`, has a session code,
-purged on a short TTL) are the same product noun. Say **live session** only when
+deleted on a short TTL) are the same product noun. Say **live session** only when
 you need to point at the ephemeral plane specifically; never invent a second
 noun for it.
 
@@ -138,7 +138,7 @@ records.
 | UI term | API / code | What it is | Primary surfaces |
 | --- | --- | --- | --- |
 | **Session** | session (`/api/sessions*`) | One **deck that was started**: who (student), which deck version, the live plane, the Notes written afterwards. | Nested under deck / student / space folder; `#/sessions/:code`, `#/sessions/:id/record`. |
-| **Live session** | the ephemeral plane (Durable Object + `/api/sessions/:code/*`) | Ephemeral synchronized live state: host, stage, participants, ballots. Lifecycle is driven by the `session.*` commands. Purged on a short TTL. | Host console, remote, stage, participant join. **Live now** · **Rejoin** in the Library and the deck editor. |
+| **Live session** | the ephemeral plane (Durable Object + `/api/sessions/:code/*`) | Ephemeral synchronized live state: host, stage, participants, ballots. Lifecycle is driven by the `session.*` commands. Deleted on a short TTL. | Host console, remote, stage, participant join. **Live now** · **Rejoin** in the Library and the deck editor. |
 | **Host** (of a session) · **co-host** · **hosting** | host (`hostId`, `hosts`, `HostAccess`), co-host (`POST /api/my/sessions/:code/co-host`, MCP `session_co_host`, CLI `session co-host`), hosting (`state.hosting`, `HostingView`) | An account that can run a live session. Extra hosts joined to a session are co-hosts. The active one is the presenter (`presenterId`); co-hosts moderate and organize groups, and a handoff passes the presenter role. | Host console, **Hosts** strip, `#/sessions/:code`. Not the host workspace (`/host/`) and not the `host` token role, which is what a host's token carries. |
 | **Notes** | session record | Compact post-session outcomes (not a transcript). UI word is **Notes**; API/DB word stays `record`. | `#/sessions/:id/record`; a typed row in the session’s folder. |
 
@@ -267,7 +267,7 @@ Students and classes are free. Paid plans add shared workspaces (`team`), saved 
 | **Interaction** | One question/activity type: choice, scale, numeric, text, Q&A, ranking. |
 | **Open / close / reveal** | Lifecycle of an interaction in a live session. |
 | **Advance** | Move to the next pending interaction (classroom) or outline step (tutoring). |
-| **Ballot** | One participant’s response; purged after the session ends. |
+| **Ballot** | One participant’s response; deleted after the session ends. |
 | **Session code** | The 8-character code a participant types to join. Also the live-plane path segment `/api/sessions/:code/*`. |
 | **Name** (of a participant) | The participant identity shown in a session (never a global account). In the default nickname mode it is a generated **nickname** ("Amber Fox 4827"); in an identified or guest-list session it is the display name the tutor wrote. In code and API it is `name` (join response, snapshots, ballots CSV column), `recoveryName` and `yourName`. Typed by the participant only to recover a nickname seat (**Rejoin with your name**). |
 | **Identity mode** | Outline-level `anonymous` \| `nickname` \| `identified` \| `guest-list`. Default `nickname`: each participant gets a generated nickname. `identified` sessions are enterable only with a student access link for that session's student. |
@@ -304,7 +304,7 @@ Facts only. Noun labels and bare verbs. No first-person, no narrative, no metaph
 | Term | Meaning |
 | --- | --- |
 | **Trash** / **Move to trash** | Recoverable delete (normal path). |
-| **Permanent delete** / **Purge** | Irreversible; requires short-lived **browser** confirmation. CLI/MCP/API token cannot complete the final purge alone. |
+| **Permanent delete** | Irreversible; requires short-lived **browser** confirmation. CLI/MCP/API token cannot complete the permanent deletion alone. |
 
 ---
 
@@ -328,6 +328,7 @@ Facts only. Noun labels and bare verbs. No first-person, no narrative, no metaph
 | Roster / roster invite / roster seat / roster session | **Guest list** (the named people), **guest link** (one person's link), **guest-list session** |
 | Pseudonymous (session or mode), pseudonym | **Nickname** (`identityMode: nickname`; "participants get a generated nickname") |
 | Handle / session handle / your handle (the participant's name in a session), `recoveryHandle`, `yourHandle`, `invalid-handle`, `handle-recovery-unavailable`, "Rejoin with handle" | **Name** (`name`, `recoveryName`, `yourName`, `invalid-name`, `name-recovery-unavailable`, "Rejoin with your name") |
+| Purge (permanent purge, final purge, "ballots purged"), `purgeDeck`, `purgeSession`, `purgeBallots`, `purgedAt`, `PURGE_AFTER_MS`, `ballots-purged`, `requestDeckPurge` | **Permanent delete** / **delete permanently** for the irreversible, browser-confirmed removal (`deleteDeckPermanently`, `deleteSessionPermanently`, `requestDeckPermanentDeletion`, `/permanent-deletion` routes); **deleted** for the timed removal of individual answers (`answers-deleted`, `answersDeletedAt`) |
 | `?invite=orinv_…` on the join page | `?guest=orinv_…` |
 | Collection + create form on one screen | Dedicated `#/decks/new` and `#/decks/:id` routes; the deck's sole editor is at `#/decks/:id/edit` |
 

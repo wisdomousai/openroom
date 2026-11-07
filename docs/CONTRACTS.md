@@ -192,7 +192,7 @@ interface SessionState {
   participants: Record<string, { joinedAt: number }>;   // key = participantId
   frozen: boolean;                // panic: no submissions, participant text hidden on stage
   endedAt?: number;
-  purgedAt?: number;              // set by purgeBallots (PRD DATA-04); ballots and participants are gone
+  ballotsDeletedAt?: number;              // set by deleteBallots (PRD DATA-04); ballots and participants are gone
 }
 interface InteractionRuntime {
   status: InteractionStatus;
@@ -262,14 +262,14 @@ Rules: idempotency is handled by the CALLER (DO stores key→result); `applyComm
 
 ### Session Q&A
 
-Session-wide audience Q&A (`SessionState.qna`, session flag `qna: { enabled, maxLength }`, defaults `{ enabled: false, maxLength: 300 }`, hard cap 500): independent of every interaction — open in `lobby` and `live`, untouched by `interaction.open`/`session.advance`, never a rail step. Shape: `interface QnaState { enabled: boolean; stage: { mode: 'off'|'list'|'spotlight'; questionId?: string }; questions: Record<string, QnaQuestion> }`, `interface QnaQuestion { id; participantId; text; hidden; votes; voters: string[]; createdAt }` with `votes === voters.length` always. Every `qna.*` command is `E_FORBIDDEN` while `enabled` is false. `qna.ask`: questionId is CLIENT-minted (crypto.randomUUID, same trust model as idempotency keys; validated 1-64 chars), text trimmed, non-empty, ≤ the session's maxLength, through `applyBlocklist`; a participant may ask MANY questions; re-asking the identical (id, text) is a no-op success; same id + new text by the OWNER is an edit that keeps voters/votes/createdAt; another actor's id is `E_FORBIDDEN`. `qna.upvote`: unknown id `E_INVALID_ANSWER`, repeat vote `E_FORBIDDEN` (voters ledger is the one-vote authority; self-vote allowed). `qna.hide`/`qna.unhide` (host): flip `hidden`; hiding the spotlighted question resets `stage` to `{ mode: 'list' }`; already-in-state is a documented no-op. `qna.stage` (host): spotlight requires an existing, visible question (`E_INVALID_ANSWER` otherwise); identical placement is a documented no-op. Snapshots — participant: `qna` present only when enabled, `{ maxLength, questions: { id, text, votes, own, votedByYou, hidden, name? }[] }`, visible questions plus the participant's OWN hidden ones; stage: `{ stage, questions: { id, text, votes, name? }[] }`, visible only; host: always `{ enabled, stage, questions: { id, participantId, text, hidden, votes, createdAt }[] }` (attribution via the top-level `names` map). In sessions that assign names each question carries the asker's `name` on participant and stage views — public attribution is a deliberate product decision, and in the nickname default the name is system-assigned and not PII; this is the ONE exception to "peers' names are never sent". **In an identified session that same slot carries the student's display name**, so audience Q&A there is attributed under the name the tutor authored. That follows from choosing identified mode and is not a separate opt-in; anonymous Q&A in an identified session is not available. Purged sessions drop the attribution automatically (the rewritten `purged-<n>` participantId no longer resolves to a participant record). `voters` never leaves domain snapshots, any role. Order everywhere: votes desc, `createdAt` asc, id. Frozen empties participant/stage question lists (host unaffected); ended blocks all qna commands. Purge anonymizes `participantId` to `purged-<n>` (display order) and empties voter ledgers, keeping text/hidden/votes/createdAt. Back-compat: session states stored before the region existed are patched to `{ enabled: false, stage: { mode: 'off' }, questions: {} }` at every load boundary (`ensureQna`). Host surfaces: LiveHost section + `#/sessions/:id/qna` co-host Q&A desk (same bearer host token; multi-host fan-out already role-tagged); CLI/MCP parity deliberately deferred.
+Session-wide audience Q&A (`SessionState.qna`, session flag `qna: { enabled, maxLength }`, defaults `{ enabled: false, maxLength: 300 }`, hard cap 500): independent of every interaction — open in `lobby` and `live`, untouched by `interaction.open`/`session.advance`, never a rail step. Shape: `interface QnaState { enabled: boolean; stage: { mode: 'off'|'list'|'spotlight'; questionId?: string }; questions: Record<string, QnaQuestion> }`, `interface QnaQuestion { id; participantId; text; hidden; votes; voters: string[]; createdAt }` with `votes === voters.length` always. Every `qna.*` command is `E_FORBIDDEN` while `enabled` is false. `qna.ask`: questionId is CLIENT-minted (crypto.randomUUID, same trust model as idempotency keys; validated 1-64 chars), text trimmed, non-empty, ≤ the session's maxLength, through `applyBlocklist`; a participant may ask MANY questions; re-asking the identical (id, text) is a no-op success; same id + new text by the OWNER is an edit that keeps voters/votes/createdAt; another actor's id is `E_FORBIDDEN`. `qna.upvote`: unknown id `E_INVALID_ANSWER`, repeat vote `E_FORBIDDEN` (voters ledger is the one-vote authority; self-vote allowed). `qna.hide`/`qna.unhide` (host): flip `hidden`; hiding the spotlighted question resets `stage` to `{ mode: 'list' }`; already-in-state is a documented no-op. `qna.stage` (host): spotlight requires an existing, visible question (`E_INVALID_ANSWER` otherwise); identical placement is a documented no-op. Snapshots — participant: `qna` present only when enabled, `{ maxLength, questions: { id, text, votes, own, votedByYou, hidden, name? }[] }`, visible questions plus the participant's OWN hidden ones; stage: `{ stage, questions: { id, text, votes, name? }[] }`, visible only; host: always `{ enabled, stage, questions: { id, participantId, text, hidden, votes, createdAt }[] }` (attribution via the top-level `names` map). In sessions that assign names each question carries the asker's `name` on participant and stage views — public attribution is a deliberate product decision, and in the nickname default the name is system-assigned and not PII; this is the ONE exception to "peers' names are never sent". **In an identified session that same slot carries the student's display name**, so audience Q&A there is attributed under the name the tutor authored. That follows from choosing identified mode and is not a separate opt-in; anonymous Q&A in an identified session is not available. Deleted sessions drop the attribution automatically (the rewritten `deleted-<n>` participantId no longer resolves to a participant record). `voters` never leaves domain snapshots, any role. Order everywhere: votes desc, `createdAt` asc, id. Frozen empties participant/stage question lists (host unaffected); ended blocks all qna commands. Deletion anonymizes `participantId` to `deleted-<n>` (display order) and empties voter ledgers, keeping text/hidden/votes/createdAt. Back-compat: session states stored before the region existed are patched to `{ enabled: false, stage: { mode: 'off' }, questions: {} }` at every load boundary (`ensureQna`). Host surfaces: LiveHost section + `#/sessions/:id/qna` co-host Q&A desk (same bearer host token; multi-host fan-out already role-tagged); CLI/MCP parity deliberately deferred.
 
 Retention (PRD DATA-04), also in domain and equally pure:
 
 ```ts
-function purgeBallots(state: SessionState, now: number): SessionState;
+function deleteBallots(state: SessionState, now: number): SessionState;
 ```
-Drops the per-person layer of a FINISHED session and keeps the aggregates: every `ballots` map becomes `{}` (peer-instruction `round1.ballots` included, with the round-1 aggregate anonymized by the same rules), `participants` becomes `{}`, text/qna aggregate entries keep `text`/`hidden`/`votes` with `participantId` replaced by `purged-<n>` (stable ordinal in stored entry order, 1-based), `purgedAt` is stamped and `revision` bumps by 1. Returns the state unchanged when `status !== 'ended'` (the purge is time-triggered by an alarm and must never race a live session) or when `purgedAt` is already set (idempotent — alarms can fire twice). `hostSnapshot` surfaces `purgedAt`; participant and stage snapshots do not.
+Drops the per-person layer of a FINISHED session and keeps the aggregates: every `ballots` map becomes `{}` (peer-instruction `round1.ballots` included, with the round-1 aggregate anonymized by the same rules), `participants` becomes `{}`, text/qna aggregate entries keep `text`/`hidden`/`votes` with `participantId` replaced by `deleted-<n>` (stable ordinal in stored entry order, 1-based), `ballotsDeletedAt` is stamped and `revision` bumps by 1. Returns the state unchanged when `status !== 'ended'` (the deletion is time-triggered by an alarm and must never race a live session) or when `ballotsDeletedAt` is already set (idempotent — alarms can fire twice). `hostSnapshot` surfaces `ballotsDeletedAt`; participant and stage snapshots do not.
 
 Snapshot views (also in domain): `participantSnapshot(state, participantId)`, `stageSnapshot(state)`, `hostSnapshot(state)`. All three carry `theme` (the active theme id) — the wire snapshots forward it unchanged as `theme`.
 
@@ -279,13 +279,13 @@ receives only its own group name/spokesperson flag and its shared ballot. Aggreg
 rules still apply to other groups and the stage. A group ballot survives spokesperson
 changes; membership changes do not move historical answers. Requests bind to the displayed
 group so late submissions cannot enter a different group's ballot. Recorded group names
-and memberships are removed by the existing ballot purge. Answer counts and progress use
+and memberships are removed by the existing ballot deletion. Answer counts and progress use
 group seats for group questions; joined counts still count people. Private notes and
 pedagogy are stripped from participant/stage wire interactions. Peer-instruction round one
 stays hidden during discussion in multi-slide decks as well as poll-only decks.
 - participant: revision, status, frozen, active interaction (via `participantView`), own current answer, answered-flag; results ONLY if interaction revealed or (`resultVisibility === 'live'` and open/closed). Never notes/correct pre-reveal. Peer instruction adds `round`, `round1Aggregate` (null until revealed) and `ownRound1Answer`. Sessions that assign names (nickname, and identified where the name is the student display name) add `yourName` (own name only — peers' names are never sent, EXCEPT as `name` attribution on session Q&A questions, see §Session Q&A). While the active interaction is open with a session `timerSec`, snapshots include `closesAt` (absolute ms auto-close deadline).
 - stage: revision, status, code, join URL path, participant count, answered count, active interaction (participantView), aggregate only when revealable (same rule as participant), text entries excluding `hidden`, everything text-hidden when frozen. Peer instruction adds `round` and `round1Aggregate` (null until revealed). Same `closesAt` rule as participant.
-- host: everything — the session document, notes, and per-interaction status, joined and answered counts, correct answers, hidden entries, and — for peer instruction — `round` plus `round1Aggregate` with no reveal gating. Per-interaction summaries and the active snapshot also carry `closesAt` while armed. Sessions that assign names add `names: Record<participantId, name>`; the stage sees names only as session-Q&A question attribution, and the CSV export gains a `name` column (header `interactionId,prompt,participantId,name,answer,hidden`) in every non-anonymous session — nickname sessions put the session-local name in that slot, identified sessions put the student display name there. Names die with the purge (`participants` → `{}`). Retention is unchanged from DATA-04: ballots purged 30 min after end, session deleted at 24 h — the participant-facing notice states this.
+- host: everything — the session document, notes, and per-interaction status, joined and answered counts, correct answers, hidden entries, and — for peer instruction — `round` plus `round1Aggregate` with no reveal gating. Per-interaction summaries and the active snapshot also carry `closesAt` while armed. Sessions that assign names add `names: Record<participantId, name>`; the stage sees names only as session-Q&A question attribution, and the CSV export gains a `name` column (header `interactionId,prompt,participantId,name,answer,hidden`) in every non-anonymous session — nickname sessions put the session-local name in that slot, identified sessions put the student display name there. Names die with the deletion (`participants` → `{}`). Retention is unchanged from DATA-04: ballots deleted 30 min after end, session deleted at 24 h — the participant-facing notice states this.
 
 ## HTTP API (worker)
 
@@ -365,7 +365,7 @@ GET /api/tutoring/students/:id/returned  editor+ → { nextNote, writing, missed
                                          unknown / expired / revoked and reveals nothing; success spends nothing and resets
 POST /api/tutoring/students/:id/restore  restore from trash
 POST /api/tutoring/students/:id/permanent-deletion
-                                         create 15-minute browser confirmation URL; does not purge
+                                         create 15-minute browser confirmation URL; does not delete
 GET|POST /api/decks           list or create decks (reusable content); optional validated first version;
                                          createSession:true opts into also filing a draft session (default: none);
                                          current clients send studentId; omission keeps the legacy shape and links "Needs student"
@@ -408,7 +408,7 @@ POST /api/sessions/:id/resume       recover live capabilities using current acco
 POST /api/sessions/:id/permanent-deletion
                                          create browser confirmation URL; MCP/CLI cannot confirm it
 GET|POST /confirm-deletion/:token        signed-in browser only; every answer is an HTML page. GET signed out → 302 to sign-in;
-                                         GET → warning page naming what is deleted; POST → irreversible purge, 200 "Permanently deleted";
+                                         GET → warning page naming what is deleted; POST → permanent deletion, 200 "Permanently deleted";
                                          POST signed out → 401 "Sign in to confirm"; expired, used or another account's link →
                                          410 "This confirmation link no longer works"; item no longer in Trash → 404 "Nothing was deleted"
 GET  /api/my/tokens                      session cookie → { tokens: [{ id, name, prefix, createdAt, lastUsedAt }] }
@@ -446,7 +446,7 @@ GET  /api/sessions/:sessionCode/state            ?role=participant|stage|host  (
 POST /api/sessions/:sessionCode/commands         Bearer token; body CommandEnvelope minus actor (server derives actor from token)
                                          → 200 { ok:true, revision } | 409 { ok:false, error }  (409 for E_REVISION_CONFLICT, 422 others)
 GET  /api/sessions/:sessionCode/export?format=csv|json   host token → final results
-                                         csv = per-ballot; after the ballot purge → 410 { ok:false, error:"ballots-purged" }
+                                         csv = per-ballot; after the ballot deletion → 410 { ok:false, error:"ballots-deleted" }
                                          json = aggregates; keeps working until the session is deleted
 GET  /api/sessions/:sessionCode/ws?token=...     WebSocket upgrade (hibernation API). Server → client: {"v":1,"type":"session.changed","revision":N}.
                                          Fan-out is role-selective (sockets tagged with the token role): host commands (open/close/
@@ -469,7 +469,7 @@ SessionDO: SQLite-backed Durable Object named `SessionDO`, id = `idFromName(sess
 
 Students, decks (content metadata), immutable deck versions, sessions (delivery instances), Notes, trash state, and deletion intents are ordinary multi-tenant D1 business data. Only the active synchronized session is a Durable Object. Launch copies one selected deck version into the session so the session hot path never reads D1 or calls an AI provider.
 
-Retention (PRD DATA-04), served by the same multiplexed alarm: `PURGE_AFTER_MS = 30 * 60 * 1000` and `DELETE_AFTER_MS = 24 * 60 * 60 * 1000`, both measured from `meta.endedAt` — recorded when a session reaches `ended` by command OR by the idle auto-end. At `endedAt + PURGE_AFTER_MS` the DO applies `purgeBallots`, persists and broadcasts `session.changed` once. At `endedAt + DELETE_AFTER_MS` it closes remaining WebSockets and calls `ctx.storage.deleteAll()`, dropping the in-memory state copy too, so join/state/export take the same 404 path as an uninitialized session. The alarm always re-arms to the nearest remaining deadline (pending broadcast, housekeeping, active `closesAt`, purge, delete); after the wipe there is none.
+Retention (PRD DATA-04), served by the same multiplexed alarm: `BALLOTS_DELETE_AFTER_MS = 30 * 60 * 1000` and `DELETE_AFTER_MS = 24 * 60 * 60 * 1000`, both measured from `meta.endedAt` — recorded when a session reaches `ended` by command OR by the idle auto-end. At `endedAt + BALLOTS_DELETE_AFTER_MS` the DO applies `deleteBallots`, persists and broadcasts `session.changed` once. At `endedAt + DELETE_AFTER_MS` it closes remaining WebSockets and calls `ctx.storage.deleteAll()`, dropping the in-memory state copy too, so join/state/export take the same 404 path as an uninitialized session. The alarm always re-arms to the nearest remaining deadline (pending broadcast, housekeeping, active `closesAt`, deletion, delete); after the wipe there is none.
 
 Worker env bindings (wrangler.jsonc): `SESSIONS: DurableObjectNamespace` (control plane: `script_name: "openroom-relay"`), `RELAY: Fetcher` (control plane → relay service binding), `TOKEN_SECRET`, `ADMIN_KEY`, `ASSETS` (static assets with `not_found_handling: single-page-application` per app dir). Router: hono or hand-rolled — hand-rolled preferred (few routes).
 
@@ -639,7 +639,7 @@ access. Interface preferences live separately in `users.prefs`. Closed allowlist
 
 | Flag | Unlocks |
 | --- | --- |
-| `keep` | Snapshot the ended session to R2 (`session_archives`); DO still purges at 30 min and dies at 24 h |
+| `keep` | Snapshot the ended session to R2 (`session_archives`); DO still deletes at 30 min and dies at 24 h |
 | `guestList` | Create a session with `identityMode: guest-list` and mint `orinv_…` guest links |
 | `rawExport` | Per-ballot / named CSV (and ballots inside a `keep` snapshot) |
 | `branding` | Create and edit shared brand kits; existing kits and designs remain readable after downgrade |
@@ -658,7 +658,7 @@ self-hosted: every account sees every flag `true` except `connectors`
 
 - `format=json` — aggregates only. Free until the DO is wiped.
 - `format=csv` — **aggregate** CSV (one row per interaction, counts). Free until the DO is wiped.
-- `format=ballots` — today's per-ballot CSV (including `name` when the session is not anonymous). Requires `rawExport` or `identityMode === 'guest-list'`. `410 ballots-purged` after DATA-04 unless a `keep` archive exists.
+- `format=ballots` — today's per-ballot CSV (including `name` when the session is not anonymous). Requires `rawExport` or `identityMode === 'guest-list'`. `410 ballots-deleted` after DATA-04 unless a `keep` archive exists.
 
 `session_results` (MCP) stays the JSON aggregate shape. Do not add a ballot tool on the free MCP path.
 
@@ -757,12 +757,12 @@ Session lookup is **exactly one D1 read per request and nothing is cached** — 
 | Credential | Shape | Proves | Unlocks |
 | --- | --- | --- | --- |
 | Sign-in session | `or_session` cookie (+ `x-openroom-csrf: 1` on writes) | who the tutor is | control plane only |
-| Personal API token | `Authorization: Bearer orpat_…` | the same tutor, headless | control plane minus final purge |
+| Personal API token | `Authorization: Bearer orpat_…` | the same tutor, headless | control plane minus permanent deletion |
 | Deck capability token | `Authorization: Bearer <signed>` | a seat in one live session | exactly that session |
 | **Student access link** | `Authorization: Bearer orlnk_…` | possession of one student's learner credential | exactly that student's learner-visible records |
 | **Guest link** | `orinv_…` | this named guest on one session's guest list | join that one session as that host-authored name |
 
-`orlnk_<id>_<secret>` (id 16 bytes, secret 32 bytes, both base64url) deliberately mirrors `orpat_` so the two are distinguishable in logs and cannot be confused by a shape check. Only `sha256Hex(token)` is stored; `token_prefix` (first 12 chars) is what the listing shows. Liveness is entirely in the SQL — the row must exist, be unrevoked, be unexpired, and point at a student that is not trashed — so there is no code path where a dead link resolves. Purging a student deletes its links outright.
+`orlnk_<id>_<secret>` (id 16 bytes, secret 32 bytes, both base64url) deliberately mirrors `orpat_` so the two are distinguishable in logs and cannot be confused by a shape check. Only `sha256Hex(token)` is stored; `token_prefix` (first 12 chars) is what the listing shows. Liveness is entirely in the SQL — the row must exist, be unrevoked, be unexpired, and point at a student that is not trashed — so there is no code path where a dead link resolves. Deleting a student deletes its links outright.
 
 **The boundary — an invariant, in the same voice as the session-token rule in `apps/workspace-worker/src/auth.ts`:**
 
@@ -849,7 +849,7 @@ and open one at `GET /api/my/spaces/:id`. The product is pre-production, so noth
 removed leaves an alias or a redirect behind.
 
 The console uses the recoverable trash routes for decks, sessions and folders. Hard `DELETE`
-remains available on decks, sessions and folders for API clients that want it; permanent purge in
+remains available on decks, sessions and folders for API clients that want it; permanent deletion in
 the console always requires the short-lived signed-in browser confirmation page. A permanent
 deletion is confirmed in the browser only — MCP and the CLI can create the intent but cannot
 confirm it. Deletion-intent resource types are `student | deck | session | folder`, and trash
@@ -914,7 +914,7 @@ the verified actor. Host identity and recovery permission on host snapshots
 come from verified server input, never public query parameters. Stage and participant
 projections omit host details. A removed member may retain a revision-only
 socket, but cannot read any subsequent host snapshot or execute commands. Session
-retention purges host names along with participant names and group membership.
+retention deletes host names along with participant names and group membership.
 
 ## Paddle billing boundary
 
@@ -964,7 +964,7 @@ Names written inside authored or audience text remain text for host review.
 Selections carry the source revision. Any intervening session change returns 409;
 refresh clears item choices while preserving the host's authored text.
 The final JSON is assembled from the current authoritative source, never from
-client-supplied result objects. Purged source data returns 410. Rendering escapes
+client-supplied result objects. Deleted source data returns 410. Rendering escapes
 plain text and produces script-free HTML with no remote assets. The browser preview
 and HTML download use the same renderer. Editing invalidates the reviewed download.
 

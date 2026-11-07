@@ -21,7 +21,7 @@ import {
 } from './student-links.js';
 import { studentReturnedRoute } from './learner-practice.js';
 import { studentWorkRoute } from './learner-work.js';
-import { purgeLearnerAudio } from './learner-audio.js';
+import { deleteLearnerAudioPermanently } from './learner-audio.js';
 import { dictionaryRoute } from './dictionary-route.js';
 import { embedCheckRoute, embedImportRoute } from './embed-route.js';
 import { lookupRoute } from './lookup.js';
@@ -52,7 +52,7 @@ import {
   launchSessionRoute,
   restoreDeckRoute,
   restoreSessionRoute,
-  purgeDeck,
+  deleteDeckPermanently,
   sessionItemRoute,
   sessionRecordRoute,
   sessionsCollectionRoute,
@@ -92,7 +92,7 @@ async function studentAccess(
     .first<StudentRow>();
 }
 
-/** Changing, trashing or purging a student needs `editor` on its space; reads need membership. */
+/** Changing, trashing or deleting a student needs `editor` on its space; reads need membership. */
 async function studentEditable(env: ControlEnv, user: SessionUser, spaceId: string): Promise<boolean> {
   const access = await spaceRole(env, user, spaceId);
   return access !== null && roleAtLeast(access.role, 'editor');
@@ -430,7 +430,7 @@ async function deletionNoun(env: ControlEnv, intent: IntentRow): Promise<string>
 }
 
 /**
- * What the purge removes, in the words of TERMINOLOGY.md. Each line matches a
+ * What the deletion removes, in the words of TERMINOLOGY.md. Each line matches a
  * table the confirm route deletes from; Notes of sessions of another deck are
  * only unlinked from a student, so the student list does not claim them.
  */
@@ -481,12 +481,12 @@ function deletionPage(title: string, body: string, status = 200): Response {
 /**
  * The space made for a student (`sp_ctx_<id>`) goes with them when nothing else
  * is filed in it: its folders, tags, invites and members, then the space. The
- * purge itself is the permission: whoever may delete the student and their
+ * permanent deletion itself is the permission: whoever may delete the student and their
  * decks may delete the empty space that held them. A deck, session, picture or
  * brand kit still filed there keeps the space. Saved results of its lessons
  * stay with the tutor who ran them. A space the student was only attached to is
- * never touched. This is tidying after the purge: if it cannot finish, the
- * space stays and the purge still stands.
+ * never touched. This is tidying after the deletion: if it cannot finish, the
+ * space stays and the deletion still stands.
  */
 async function removeEmptyStudentSpace(env: ControlEnv, studentId: string, spaceId: string): Promise<void> {
   if (spaceId !== `sp_ctx_${studentId}`) return;
@@ -543,14 +543,14 @@ export async function confirmPermanentDeletionRoute(
   if (intent.resource_type === 'student') {
     const resource = await studentAccess(env, user.id, intent.resource_id);
     if (resource === null || resource.deleted_at === null) return notInTrash();
-    // The role may have changed since the intent was made; purging still needs editor.
+    // The role may have changed since the intent was made; deleting still needs editor.
     if (!(await studentEditable(env, user, resource.space_id))) return notInTrash();
     const { results } = await env.DB.prepare('SELECT id FROM decks WHERE student_id = ?1')
       .bind(resource.id).all<{ id: string }>();
     for (const deck of results ?? []) {
-      await purgeDeck(env, deck.id);
+      await deleteDeckPermanently(env, deck.id);
     }
-    await purgeLearnerAudio(env, 'student_id', resource.id);
+    await deleteLearnerAudioPermanently(env, 'student_id', resource.id);
     await env.DB.batch([
       // Sessions of other decks may still reference this student; detach them
       // before the student row goes away.
@@ -569,7 +569,7 @@ export async function confirmPermanentDeletionRoute(
     ]);
     await removeEmptyStudentSpace(env, resource.id, resource.space_id);
   } else if (intent.resource_type === 'folder') {
-    const ok = await confirmFolderDeletion(env, user, intent.resource_id, purgeDeck);
+    const ok = await confirmFolderDeletion(env, user, intent.resource_id, deleteDeckPermanently);
     if (!ok) return notInTrash();
   } else {
     const ok = await confirmDeliveryDeletion(env, user.id, intent.resource_type, intent.resource_id);

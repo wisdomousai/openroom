@@ -646,7 +646,7 @@ export async function deleteFolderRoute(
  * The folder takes its contents with it: every folder below it, and the decks
  * and sessions filed in any of them, get the same `deleted_at` marker. Restore
  * clears exactly that marker, so a deck that was already in Trash before the
- * folder stays there, and purge deletes the decks the marker covers.
+ * folder stays there, and permanent deletion deletes the decks the marker covers.
  */
 export async function trashFolderRoute(
   request: Request,
@@ -766,7 +766,7 @@ export async function createFolderDeletionIntentRoute(
   }, 202);
 }
 
-/** Whether a trashed folder's purge would keep a live deck (it moves to the space root). */
+/** Whether a trashed folder's permanent deletion would keep a live deck (it moves to the space root). */
 export async function folderKeepsLiveDecks(env: ControlEnv, folderId: string): Promise<boolean> {
   const folder = await env.DB.prepare('SELECT space_id FROM folders WHERE id = ?1').bind(folderId).first<{ space_id: string }>();
   if (folder === null) return false;
@@ -779,9 +779,9 @@ export async function folderKeepsLiveDecks(env: ControlEnv, folderId: string): P
 }
 
 /**
- * The permanent purge of a trashed folder: the folder, every folder below it,
+ * The permanent deletion of a trashed folder: the folder, every folder below it,
  * and every deck in them that is in Trash, each deck with its sessions, Notes
- * and learner work (`purgeDeck`). That covers the decks that went with the
+ * and learner work (`deleteDeckPermanently`). That covers the decks that went with the
  * folder, with a subfolder trashed before it, or on their own.
  *
  * A live deck filed here (restored on its own since, or in a folder trashed
@@ -789,14 +789,14 @@ export async function folderKeepsLiveDecks(env: ControlEnv, folderId: string): P
  * does a session whose deck lives elsewhere (out of Trash if the folder put it
  * there). The confirmation page says so (`folderKeepsLiveDecks`).
  *
- * `purgeDeck` is passed in so this module does not import the delivery layer,
+ * `deleteDeckPermanently` is passed in so this module does not import the delivery layer,
  * which imports this one.
  */
 export async function confirmFolderDeletion(
   env: ControlEnv,
   user: SessionUser,
   folderId: string,
-  purgeDeck: (env: ControlEnv, deckId: string) => Promise<void>,
+  deleteDeckPermanently: (env: ControlEnv, deckId: string) => Promise<void>,
 ): Promise<boolean> {
   const access = await folderAccess(env, user, folderId, true);
   if (access === null || access.folder.deleted_at === null) return false;
@@ -806,7 +806,7 @@ export async function confirmFolderDeletion(
   const { results: decks } = await env.DB.prepare(
     `SELECT id FROM decks WHERE folder_id IN (${placeholders}) AND deleted_at IS NOT NULL`,
   ).bind(...subtreeIds).all<{ id: string }>();
-  for (const deck of decks ?? []) await purgeDeck(env, deck.id);
+  for (const deck of decks ?? []) await deleteDeckPermanently(env, deck.id);
   await env.DB.batch([
     env.DB.prepare(`UPDATE decks SET folder_id = NULL WHERE folder_id IN (${placeholders})`).bind(...subtreeIds),
     env.DB.prepare(

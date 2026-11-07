@@ -80,7 +80,7 @@ If another reviewer changed the work, refresh and review the latest version befo
 
 Sign in with an account that can access the original space. Check whether the 90-day archive period has expired. Individual responses are downloadable only when they were captured in that archive.
 
-For a recap, prepare it before the live response purge. Downloaded copies must be recovered from your own storage if the server copy has expired.
+For a recap, prepare it before the live response deletion. Downloaded copies must be recovered from your own storage if the server copy has expired.
 
 ## An agent or PowerPoint connection fails
 

@@ -246,7 +246,7 @@ describe('workspace hierarchy', () => {
     expect(back.decks.find((row) => row.id === deck.deck.id)?.folderId).toBe(folder.id);
   });
 
-  it('purges a trashed folder together with its decks', async () => {
+  it('permanently deletes a trashed folder together with its decks', async () => {
     const { cookie } = await seedSession();
     const { studentId, spaceId } = await createSmokeStudent((path, init) => asUser(cookie, path, init ?? {}));
     const folder = (await (await asUser(cookie, `/api/my/spaces/${spaceId}/folders`, {
@@ -266,7 +266,7 @@ describe('workspace hierarchy', () => {
     await env.DB.prepare('UPDATE folders SET deleted_at = deleted_at - 60000 WHERE id = ?1').bind(child.id).run();
     await env.DB.prepare('UPDATE decks SET deleted_at = deleted_at - 60000 WHERE id = ?1').bind(deck.deck.id).run();
     await asUser(cookie, `/api/my/folders/${folder.id}/trash`, { method: 'POST' });
-    // Restored on its own while the folder is in Trash: the purge must not take it.
+    // Restored on its own while the folder is in Trash: the permanent deletion must not take it.
     expect((await asUser(cookie, `/api/decks/${kept.deck.id}/restore`, { method: 'POST' })).status).toBe(200);
     const intent = await asUser(cookie, `/api/my/folders/${folder.id}/permanent-deletion`, { method: 'POST' });
     expect(intent.status).toBe(202);

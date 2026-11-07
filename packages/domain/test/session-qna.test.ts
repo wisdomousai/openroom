@@ -5,7 +5,7 @@ import type { Session } from '@openroom/schema';
 import {
   hostSnapshot,
   participantSnapshot,
-  purgeBallots,
+  deleteBallots,
   sortedQuestions,
   stageSnapshot,
 } from '../src/index.js';
@@ -322,15 +322,15 @@ describe('session qna — snapshots', () => {
   });
 });
 
-describe('session qna — purge and back-compat', () => {
-  it('purge anonymizes askers and empties voter ledgers, keeping text/votes', () => {
+describe('session qna — deletion and back-compat', () => {
+  it('retention deletion anonymizes askers and empties voter ledgers, keeping text/votes', () => {
     let state = ask(qnaRoom(), 'p1', 'q1', 'keep me', 100);
     state = upvote(state, 'p2', 'q1');
     state = run(state, env({ command: 'session.end' }));
-    const purged = purgeBallots(state, 9999);
-    const question = purged.qna.questions['q1'];
+    const deleted = deleteBallots(state, 9999);
+    const question = deleted.qna.questions['q1'];
     expect(question).toMatchObject({ text: 'keep me', votes: 1, voters: [] });
-    expect(question?.participantId).toBe('purged-1');
+    expect(question?.participantId).toBe('deleted-1');
   });
 
   it('session states stored before the qna region existed still apply commands and snapshot', () => {

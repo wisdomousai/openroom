@@ -4,7 +4,7 @@
  * The contract under test is the *stability* of the assignment, because that is
  * what a session depends on:
  *  - lanes alternate over the order people arrived, from a persisted counter —
- *    not from the size of the participant map, which shrinks (retention purge)
+ *    not from the size of the participant map, which shrinks (retention deletion)
  *    and would then re-pair everyone who joins afterwards;
  *  - a learner who reloads or re-enters keeps the lane they already had;
  *  - cards without a lane remain visible to both partners.
@@ -123,7 +123,7 @@ describe('pair-work lane assignment', () => {
 
     /*
      * Nothing in the product removes one participant today — the retention
-     * purge empties the whole map — so the shrink is staged in storage and the
+     * deletion empties the whole map — so the shrink is staged in storage and the
      * in-memory cache is dropped to force a reload from it. The regression this pins
      * is parity taken over `participants`: two people left in the map would
      * hand the fourth joiner lane 0, i.e. the same side as the person they were

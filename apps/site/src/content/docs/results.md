@@ -47,7 +47,7 @@ The selection starts empty. Select only material suitable for the recipients. A 
 
 If the source changes while preparing the recap, refresh the available content and select the entries again. Keep the title, summary, and follow-up under review as well. These editorial fields are local to the recap preparation page; download the finished file before leaving it.
 
-Recap source data is available only before the live response purge. Prepare and download the recap promptly after the workshop. The title permits 160 characters; the discussion summary and shared follow-up permit 10,000 characters each.
+Recap source data is available only before the live response deletion. Prepare and download the recap promptly after the workshop. The title permits 160 characters; the discussion summary and shared follow-up permit 10,000 characters each.
 
 ## Keep teaching records separately
 

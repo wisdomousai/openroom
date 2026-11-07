@@ -594,8 +594,8 @@ export interface HostSnapshot {
   /** participantId -> session-local name; present only in nickname sessions */
   names?: Record<string, string>;
   endedAt?: number;
-  /** set once the ballots have been purged (PRD DATA-04); host-only */
-  purgedAt?: number;
+  /** set once the ballots have been deleted (PRD DATA-04); host-only */
+  ballotsDeletedAt?: number;
 }
 
 export function hostSnapshot(input: SessionState): HostSnapshot {
@@ -660,6 +660,6 @@ export function hostSnapshot(input: SessionState): HostSnapshot {
   if (Object.keys(names).length > 0) snapshot.names = names;
   if (state.participantLimit !== undefined) snapshot.participantLimit = state.participantLimit;
   if (state.endedAt !== undefined) snapshot.endedAt = state.endedAt;
-  if (state.purgedAt !== undefined) snapshot.purgedAt = state.purgedAt;
+  if (state.ballotsDeletedAt !== undefined) snapshot.ballotsDeletedAt = state.ballotsDeletedAt;
   return snapshot;
 }

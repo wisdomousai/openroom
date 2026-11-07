@@ -23,7 +23,7 @@
  *
  * Nothing is counted at all. Taught-counts, deliveries-per-week and similar
  * ledger figures are a non-goal (`contents-meta.ts`: never a date, never a
- * taught-count). Ballots and their aggregates are purged thirty minutes after
+ * taught-count). Ballots and their aggregates are deleted thirty minutes after
  * a session ends (`PRODUCT.md` §Operating Context), so per-learner numbers are
  * not derivable either — and the correct response is to not show them.
  */
