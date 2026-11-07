@@ -1117,6 +1117,6 @@
 }
 
 /* Live results inherit the same master and type scale as authored content. */
-.slide-surface > .plate { padding: var(--slide-safe-area); background: transparent; border: 0; border-radius: 0; box-shadow: none; gap: 2cqw; }
+.slide-surface > .plate { padding: var(--slide-safe-area); padding-bottom: max(var(--slide-safe-area), var(--slide-footer-band, 0px)); background: transparent; border: 0; border-radius: 0; box-shadow: none; gap: 2cqw; }
 .slide-surface .prompt { font-size: 4cqw; max-width: none; line-height: 1.15; }
 .slide-surface .plate__body { background: transparent; }
