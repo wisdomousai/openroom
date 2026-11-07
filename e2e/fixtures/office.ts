@@ -23,7 +23,7 @@ export async function officeHostFixture(context: BrowserContext) {
         settings: () => JSON.parse(JSON.stringify(contentSettings)),
         replace: (value) => { presentationTags = value.presentationTags; slides = value.slides; order = Object.keys(slides); save(); },
       };
-      window.PowerPoint = { run: (work) => work({ sync: () => Promise.resolve(), presentation: { slides: { items: order.map((id) => ({ id, tags: tags(slides[id]) })), load() {} }, tags: tags(presentationTags), getSelectedSlides: () => ({ items: selected.map((id) => ({ id, tags: tags(slides[id]) })), load() {} }) } }) };
+      window.PowerPoint = { run: (work) => work({ sync: () => Promise.resolve(), presentation: { slides: { items: order.map((id) => ({ id, tags: tags(slides[id]) })), getItemOrNullObject: (id) => order.includes(id) ? { id, isNullObject: false, tags: tags(slides[id]), load() {} } : { isNullObject: true, load() {} }, load() {} }, tags: tags(presentationTags), getSelectedSlides: () => ({ items: selected.map((id) => ({ id, tags: tags(slides[id]) })), load() {} }) } }) };
       window.Office = {
         HostType: { PowerPoint: 'PowerPoint' }, AsyncResultStatus: { Succeeded: 'succeeded' },
         EventType: { DialogMessageReceived: 'message', DialogEventReceived: 'closed', DocumentSelectionChanged: 'selection', ActiveViewChanged: 'activeView' },

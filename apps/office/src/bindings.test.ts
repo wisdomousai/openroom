@@ -58,6 +58,7 @@ describe('PowerPoint activity references', () => {
   it('rejects malformed or credential-bearing file metadata', () => {
     const valid = { version: 1, presentationId: crypto.randomUUID(), slideId: '42', spaceId: 's', deckId: 'd', stepId: 'q' };
     expect(parseBinding(JSON.stringify(valid))).toEqual(valid);
+    for (const slideId of ['267#763315295', '267#', '#763315295']) expect(parseBinding(JSON.stringify({ ...valid, slideId }))).toEqual({ ...valid, slideId });
     for (const value of [null, [], { ...valid, token: 'secret' }, { ...valid, version: 2 }, { ...valid, deckId: 'https://attacker.test' }, { ...valid, slideId: {} }]) expect(parseBinding(JSON.stringify(value))).toBeNull();
   });
   it('retains a public retry identity across reloads and refuses to overwrite concurrent session or slide edits', async () => {

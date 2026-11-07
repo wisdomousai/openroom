@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { StageView } from '../../stage/src/StageView';
-import { bindingMatches, parseBinding, readSelection, readSessionReference, type ActivityBinding } from './bindings';
+import { bindingMatches, parseBinding, readSelection, readSessionReference, type ActivityBinding, type SessionReference } from './bindings';
 import { displayChannelName, displayMatches, displayIsCurrent, type DisplayPublication } from './display-channel';
 import type { SlidePreview } from './slide-preview';
 import { useOfficeView } from './useOfficeView';
+import { ScaledStage } from './ScaledStage';
+import { deckAspectRatio } from '@openroom/schema';
 import './display.css';
 
 const CONTENT_SETTING = 'openroom.activity';
@@ -16,6 +18,8 @@ function Content({ office }: { office: typeof Office | null }) {
   const [display, setDisplay] = useState<DisplayPublication | null>(null);
   const [preview, setPreview] = useState<SlidePreview | null>(null);
   const [error, setError] = useState(''), [choosing, setChoosing] = useState(false);
+  const [sessionSaved, setSessionSaved] = useState(false);
+  const knownSession = useRef<SessionReference | null>(null);
   const picker = useRef<HTMLIFrameElement>(null);
   const view = useOfficeView(office);
   const supported = office?.context.requirements.isSetSupported('PowerPointApi', '1.5') && typeof BroadcastChannel !== 'undefined';
@@ -65,49 +69,89 @@ function Content({ office }: { office: typeof Office | null }) {
 
   useEffect(() => {
     if (!binding || !office || !supported) return;
-    let stopped = false, generation = 0, lastReceived = 0, lastSessionId: string | null = null;
+    let stopped = false, lastReceived = 0, lastSessionId: string | null = null, activated = false;
+    let pending: DisplayPublication | null = null, processing = false;
     const channel = new BroadcastChannel(displayChannelName(binding.presentationId));
     const clear = () => { setDisplay(null); lastReceived = 0; };
+    // Slide Show has no slide selection: PowerPoint for Mac reuses this page in read view and
+    // PowerPoint on the web loads it fresh, so read view trusts the stored binding. A copied
+    // slide is caught while editing, and Start refuses a presentation with an unreconnected copy.
+    // The session reference read while editing stays valid in Slide Show if PowerPoint
+    // refuses document reads there; a page loaded fresh in Slide Show trusts the pane's
+    // publication, which the signed-in pane sends only for this presentation's session.
+    const session = async (publication?: DisplayPublication): Promise<SessionReference | null> => {
+      try {
+        const value = (await readSessionReference()).reference;
+        knownSession.current = value;
+        return value;
+      } catch (cause) {
+        if (view !== 'read') throw cause;
+        return knownSession.current ?? (publication ? { version: 1, presentationId: binding.presentationId, sessionId: publication.sessionId } : null);
+      }
+    };
     const selectedHere = async () => {
+      if (view === 'read') return true;
       const selection = await readSelection();
       if (stopped) return false;
       if (!bindingMatches(selection, binding)) {
-        clear(); setPreview(null); setError('Select this PowerPoint slide. Copied slides need their own embedded slide selection.');
+        clear(); setPreview(null);
+        // A copied slide carries the original's tag under a new slide ID.
+        setError(selection.rawBinding === JSON.stringify(binding) ? 'This slide is a copy. Choose an OpenRoom slide for it.' : 'Select this PowerPoint slide to show its OpenRoom slide.');
         return false;
       }
       const next = parseBinding(selection.rawBinding);
       if (!sameBinding(next, binding)) {
         clear(); setPreview(null);
-        if (next && bindingMatches(selection, next) && view !== 'read') await saveBinding(next);
+        if (next && bindingMatches(selection, next)) await saveBinding(next);
         else setError('Choose an OpenRoom slide for this display.');
         return false;
       }
       setError(''); return true;
     };
+    // Publications arrive faster than Office answers while an audience is answering.
+    // Check them one at a time and always keep the newest, instead of dropping each
+    // check that a later publication overtakes.
+    const process = async () => {
+      if (processing) return;
+      processing = true;
+      try {
+        while (pending && !stopped) {
+          const publication = pending; pending = null;
+          const [valid, reference] = await Promise.all([selectedHere(), session(publication)]);
+          if (stopped || pending || !valid) continue;
+          if (!displayMatches(publication, binding, reference)) { clear(); continue; }
+          lastReceived = Date.now(); lastSessionId = publication.sessionId;
+          setDisplay(displayIsCurrent(publication, binding) ? publication : null);
+        }
+      } catch (cause) { if (!stopped) { clear(); setError(message(cause)); } }
+      finally { processing = false; }
+    };
     channel.onmessage = (event: MessageEvent) => {
-      if (event.data?.type === 'openroom.display.closed') { if (event.data.sessionId === lastSessionId) { generation++; clear(); } return; }
+      if (event.data?.type === 'openroom.display.closed') { if (event.data.sessionId === lastSessionId) { pending = null; clear(); } return; }
       if (event.data?.type === 'openroom.slide.preview' && event.data.snapshot?.role === 'stage' && sameBinding(event.data.binding, binding)) {
         const value = event.data as SlidePreview;
         void selectedHere().then((valid) => { if (valid && !stopped) setPreview(value); }).catch(() => {});
         return;
       }
       if (event.data?.type !== 'openroom.display') return;
-      const publication = event.data as DisplayPublication, current = ++generation;
-      void Promise.all([selectedHere(), readSessionReference()]).then(([valid, session]) => {
-        if (stopped || current !== generation || !valid) return;
-        if (!displayMatches(publication, binding, session.reference)) { clear(); return; }
-        lastReceived = Date.now(); lastSessionId = publication.sessionId;
-        setDisplay(displayIsCurrent(publication, binding) ? publication : null);
-      }).catch((cause: unknown) => { if (!stopped && current === generation) { clear(); setError(message(cause)); } });
+      pending = event.data as DisplayPublication;
+      void process();
     };
     const request = async () => {
+      if (document.visibilityState !== 'visible') activated = false;
       if (!await selectedHere() || stopped) return;
       channel.postMessage({ type: 'openroom.slide.request', binding });
       channel.postMessage({ type: 'openroom.display.request' });
-      // Only a visible slideshow requests activation. Editing never opens responses.
-      if (view === 'read' && document.visibilityState === 'visible') {
-        const session = await readSessionReference();
-        if (!stopped && session.reference) channel.postMessage({ type: 'openroom.slide.activate', binding, sessionId: session.reference.sessionId });
+      const reference = await session();
+      if (stopped) return;
+      setSessionSaved(Boolean(reference));
+      // A visible slideshow asks once each time this slide comes on screen. Editing never
+      // opens responses, and the heartbeat must not pull the session back to this slide
+      // after the presenter moves on from the companion or the pane.
+      const sessionId = reference?.sessionId ?? lastSessionId;
+      if (view === 'read' && document.visibilityState === 'visible' && !activated && sessionId) {
+        activated = true;
+        channel.postMessage({ type: 'openroom.slide.activate', binding, sessionId });
       }
       if (lastReceived && Date.now() - lastReceived > 15_000) clear();
     };
@@ -129,16 +173,18 @@ function Content({ office }: { office: typeof Office | null }) {
     <iframe ref={picker} title="Choose an OpenRoom slide" src="/office/taskpane.html?embed=1" />
   </div>;
   return <div className="embedded-slide">
-    {snapshot ? <StageView snapshot={snapshot} status={display?.status ?? 'live'} embedded hideRail={!display} /> : <div className="display-message"><h1>OpenRoom Slide</h1>
-      <p>{supported ? 'Open the OpenRoom pane to load this slide and start participation.' : 'Open this add-in in PowerPoint to embed an OpenRoom slide.'}</p>
+    {snapshot ? <ScaledStage aspect={deckAspectRatio(snapshot.outline?.design?.aspectRatio ?? '16:9')}><StageView snapshot={snapshot} status={display?.status ?? 'live'} embedded hideRail={!display} /></ScaledStage> : <div className="display-message"><h1>OpenRoom Slide</h1>
+      <p>{!supported ? 'Open this add-in in PowerPoint to embed an OpenRoom slide.' : view === 'read' ? 'Start or resume the session in the OpenRoom pane to show this slide.' : 'Sign in to the OpenRoom pane to show this slide.'}</p>
     </div>}
     {view !== 'read' ? <div className="embedded-toolbar">
-      {error ? <span role="alert">{error}</span> : <span>{display ? 'Live slide' : 'Preview · Start participation in the OpenRoom pane'}</span>}
+      {error ? <span role="alert">{error}</span> : <span>{display ? 'Live slide' : sessionSaved ? 'Preview · Resume the session in the OpenRoom pane' : 'Preview · Start a session in the OpenRoom pane'}</span>}
       {supported ? <button onClick={() => setChoosing(true)}>Choose slide</button> : null}
     </div> : null}
   </div>;
 }
 
+(window as { __openroomStarted?: boolean }).__openroomStarted = true;
+document.getElementById('openroom-boot-stalled')?.remove();
 const root = createRoot(document.getElementById('app')!);
 root.render(<div className="display-message"><p role="status">Connecting to PowerPoint…</p></div>);
 async function start() {

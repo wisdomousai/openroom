@@ -19,11 +19,27 @@ describe('Office app delivery', () => {
     expect(xml).toContain('<Host Name="Presentation" />');
     expect(xml).toContain('<Set Name="PowerPointApi" MinVersion="1.5" />');
   });
+  it('loads a minimal function file, not a hidden copy of the task pane', () => {
+    const xml = officeManifest('https://preview.example');
+    expect(xml).toContain('<FunctionFile resid="OpenRoom.Commands.Url" />');
+    expect(xml).toContain('<bt:Url id="OpenRoom.Commands.Url" DefaultValue="https://preview.example/office/commands.html" />');
+  });
+  it('names and draws the two add-ins differently in the Add-ins menu', () => {
+    const pane = officeManifest('https://preview.example'), content = officeContentManifest('https://preview.example');
+    const name = (xml: string) => /<DisplayName DefaultValue="([^"]+)"/.exec(xml)?.[1];
+    const icon = (xml: string) => /<IconUrl DefaultValue="([^"]+)"/.exec(xml)?.[1];
+    expect(name(pane)).toBe('OpenRoom'); expect(name(content)).toBe('OpenRoom Slide');
+    expect(icon(pane)).not.toBe(icon(content));
+  });
   it('gives the embedded display its own manifest and disables response snapshots in the saved file', () => {
     const content = officeContentManifest('https://preview.example');
     expect(content).toContain('xsi:type="ContentApp"');
     expect(content).toContain('DefaultValue="https://preview.example/office/content.html"');
     expect(content).toContain('<AllowSnapshot>false</AllowSnapshot>');
     expect(/<Id>([^<]+)<\/Id>/.exec(content)?.[1]).not.toBe(/<Id>([^<]+)<\/Id>/.exec(officeManifest('https://preview.example'))?.[1]);
+  });
+  it('keeps the content add-in version that embedded slides reference', () => {
+    // Saved slides store this version; PowerPoint for Mac refuses a sideloaded add-in whose version differs.
+    expect(/<Version>([^<]+)<\/Version>/.exec(officeContentManifest('https://preview.example'))?.[1]).toBe('1.0.2.0');
   });
 });

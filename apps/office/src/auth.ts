@@ -46,8 +46,40 @@ export async function signIn(office: typeof Office, origin = location.origin): P
   const response = await fetch(`${origin}/api/mcp/token`, { method: 'POST', credentials: 'omit', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ grant_type: 'authorization_code', client_id: CLIENT_ID, redirect_uri: flow.redirectUri, code, code_verifier: flow.verifier }) });
   const result = await response.json() as { access_token?: string; connection_id?: string; expires_in?: number };
   if (!response.ok || typeof result.access_token !== 'string' || !/^orauth_[A-Za-z0-9_-]{43}$/.test(result.access_token) || typeof result.connection_id !== 'string' || typeof result.expires_in !== 'number') throw new Error('Sign-in could not be completed. Please try again.');
-  // Kept only in this task-pane runtime. Never write credentials to Office settings or tags.
-  return { token: result.access_token, id: result.connection_id, expiresAt: Date.now() + result.expires_in * 1000 };
+  const connection = { token: result.access_token, id: result.connection_id, expiresAt: Date.now() + result.expires_in * 1000 };
+  rememberConnection(office, connection);
+  return connection;
+}
+
+// The connection stays in this add-in's own browser storage so a PowerPoint restart
+// does not ask for sign-in again. Never write credentials to Office settings or tags:
+// those travel with the file.
+const STORAGE_KEY = 'openroom.connection';
+type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem' | 'removeItem'>;
+const storageKey = (office: typeof Office | null) => `${office?.context?.partitionKey ?? ''}${STORAGE_KEY}`;
+function storage(): Storage | null { try { return globalThis.localStorage ?? null; } catch { return null; } }
+
+export function rememberConnection(office: typeof Office | null, connection: Connection, store = storage()): void {
+  try { store?.setItem(storageKey(office), JSON.stringify(connection)); } catch { /* Storage can be full or blocked; sign-in still works for this session. */ }
+}
+
+export function storedConnection(office: typeof Office | null, store = storage(), now = Date.now()): Connection | null {
+  let raw: string | null = null;
+  try { raw = store?.getItem(storageKey(office)) ?? null; } catch { return null; }
+  if (!raw || raw.length > 512) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<Connection>;
+    // Drop a stored connection a day before it expires rather than fail mid-session.
+    if (typeof value.token === 'string' && /^orauth_[A-Za-z0-9_-]{43}$/.test(value.token) && typeof value.id === 'string' && value.id.length <= 128 && typeof value.expiresAt === 'number' && value.expiresAt - 86_400_000 > now) {
+      return { token: value.token, id: value.id, expiresAt: value.expiresAt };
+    }
+  } catch { /* Not a stored connection. */ }
+  forgetConnection(office, store);
+  return null;
+}
+
+export function forgetConnection(office: typeof Office | null, store = storage()): void {
+  try { store?.removeItem(storageKey(office)); } catch { /* Nothing to remove. */ }
 }
 
 export async function disconnect(connection: Connection): Promise<void> {

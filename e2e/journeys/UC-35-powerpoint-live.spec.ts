@@ -115,7 +115,10 @@ test('recovers a lost start response, retains answers across revisits and reload
     const before = await state(), document = await file(page);
     expect(JSON.parse(document.presentationTags.OPENROOM_SESSION!)).toEqual({ version: 1, presentationId: expect.any(String), sessionId: firstGrant!.sessionId });
     expect(Object.keys(document.presentationTags).sort()).toEqual(['OPENROOM_PRESENTATION', 'OPENROOM_SESSION']);
-    await page.reload(); await connect(page);
+    // The connection survives a reload (and a PowerPoint restart) without signing in again.
+    await page.reload();
+    await expect(page.getByRole('navigation', { name: 'Choose content' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in to OpenRoom', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Resume session', exact: true }).click();
     await expect(controls.getByText(code, { exact: true })).toBeVisible();
     await expect(controls.getByRole('button', { name: 'Reveal results', exact: true })).toBeDisabled();

@@ -8,10 +8,10 @@ export function officeManifest(origin: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xsi:type="TaskPaneApp">
   <Id>a4d615bd-34ea-4d56-a147-460e24624b40</Id>
-  <Version>1.0.1.0</Version>
+  <Version>1.0.2.0</Version>
   <ProviderName>OpenRoom</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="OpenRoom for PowerPoint" />
+  <DisplayName DefaultValue="OpenRoom" />
   <Description DefaultValue="Embed any OpenRoom slide in your presentation." />
   <IconUrl DefaultValue="${base}/office/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="${base}/office/icon-64.png" />
@@ -25,7 +25,7 @@ export function officeManifest(origin: string): string {
     <Hosts>
       <Host xsi:type="Presentation">
         <DesktopFormFactor>
-          <FunctionFile resid="OpenRoom.Pane.Url" />
+          <FunctionFile resid="OpenRoom.Commands.Url" />
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <OfficeTab id="TabHome">
               <Group id="OpenRoom.Group">
@@ -45,27 +45,31 @@ export function officeManifest(origin: string): string {
     </Hosts>
     <Resources>
       <bt:Images><bt:Image id="OpenRoom.Icon32" DefaultValue="${base}/office/icon-32.png" /><bt:Image id="OpenRoom.Icon64" DefaultValue="${base}/office/icon-64.png" /></bt:Images>
-      <bt:Urls><bt:Url id="OpenRoom.Pane.Url" DefaultValue="${base}/office/taskpane.html" /></bt:Urls>
+      <bt:Urls><bt:Url id="OpenRoom.Pane.Url" DefaultValue="${base}/office/taskpane.html" /><bt:Url id="OpenRoom.Commands.Url" DefaultValue="${base}/office/commands.html" /></bt:Urls>
       <bt:ShortStrings><bt:String id="OpenRoom.Label" DefaultValue="OpenRoom" /></bt:ShortStrings>
-      <bt:LongStrings><bt:String id="OpenRoom.Tooltip" DefaultValue="Choose an OpenRoom slide, rehearse, or start audience participation." /></bt:LongStrings>
+      <bt:LongStrings><bt:String id="OpenRoom.Tooltip" DefaultValue="Choose OpenRoom slides, rehearse them, and run the live session." /></bt:LongStrings>
     </Resources>
   </VersionOverrides>
 </OfficeApp>`;
 }
 
-/** Separate ContentApp: Office does not combine content and task-pane runtimes in one manifest. */
+/**
+ * Separate ContentApp: Office does not combine content and task-pane runtimes in one manifest.
+ * Keep Version fixed. Each embedded slide stores this version in the .pptx, and PowerPoint for
+ * Mac shows "Add-in Error" for a sideloaded content add-in whose installed version differs.
+ */
 export function officeContentManifest(origin: string): string {
   const base = xml(origin);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="ContentApp">
   <Id>f765119e-b940-4b85-81a7-4b4d855b9d68</Id>
-  <Version>1.0.1.0</Version>
+  <Version>1.0.2.0</Version>
   <ProviderName>OpenRoom</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="OpenRoom Slide" />
   <Description DefaultValue="Embed any OpenRoom slide, including content, media, exercises, and live questions." />
-  <IconUrl DefaultValue="${base}/office/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="${base}/office/icon-64.png" />
+  <IconUrl DefaultValue="${base}/office/slide-icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="${base}/office/slide-icon-64.png" />
   <SupportUrl DefaultValue="${base}/docs/" />
   <Hosts><Host Name="Presentation" /></Hosts>
   <Requirements><Sets DefaultMinVersion="1.1"><Set Name="PowerPointApi" MinVersion="1.5" /><Set Name="Settings" MinVersion="1.1" /><Set Name="DialogApi" MinVersion="1.1" /></Sets></Requirements>
@@ -92,7 +96,7 @@ export async function serveOffice(request: Request, env: Env, url: URL): Promise
   if (url.pathname === '/office/content-manifest.xml') return new Response(officeContentManifest(url.origin), { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
   // ASSETS canonicalizes *.html to extensionless URLs. Fetch that form internally,
   // so its redirect cannot drop the OAuth query before callback.js reads it.
-  const path = url.pathname === '/office/' || url.pathname === '/office' ? '/office/taskpane' : /^\/office\/(taskpane|callback|display|content)\.html$/.test(url.pathname) ? url.pathname.slice(0, -5) : url.pathname;
+  const path = url.pathname === '/office/' || url.pathname === '/office' ? '/office/taskpane' : /^\/office\/(taskpane|callback|display|content|commands)\.html$/.test(url.pathname) ? url.pathname.slice(0, -5) : url.pathname;
   // Query parameters carry the dialog code only to the browser; the asset store does not need them.
   return officeAssetHeaders(await env.ASSETS.fetch(new Request(new URL(path, url.origin), request)), path);
 }

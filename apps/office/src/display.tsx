@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { StageSnapshot } from '@openroom/sdk';
 import { StageView } from '../../stage/src/StageView';
+import { deckAspectRatio } from '@openroom/schema';
+import { ScaledStage } from './ScaledStage';
 import './display.css';
 
 function Preview() {
@@ -17,6 +19,6 @@ function Preview() {
     const announce = setInterval(() => window.parent.postMessage({ type: 'openroom.preview.ready' }, location.origin), 1000);
     return () => { window.removeEventListener('message', receive); clearInterval(announce); };
   }, []);
-  return snapshot ? <div className="office-preview"><StageView snapshot={snapshot} status="live" embedded hideRail /></div> : <div className="display-message"><p>Open an activity rehearsal from the OpenRoom pane.</p></div>;
+  return snapshot ? <div className="office-preview"><ScaledStage aspect={deckAspectRatio(snapshot.outline?.design?.aspectRatio ?? '16:9')}><StageView snapshot={snapshot} status="live" embedded hideRail /></ScaledStage></div> : <div className="display-message"><p>Open an activity rehearsal from the OpenRoom pane.</p></div>;
 }
 createRoot(document.getElementById('app')!).render(<Preview />);

@@ -20,7 +20,7 @@ With the repository and its dependencies installed, run this command from the re
 bun run office:install
 ```
 
-The installer sets up Microsoft's localhost development certificate, builds and serves the apps at `https://localhost:3443`, and installs the two local manifests. Restart PowerPoint, open a presentation, and choose **Home → Add-ins**. Open **OpenRoom for PowerPoint** for the task pane and **OpenRoom Slide** for an embedded slide. The task pane is also available from **Home → OpenRoom**.
+The installer sets up Microsoft's localhost development certificate, builds and serves the apps at `https://localhost:3443`, and installs the two local manifests. Restart PowerPoint, open a presentation, and choose **Home → Add-ins**. Open **OpenRoom** for the task pane and **OpenRoom Slide** for an embedded slide. The task pane is also available from **Home → OpenRoom**.
 
 Keep the server command running. On later runs, use:
 
@@ -34,9 +34,9 @@ The development certificate lasts 30 days. Rerun the installer to renew it. To r
 
 ## Connect the task pane
 
-Open **OpenRoom for PowerPoint**, select the sign-in action, complete sign-in in the opened browser, and approve the connection for the intended account. Return to PowerPoint after the connection succeeds.
+Open the **OpenRoom** task pane, select the sign-in action, complete sign-in in the opened browser, and approve the connection for the intended account. Return to PowerPoint after the connection succeeds.
 
-Use the same server address throughout sign-in and presentation. If the pane reloads and asks to reconnect, reconnect before resuming the existing session. Revoke an old connection in OpenRoom **Settings → Connected applications** when needed.
+Use the same server address throughout sign-in and presentation. The pane stays signed in when it reloads or PowerPoint restarts, until the connection expires after 30 days or is revoked. If it asks you to sign in again, do that before resuming the existing session. Revoke an old connection in OpenRoom **Settings → Connected applications** when needed.
 
 ## Insert an OpenRoom slide
 

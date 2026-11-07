@@ -15,6 +15,7 @@
     "dev:relay": "bun run --filter openroom-relay dev",
     "dev:office": "node scripts/dev-office.mjs",
     "office:install": "node scripts/dev-office.mjs --install",
+    "office:addin": "node scripts/office-addin.mjs",
     "desktop": "node scripts/dev-desktop.mjs",
     "sync:mcp-config": "node scripts/sync-mcp-config.mjs",
     "build": "bun run build:core && bun run build:workspace",

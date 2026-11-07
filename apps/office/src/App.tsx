@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { disconnect, signIn, type Connection } from './auth';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { disconnect, forgetConnection, signIn, storedConnection, type Connection } from './auth';
 import { ConnectionExpired, request, type Space, type Deck, type DeckDetail } from './api';
 import { bindingMatches, parseBinding, readSelection, writeBinding, type SlideSelection, type ActivityBinding } from './bindings';
 import { LivePanel } from './LivePanel';
@@ -9,7 +9,7 @@ import './style.css';
 const Rehearsal = lazy(() => import('./RehearsalPanel').then((module) => ({ default: module.Rehearsal })));
 
 export function App({ office, onEmbed }: { office: typeof Office | null; onEmbed?: (binding: ActivityBinding, outline: Outline) => Promise<void> }) {
-  const [connection, setConnection] = useState<Connection | null>(null);
+  const [connection, setConnection] = useState<Connection | null>(() => (office ? storedConnection(office) : null));
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [embedCode, setEmbedCode] = useState('');
@@ -18,11 +18,14 @@ export function App({ office, onEmbed }: { office: typeof Office | null; onEmbed
   const [selection, setSelection] = useState<SlideSelection | null>(null);
   const [loading, setLoading] = useState(false), [reload, setReload] = useState(0);
   const [rehearsal, setRehearsal] = useState<{ outline: Outline; stepId: string } | null>(null);
+  const alert = useRef<HTMLDivElement>(null);
+  // Errors render above the picker; bring them into view from a button further down.
+  useEffect(() => { if (error) { alert.current?.scrollIntoView({ block: 'nearest' }); alert.current?.focus({ preventScroll: true }); } }, [error]);
   const canBind = Boolean(office?.context.requirements.isSetSupported('PowerPointApi', '1.5'));
   const failed = useCallback((cause: unknown) => {
-    if (cause instanceof ConnectionExpired) { setConnection(null); setSpace(null); setDetail(null); setSpaces([]); setDecks([]); }
+    if (cause instanceof ConnectionExpired) { forgetConnection(office); setConnection(null); setSpace(null); setDetail(null); setSpaces([]); setDecks([]); }
     setError(cause instanceof Error ? cause.message : 'Something went wrong. Please try again.');
-  }, []);
+  }, [office]);
   async function action(work: () => Promise<void>) {
     setBusy(true); setError(''); setNotice('');
     try { await work(); } catch (cause) { failed(cause); } finally { setBusy(false); }
@@ -60,10 +63,10 @@ export function App({ office, onEmbed }: { office: typeof Office | null; onEmbed
   const boundHere = selection && binding && !copied;
   return <main>
     <header><span className="brand-mark" aria-hidden="true">O</span><div><strong>OpenRoom</strong><span className="eyebrow">FOR POWERPOINT</span></div></header>
-    {error ? <div className="notice error" role="alert">{error}</div> : null}
+    {error ? <div ref={alert} tabIndex={-1} className="notice error" role="alert">{error}</div> : null}
     {notice ? <div className="notice" role="status">{notice}</div> : null}
     {!connection ? <section className="welcome">
-      <span className="eyebrow">MAKE ROOM FOR EVERY VOICE</span><h1>Your slides.<br />A shared conversation.</h1>
+      <h1>Embed OpenRoom slides</h1>
       <p>Choose any slide from an OpenRoom deck to embed in your presentation.</p>
       {office ? <button className="primary" disabled={busy} onClick={() => void action(async () => { setConnection(await signIn(office)); })}>{busy ? 'Waiting for sign-in…' : 'Sign in to OpenRoom'}</button> : <div className="notice">Open this add-in from PowerPoint to embed slides. If it is already open there, check your connection and reopen the pane.</div>}
       <p className="quiet">Your PowerPoint file stays in PowerPoint. Sign-in credentials are never saved in the presentation.</p>
@@ -107,7 +110,7 @@ export function App({ office, onEmbed }: { office: typeof Office | null; onEmbed
         })}</ul>{!detail.content?.steps.length ? <p>This deck has no slides yet. Open it in OpenRoom to add one.</p> : null}
       </section> : space ? <section><h1>Choose a deck</h1><p>Open a deck to choose any of its slides.</p><ul className="items">{decks.map((deck) => <li key={deck.id}><button className="item-button" disabled={busy} onClick={() => void action(async () => { setDetail(await request<DeckDetail>(connection, `/api/decks/${encodeURIComponent(deck.id)}`)); })}>{deck.title}<span aria-hidden="true">→</span></button></li>)}</ul>{decks.length === 0 ? <p>No decks here yet. <a href={`/host/#/space/${encodeURIComponent(space.id)}`} target="_blank" rel="noopener noreferrer">Open this space ↗</a></p> : null}</section> : <section><h1>Choose a space</h1><p>Use your own decks or a space shared with you.</p><ul className="items">{spaces.map((item) => <li key={item.id}><button className="item-button" disabled={busy} onClick={() => { setSpace(item); setDetail(null); }}>{item.name}<span aria-hidden="true">→</span></button></li>)}</ul></section>}
       {error ? <button disabled={busy} onClick={() => setReload((value) => value + 1)}>Reload content</button> : null}
-      <footer><a href="/host/#/settings" target="_blank" rel="noopener noreferrer">Manage connections ↗</a><button className="text-button" disabled={busy} onClick={() => void action(async () => { await disconnect(connection); setConnection(null); setSpace(null); setDetail(null); setSpaces([]); setDecks([]); })}>Sign out</button></footer>
+      <footer><a href="/host/#/settings" target="_blank" rel="noopener noreferrer">Manage connections ↗</a><button className="text-button" disabled={busy} onClick={() => void action(async () => { await disconnect(connection); forgetConnection(office); setConnection(null); setSpace(null); setDetail(null); setSpaces([]); setDecks([]); })}>Sign out</button></footer>
     </>}
   </main>;
 }

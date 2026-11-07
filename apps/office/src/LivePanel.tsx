@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createSessionClient, type Command, type ConnectionStatus, type HostSnapshot, type SessionClient } from '@openroom/sdk';
 import { request, RequestError } from './api';
 import type { Connection } from './auth';
-import { bindingMatches, composedStep, parseBinding, readPresentationActivities, readSelection, readSessionReference, writeSessionReference, type SavedSession, type SessionReference, type SlideSelection } from './bindings';
+import { bindingMatches, composedStep, parseBinding, readPresentationActivities, readSelection, readSessionReference, readSlide, writeSessionReference, type SavedSession, type SessionReference, type SlideSelection } from './bindings';
 import { useEmbeddedDisplay } from './useEmbeddedDisplay';
 import { displayChannelName } from './display-channel';
 
@@ -87,9 +87,10 @@ export function LivePanel({ connection, selection, failed, onRehearse }: { conne
     if (!result.ok) throw new Error(result.error?.message || 'The session changed. Refresh and try again.');
     await live.refresh();
   }
-  async function activate(expected = selection) {
-    const fresh = await readSelection(), activity = parseBinding(fresh.rawBinding);
-    if (!activity || !bindingMatches(fresh, activity) || fresh.slideId !== expected?.slideId || fresh.rawBinding !== expected?.rawBinding) throw new Error('The selected slide changed. Refresh the selection before showing it.');
+  // From the pane, the selected slide; from Slide Show, the slide that is on screen.
+  async function activate(expected = selection, onScreen = false) {
+    const fresh = onScreen && expected ? await readSlide(expected.slideId) : await readSelection(), activity = parseBinding(fresh?.rawBinding ?? null);
+    if (!fresh || !activity || !bindingMatches(fresh, activity) || fresh.slideId !== expected?.slideId || fresh.rawBinding !== expected?.rawBinding) throw new Error(onScreen ? 'This slide changed in PowerPoint. Choose its OpenRoom slide again.' : 'The selected slide changed. Refresh the selection before showing it.');
     if ((await readSessionReference()).reference?.sessionId !== grant?.sessionId) throw new Error('The presentation session changed. Resume its current session.');
     const stepId = composedStep(grant?.presentation, activity);
     const latest = client.current?.getSnapshot();
@@ -107,7 +108,7 @@ export function LivePanel({ connection, selection, failed, onRehearse }: { conne
       const requested = parseBinding(JSON.stringify(event.data.binding));
       const latest = client.current?.getSnapshot();
       if (!requested || !composedStep(grant.presentation, requested) || latest?.status !== 'live' || !latest.facilitation.canPresent) return;
-      void action(() => activate({ slideId: requested.slideId, presentationId: requested.presentationId, rawBinding: JSON.stringify(requested) }));
+      void action(() => activate({ slideId: requested.slideId, presentationId: requested.presentationId, rawBinding: JSON.stringify(requested) }, true));
     };
     return () => channel.close();
   }, [grant]);
@@ -124,7 +125,7 @@ export function LivePanel({ connection, selection, failed, onRehearse }: { conne
   const remote = grant ? `/host/#/sessions/${encodeURIComponent(grant.sessionCode)}/remote?token=${encodeURIComponent(grant.hostToken)}` : '';
 
   return <section className="live-panel" aria-label="Session controls">
-    <div className="section-title"><h2>{grant ? ended ? 'Session ended' : snapshot?.status === 'lobby' ? 'Session ready' : 'Live session' : 'Teach from PowerPoint'}</h2>{grant && !ended ? <span className={`connection ${connected ? 'connected' : ''}`} role="status">{status === 'offline' ? 'Offline' : connected ? 'Connected' : 'Connecting…'}</span> : null}</div>
+    <div className="section-title"><h2>{grant ? ended ? 'Session ended' : snapshot?.status === 'lobby' ? 'Session ready' : 'Live session' : 'Session'}</h2>{grant && !ended ? <span className={`connection ${connected ? 'connected' : ''}`} role="status">{status === 'offline' ? 'Offline' : connected ? 'Connected' : 'Connecting…'}</span> : null}</div>
     {error ? <p className="notice error" role="alert">{error}</p> : null}
     {!loaded ? <p role="status">Reading presentation…</p> : !grant ? <>
       {saved.reference ? <><p>This presentation has a session reference. Resume to recover its controls and answers.</p><button className="primary" disabled={busy} onClick={() => void action(resume)}>Resume session</button><p className="quiet">For a new audience or a copied presentation, start a new session with a new join code.</p></> : <p>Start the embedded OpenRoom slides in this presentation, beginning with the selected slide. Everyone joins with one code.</p>}

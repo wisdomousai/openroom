@@ -79,13 +79,13 @@ test('rehearses locally and projects only the bound activity and released result
     await expect(display.locator('figcaption')).toContainText('Results hidden');
     // An un-reconnected copy cannot display the original slide's live answers.
     await display.evaluate(() => (window as unknown as { __officeFile: { copy(from: string, to: string): void } }).__officeFile.copy('42', '88'));
-    await expect(display.getByRole('alert')).toContainText('Copied slides');
+    await expect(display.getByRole('alert')).toContainText('This slide is a copy.');
     await expect(display.getByText('What would you say first?', { exact: true })).toHaveCount(0);
     expect(displayRequests).toEqual([]);
     await display.evaluate(() => (window as unknown as { __officeFile: { select(id: string): void } }).__officeFile.select('42'));
     await expect(display.getByText('What would you say first?', { exact: true })).toBeVisible();
     await page.reload();
-    await expect(display.getByText('Preview · Start participation in the OpenRoom pane', { exact: true })).toBeVisible();
+    await expect(display.getByText('Preview · Resume the session in the OpenRoom pane', { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   } finally { accounts.cleanup(); }
 });
@@ -139,8 +139,9 @@ test('copies a saved content slide into the embedded picker and activates a ques
     const pane = await context.newPage(); pane.on('pageerror', (error) => errors.push(error.message));
     await pane.addInitScript((document) => sessionStorage.setItem('test-office-file', JSON.stringify({ ...document, selected: ['42'] })), document);
     await pane.goto('/office/taskpane.html');
-    const signIn = pane.waitForEvent('popup'); await pane.getByRole('button', { name: 'Sign in to OpenRoom', exact: true }).click();
-    await (await signIn).getByRole('button', { name: 'Approve connection', exact: true }).click();
+    // The pane reuses the sign-in made in the embedded chooser.
+    await expect(pane.getByRole('navigation', { name: 'Choose content' })).toBeVisible();
+    await expect(pane.getByRole('button', { name: 'Sign in to OpenRoom', exact: true })).toHaveCount(0);
     await pane.evaluate(() => (window as any).__officeFile.select('88'));
     const pasteInPane = pane.getByRole('region', { name: 'Embed a slide by code' });
     await pasteInPane.getByRole('textbox', { name: 'Slide embed code' }).fill(`openroom-slide:1:${deck.id}:question`);
@@ -164,8 +165,12 @@ test('copies a saved content slide into the embedded picker and activates a ques
     // Ordinary editing and preview leave the live content slide untouched.
     await expect(questionDisplay.getByText('What happens next?', { exact: true })).toBeVisible();
     expect((await state()).activeInteractionId).toBeNull();
+    // Slide Show keeps the edit window's selection: the slide on screen is not the selected one.
+    await questionDisplay.evaluate(() => (window as any).__officeFile.select('42'));
+    await pane.evaluate(() => (window as any).__officeFile.select('42'));
     await questionDisplay.evaluate(() => (window as any).__officeFile.view('read'));
     await expect.poll(async () => (await state()).activeInteractionId).toBe('activity-2-question-1');
+    await expect(questionDisplay.getByText('What happens next?', { exact: true })).toBeVisible();
     await expect.poll(async () => (await state()).interactionStatus).toBe('open');
     await expect(questionDisplay.getByRole('button', { name: 'Choose slide' })).toHaveCount(0);
     await pane.getByRole('button', { name: 'Close answers', exact: true }).click();

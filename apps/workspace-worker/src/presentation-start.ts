@@ -8,6 +8,8 @@ import { spaceRole } from './members';
 
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
 const reference = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_-]{1,160}$/.test(value);
+/** Native PowerPoint slide IDs take the forms `267#763315295`, `267#` and `#763315295`. */
+const slideReference = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_#-]{1,160}$/.test(value);
 export function presentationComposition(session: SessionRow): PresentationComposition | null {
   if (!session.source_outline_json) return null;
   return (JSON.parse(session.metadata_json) as { presentation: PresentationComposition }).presentation;
@@ -30,7 +32,7 @@ export async function startPresentationRoute(request: Request, env: ControlEnv, 
     const contents = new Map<string, NonNullable<Awaited<ReturnType<typeof latestContent>>>>();
     let sourceSize = 0;
     for (const activity of body.activities) {
-      if (!activity || typeof activity !== 'object' || Array.isArray(activity) || Object.keys(activity).length !== 4 || !reference(activity.slideId) || !reference(activity.spaceId) || !reference(activity.deckId) || !reference(activity.stepId)) return json({ error: 'invalid-presentation-activities' }, 422);
+      if (!activity || typeof activity !== 'object' || Array.isArray(activity) || Object.keys(activity).length !== 4 || !slideReference(activity.slideId) || !reference(activity.spaceId) || !reference(activity.deckId) || !reference(activity.stepId)) return json({ error: 'invalid-presentation-activities' }, 422);
       const deck = decks.get(activity.deckId) ?? await deckAccess(env, guard.user.id, activity.deckId);
       if (!deck || deck.deleted_at !== null || deck.space_id !== activity.spaceId) return json({ error: 'deck-not-found' }, 404);
       if (sources[0] && sources[0].spaceId !== deck.space_id) return json({ error: 'presentation-space-mismatch' }, 422);

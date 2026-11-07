@@ -16,13 +16,15 @@ export const SESSION_TAG = 'OPENROOM_SESSION';
 export interface SessionReference { version: 1; presentationId: string; sessionId: string }
 export interface SavedSession { raw: string | null; reference: SessionReference | null }
 const reference = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_-]{1,160}$/.test(value);
+/** Native PowerPoint slide IDs take the forms `267#763315295`, `267#` and `#763315295`. */
+const slideReference = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_#-]{1,160}$/.test(value);
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
 
 export function parseBinding(raw: string | null): ActivityBinding | null {
   if (!raw || raw.length > 1500) return null;
   try {
     const value = JSON.parse(raw) as Record<string, unknown>;
-    if (!value || Array.isArray(value) || Object.keys(value).length !== 6 || value.version !== 1 || !uuid(value.presentationId) || !reference(value.slideId) || !reference(value.spaceId) || !reference(value.deckId) || !reference(value.stepId)) return null;
+    if (!value || Array.isArray(value) || Object.keys(value).length !== 6 || value.version !== 1 || !uuid(value.presentationId) || !slideReference(value.slideId) || !reference(value.spaceId) || !reference(value.deckId) || !reference(value.stepId)) return null;
     return { version: 1, presentationId: value.presentationId, slideId: value.slideId, spaceId: value.spaceId, deckId: value.deckId, stepId: value.stepId };
   } catch { return null; }
 }
@@ -82,6 +84,18 @@ async function selected(context: PowerPoint.RequestContext) {
 
 export function readSelection(): Promise<SlideSelection> {
   return PowerPoint.run(async (context) => (await selected(context)).selection);
+}
+
+/** Slide Show has no selection; the pane checks a slide it is asked to show by its ID. */
+export function readSlide(slideId: string): Promise<SlideSelection | null> {
+  return PowerPoint.run(async (context) => {
+    const slide = context.presentation.slides.getItemOrNullObject(slideId);
+    const presentationTag = context.presentation.tags.getItemOrNullObject(PRESENTATION_TAG);
+    slide.load('id'); presentationTag.load('value'); await context.sync();
+    if (slide.isNullObject) return null;
+    const tag = slide.tags.getItemOrNullObject(ACTIVITY_TAG); tag.load('value'); await context.sync();
+    return { slideId: slide.id, presentationId: presentationTag.isNullObject ? null : presentationTag.value, rawBinding: tag.isNullObject ? null : tag.value };
+  });
 }
 
 async function presentationActivities(context: PowerPoint.RequestContext, presentationId: string): Promise<PresentationActivity[]> {

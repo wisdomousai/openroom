@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { authorizationCode, authorizationRequest, CLIENT_ID } from './auth';
+import { authorizationCode, authorizationRequest, CLIENT_ID, forgetConnection, rememberConnection, storedConnection } from './auth';
 
 describe('PowerPoint dialog authorization boundary', () => {
   it('binds a random verifier and state to a same-origin fixed callback with S256', async () => {
@@ -18,5 +18,34 @@ describe('PowerPoint dialog authorization boundary', () => {
     const message = JSON.stringify({ type: 'openroom.oauth', code, state });
     expect(authorizationCode({ origin, message }, origin, state)).toBe(code);
     for (const event of [{ message }, { origin: 'https://attacker.test', message }, { origin, message: 'invalid' }, { origin, message: JSON.stringify({ type: 'openroom.oauth', code, state: 'wrong' }) }, { origin, message: JSON.stringify({ type: 'openroom.oauth', code: 'orauth_secret', state }) }]) expect(authorizationCode(event, origin, state)).toBeNull();
+  });
+});
+
+describe('stored PowerPoint connection', () => {
+  const memory = () => { const items = new Map<string, string>(); return { getItem: (key: string) => items.get(key) ?? null, setItem: (key: string, value: string) => { items.set(key, value); }, removeItem: (key: string) => { items.delete(key); }, items }; };
+  const office = (partitionKey?: string) => ({ context: { partitionKey } }) as unknown as typeof Office;
+  const connection = { token: `orauth_${'a'.repeat(43)}`, id: 'conn-1', expiresAt: Date.UTC(2026, 11, 7) };
+  const now = Date.UTC(2026, 10, 7);
+  it('keeps a connection across reloads under the partition key', () => {
+    const store = memory();
+    rememberConnection(office('p1'), connection, store);
+    expect([...store.items.keys()]).toEqual(['p1openroom.connection']);
+    expect(storedConnection(office('p1'), store, now)).toEqual(connection);
+    expect(storedConnection(office('p2'), store, now)).toBeNull();
+  });
+  it('drops expired, nearly expired and malformed connections', () => {
+    for (const value of [{ ...connection, expiresAt: now + 3_600_000 }, { ...connection, token: 'orauth_short' }, { ...connection, id: 5 }]) {
+      const store = memory();
+      store.setItem('openroom.connection', JSON.stringify(value));
+      expect(storedConnection(office(), store, now)).toBeNull();
+      expect(store.items.size).toBe(0);
+    }
+    const store = memory(); store.setItem('openroom.connection', 'not json');
+    expect(storedConnection(office(), store, now)).toBeNull();
+  });
+  it('forgets the connection on sign-out', () => {
+    const store = memory();
+    rememberConnection(office(), connection, store); forgetConnection(office(), store);
+    expect(storedConnection(office(), store, now)).toBeNull();
   });
 });

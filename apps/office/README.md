@@ -33,7 +33,21 @@ This installs Microsoft's localhost development certificate, builds the apps,
 starts `https://localhost:3443`, and installs both manifests in PowerPoint's
 `~/Library/Containers/com.microsoft.Powerpoint/Data/Documents/wef` directory.
 Restart PowerPoint, open a presentation, and choose **Home → Add-ins**. The two
-entries are **OpenRoom for PowerPoint** and **OpenRoom Slide**.
+entries are **OpenRoom** (the task pane, bar-chart icon) and **OpenRoom Slide**
+(the embedded slide, screen icon). The manifests are also written to
+`.wrangler/office/manifests`. The command starts the local relay as well, so
+live sessions work.
+
+macOS refuses writes into another app's container unless the writing app has
+Full Disk Access. When it refuses, the command hands the copy to a helper app,
+**OpenRoom Add-in Installer**, which it builds in
+`~/Library/Application Support/OpenRoom`. The helper only copies the two
+manifests from its `manifests` folder into `wef`. The first time, the command
+opens **System Settings → Privacy & Security → Full Disk Access**; turn the
+helper on (or add it with **+**) and run `bun run office:addin`. Only the helper
+gets access, not your terminal. The helper is rebuilt only when its script
+changes, and a rebuilt helper must be turned on again. To reinstall later
+without restarting the server, run `bun run office:addin`.
 
 Keep the command running while using these local add-ins. On later runs use
 `bun run dev:office`; add `--skip-build` when the current apps are already built.
@@ -90,9 +104,13 @@ the matching HTTPS origin throughout. Follow Microsoft's [testing overview](http
 Do not distribute a local HTTP manifest or treat sideloading as store approval.
 
 Manifest validation uses Microsoft's `office-addin-manifest validate` against an
-HTTPS localhost origin. The control pane uses manifest version 1.0.1.0 with a
-ShowTaskpane ribbon command; the slide content add-in is at 1.0.1.0. Both use 32/64-pixel PNG
-icons. The add-in remains unreleased. Local HTTPS health and both manifest origins
+HTTPS localhost origin. The control pane uses manifest version 1.0.2.0 with a
+ShowTaskpane ribbon command and a minimal function file (`commands.html`), so
+PowerPoint does not load a hidden copy of the pane. The slide content add-in is
+at 1.0.2.0; keep that version fixed. Each embedded slide stores it in the `.pptx`,
+and PowerPoint for Mac shows "Add-in Error" on that slide when the sideloaded
+manifest has a different version. Slides inserted under 1.0.0.0 or 1.0.1.0 must
+be inserted again. Both use 32/64-pixel PNG icons, different for each add-in. The add-in remains unreleased. Local HTTPS health and both manifest origins
 were verified with certificate validation enabled.
 
 ## Rehearsal and the embedded display
@@ -140,9 +158,12 @@ rehearsal and embedded-result screenshots were inspected. It does not prove actu
 
 - Office.js requires PowerPointApi 1.5 for selected slides and DialogOrigin 1.1
   for origin-verified dialog messages. Unsupported hosts get an explicit fallback.
-- OAuth uses a same-origin dialog, random state and S256 PKCE. Access tokens live
-  only in the task-pane runtime. Reloading requires reconnecting; Settings can
-  revoke an abandoned connection. There are no document or browser-storage secrets.
+- OAuth uses a same-origin dialog, random state and S256 PKCE. The access token is
+  kept in the add-in's own `localStorage` (prefixed with `Office.context.partitionKey`
+  where Office partitions storage), so a reload or PowerPoint restart does not ask
+  for sign-in again. It is dropped a day before it expires, after a 401, and on
+  Sign out. Settings can revoke a connection. No credential is written to document
+  settings or tags.
 - `OPENROOM_PRESENTATION` is a random presentation reference.
   `OPENROOM_ACTIVITY` contains only version, presentation ID, original slide ID,
   space ID, deck ID and step ID. References do not grant access.

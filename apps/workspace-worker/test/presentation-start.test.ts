@@ -64,7 +64,7 @@ describe('one audience for a PowerPoint presentation', () => {
   });
   it('freezes several decks, gives copied questions independent answers, and preserves state across retries and revisits', async () => {
     const owner = await account(), first = await source(owner), second = await source(owner, 'board');
-    const body = { requestId: crypto.randomUUID(), presentationId: crypto.randomUUID(), activities: [activity(owner, first, '42'), activity(owner, second, '88'), activity(owner, first, '99')], slideId: '88' };
+    const body = { requestId: crypto.randomUUID(), presentationId: crypto.randomUUID(), activities: [activity(owner, first, '42'), activity(owner, second, '257#763315295'), activity(owner, first, '#926310875')], slideId: '257#763315295' };
     const replies = await Promise.all([1, 2].map(() => owner.request('/api/presentations/start', body)));
     for (const reply of replies) expect(reply.status, await reply.clone().text()).toBe(201);
     const [live, raced] = await Promise.all(replies.map((reply) => reply.json() as Promise<Live>));

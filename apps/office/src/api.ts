@@ -18,7 +18,7 @@ export async function request<T>(connection: Connection, path: string, signal?: 
     const code = typeof error?.error === 'string' ? error.error : 'request-failed';
     const messages: Record<string, string> = {
       'presentation-space-mismatch': 'Use slides from one shared space in a session. Move the source decks into the same space before starting.',
-      'presentation-context-mismatch': 'These decks are linked to different students or groups. Use decks with the same student or group for one session.',
+      'presentation-context-mismatch': 'These decks are linked to different groups. Use decks for the same group in one session.',
       'presentation-identity-mismatch': 'These decks use different participant identity settings. Match those settings before starting one session.',
       'invalid-presentation-content': 'Complete any unfinished questions in OpenRoom, or reduce the number of embedded slides, then try again.',
       'presentation-too-large': 'The embedded slides are too large for one session. Use fewer slides and try again.',
@@ -28,7 +28,7 @@ export async function request<T>(connection: Connection, path: string, signal?: 
       'request-id-conflict': 'This session belongs to another presenter. Resume it with an authorized account or start a new session.',
       'deck-content-not-found': 'Save this deck in OpenRoom before starting a session.',
     };
-    throw new RequestError(response.status, code, messages[code] ?? (response.status === 403 || response.status === 404 ? 'This content is unavailable or you no longer have access.' : 'Could not complete this action. Try again.'));
+    throw new RequestError(response.status, code, messages[code] ?? (response.status === 403 || response.status === 404 ? 'This content is unavailable or you no longer have access.' : response.status === 503 ? 'Live sessions are not available right now. Try again in a minute.' : 'Could not complete this action. Try again.'));
   }
   return response.json() as Promise<T>;
 }

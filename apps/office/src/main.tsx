@@ -7,6 +7,8 @@ const onEmbed = new URLSearchParams(location.search).has('embed') && window.pare
     window.parent.postMessage({ ...slidePreview(outline, binding), type: 'openroom.slide.selected' }, location.origin);
   } : undefined;
 
+(window as { __openroomStarted?: boolean }).__openroomStarted = true;
+document.getElementById('openroom-boot-stalled')?.remove();
 const root = createRoot(document.getElementById('app')!);
 root.render(<p role="status" className="boot">Connecting to PowerPoint…</p>);
 async function start() {
