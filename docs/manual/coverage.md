@@ -28,7 +28,7 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Text annotations, pen, dictionary meanings | present, participant | `live/LiveHost.tsx`, `live/useMeaningLookup.ts`, participant live views |
 | Live slide editing and insertion | present | `live/LiveHost.tsx`, `live/LiveRibbon.tsx`, `live/` insertion controls |
 | Open/close/reveal/reopen, countdown, freeze, end | live-session | `live/useHostSession.ts`, `live/LiveHost.tsx`, domain command handlers |
-| Connection fallback, remote, rejoin | live-session, participant, troubleshooting | `Remote.tsx`, participant `session.ts`, SDK connection state |
+| Connection fallback, remote, rejoin | live-session, participant, troubleshooting | `PresenterRemote.tsx`, participant `session.ts`, SDK connection state |
 | Session-wide Q&A, moderation, spotlight | facilitation | `live/QnaDesk.tsx`, `live/SessionAside.tsx` |
 | Group membership, spokesperson, shared responses | facilitation, questions, participant | `live/GroupsPanel.tsx`, domain groups |
 | Co-facilitation, handoff, recovery, revocation | facilitation, sharing | host facilitator strip, `apps/workspace-worker/src/index.ts`, entitlement checks |

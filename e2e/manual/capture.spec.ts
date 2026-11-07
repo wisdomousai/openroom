@@ -27,7 +27,6 @@ test('capture the manual from a real local teaching journey', async ({ page, lea
   await page.getByRole('button', { name: 'B1', exact: true }).click();
   await page.getByLabel('Goal', { exact: true }).fill('Explain a travel problem in French.');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await page.getByText('Student access links', { exact: true }).click();
   await page.getByRole('link', { name: 'Create link', exact: true }).click();
   await page.getByRole('button', { name: 'Create link', exact: true }).click();
   const learnerUrl = await page.locator('code').filter({ hasText: '#/learn?token=' }).innerText();
@@ -35,7 +34,7 @@ test('capture the manual from a real local teaching journey', async ({ page, lea
   await page.getByRole('link', { name: 'Sample lessons', exact: true }).click();
   await page.getByRole('group', { name: 'Lesson language' }).getByRole('button', { name: 'Français', exact: true }).click();
   await page.getByRole('group', { name: 'Lesson level' }).getByRole('button', { name: 'B1', exact: true }).click();
-  await page.getByRole('button', { name: 'Open Le train est parti', exact: true }).click();
+  await page.getByRole('button', { name: 'Open lesson: Le train est parti', exact: true }).click();
   const slides = page.getByRole('list', { name: 'Slides', exact: true }).getByRole('button');
   await expect(slides).toHaveCount(12);
   await expect(page).toHaveURL(/#\/decks\/[^/]+\/edit/);
@@ -81,7 +80,7 @@ test('capture the manual from a real local teaching journey', async ({ page, lea
   await page.getByRole('dialog', { name: 'End this session?', exact: true }).getByRole('button', { name: 'End session', exact: true }).click();
   await page.getByLabel('Outcomes (one per line)', { exact: true }).fill('You explained the delay and found another route.');
   await page.getByLabel('Next session', { exact: true }).fill('Compare two accounts of the same journey.');
-  await page.getByRole('heading', { name: 'Session notes — Le train est parti', exact: true }).click();
+  await page.getByRole('heading', { name: 'Session notes — Camille, Le train est parti', exact: true }).click();
   await capture(page, 'session-notes');
   await page.getByRole('button', { name: 'Save notes', exact: true }).click();
   const learner = await phone.newPage();
