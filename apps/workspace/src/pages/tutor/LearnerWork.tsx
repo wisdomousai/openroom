@@ -14,6 +14,7 @@ import { to } from '../../destinations';
 import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../../components/ContinuityLock';
 import { ConfirmActionDialog } from '../../components/ManagementTable';
 import { LoadState, PageHeading, messageOf } from './shared';
+import { selectedQuote } from '../../lib/quote-selection';
 
 /** A voice row carries its length, so a cut-off or empty take shows before it is opened. */
 function responseSummary(item: LearnerWork): string {
@@ -87,6 +88,15 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
   const [position, setPosition] = useState(0);
   const [focusId, setFocusId] = useState<string | null>(null);
   const player = useRef<PrivateAudioHandle>(null);
+  // Words the tutor has selected in the written response, ready to quote in a correction.
+  const responseText = useRef<HTMLDivElement>(null);
+  const [selection, setSelection] = useState<string | null>(null);
+  useEffect(() => {
+    if (work.task.kind !== 'writing') return;
+    const update = () => setSelection(responseText.current ? selectedQuote(responseText.current, work.body, document.getSelection()) : null);
+    document.addEventListener('selectionchange', update);
+    return () => document.removeEventListener('selectionchange', update);
+  }, [work.body, work.task.kind]);
   useEffect(() => {
     if (!focusId) return;
     document.getElementById(focusId)?.focus();
@@ -136,7 +146,7 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
       {/* The player stays in view beside a long list of timed comments; a tall column scrolls on its own. */}
       <div className={`grid gap-4 ${isVoice ? 'lg:sticky lg:top-0 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto' : ''}`}>
         <Card><CardHeader><CardTitle className="text-secondary">{work.task.title ?? 'The task'}</CardTitle></CardHeader><CardContent className="whitespace-pre-wrap text-secondary">{work.task.kind === 'writing' || work.task.kind === 'voice' ? work.task.prompt : ''}</CardContent></Card>
-        <Card><CardHeader><CardTitle className="text-secondary">{work.displayName}’s response</CardTitle></CardHeader><CardContent className="whitespace-pre-wrap text-secondary">{work.audio ? <PrivateAudio handle={player} submissionId={work.id} {...work.audio} contextId={contextId} onPosition={setPosition} onChanged={() => void queryClient.invalidateQueries({ queryKey: ['contexts', contextId, 'work'] })} /> : work.body}</CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-secondary">{work.displayName}’s response</CardTitle></CardHeader><CardContent ref={work.audio ? undefined : responseText} className="whitespace-pre-wrap text-secondary">{work.audio ? <PrivateAudio handle={player} submissionId={work.id} {...work.audio} contextId={contextId} onPosition={setPosition} onChanged={() => void queryClient.invalidateQueries({ queryKey: ['contexts', contextId, 'work'] })} /> : work.body}</CardContent></Card>
         {detail.earlier.length > 0 ? <details className="rounded-xl border border-border p-4"><summary className="cursor-pointer text-row-title">Other responses to this task</summary><div className="mt-4 grid gap-4">{detail.earlier.map((item) => <div key={item.id} className="border-t border-border pt-4"><p className="whitespace-pre-wrap text-secondary">{responseSummary(item)}</p><Link {...to.studentWorkReview(contextId, item.id)} className="mt-2 inline-block text-secondary text-primary underline">Open response</Link></div>)}</div></details> : null}
       </div>
       <form onSubmit={(event) => { event.preventDefault(); void save('save'); }} className="grid gap-5 rounded-xl border border-border bg-card p-5">
@@ -146,11 +156,18 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
             <legend className="px-1 text-row-title">Correction {index + 1}</legend>
             {(['original', 'replacement', 'explanation'] as const).map((field) => {
               const id = `correction-${index}-${field}`;
-              return <div key={field} className="grid gap-1.5"><Label htmlFor={id}>{field === 'original' ? 'Their words' : field === 'replacement' ? 'Suggested wording' : 'Why'}</Label><Input id={id} maxLength={2000} value={correction[field]} aria-invalid={issues[id] ? true : undefined} aria-describedby={issues[id] ? `${id}-issue` : undefined} onChange={(event) => change({ ...feedback, corrections: feedback.corrections.map((row, i) => i === index ? { ...row, [field]: event.target.value } : row) }, id)} /><FieldIssue id={id} issue={issues[id]} /></div>;
+              const set = (value: string) => change({ ...feedback, corrections: feedback.corrections.map((row, i) => i === index ? { ...row, [field]: value } : row) }, id);
+              const input = <Input id={id} maxLength={2000} value={correction[field]} aria-invalid={issues[id] ? true : undefined} aria-describedby={issues[id] ? `${id}-issue` : undefined} onChange={(event) => set(event.target.value)} />;
+              return <div key={field} className="grid gap-1.5"><Label htmlFor={id}>{field === 'original' ? 'Their words' : field === 'replacement' ? 'Suggested wording' : 'Why'}</Label>
+                {/* Pressing the button must not clear the selection it reads. */}
+                {field === 'original' ? <div className="flex gap-2">{input}<Button type="button" variant="outline" className="flex-none" disabled={!selection} aria-describedby="quote-hint" onMouseDown={(event) => event.preventDefault()} onClick={() => { if (selection) set(selection); }}>Use selection</Button></div> : input}
+                <FieldIssue id={id} issue={issues[id]} /></div>;
             })}
             <Button type="button" variant="ghost" className="w-fit" onClick={() => removeRow({ ...feedback, corrections: feedback.corrections.filter((_, i) => i !== index) })}><Trash2 /> Remove correction</Button>
           </fieldset>)}
-          <Button type="button" variant="outline" className="w-fit" disabled={feedback.corrections.length >= 30} onClick={() => { change({ ...feedback, corrections: [...feedback.corrections, { original: '', replacement: '', explanation: '' }] }); setFocusId(`correction-${feedback.corrections.length}-original`); }}><Plus /> Add correction</Button>
+          <p id="quote-hint" className="text-secondary text-muted-foreground">Select words in the response, then press Add correction or Use selection to quote them.</p>
+          {/* A selection becomes the new correction's quote, and focus moves on to the wording. */}
+          <Button type="button" variant="outline" className="w-fit" disabled={feedback.corrections.length >= 30} onMouseDown={(event) => event.preventDefault()} onClick={() => { change({ ...feedback, corrections: [...feedback.corrections, { original: selection ?? '', replacement: '', explanation: '' }] }); setFocusId(`correction-${feedback.corrections.length}-${selection ? 'replacement' : 'original'}`); }}><Plus /> Add correction</Button>
         </div> : null}
         {work.audio ? <div className="grid gap-4">
           {(feedback.audioComments ?? []).map((note, index) => {

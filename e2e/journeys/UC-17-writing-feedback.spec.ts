@@ -50,7 +50,13 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   await expect(theirWords).toHaveAccessibleDescription('These words are not in the response. Copy them exactly as the learner wrote them.');
   await expect(theirWords).toBeFocused();
   await expect(page.getByRole('alert').filter({ hasText: 'Fix the marked fields, then share again.' })).toBeVisible();
-  await theirWords.fill('allé');
+  // Selecting words in the response quotes them exactly, without the spaces around them.
+  await page.getByText('Je suis allé à Berlin. Le train était confortable.', { exact: true }).evaluate((element) => {
+    const text = element.firstChild!; const start = text.textContent!.indexOf(' allé ');
+    document.getSelection()!.setBaseAndExtent(text, start, text, start + ' allé '.length);
+  });
+  await page.getByRole('button', { name: 'Use selection', exact: true }).click();
+  await expect(theirWords).toHaveValue('allé');
   await expect(theirWords).not.toHaveAttribute('aria-invalid');
   await page.getByLabel('Suggested wording', { exact: true }).fill('allée');
   await page.getByLabel('Why', { exact: true }).fill('Avec être, le participe passé s’accorde avec le sujet.');
