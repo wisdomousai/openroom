@@ -163,7 +163,7 @@ A scrollable PDF slide uses the parallel `pdf` element:
       box: { x: 0, y: 0, w: 100, h: 100 }
 ```
 
-Two more additions: an optional `media` object on those content kinds (same shape as a media step — `type`, `url`/`assetId`, `alt`, optional `focal`, `aspect`, `place`, and `size`); `media.place` is `left|right|top|bottom|fill`, with `fill` only on the media layout; `media.size` is an integer 20–100 (percent of the slide), at most 60 when the step is drawn as split (`E_MEDIA_LAYOUT` otherwise; the `outline_validate` description has the table per layout); `media.focal` is one of nine named points (`top-left … bottom-right`) saying which part of the frame matters when the region crops — a word, never a coordinate — and `activity.materials` is a `string[]` of what learners need, distinct from `instructions`, which is what they do. `timer`, `break`, and `join` cannot carry a picture.
+Two more additions: an optional `media` object on those content kinds (same shape as a media step — `type`, `url`/`assetId`, `alt`, optional `focal`, `aspect`, `place`, and `size`); `media.place` is `left|right|top|bottom|fill`, with `fill` only on the media layout; `media.size` is an integer 20–100: on split it is the picture column's share of the content width, at most 60 (`E_MEDIA_LAYOUT` above that); on title, text and grid with place `top` or `bottom` it is the picture's greatest share of the content height. Place `left` or `right` on title, text or grid draws the step as split, so the split limit applies, and place `top` or `bottom` on split draws as right (both `W_MEDIA_PLACE`). The `outline_validate` description has the table per layout; `media.focal` is one of nine named points (`top-left … bottom-right`) saying which part of the frame matters when the region crops — a word, never a coordinate — and `activity.materials` is a `string[]` of what learners need, distinct from `instructions`, which is what they do. `timer`, `break`, and `join` cannot carry a picture.
 
 **`kicker` is withdrawn.** The field existed on every step but `DESIGN.md`'s No-Kicker Rule forbids ever rendering an eyebrow label, so it was a promise the product refused to keep. It is gone from the types and the JSON Schema. Because steps are `additionalProperties: false`, it is **stripped rather than rejected**: `stripDeprecatedOutlineFields` (exported, listed in `DEPRECATED_OUTLINE_STEP_KEYS`) drops it before validation, exactly as unknown `displayOptions` keys are stripped today. Stored outlines carrying `kicker` still validate; the field is simply absent from the result. Do not author it.
 
@@ -384,6 +384,8 @@ GET|PUT|DELETE /api/decks/:id/draft
                                          PUT caps source at 256K chars (413); editor+ to write, member to read
 POST /api/decks/:id/restore   restore from trash
 POST /api/decks/:id/start     start the current saved deck with {requestId: UUID, stepId?};
+                                         422 identified-session-needs-context when the outline is identified and the deck
+                                         is not filed under a student (session_create refuses an identified outline the same way);
                                          requestId becomes the durable session id; same creator/deck retries
                                          reuse the session and keep answers, position and reveals;
                                          presenter+ membership, owner team entitlement for shared access;
@@ -404,7 +406,10 @@ POST /api/sessions/:id/resume       recover live capabilities using current acco
                                          connection revocation also revokes recovered host capabilities
 POST /api/sessions/:id/permanent-deletion
                                          create browser confirmation URL; MCP/CLI cannot confirm it
-GET|POST /confirm-deletion/:token        signed-in browser only; GET warning form, POST irreversible purge
+GET|POST /confirm-deletion/:token        signed-in browser only; every answer is an HTML page. GET signed out → 302 to sign-in;
+                                         GET → warning page naming what is deleted; POST → irreversible purge, 200 "Permanently deleted";
+                                         POST signed out → 401 "Sign in to confirm"; expired, used or another account's link →
+                                         410 "This confirmation link no longer works"; item no longer in Trash → 404 "Nothing was deleted"
 GET  /api/my/tokens                      session cookie → { tokens: [{ id, name, prefix, createdAt, lastUsedAt }] }
 POST /api/my/tokens                      session + CSRF; body { name? } → 201 { id, name, prefix, createdAt, token }
                                          raw `token` shown once; SHA-256 stored; max 10 active per user
@@ -781,10 +786,10 @@ Two structural consequences that a later change must not erode:
 Neither credential ⇒ 401, as before.
 
 ```
-GET /api/my/sessions   → { sessions: [{ code, sessionCode, title, createdAt, ended, recoverable, hostToken?, stageToken? }] }
+GET /api/my/sessions   → { sessions: [{ code, sessionCode, title, deckId, contextId, contextName, createdAt, ended, recoverable, shared?, hostToken?, stageToken? }] }
 ```
 
-Session-auth'd. Live sessions **younger than 12h and not marked ended** are `recoverable: true` and come back with a **freshly minted host + stage token** — this completes LIVE-11 cross-device recovery: sign in on the second device, click reconnect, keep running the session.
+Session-auth'd. The list holds the caller's own sessions and those of spaces they are a member of. `deckId`, `contextId` and `contextName` say which deck and which student a session is for (null when it has none); the Library and the editor use them for **Live now** and **Rejoin**. Live sessions of the caller's own **younger than 12h and not marked ended** are `recoverable: true` and come back with a **freshly minted host + stage token**; a member's session comes back with `shared: true` and no tokens — this completes LIVE-11 cross-device recovery: sign in on the second device, click reconnect, keep running the session.
 
 Tokens are minted **optimistically**. The listing does not ask the SessionDO whether each session is still alive: that would be one cross-DO round trip per session on every page load, and cross-DO chatter is exactly what this design avoids. `sessions.ended` is therefore **advisory only** — nothing writes it back from the DO. A session that has ended, auto-expired or been wiped simply 404s the moment the console uses its token, which is the same path an uninitialised session already takes. The DO remains the single authority on liveness.
 
@@ -795,14 +800,16 @@ All session-auth'd; all writes require the CSRF header. The **deck library itsel
 ```
 GET      /api/my/spaces                  → { spaces: [{id,name,role,shared,createdAt,updatedAt}] }  owned + shared
 POST     /api/my/spaces                  body { name } → 201
-GET      /api/my/spaces/:id              → { space:{…,role,settings}, itemTags, folders, decks, sessions, records, liveSessions }  (?folderId=)
-                                         decks = filed decks; sessions = filed sessions; liveSessions = running join codes
+GET      /api/my/spaces/:id              → { space:{…,role,settings,experienceSaved,context}, itemTags, folders, decks, sessions, records, liveSessions }  (?folderId=)
+                                         space.context = { id, displayName } for a student's own space, else null
+                                         decks = filed decks, each with contents (a summary of the draft when there is one, else the saved version);
+                                         sessions = filed sessions; liveSessions = running join codes
                                          liveSessions[] = { code, sessionCode, title, createdAt, ended }
 PATCH    /api/my/spaces/:id              body { languages: {taught,native}|null } → { ok, settings }   editor+; 422 unsupported-language-pair
 POST     /api/my/spaces/:id/folders      body { name, parentId? }              editor+
 PATCH/DELETE /api/my/folders/:id                                              editor+ (legacy DELETE hard-removes)
-POST     /api/my/folders/:id/trash                                            editor+ recoverable subtree trash
-POST     /api/my/folders/:id/restore                                          editor+
+POST     /api/my/folders/:id/trash                                            editor+ recoverable subtree trash: the folder, its subfolders and their decks and sessions
+POST     /api/my/folders/:id/restore                                          editor+ restores what that trash moved, together
 POST     /api/my/folders/:id/permanent-deletion                               editor+ returns browser confirmation URL
 GET      /api/my/folders/trash                                                top-level trashed folder subtrees
 POST     /api/my/folders/:id/copy                                             editor+ duplicates the folder subtree only

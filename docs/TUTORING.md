@@ -61,22 +61,22 @@ instead of hiding them. Context surfaces never show it.
 
 | Route | Job |
 | --- | --- |
-| Space folders (`#/space/:id`, optional `?folderId=`) | Primary **place** browser (Explorer). Sessions and decks as typed rows in the current folder — **sessions are not rows**. |
-| `/host/#/tutor/contexts` | The one non-folder shelf: who you teach. Grouped by kind, not a table. |
-| `/host/#/tutor/contexts/new` | Create a context (link root). |
-| `/host/#/tutor/contexts/:id` | Context hub: linked decks + sessions; notes secondary. New deck/session from here carries `contextId`. Existing access links are listed here. |
-| `/host/#/tutor/contexts/:id/links/new` | Mint an access link. Its own route, not a form beside the list: minting carries an option (how long the link lives) and shows a secret exactly once. |
+| Space folders (`#/space/:id`, optional `?folderId=`) | Primary **place** browser (Explorer). Decks are typed rows in the current folder; **sessions are not rows**. A student's own space opens as that student's view (the same page as `?contextId=`): their decks, a **Notes** group of session titles, the **Access links** card and **Review learner work**. |
+| `/host/#/tutor/contexts` | Redirects to the first student's place in the Library (`#/space/:id?contextId=`). With no students it shows **Add student**. |
+| `/host/#/tutor/contexts/new` | Add a student or group (link root). |
+| `/host/#/tutor/contexts/:id` | Redirects to that student's place in the Library (`#/space/:id?contextId=`). Existing access links are listed there. |
+| `/host/#/tutor/contexts/:id/links/new` | **Create an access link**. Its own route, not a form beside the list: minting carries an option (how long the link lives) and shows a secret exactly once. |
 | `/host/#/learn?token=orlnk_…` | The learner's own page: their sessions and records. Deliberately outside the signed-in workspace shell — no nav, no library, nothing to sign in to. |
-| `/host/#/decks/new`, `…/:id` | Deck create and detail routes. Detail leads with its teaching history. |
-| `/host/#/decks/:id/edit` | **Edit deck**: full-bleed three-pane authoring — block rail · canvas · properties — with **Start session** in the top bar. In code: `DeckEditor` (component), `DeckEditorPage` (routed page). |
-| `/host/#/sessions/:id`, `…/:id/record` | Session instance routes (reopen, Notes). There is no `new` and no `edit` route: a session is **started**, not scheduled or filled in. |
-| `/host/#/` (Home) | Continue live sessions; upcoming/recent sessions. Empty account gets a single guided **Get started** card. |
+| `/host/#/decks/new` | Deck create route. `#/decks/:id` redirects to `#/decks/:id/edit`; there is no separate deck detail page. |
+| `/host/#/decks/:id/edit` | **Edit deck**: full-bleed three-pane authoring — slide rail · canvas · task pane — with **Start session** in the top bar, and **Live now** · **Rejoin** beside it while a session of this deck runs. In code: `DeckEditor` (component), `DeckEditorPage` (routed page). |
+| `/host/#/sessions/:code` | The live console of a running session (also `…/remote`, `…/qna`, `…/recap`). On a device without the session's credentials it says to sign in and use **Rejoin** under **Live now** in the Library. |
+| `/host/#/sessions/:id/record` | The session's Notes. There is no `new` and no `edit` route: a session is **started**, not scheduled or filled in. |
+| `/host/#/` | The Library of the current space, with a **Live now** row while a session you can rejoin is running and the **Write the notes for …** prompts for ended sessions. |
 | `/host/#/tutor/trash` | Restore or permanently delete. |
 
-There are no collection routes for decks or sessions — a session is an occurrence and a deck is filed work, so neither gets a shelf. Unknown hashes land on Home.
+There are no collection routes for decks or sessions — a session is an occurrence and a deck is filed work, so neither gets a shelf. An unknown hash lands on the Library (signed out, on the sign-in form).
 
-Detail routes and the `#/decks/:id*` legacy aliases remain reachable. The
-`#/project*` hashes are a `parseHash` alias only — `href()` never emits them.
+The `#/project*` hashes are a `parseHash` alias only — `href()` never emits them.
 
 **Type-specific chrome only:** decks get
 **Start session** and **Edit deck**; sessions get who/launch/record. Organization
@@ -306,8 +306,8 @@ old. At most **10 live links per context** (`429 link-limit` at the cap); ten is
 device the household owns", and the cap keeps a compromised tutor account from quietly
 farming credentials. Minting on a trashed context is `409 resource-in-trash`.
 
-Browser: existing links are listed on the context hub; minting is its own route
-(`#/tutor/contexts/:id/links/new`) because it takes an option and reveals a secret once.
+Browser: existing links are listed in the **Access links** card on the student's place in
+the Library; minting is its own route (`#/tutor/contexts/:id/links/new`) because it takes an option and reveals a secret once.
 
 ### Learner side
 
@@ -392,12 +392,16 @@ the launch chain `sessions.session_id → sessions.context_id`, which means **a 
 `POST /api/sessions` filed with no deck has no context, therefore no link can identify into
 it**. That is the tight answer, not a gap to route around.
 
+- Starting an identified session with no context (a bare `session_create`, or a deck not filed
+  under a student) → `422 identified-session-needs-context`, whose message names the fix: file
+  the deck under the student, then start it. This answer goes to the tutor who starts the
+  session, never to a joining holder.
 - Identified session, no link → `403 context-link-required`.
 - Link offered to a non-identified session → `409 identified-join-unavailable`.
 - Bad, revoked, expired, or wrong-context link → one indistinguishable `403
   context-link-invalid`, so a probing holder learns nothing about which sessions exist.
-- Identified session still in `lobby` → `409 session-not-started` ("Your tutor has not started the
-  session yet."). **The tutor pressing start is the gate**: a leaked link cannot be used
+- Identified session still in `lobby` → `409 session-not-started` ("The tutor has not started the
+  session."). **The tutor pressing start is the gate**: a leaked link cannot be used
   against an unattended lobby. This applies to `identified` sessions only — anonymous and
   pseudonymous sessions still admit lobby joins, which is how a class files in before the host
   starts. A `frozen` session is still `live`, so a panic freeze never locks a student out of
