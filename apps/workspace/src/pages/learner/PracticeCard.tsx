@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useLearnerLanguage } from '../../lib/learner-language';
 import { ArrowDown, ArrowUp, Check, RotateCcw } from 'lucide-react';
 import { assessHomework, initialHomeworkAnswer, type HomeworkPracticeAnswer } from '@openroom/schema';
@@ -50,6 +50,13 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
       setAttemptId(crypto.randomUUID()); setAttemptGrade(null); setError(null);
     } catch { setError('refresh'); } finally { setBusy(false); }
   };
+  const check = () => { focusResult.current = true; setRevealed(true); };
+  // Return on a phone keyboard checks a typed answer, as the Check button does.
+  const checkOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing || !assessment.complete) return;
+    event.preventDefault();
+    check();
+  };
   const move = (index: number, offset: number) => {
     if (answer.kind !== 'ranking') return;
     const order = [...answer.order];
@@ -73,13 +80,13 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
           </button>;
         })}
       </div> : null}
-      {interaction.type === 'text' && answer.kind === 'text' ? <Input aria-label={copy.yourAnswer} className="min-h-11 text-base" value={answer.text} maxLength={interaction.maxLength ?? 200} onChange={(event) => update({ kind: 'text', text: event.target.value })} autoComplete="off" /> : null}
+      {interaction.type === 'text' && answer.kind === 'text' ? <Input aria-label={copy.yourAnswer} className="min-h-11 text-base" value={answer.text} maxLength={interaction.maxLength ?? 200} onChange={(event) => update({ kind: 'text', text: event.target.value })} onKeyDown={checkOnEnter} enterKeyHint="done" autoComplete="off" /> : null}
       {interaction.type === 'fill-the-gaps' && answer.kind === 'fill-the-gaps' ? <div className="whitespace-pre-wrap text-base leading-loose">
         {interaction.prompt.split(/(\{\{[^{}]+\}\})/g).map((part, index) => {
           const id = /^\{\{([^{}]+)\}\}$/.exec(part)?.[1];
           const gapIndex = interaction.gaps.findIndex((gap) => gap.id === id);
           if (!id || gapIndex < 0) return <span key={index}>{part}</span>;
-          return <Input key={index} aria-label={copy.gap(gapIndex + 1)} value={answer.gaps[id] ?? ''} maxLength={200} autoComplete="off" className="mx-1 inline-flex min-h-11 w-32 max-w-full text-base" onChange={(event) => update({ kind: 'fill-the-gaps', gaps: { ...answer.gaps, [id]: event.target.value } })} />;
+          return <Input key={index} aria-label={copy.gap(gapIndex + 1)} value={answer.gaps[id] ?? ''} maxLength={200} autoComplete="off" className="mx-1 inline-flex min-h-11 w-32 max-w-full text-base" onChange={(event) => update({ kind: 'fill-the-gaps', gaps: { ...answer.gaps, [id]: event.target.value } })} onKeyDown={checkOnEnter} enterKeyHint="done" />;
         })}
       </div> : null}
       {interaction.type === 'match' && answer.kind === 'match' ? <div className="grid gap-3">
@@ -102,7 +109,7 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
         })}
       </ol> : null}
     </fieldset>
-    {!revealed ? <Button className="min-h-11 w-fit" disabled={!assessment.complete} onClick={() => { focusResult.current = true; setRevealed(true); }}>{copy.check}</Button> : <div className="grid gap-3" aria-live="polite">
+    {!revealed ? <Button className="min-h-11 w-fit" disabled={!assessment.complete} onClick={check}>{copy.check}</Button> : <div className="grid gap-3" aria-live="polite">
       <p ref={result} tabIndex={-1} className="text-base font-semibold outline-none">{assessment.result === 'correct' ? copy.correct : assessment.result === 'incorrect' ? copy.compare : copy.selfCheck}</p>
       {assessment.answers.length > 0 ? <div className="rounded-lg bg-muted/60 p-3"><p className="mb-1 text-sm font-semibold">{assessment.result === 'incorrect' ? copy.acceptedAnswers : copy.answer}</p><ul className="grid gap-1 text-base">{assessment.answers.map((line, index) => <li key={index}>{line}</li>)}</ul></div> : <p className="text-sm text-muted-foreground">{copy.noSingleAnswer}</p>}
       <div className="flex flex-wrap gap-2">
