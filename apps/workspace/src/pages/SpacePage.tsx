@@ -189,6 +189,21 @@ export function SpacePage({
     }
   }, [activeItemId, currentContextId, currentFolderId, navigate, spaceId, spaceIdProp]);
 
+  /*
+   * A student's own space opens as that student's view, so New deck there
+   * carries the student (`AGENTS.md`: only an explicit person view supplies
+   * contextId) and no deck of theirs sits outside it.
+   */
+  const ownerContextId = tree?.space.context?.id ?? null;
+  useEffect(() => {
+    if (spaceId && ownerContextId && currentContextId === null) {
+      void navigate({
+        ...to.library({ spaceId, folderId: currentFolderId, itemId: activeItemId, contextId: ownerContextId }),
+        replace: true,
+      });
+    }
+  }, [activeItemId, currentContextId, currentFolderId, navigate, ownerContextId, spaceId]);
+
   const refresh = useCallback(async () => {
     await treeQuery.refetch();
     if (currentContextId) await personQuery.refetch();
@@ -207,7 +222,8 @@ export function SpacePage({
 
   const allRows = useMemo((): (LibraryRow & { folderId: string | null; contextId: string | null })[] => {
     return decks
-      .filter((d) => currentContextId === null || d.contextId === currentContextId)
+      // In the student's own space every deck is theirs, linked or not.
+      .filter((d) => currentContextId === null || d.contextId === currentContextId || (!d.contextId && currentContextId === ownerContextId))
       .map((d) => {
         const who = contextNames.get(d.contextId ?? '') ?? null;
         const contents = d.contents;
@@ -223,7 +239,7 @@ export function SpacePage({
           asksTheClass: (contents?.askTheClass ?? 0) > 0,
         };
       });
-  }, [decks, contextNames, currentContextId]);
+  }, [decks, contextNames, currentContextId, ownerContextId]);
 
   const idsInFolder = useCallback(
     (folderId: string | null): Set<string> => {
