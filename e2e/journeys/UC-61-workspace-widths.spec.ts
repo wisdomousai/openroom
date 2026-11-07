@@ -7,6 +7,11 @@
  * 980 px up its tree, list and inspector stay side by side. A student's own
  * space opens as that student's view, with a quiet Notes group: titles only,
  * a repeated title told apart by a silent ordinal.
+ *
+ * The deck editor keeps rail, canvas and task pane side by side at 1280 px.
+ * At 900 px the pane starts closed and Slide pane opens it over the canvas
+ * while the rail still answers. At 600 px the editor says to open the deck on
+ * a larger screen, and Present and Start session still work.
  */
 import { test, expect, type Page } from '@playwright/test';
 
@@ -96,4 +101,72 @@ test('form and Notes pages fit a phone; the Library keeps three columns from 980
   expect(listBox!.x + listBox!.width).toBeLessThanOrEqual(panelBox!.x + 1);
   expect(panelBox!.y).toBeLessThan(listBox!.y + listBox!.height);
   await page.screenshot({ path: testInfo.outputPath('1000-library.png') });
+});
+
+test('the deck editor collapses its task pane below 1024 px and keeps Present and Start session at 600 px', async ({ page }, testInfo) => {
+  const api = await signIn(page);
+  const created = await api.post('/api/decks', { headers: CSRF, data: { content: {
+    version: 1, meta: { title: `Widths ${Date.now()}` }, steps: [
+      { id: 'one', kind: 'title', title: 'Bonjour' },
+      { id: 'two', kind: 'statement', layout: 'text', title: 'Au marché', body: 'On achète des pommes.' },
+    ], interactions: [],
+  } } });
+  expect(created.status(), await created.text()).toBe(201);
+  const { deck } = await created.json() as { deck: { id: string } };
+  const rail = page.getByRole('list', { name: 'Slides' });
+  const canvas = page.locator('.slide-canvas__frame');
+  const closePane = page.getByRole('button', { name: 'Close task pane' });
+  const paneToggle = page.getByRole('button', { name: 'Slide pane', exact: true });
+
+  // Desktop: three panes side by side, no toggle.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`/host/#/decks/${deck.id}/edit`);
+  await expect(canvas).toBeVisible();
+  await expect(closePane).toBeInViewport();
+  await expect(paneToggle).toHaveCount(0);
+  const [railBox, canvasBox, paneBox] = await Promise.all([rail.boundingBox(), canvas.boundingBox(), page.locator('.deck-editor-properties').boundingBox()]);
+  expect(railBox!.x + railBox!.width).toBeLessThanOrEqual(canvasBox!.x + 1);
+  expect(canvasBox!.x + canvasBox!.width).toBeLessThanOrEqual(paneBox!.x + 1);
+  await expectNoSidewaysScroll(page, 'deck editor at 1280 px');
+
+  // Tablet: the pane is closed and opens over the canvas; the rail still works.
+  await page.setViewportSize({ width: 900, height: 800 });
+  await expect(closePane).toHaveCount(0);
+  await expect(paneToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(rail).toBeVisible();
+  await expect(canvas).toBeInViewport();
+  await expectNoSidewaysScroll(page, 'deck editor at 900 px');
+  await paneToggle.click();
+  await expect(paneToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(closePane).toBeInViewport();
+  const overlay = (await page.locator('.deck-editor-properties').boundingBox())!;
+  const frame = (await canvas.boundingBox())!;
+  expect(overlay.x, 'the pane lies over the canvas').toBeLessThan(frame.x + frame.width);
+  await page.screenshot({ path: testInfo.outputPath('900-deck-editor-pane.png') });
+  const second = rail.locator('[data-rail-row]').nth(1);
+  await second.click();
+  await expect(second).toHaveAttribute('aria-current', 'true');
+  await closePane.focus();
+  await page.keyboard.press('Escape');
+  await expect(closePane).toHaveCount(0);
+  await expect(paneToggle).toHaveAttribute('aria-expanded', 'false');
+
+  // Phone: one line instead of the editor; Present and Start session still work.
+  await page.setViewportSize({ width: 600, height: 800 });
+  await expect(page.getByText('Open this deck on a larger screen to edit it.', { exact: true })).toBeInViewport();
+  await expect(canvas).toHaveCount(0);
+  await expectNoSidewaysScroll(page, 'deck editor at 600 px');
+  const present = page.locator('[data-deck-present]');
+  const startSession = page.getByRole('button', { name: 'Start session', exact: true });
+  await expect(present).toBeInViewport();
+  await expect(startSession).toBeInViewport();
+  await page.screenshot({ path: testInfo.outputPath('600-deck-editor.png') });
+  await present.click();
+  const presenter = page.getByRole('dialog', { name: 'Presenter', exact: true });
+  await expect(presenter).toBeVisible();
+  await page.reload();
+  const launched = page.waitForResponse((response) => /\/sessions\/[^/]+\/launch$/.test(response.url()) && response.request().method() === 'POST');
+  await startSession.click();
+  expect((await launched).status()).toBe(201);
+  await expect(presenter.getByRole('button', { name: 'End session', exact: true }).first()).toBeVisible();
 });
