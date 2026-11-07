@@ -26,4 +26,12 @@ describe('slideLabel', () => {
     expect(long.length).toBeLessThanOrEqual(80);
     expect(long.endsWith('…')).toBe(true);
   });
+
+  it('names a freeform slide by what is on it, as the deck editor rail does', () => {
+    const reading = { type: 'html', html: '<h1>Le passé composé</h1>', markdown: '# Le passé composé\n\nAvec être…' };
+    expect(slideLabel({ id: 'b1', kind: 'blank', elements: [reading] })).toBe('Le passé composé');
+    expect(slideLabel({ id: 'b2', kind: 'blank', elements: [{ type: 'html', html: '<svg viewBox="0 0 10 10"></svg>' }] })).toBe('Drawing');
+    expect(slideLabel({ id: 'b3', kind: 'blank', elements: [{ type: 'image', alt: '' }] })).toBe('Empty slide');
+    expect(slideLabel({ id: 'b4', kind: 'blank' })).toBe('Empty slide');
+  });
 });

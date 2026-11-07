@@ -11,7 +11,11 @@ export const SlideThumbnail = memo(function SlideThumbnail({ outline, step }: { 
     preview.media = media;
   }
   if ('elements' in preview && preview.elements) {
-    preview.elements = preview.elements.filter((element) => element.type === 'text' || element.type === 'image');
+    // Text, pictures and html (svg drawings included) draw as on the slide;
+    // a web page or PDF shows an empty box with its title, never the player.
+    preview.elements = preview.elements.map((element) => element.type === 'iframe' || element.type === 'pdf'
+      ? { id: element.id, type: 'image' as const, alt: element.title, box: element.box }
+      : element);
   }
   const interaction = step.kind === 'interaction' ? outline.interactions.find((item) => item.id === step.interactionId) : undefined;
   return <div aria-hidden="true" inert className="pointer-events-none h-full w-full overflow-hidden">

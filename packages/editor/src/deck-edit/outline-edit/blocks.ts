@@ -9,13 +9,13 @@ import {
   validateOutline,
   type Interaction,
   type Outline,
-  type OutlineElement,
   type OutlineLayout,
   type OutlineStep,
   type OutlineTimerPlacement,
   type OutlineTimerStyle,
 } from '@openroom/schema';
 import { commitTimerText, expandTimerText } from '@openroom/slides';
+import { freeformSlideName } from '../../slide-name';
 import { insertIdBase, starterStep, type InsertKind } from './catalog';
 
 /**
@@ -117,16 +117,7 @@ export function stepTitle(outline: Outline, step: OutlineStep): string {
   }
   if (step.kind === 'join') return 'Join the session';
   if ('title' in step && step.title !== undefined && step.title !== '') return step.title;
-  if (step.kind === 'blank') {
-    // A freeform slide has no title slot, so its name is what it says: the
-    // heading box if the author placed one, otherwise the first text box.
-    const texts = stepElements(step).filter(
-      (element): element is Extract<OutlineElement, { type: 'text' }> => element.type === 'text',
-    );
-    const named = texts.find((element) => element.role === 'heading') ?? texts[0];
-    const line = named?.text.trim();
-    return line === undefined || line === '' ? 'Empty slide' : line;
-  }
+  if (step.kind === 'blank') return freeformSlideName(stepElements(step));
   return step.id;
 }
 
