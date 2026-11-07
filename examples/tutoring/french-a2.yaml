@@ -48,7 +48,7 @@ design:
         to: "#EEE5D5"
         angle: 120
 defaults:
-  identityMode: pseudonymous
+  identityMode: nickname
   resultVisibility: hidden-until-close
 steps:
   - id: welcome

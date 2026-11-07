@@ -71,7 +71,7 @@ test('facilitator assigns groups, hands off one shared response and returns to i
   const joinPhone = async (phone: Page) => {
     await joinInBrowser(phone, session.code);
     await expect(phone.getByText('Your facilitator will assign you to a group.')).toBeVisible();
-    const name = (await phone.locator('.topbar .handle').textContent())!.trim();
+    const name = (await phone.locator('.topbar .participant-name').textContent())!.trim();
     const dismiss = phone.getByRole('button', { name: 'Dismiss', exact: true });
     if (await dismiss.isVisible()) await dismiss.click();
     return name;

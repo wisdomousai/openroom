@@ -1099,7 +1099,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
           onSelectItem={showQuestion}
           entries={showEntries}
           isWordCloud={isWordCloud}
-          handles={{ ...snapshot?.handles, ...snapshot?.responseNames }}
+          names={{ ...snapshot?.names, ...snapshot?.responseNames }}
           ended={ended}
           onToggleEntry={(entry) => {
             if (focus) toggleEntry(focus.id, entry);

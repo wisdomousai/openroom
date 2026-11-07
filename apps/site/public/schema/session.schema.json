@@ -121,7 +121,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "identityMode": { "type": "string", "enum": ["anonymous", "pseudonymous", "identified", "guest-list"] },
+        "identityMode": { "type": "string", "enum": ["anonymous", "nickname", "identified", "guest-list"] },
         "resultVisibility": { "$ref": "#/$defs/resultVisibility" },
         "allowAnswerChange": { "type": "boolean" },
         "theme": { "$ref": "#/$defs/theme" }

@@ -16,7 +16,7 @@ export const DEFAULT_QNA_MAX_LENGTH = 300;
  * Fill every default and return a canonical session. Pure: the input is not mutated.
  *
  * Defaults applied:
- *  - defaults.identityMode        -> 'pseudonymous'
+ *  - defaults.identityMode        -> 'nickname'
  *  - defaults.resultVisibility    -> 'live'
  *  - defaults.allowAnswerChange   -> true
  *  - defaults.theme               -> 'default'
@@ -33,7 +33,7 @@ export const DEFAULT_QNA_MAX_LENGTH = 300;
  */
 export function normalizeSession(session: Session): NormalizedSession {
   const defaults: NormalizedDefaults = {
-    identityMode: session.defaults?.identityMode ?? 'pseudonymous',
+    identityMode: session.defaults?.identityMode ?? 'nickname',
     resultVisibility: session.defaults?.resultVisibility ?? 'live',
     allowAnswerChange: session.defaults?.allowAnswerChange ?? true,
     theme: session.defaults?.theme ?? 'default',

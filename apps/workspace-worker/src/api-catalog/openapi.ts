@@ -203,10 +203,10 @@ export function openapiDocument(origin: string): unknown {
                   required: ['code'],
                   properties: {
                     code: { type: 'string' },
-                    recoveryHandle: {
+                    recoveryName: {
                       type: 'string',
                       description:
-                        'Existing session-local handle used to recover a pseudonymous participant',
+                        'Generated nickname used to rejoin a nickname session as the same participant',
                     },
                     contextLink: {
                       type: 'string',
@@ -234,14 +234,14 @@ export function openapiDocument(origin: string): unknown {
                       participantToken: { type: 'string' },
                       participantId: { type: 'string' },
                       identityMode: { type: 'string' },
-                      handle: { type: 'string' },
+                      name: { type: 'string' },
                     },
                   },
                 },
               },
             },
-            '400': { description: 'Missing session code or invalid recovery handle' },
-            '404': { description: 'Unknown session or recovery handle' },
+            '400': { description: 'Missing session code or invalid recovery name' },
+            '404': { description: 'Unknown session or recovery name' },
             '403': {
               description:
                 'Identified session joined without a context link (context-link-required), or a ' +
@@ -250,12 +250,12 @@ export function openapiDocument(origin: string): unknown {
             },
             '409': {
               description:
-                'Handle recovery is unavailable for this session, a context link was offered to a ' +
+                'Name recovery is unavailable for this session, a context link was offered to a ' +
                 'session that is not identified (identified-join-unavailable), or the identified ' +
                 'session has not been started yet (session-not-started), or the session admits no new ' +
                 'participant (session-full): without the space owner\'s largeSessions capability at start a ' +
                 `session admits ${FREE_SESSION_PARTICIPANT_LIMIT} participants. Re-entry with an existing ` +
-                'recovery handle, access link or guest link is never refused for size',
+                'recovery name, access link or guest link is never refused for size',
             },
             '429': { description: 'Too many failed recovery attempts' },
           },

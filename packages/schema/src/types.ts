@@ -25,8 +25,8 @@ export const SESSION_THEME_IDS = [
 /**
  * How a participant is named inside one session.
  *
- * - `anonymous`     — no handle at all.
- * - `pseudonymous`  — a system-assigned session-local handle (`@openroom/domain`
+ * - `anonymous`     — no name at all.
+ * - `nickname`      — a system-assigned session-local name (`@openroom/domain`
  *   wordlist). The default.
  * - `identified`    — the participant arrives holding a context access link and
  *   is named by that context's `displayName`. There is still no participant
@@ -35,7 +35,7 @@ export const SESSION_THEME_IDS = [
  * - `guest-list`    — host-typed named guests. Enterable only with the guest
  *   link (`orinv_…`) issued for that session. Not a context access link. Lobby join is allowed.
  */
-export type IdentityMode = 'anonymous' | 'pseudonymous' | 'identified' | 'guest-list';
+export type IdentityMode = 'anonymous' | 'nickname' | 'identified' | 'guest-list';
 
 export type InteractionType =
   | 'choice'

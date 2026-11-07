@@ -59,7 +59,7 @@ describe('validation matrix — every stable error code', () => {
       meta: { title: 't' },
       interactions: [{ id: 'a', type: 'qna', prompt: 'p' }],
     };
-    for (const identityMode of ['anonymous', 'pseudonymous', 'identified', 'guest-list']) {
+    for (const identityMode of ['anonymous', 'nickname', 'identified', 'guest-list']) {
       expect(validateSession({ ...base, defaults: { identityMode } }).ok).toBe(true);
     }
     const bad = validateSession({ ...base, defaults: { identityMode: 'named' } });

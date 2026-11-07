@@ -95,13 +95,13 @@ export function exportAggregateCsv(input: SessionState): string {
 /** Per-ballot CSV. Prefer the name `exportBallotsCsv` at call sites. */
 export function exportBallotsCsv(input: SessionState): string {
   const state = ensureQna(input);
-  // Pseudonymous sessions carry a session-local handle per participant; identified
+  // Nickname sessions carry a session-local name per participant; identified
   // sessions carry the context display name in the same slot. Anonymous sessions keep
   // the original 5-column contract.
-  const withHandles = sessionOf(state).defaults.identityMode !== 'anonymous' || sessionOf(state).interactions.some((item) => item.responseMode === 'group');
+  const withNames = sessionOf(state).defaults.identityMode !== 'anonymous' || sessionOf(state).interactions.some((item) => item.responseMode === 'group');
   const lines = [
-    withHandles
-      ? 'interactionId,prompt,participantId,handle,answer,hidden'
+    withNames
+      ? 'interactionId,prompt,participantId,name,answer,hidden'
       : 'interactionId,prompt,participantId,answer,hidden',
   ];
   for (const interaction of sessionOf(state).interactions) {
@@ -115,7 +115,7 @@ export function exportBallotsCsv(input: SessionState): string {
           csvCell(interaction.id),
           csvCell(interaction.prompt),
           csvCell(participantId),
-          ...(withHandles ? [csvCell(runtime.groupNames?.[participantId] ?? state.participants[participantId]?.handle ?? '')] : []),
+          ...(withNames ? [csvCell(runtime.groupNames?.[participantId] ?? state.participants[participantId]?.name ?? '')] : []),
           csvCell(answerText(ballot)),
           hidden,
         ].join(','),
@@ -130,8 +130,8 @@ export function exportBallotsCsv(input: SessionState): string {
         csvCell('session-qna'),
         csvCell('Audience Q&A'),
         csvCell(question.participantId),
-        ...(withHandles
-          ? [csvCell(state.participants[question.participantId]?.handle ?? '')]
+        ...(withNames
+          ? [csvCell(state.participants[question.participantId]?.name ?? '')]
           : []),
         csvCell(`${question.text} (${String(question.votes)} votes)`),
         question.hidden ? 'true' : 'false',

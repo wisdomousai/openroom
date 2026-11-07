@@ -18,5 +18,5 @@ export function expectedAnswerCount(state: SessionState): number {
 }
 
 export function participantLabel(state: SessionState, participantId: string): string {
-  return state.participants[participantId]?.handle ?? `Participant ${Object.keys(state.participants).indexOf(participantId) + 1}`;
+  return state.participants[participantId]?.name ?? `Participant ${Object.keys(state.participants).indexOf(participantId) + 1}`;
 }

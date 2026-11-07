@@ -4,7 +4,7 @@
  * Owns the `SessionDO` class and serves, on one origin:
  *
  *   POST /api/sessions                      create (Bearer RELAY_KEY)
- *   POST /api/join                          anonymous / pseudonymous join
+ *   POST /api/join                          anonymous / nickname join
  *   GET  /api/sessions/:code/state          snapshot (any capability token)
  *   POST /api/sessions/:code/commands       command (any capability token)
  *   GET  /api/sessions/:code/ws             WebSocket (any capability token)
@@ -157,7 +157,7 @@ async function joinRelayRoute(request: Request, env: Env): Promise<Response> {
       return {
         ok: false,
         response: json(
-          { error: 'identified-join-unavailable', message: 'This server takes anonymous and pseudonymous joins only.' },
+          { error: 'identified-join-unavailable', message: 'This server takes anonymous and nickname joins only.' },
           403,
         ),
       };

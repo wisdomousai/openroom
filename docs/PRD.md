@@ -85,7 +85,7 @@ The summer-camp implementation is evidence for the experience, not the productio
 
 - One fixed event becomes many isolated sessions.
 - One global presenter token becomes short-lived, session-scoped capabilities.
-- Required participant names become system-generated, session-local handles by default, with explicit anonymous mode available.
+- Required participant names become system-generated, session-local names by default, with explicit anonymous mode available.
 - A JavaScript poll array becomes the versioned `Session` schema.
 - Whole-state persistence on every mutation becomes normalized session-local SQLite state and measured write behavior.
 - Full-state broadcast on every vote becomes coalesced revision notification or compact snapshots.
@@ -294,7 +294,7 @@ The schema must be able to express:
 - Anonymous muddiest-point prompts.
 - Exit tickets.
 - No leaderboard by default.
-- Anonymous, pseudonymous, or identified response modes, with pseudonymous session-local handles as
+- Anonymous, nickname, or identified response modes, with nicknames as
   the hosted default and explicit anonymous mode available when recovery is not needed.
 - Host notes invisible to participants and the stage view.
 
@@ -572,7 +572,7 @@ It owns:
 
 - Authoritative session and interaction state.
 - Monotonic session revision.
-- Active participant capabilities and session-local pseudonyms.
+- Active participant capabilities and session-local nicknames.
 - Ballots and answer replacement.
 - Aggregates.
 - Q&A, votes, and moderation state.
@@ -682,14 +682,14 @@ Queues are optional for session-close processing, export generation, webhooks, a
 - Ballots retained only for live operation, answer changes, recovery, and the configured short purge window.
 - Aggregates retained according to the host or workspace policy.
 
-### Pseudonymous mode - shipped
+### Nickname mode - shipped
 
-- Random identity stable within one session: the default `defaults.identityMode: pseudonymous` assigns each participant a system-generated session-local handle ("Amber Fox 4827") at join. Never user-chosen — no self-declared PII enters the system.
-- The browser stores the session capability by session id and session code for automatic rescans. If an iOS QR window discards that storage, the participant can type the same handle to recover the original participant id and receive a fresh session capability. Failed recovery attempts are rate-limited inside the session Durable Object.
-- No linking across classes or sessions: handles exist only inside one session's state and die with the DATA-04 purge.
+- Random identity stable within one session: the default `defaults.identityMode: nickname` assigns each participant a system-generated session-local name ("Amber Fox 4827") at join. Never user-chosen — no self-declared PII enters the system.
+- The browser stores the session capability by session id and session code for automatic rescans. If an iOS QR window discards that storage, the participant can type the same name to recover the original participant id and receive a fresh session capability. Failed recovery attempts are rate-limited inside the session Durable Object.
+- No linking across classes or sessions: names exist only inside one session's state and die with the DATA-04 purge.
 - Raw-response retention: shares the DATA-04 defaults (ballots purged 30 minutes after end, session deleted at 24 hours), stated in the participant notice.
-- Participant notice: shown immediately after join, before the first answer can be submitted ("In this session you appear as **{handle}**. Remember it: you can use it to rejoin if this QR window closes. No name or account is collected, and the handle is never linked to other sessions. Individual answers are deleted 30 minutes after the session ends."). Deviation from the original "before joining" wording: the mode is only knowable after session resolution, and joining itself submits no content.
-- Visibility: host console and CSV export only, plus each participant's own handle. The stage and other participants never receive handles.
+- Participant notice: shown immediately after join, before the first answer can be submitted ("In this session you appear as **{name}**. Remember it: you can use it to rejoin if this QR window closes. No name or account is collected, and the name is never linked to other sessions. Individual answers are deleted 30 minutes after the session ends."). Deviation from the original "before joining" wording: the mode is only knowable after session resolution, and joining itself submits no content.
+- Visibility: host console and CSV export only, plus each participant's own name. The stage and other participants never receive names.
 
 ### Learner records access - shipped
 
@@ -716,14 +716,14 @@ gives it to that student or family. It is a capability, not an account:
 
 ### Identified mode - shipped, link-gated
 
-`defaults.identityMode: identified` joins `anonymous` and `pseudonymous`. The
-default is unchanged: `pseudonymous`. Identified mode is never a global switch and
+`defaults.identityMode: identified` joins `anonymous` and `nickname`. The
+default is unchanged: `nickname`. Identified mode is never a global switch and
 is never reachable by a participant deciding to identify themselves.
 
-- **The identity is authored by the tutor, not by the participant.** The handle in an
+- **The identity is authored by the tutor, not by the participant.** The name in an
   identified session is the context-local learner's display name, authored by the tutor.
   A stable learner id supplies the seat; credential replacement retains the same seat.
-  The `packages/domain/src/handles.ts` wordlist is not used.
+  The `packages/domain/src/participant-names.ts` wordlist is not used.
   No name field is ever shown to a participant, so no self-declared PII enters the
   system in any mode.
 - **Entry requires a context access link.** `POST /api/join` accepts an optional
@@ -739,7 +739,7 @@ is never reachable by a participant deciding to identify themselves.
   has started the session; a session still in the `lobby` answers `409 session-not-started`
   ("Your tutor has not started the session yet."). A leaked link therefore cannot be
   used against an unattended lobby — it only ever works inside a window a tutor is
-  present for and can see. Anonymous and pseudonymous sessions are unchanged and still
+  present for and can see. Anonymous and nickname sessions are unchanged and still
   admit lobby joins.
 - **The learner plane is throttled per client.** `/api/learner/*` is the only route
   family with no cookie and no session, so `requireContextLink` spends a budget of ten
@@ -757,8 +757,8 @@ is never reachable by a participant deciding to identify themselves.
   scoped to exactly one context and is withdrawn by revoking it.
 - **Re-entry is the link.** Presenting the same link again lands on the same
   participant id, so a page reload does not fork a student into two identities.
-- Retention is unchanged: DATA-04 purge applies, and the identified handle dies with
-  the participant records like any other handle.
+- Retention is unchanged: DATA-04 purge applies, and the identified name dies with
+  the participant records like any other name.
 - Open: identified mode must ship its own participant notice text before launch (see
   the bullet at the end of this section) — that text does not yet exist.
 
@@ -769,7 +769,7 @@ The product shall not implement browser fingerprinting. Small-group aggregate su
 Anonymous-by-default is a compliance architecture, not only an ethics choice. FERPA, GDPR, and COPPA obligations attach to identifiable personal data; a runtime that never collects participant names, emails, accounts, or cross-session identifiers converts a school's legal review into a short answer. That answer must be written down and published:
 
 - Procurement one-pager: participants join without accounts, no participant PII is collected in the hosted default mode, ballots are purged on a stated schedule, aggregates contain no identities, and no participant data is sold, profiled, or used for advertising.
-- Under-13 participation: because participants have no accounts and provide no personal information, COPPA consent mechanics are not triggered in anonymous or pseudonymous mode. **Identified mode rests on a different argument, deliberately.** The tutor is the controller: they already know the student, they author `contexts.display_name`, and they own the records. OpenRoom collects nothing *from* the child — no name field is ever shown to a participant or student, and no marketing, profiling, or advertising use exists. A student account, where one is issued, requests a provider-anonymised identity and grants read access to records the tutor created; it is not the point of collection.
+- Under-13 participation: because participants have no accounts and provide no personal information, COPPA consent mechanics are not triggered in anonymous or nickname mode. **Identified mode rests on a different argument, deliberately.** The tutor is the controller: they already know the student, they author `contexts.display_name`, and they own the records. OpenRoom collects nothing *from* the child — no name field is ever shown to a participant or student, and no marketing, profiling, or advertising use exists. A student account, where one is issued, requests a provider-anonymised identity and grants read access to records the tutor created; it is not the point of collection.
 
   > **⚠ Three items still need a human before this is published.** The controller
   > argument above is the product's position; these are the gaps underneath it.
@@ -793,7 +793,7 @@ Anonymous-by-default is a compliance architecture, not only an ethics choice. FE
   > OpenRoom does not inspect them, and inspecting them would be worse. What the product
   > controls is reach and lifetime — reach is enforced, lifetime is item 1.
 - Host and School Pro accounts do create GDPR processor duties. The product shall offer a standard, lightweight, non-negotiated data processing agreement, a published subprocessor list, and a clear statement of data location within Cloudflare's jurisdiction options.
-- Pseudonymous and identified modes must each ship with their own participant notice text and retention defaults before launch, not after.
+- Nickname and identified modes must each ship with their own participant notice text and retention defaults before launch, not after.
 
 Bespoke legal agreements remain excluded (see School Pro exclusions); the strategy is one strong standard posture rather than negotiated variance.
 
@@ -919,7 +919,7 @@ These targets require validation under load before they become public commitment
 1. **Bring-your-own-Cloudflare (supported now, the primary path).** A single deployment under the operator's own Cloudflare account. This delivers operational independence — the operator's data never touches our instance, their domain, their configuration, effectively free at school scale — but it is not infrastructure sovereignty: the runtime is still a US cloud provider, which matters to exactly the privacy-driven adopters most likely to want this path. Marketing and documentation must call this what it is.
 2. **Single-node sovereign deployment (roadmap, V2 candidate).** Because `packages/domain` is pure TypeScript with no platform APIs and the Durable Object is a thin shell (storage, WebSockets, alarms), a Node adapter — one process, SQLite files for session state, `ws` for sockets, timer-based alarms, serving the same static apps — can host the identical domain on a VPS or on-premises box. This is true self-hosting for the data-sovereignty audience (e.g. European public schools restricted from US cloud providers). It is a deliberate adapter, not a Docker-orchestrated distributed system, and it stays single-node by design.
 
-The account-free identity model independently reduces how much hosting location matters: in the default pseudonymous mode the handle is generated by the system, is session-local, and is not a real-world identity. Identified mode is the exception and is opt-in per deck: the handle there is the display name the tutor wrote on the context, so a tutor who names a context after a real person is choosing to put that name in the session.
+The account-free identity model independently reduces how much hosting location matters: in the default nickname mode the name is generated by the system, is session-local, and is not a real-world identity. Identified mode is the exception and is opt-in per deck: the name there is the display name the tutor wrote on the context, so a tutor who names a context after a real person is choosing to put that name in the session.
 
 The bring-your-own-Cloudflare path is a single deployment initiated by the CLI:
 
@@ -1033,7 +1033,7 @@ Deliver:
 - Alternate display styles: donut, emoji pulse, gauge.
 - Peer-instruction comparison.
 - Word-cloud visualization with live display and host removal controls.
-- Pseudonymous mode (shipped).
+- Nickname mode (shipped).
 - Google and Microsoft host sign-in.
 - Verified School Pro spaces.
 - Teacher and steward membership.

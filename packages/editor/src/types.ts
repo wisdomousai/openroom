@@ -145,7 +145,7 @@ export interface Session {
   defaults?: {
     // Mirrors `IdentityMode` in @openroom/schema; `identified` is the mode a
     // participant reaches by holding a context access link.
-    identityMode?: 'anonymous' | 'pseudonymous' | 'identified';
+    identityMode?: 'anonymous' | 'nickname' | 'identified';
     resultVisibility?: ResultVisibility;
     allowAnswerChange?: boolean;
     theme?: string;
@@ -187,14 +187,14 @@ export type Aggregate =
     }
   | {
       kind: 'fill-the-gaps';
-      entries: { participantId: string; gaps: Record<string, string>; hidden: boolean; handle?: string }[];
+      entries: { participantId: string; gaps: Record<string, string>; hidden: boolean; name?: string }[];
       total: number;
       dontKnow: number;
     }
   | {
       kind: 'match';
       pairs: Record<string, Record<string, number>>;
-      entries: { participantId: string; pairs: Record<string, string>; handle?: string }[];
+      entries: { participantId: string; pairs: Record<string, string>; name?: string }[];
       total: number;
       dontKnow: number;
     };
@@ -302,8 +302,8 @@ export interface HostSnapshot {
   answeredCount?: number;
   /** Absolute ms auto-close deadline for the active interaction, when armed. */
   closesAt?: number;
-  /** participantId → session-local handle; present only in pseudonymous sessions. */
-  handles?: Record<string, string>;
+  /** participantId → session-local name; present only in nickname sessions. */
+  names?: Record<string, string>;
   listening?: { stepId: string; mode: 'room' | 'individual'; transcriptShown: boolean };
   marks?: Array<
     | { kind: 'circle'; partKey: string; token: number }

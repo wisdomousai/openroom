@@ -45,7 +45,7 @@ every kind — are free: create, list, read, edit and file into a space.
   when it is created or first allocated (direct, deck, presentation and MCP
   creation), the same rule as named (`guest-list`) sessions. A session already
   running keeps admitting its learners.
-- **What stays free.** Contexts, decks, anonymous and pseudonymous live
+- **What stays free.** Contexts, decks, anonymous and nickname live
   sessions, the results recap, listening recordings, Desktop, the CLI and MCP,
   and the
   `/api/tutoring/lookup`, `/dictionary`, `/stock`, `/embed-check` and
@@ -383,9 +383,9 @@ migration cannot leak by default.
 ### Identified sessions
 
 An outline may set `defaults.identityMode: identified` (beside `anonymous` and
-`pseudonymous`; the default remains `pseudonymous`). In an identified session the handle is
+`nickname`; the default remains `nickname`). In an identified session the name is
 the context's `display_name` — the name the tutor authored — not a generated session-local
-handle. A participant is still never asked to type a name.
+name. A participant is still never asked to type a name.
 
 `POST /api/join` accepts an optional `contextLink`. The session proves its association through
 the launch chain `sessions.session_id → sessions.context_id`, which means **a session created by bare
@@ -403,7 +403,7 @@ it**. That is the tight answer, not a gap to route around.
 - Identified session still in `lobby` → `409 session-not-started` ("The tutor has not started the
   session."). **The tutor pressing start is the gate**: a leaked link cannot be used
   against an unattended lobby. This applies to `identified` sessions only — anonymous and
-  pseudonymous sessions still admit lobby joins, which is how a class files in before the host
+  nickname sessions still admit lobby joins, which is how a class files in before the host
   starts. A `frozen` session is still `live`, so a panic freeze never locks a student out of
   re-entry.
 

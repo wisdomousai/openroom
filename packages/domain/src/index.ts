@@ -27,7 +27,7 @@ export {
   QNA_HARD_MAX_LENGTH,
   QNA_QUESTION_ID_MAX_LENGTH,
 } from './qna.js';
-export { generateHandle } from './handles.js';
+export { generateParticipantName } from './participant-names.js';
 export {
   SRS_DEFAULT_EASE,
   SRS_MIN_EASE,

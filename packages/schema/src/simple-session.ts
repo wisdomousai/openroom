@@ -326,7 +326,7 @@ export function compileSimpleSession(input: unknown): ValidateResult {
     version: 1,
     meta: { title: title.trim() },
     defaults: {
-      identityMode: 'pseudonymous',
+      identityMode: 'nickname',
       resultVisibility: 'live',
       allowAnswerChange: true,
     },

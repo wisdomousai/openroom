@@ -182,7 +182,7 @@ describe('normalizeSession', () => {
   it('fills every default', () => {
     const normalized = normalizeSession(minimalSession);
     expect(normalized.defaults).toEqual({
-      identityMode: 'pseudonymous',
+      identityMode: 'nickname',
       resultVisibility: 'live',
       allowAnswerChange: true,
       theme: 'default',

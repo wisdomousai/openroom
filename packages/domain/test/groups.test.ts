@@ -23,7 +23,7 @@ function setup() {
       { id: 'team', type: 'text', prompt: 'Your decision?', responseMode: 'group' },
       { id: 'solo', type: 'text', prompt: 'Your next step?' },
     ] }, 'ABC123', 0);
-  state.participants = { p1: { joinedAt: 1, handle: 'Ada' }, p2: { joinedAt: 2, handle: 'Ben' }, p3: { joinedAt: 3, handle: 'Cleo' } };
+  state.participants = { p1: { joinedAt: 1, name: 'Ada' }, p2: { joinedAt: 2, name: 'Ben' }, p3: { joinedAt: 3, name: 'Cleo' } };
   state = ok(state, group());
   state = ok(state, { command: 'session.start' });
   return ok(state, { command: 'interaction.open', interactionId: 'team' });

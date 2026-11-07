@@ -67,6 +67,6 @@ When audience Q&A is enabled, open its question area, type your question, and se
 
 Reloading in the same browser normally restores its saved participation. Restore network access first if the page reports an offline state.
 
-To recover a generated-name session in another browser, enter the session code, select **Rejoin with handle**, enter the displayed name exactly, and select **Rejoin**. For learner or guest-list participation, reopen the original personal link.
+To recover a generated-name session in another browser, enter the session code, select **Rejoin with your name**, enter the displayed name exactly, and select **Rejoin**. For learner or guest-list participation, reopen the original personal link.
 
 If the host ended the session, use the next session's code or guest link. An expired or revoked personal link requires a replacement from its issuer.

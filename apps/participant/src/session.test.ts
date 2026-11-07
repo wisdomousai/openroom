@@ -41,7 +41,7 @@ const stored: StoredSession = {
   code: 'AB12CD34',
   token: 'participant-token',
   participantId: 'participant-1',
-  handle: 'Amber Fox 4827',
+  name: 'Amber Fox 4827',
 };
 
 beforeEach(() => {

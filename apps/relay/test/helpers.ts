@@ -74,14 +74,14 @@ export interface JoinedParticipant {
   participantToken: string;
   participantId: string;
   identityMode?: string;
-  handle?: string;
+  name?: string;
 }
 
-export async function join(code: string, recoveryHandle?: string): Promise<JoinedParticipant> {
+export async function join(code: string, recoveryName?: string): Promise<JoinedParticipant> {
   const res = await call('/api/join', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ code, ...(recoveryHandle === undefined ? {} : { recoveryHandle }) }),
+    body: JSON.stringify({ code, ...(recoveryName === undefined ? {} : { recoveryName }) }),
   });
   if (res.status !== 200) {
     throw new Error(`join failed: ${res.status} ${await res.text()}`);

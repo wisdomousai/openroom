@@ -293,14 +293,14 @@ describe('session qna — snapshots', () => {
     expect(hostSnapshot(state).qna.questions).toHaveLength(2);
   });
 
-  it('keeps a pseudonymous asker handle (a recovery credential) off peer and stage views; names in identified sessions', () => {
+  it('keeps an asker nickname (a recovery credential) off peer and stage views; names in identified sessions', () => {
     const base = snapshotFixture();
-    const withHandle = (state: SessionState, handle: string): SessionState => ({
+    const withName = (state: SessionState, name: string): SessionState => ({
       ...state,
-      participants: { ...state.participants, p1: { ...(state.participants['p1'] ?? { joinedAt: 0 }), handle } },
+      participants: { ...state.participants, p1: { ...(state.participants['p1'] ?? { joinedAt: 0 }), name } },
     });
-    const pseudo = withHandle(base, 'Cedar Badger 4415');
-    expect(participantSnapshot(pseudo, 'p1').yourHandle).toBe('Cedar Badger 4415');
+    const pseudo = withName(base, 'Cedar Badger 4415');
+    expect(participantSnapshot(pseudo, 'p1').yourName).toBe('Cedar Badger 4415');
     expect(JSON.stringify(participantSnapshot(pseudo, 'p3'))).not.toContain('Cedar Badger');
     expect(JSON.stringify(stageSnapshot(run(pseudo, env({ command: 'qna.stage', mode: 'list' }))))).not.toContain('Cedar Badger');
 
@@ -308,10 +308,10 @@ describe('session qna — snapshots', () => {
       newSession({ ...qnaSession, defaults: { identityMode: 'identified' } }),
       env({ command: 'session.start' }),
     );
-    const identified = withHandle(ask(identifiedRoom, 'p1', 'q1', 'named question'), 'Léa');
-    expect(participantSnapshot(identified, 'p3').qna?.questions[0]).toMatchObject({ id: 'q1', handle: 'Léa' });
+    const identified = withName(ask(identifiedRoom, 'p1', 'q1', 'named question'), 'Léa');
+    expect(participantSnapshot(identified, 'p3').qna?.questions[0]).toMatchObject({ id: 'q1', name: 'Léa' });
     const staged = stageSnapshot(run(identified, env({ command: 'qna.stage', mode: 'list' })));
-    expect(staged.qna?.questions[0]).toMatchObject({ id: 'q1', handle: 'Léa' });
+    expect(staged.qna?.questions[0]).toMatchObject({ id: 'q1', name: 'Léa' });
   });
 
   it('qna is absent from participant/stage snapshots when the session disables it', () => {

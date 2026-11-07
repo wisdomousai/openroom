@@ -42,12 +42,12 @@ export type InteractionStatus = 'pending' | 'open' | 'closed' | 'revealed';
 export interface ParticipantRecord {
   joinedAt: number;
   /**
-   * Session-local handle. In pseudonymous sessions it is generated; in identified
+   * Session-local name. In nickname sessions it is generated; in identified
    * sessions it is the name forwarded from the context access link. Host-visible
    * and shown to the participant themselves; never exposed to other
    * participants or the stage.
    */
-  handle?: string;
+  name?: string;
   /**
    * Stable identified-join key (the access-link id). Never the `orlnk_…`
    * token. Used to re-enter as the same participant after a reload.
@@ -94,7 +94,7 @@ export type Aggregate =
     }
   | {
       kind: 'text';
-      entries: { participantId: string; text: string; hidden: boolean; handle?: string }[];
+      entries: { participantId: string; text: string; hidden: boolean; name?: string }[];
       total: number;
     }
   | {
@@ -120,7 +120,7 @@ export type Aggregate =
         participantId: string;
         gaps: Record<string, string>;
         hidden: boolean;
-        handle?: string;
+        name?: string;
       }[];
       total: number;
       dontKnow: number;
@@ -128,7 +128,7 @@ export type Aggregate =
   | {
       kind: 'match';
       pairs: Record<string, Record<string, number>>;
-      entries: { participantId: string; pairs: Record<string, string>; handle?: string }[];
+      entries: { participantId: string; pairs: Record<string, string>; name?: string }[];
       total: number;
       dontKnow: number;
     };

@@ -6,7 +6,7 @@
     "locale": "en"
   },
   "defaults": {
-    "identityMode": "pseudonymous",
+    "identityMode": "nickname",
     "resultVisibility": "hidden-until-close",
     "allowAnswerChange": true
   },

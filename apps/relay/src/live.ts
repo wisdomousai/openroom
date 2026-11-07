@@ -201,7 +201,7 @@ export interface JoinIdentity {
 
 /**
  * POST /api/join. `resolveIdentity` sees the parsed body and the normalised
- * code; it returns the identity to seat, nothing (anonymous / pseudonymous),
+ * code; it returns the identity to seat, nothing (anonymous / nickname),
  * or a rejection.
  */
 export async function joinRoute(
@@ -220,10 +220,10 @@ export async function joinRoute(
   // A code that cannot have been issued is answered like an unknown one, before
   // any credential lookup and without addressing a Durable Object.
   if (!isValidSessionCode(code)) return json({ error: 'session-not-found' }, 404);
-  if (Object.prototype.hasOwnProperty.call(body, 'recoveryHandle') && typeof body.recoveryHandle !== 'string') {
-    return json({ error: 'invalid-handle', message: 'Enter your session handle.' }, 400);
+  if (Object.prototype.hasOwnProperty.call(body, 'recoveryName') && typeof body.recoveryName !== 'string') {
+    return json({ error: 'invalid-name', message: 'Enter your name.' }, 400);
   }
-  const recoveryHandle = typeof body.recoveryHandle === 'string' ? body.recoveryHandle : undefined;
+  const recoveryName = typeof body.recoveryName === 'string' ? body.recoveryName : undefined;
 
   const resolved = await resolveIdentity(body, code);
   if (!resolved.ok) return resolved.response;
@@ -232,7 +232,7 @@ export async function joinRoute(
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      ...(recoveryHandle === undefined ? {} : { recoveryHandle }),
+      ...(recoveryName === undefined ? {} : { recoveryName }),
       ...(resolved.identity === undefined ? {} : { identity: resolved.identity }),
     }),
   });
@@ -242,7 +242,7 @@ export async function joinRoute(
     sessionCode: string;
     participantId: string;
     identityMode?: string;
-    handle?: string;
+    name?: string;
   };
   const participantToken = await signToken(env.TOKEN_SECRET, {
     sessionCode: result.sessionCode,
@@ -254,7 +254,7 @@ export async function joinRoute(
     participantToken,
     participantId: result.participantId,
     ...(result.identityMode === undefined ? {} : { identityMode: result.identityMode }),
-    ...(result.handle === undefined ? {} : { handle: result.handle }),
+    ...(result.name === undefined ? {} : { name: result.name }),
   });
 }
 

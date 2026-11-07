@@ -41,7 +41,7 @@ test('phrase marks follow wrapped reading; freehand and reveal keep their place 
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
   const created = await page.request.post('/api/decks', { headers: CSRF, data: { content: {
-    version: 1, meta: { title: 'Reading together' }, defaults: { identityMode: 'pseudonymous' },
+    version: 1, meta: { title: 'Reading together' }, defaults: { identityMode: 'nickname' },
     design: { ...defaultDeckDesign('paper'), aspectRatio: '4:3' }, interactions: [], steps: [
       { id: 'reading', kind: 'statement', layout: 'text', title: 'Ein anderer Plan', body: passage, reveal: [['header'], ['body']] },
       { id: 'compare', kind: 'cards', layout: 'grid', title: 'Compare the reasons', items: [{ label: 'French', text: 'Le musée était fermé.' }, { label: 'German', text: 'Das Museum war geschlossen.' }], reveal: [['header'], ['cell-0'], ['cell-1']] },

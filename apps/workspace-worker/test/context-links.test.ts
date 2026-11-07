@@ -24,7 +24,7 @@ import {
 
 const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 
-type Identity = 'identified' | 'pseudonymous' | 'anonymous';
+type Identity = 'identified' | 'nickname' | 'anonymous';
 
 /** Outline whose session names every participant from their context access link. */
 function outline(identityMode: Identity): Record<string, unknown> {
@@ -465,16 +465,16 @@ describe('identified sessions', () => {
     const joined = (await first.json()) as {
       participantId: string;
       identityMode: string;
-      handle: string;
+      name: string;
     };
     expect(joined.identityMode).toBe('identified');
-    expect(joined.handle).toBe('Camille');
+    expect(joined.name).toBe('Camille');
 
     const again = await joinWith({ code, contextLink: token });
     expect(again.status).toBe(200);
-    const rejoined = (await again.json()) as { participantId: string; handle: string };
+    const rejoined = (await again.json()) as { participantId: string; name: string };
     expect(rejoined.participantId).toBe(joined.participantId);
-    expect(rejoined.handle).toBe('Camille');
+    expect(rejoined.name).toBe('Camille');
   });
 
   it('is closed to anyone without a link', async () => {
@@ -517,17 +517,17 @@ describe('identified sessions', () => {
   it('refuses a link on a session that does not use one', async () => {
     const { cookie } = await seedSession();
     const contextId = await createContext(cookie, 'Camille');
-    const { code } = await launch(cookie, await createSession(cookie, contextId, 'pseudonymous'));
+    const { code } = await launch(cookie, await createSession(cookie, contextId, 'nickname'));
     const token = await mintLink(cookie, contextId);
 
     const response = await joinWith({ code, contextLink: token });
     expect(response.status).toBe(409);
     expect(((await response.json()) as { error: string }).error).toBe('identified-join-unavailable');
 
-    // …and the session still works the ordinary pseudonymous way.
+    // …and the session still works the ordinary nickname way.
     const plain = await joinWith({ code });
     expect(plain.status).toBe(200);
-    expect(((await plain.json()) as { identityMode: string }).identityMode).toBe('pseudonymous');
+    expect(((await plain.json()) as { identityMode: string }).identityMode).toBe('nickname');
   });
 });
 
@@ -559,10 +559,10 @@ describe('identified session URLs', () => {
     expect(await elsewhere.json()).toEqual({ error: 'session-not-in-context' });
   });
 
-  it('gives a pseudonymous launch absolute join and stage URLs', async () => {
+  it('gives a nickname launch absolute join and stage URLs', async () => {
     const { cookie } = await seedSession();
     const contextId = await createContext(cookie, 'Camille');
-    const sessionId = await createSession(cookie, contextId, 'pseudonymous');
+    const sessionId = await createSession(cookie, contextId, 'nickname');
     const live = (await (await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, { method: 'POST', body: JSON.stringify({ start: true }) })).json()) as { code: string; joinUrl: string; stageUrl: string };
     expect(new URL(live.joinUrl).searchParams.get('code')).toBe(live.code);
     expect(live.stageUrl.startsWith(`${BASE}/stage/?session=${live.code}&token=`)).toBe(true);
@@ -607,11 +607,11 @@ describe('identified sessions require a started session', () => {
     );
   });
 
-  it('leaves lobby joins alone for pseudonymous and anonymous sessions', async () => {
+  it('leaves lobby joins alone for nickname and anonymous sessions', async () => {
     const { cookie } = await seedSession();
     const contextId = await createContext(cookie, 'Camille');
 
-    for (const mode of ['pseudonymous', 'anonymous'] as const) {
+    for (const mode of ['nickname', 'anonymous'] as const) {
       const sessionId = await createSession(cookie, contextId, mode);
       const { code } = await launch(cookie, sessionId, false);
       const response = await joinWith({ code });
@@ -641,11 +641,11 @@ describe('tutoring privacy — identified join and learner allowlist', () => {
     };
 
     const host = await stateJson(sessionCode, hostToken, 'host');
-    expect(host.handles?.[participantId]).toBe('Camille');
+    expect(host.names?.[participantId]).toBe('Camille');
     expect(host).not.toHaveProperty('signals');
 
     const stage = await stateJson(sessionCode, stageToken, 'stage');
-    expect(stage).not.toHaveProperty('handles');
+    expect(stage).not.toHaveProperty('names');
     expect(stage).not.toHaveProperty('signals');
 
     const end = await command(sessionCode, hostToken, { command: 'session.end' });

@@ -610,8 +610,8 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
 export interface JoinSessionOptions {
   /** Testing seam; defaults to the browser global. */
   fetch?: FetchLike;
-  /** Existing session-local handle used to recover a pseudonymous participant. */
-  recoveryHandle?: string;
+  /** Generated nickname used to rejoin a nickname session as the same participant. */
+  recoveryName?: string;
   /**
    * Context access link (`orlnk_…`) for an identified (tutoring) session. It is
    * forwarded to `POST /api/join` and nowhere else: the Worker verifies it,
@@ -635,7 +635,7 @@ export async function joinSession(
       : (injectedFetchOrOptions ?? {});
   const f: FetchLike =
     options.fetch ?? ((globalThis as unknown as { fetch: FetchLike }).fetch as FetchLike);
-  const recoveryHandle = options.recoveryHandle?.trim();
+  const recoveryName = options.recoveryName?.trim();
   const contextLink = options.contextLink?.trim();
   const guestLink = options.guestLink?.trim();
   const res = await f(`${base}/api/join`, {
@@ -643,7 +643,7 @@ export async function joinSession(
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify({
       code: code.trim().toUpperCase(),
-      ...(recoveryHandle ? { recoveryHandle } : {}),
+      ...(recoveryName ? { recoveryName } : {}),
       ...(contextLink ? { contextLink } : {}),
       ...(guestLink ? { guestLink } : {}),
     }),

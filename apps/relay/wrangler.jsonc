@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   // The live plane: SessionDO, session snapshot/command/WebSocket routes,
-  // per-session assets, anonymous/pseudonymous join, and the stage and
+  // per-session assets, anonymous/nickname join, and the stage and
   // participant apps. No D1, no R2. Deployed alone it is a complete live
   // system; deployed next to the control plane (apps/workspace-worker, script
   // "openroom") it owns the SessionDO namespace that the control plane binds

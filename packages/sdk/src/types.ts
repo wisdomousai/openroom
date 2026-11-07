@@ -492,8 +492,8 @@ export type Aggregate =
     }
   | {
       kind: 'text';
-      /** `handle` is the author's session-local handle; tutoring sessions only. */
-      entries: { participantId: string; text: string; hidden: boolean; handle?: string }[];
+      /** `name` is the author's session-local name; tutoring sessions only. */
+      entries: { participantId: string; text: string; hidden: boolean; name?: string }[];
       total: number;
     }
   | {
@@ -515,14 +515,14 @@ export type Aggregate =
     }
   | {
       kind: 'fill-the-gaps';
-      entries: { participantId: string; gaps: Record<string, string>; hidden: boolean; handle?: string }[];
+      entries: { participantId: string; gaps: Record<string, string>; hidden: boolean; name?: string }[];
       total: number;
       dontKnow: number;
     }
   | {
       kind: 'match';
       pairs: Record<string, Record<string, number>>;
-      entries: { participantId: string; pairs: Record<string, string>; handle?: string }[];
+      entries: { participantId: string; pairs: Record<string, string>; name?: string }[];
       total: number;
       dontKnow: number;
     };
@@ -657,8 +657,8 @@ export interface ParticipantQnaQuestion {
   votedByYou: boolean;
   /** Only ever true on the participant's OWN moderated question. */
   hidden: boolean;
-  /** Asker's session-local handle (pseudonymous sessions only) — system-assigned, not PII. */
-  handle?: string;
+  /** Asker's session-local name (nickname sessions only) — system-assigned, not PII. */
+  name?: string;
 }
 
 export interface ParticipantQnaView {
@@ -669,7 +669,7 @@ export interface ParticipantQnaView {
 export interface StageQnaView {
   stage: QnaStagePlacement;
   /** Visible questions only, votes-descending. */
-  questions: { id: string; text: string; votes: number; handle?: string }[];
+  questions: { id: string; text: string; votes: number; name?: string }[];
 }
 
 export interface HostQnaQuestion {
@@ -788,8 +788,8 @@ export interface ParticipantSnapshot {
   round1Aggregate?: Aggregate | null;
   /** This participant's own round-1 ballot, so they can recall their first vote. */
   ownRound1Answer?: Ballot | null;
-  /** Own session-local handle (pseudonymous sessions only); peers' handles are never sent. */
-  yourHandle?: string;
+  /** Own session-local name (nickname sessions only); peers' names are never sent. */
+  yourName?: string;
   /** Session-wide audience Q&A; present only when the session enables it. */
   qna?: ParticipantQnaView;
   outline?: LearnerOutlineView;
@@ -802,7 +802,7 @@ export interface ParticipantSnapshot {
    * from remainingSecAt / remainingSec while `running`.
    */
   clock?: SessionClockView;
-  /** Identity regime of the session: 'anonymous' | 'pseudonymous' | 'identified'. */
+  /** Identity regime of the session: 'anonymous' | 'nickname' | 'identified'. */
   identityMode?: string;
 }
 
@@ -848,7 +848,7 @@ export interface StageSnapshot {
    */
   clock?: SessionClockView;
   /**
-   * Identity regime of the session: 'anonymous' | 'pseudonymous' |
+   * Identity regime of the session: 'anonymous' | 'nickname' |
    * 'identified'. Carries no name. An identified session admits only its
    * access link, so the Stage prints no join code or QR for it. Older relays
    * omit it.
@@ -921,8 +921,8 @@ export interface HostSnapshot {
   round?: 1 | 2;
   /** Archived round-1 tally of the active interaction; the host is never gated. */
   round1Aggregate?: Aggregate | null;
-  /** participantId → session-local handle; present only in pseudonymous sessions. */
-  handles?: Record<string, string>;
+  /** participantId → session-local name; present only in nickname sessions. */
+  names?: Record<string, string>;
   /** Session-wide audience Q&A; always present (enabled: false when the session omits it). */
   qna?: HostQnaView;
   listening?: { stepId: string; mode: 'room' | 'individual'; transcriptShown: boolean };
@@ -968,10 +968,10 @@ export interface JoinResult {
   sessionCode: string;
   participantToken: string;
   participantId: string;
-  /** 'anonymous' | 'pseudonymous'; older workers omit it. */
+  /** 'anonymous' | 'nickname'; older workers omit it. */
   identityMode?: string;
-  /** Session-local handle, present only in pseudonymous sessions. */
-  handle?: string;
+  /** Session-local name, present only in nickname sessions. */
+  name?: string;
 }
 
 export type ConnectionStatus = 'connecting' | 'live' | 'polling' | 'offline';

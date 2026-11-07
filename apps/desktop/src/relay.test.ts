@@ -137,7 +137,7 @@ describe('createRelayStore', () => {
     const cases: Array<[Response, RegExp]> = [
       [Response.json({ ok: false, error: 'unauthorized' }, { status: 401 }), /rejected the key/],
       [Response.json({ ok: false, error: 'creation-disabled' }, { status: 403 }), /does not accept new sessions/],
-      [Response.json({ ok: false, error: 'identity-mode-unavailable' }, { status: 422 }), /anonymous and pseudonymous/],
+      [Response.json({ ok: false, error: 'identity-mode-unavailable' }, { status: 422 }), /anonymous and nickname/],
       [new Response('boom', { status: 502 }), /HTTP 502/],
     ];
     for (const [response, message] of cases) {

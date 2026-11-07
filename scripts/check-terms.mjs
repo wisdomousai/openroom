@@ -21,6 +21,13 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /** Each pass of the rename adds its banned patterns here. */
 export const BANNED = [
   { name: 'roster', pattern: /roster/i, use: 'guest list, guest link, guest-list (identityMode), guestList (entitlement)' },
+  { name: 'pseudonym', pattern: /pseudonym/i, use: 'nickname (identityMode), "participants get a generated nickname"' },
+  {
+    name: 'participant handle',
+    pattern: /recoveryHandle|yourHandle|invalid-handle|handle-recovery|handle-not-found|generateHandle|publicHandles|handlesArePublic|\bsession handle\b|\byour handle\b|\bsession-local handles?\b|\bparticipant handles?\b|rejoin with handle/i,
+    use: 'name (participant name), recoveryName, yourName, invalid-name, name-recovery-unavailable, "Rejoin with your name"',
+  },
+  { name: 'invite query parameter', pattern: /[?&]invite=/i, use: '?guest=orinv_… (the guest link on the join page)' },
 ];
 
 const ALLOWED_PATHS = [

@@ -601,7 +601,7 @@ a {
 /* Banners, waiting, acknowledgement                                       */
 /* ====================================================================== */
 
-.handle {
+.participant-name {
   min-width: 0;
   margin-left: auto;
   margin-right: 0.25rem;
@@ -612,7 +612,7 @@ a {
   color: var(--muted-foreground);
 }
 
-.handle strong {
+.participant-name strong {
   color: var(--foreground);
   font-weight: 600;
 }
@@ -980,7 +980,7 @@ a {
   overflow-wrap: anywhere;
 }
 
-.qna__handle {
+.qna__name {
   color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 600;

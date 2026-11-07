@@ -23,7 +23,7 @@ export function composePresentation(sources: ActivitySource[]): { outline: Outli
   const activities: ComposedActivity[] = [];
   for (const [index, source] of sources.entries()) {
     if (source.spaceId !== first.spaceId) throw new Error('presentation-space-mismatch');
-    if ((source.outline.defaults?.identityMode ?? 'pseudonymous') !== (first.outline.defaults?.identityMode ?? 'pseudonymous')) throw new Error('presentation-identity-mismatch');
+    if ((source.outline.defaults?.identityMode ?? 'nickname') !== (first.outline.defaults?.identityMode ?? 'nickname')) throw new Error('presentation-identity-mismatch');
     const parent = source.outline.steps.find((step) => step.id === source.stepId);
     if (!parent) throw new Error('activity-not-found');
     const selected = [parent, ...source.outline.steps.filter((step) => step.breakoutOf?.stepId === parent.id)];

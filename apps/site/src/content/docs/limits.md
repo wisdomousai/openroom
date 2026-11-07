@@ -38,7 +38,7 @@ Check outcomes, question text, homework, and feedback for private information be
 
 ## Session size
 
-A live session admits **50 participants** unless the space owner's plan includes **Sessions over 50 participants** when the session starts. A plan change during the session does not change its limit. Once the session is full, a new participant sees **This session is full.**; a participant already admitted can always return with the same browser, handle, access link, or guest link. Installations without billing have no limit.
+A live session admits **50 participants** unless the space owner's plan includes **Sessions over 50 participants** when the session starts. A plan change during the session does not change its limit. Once the session is full, a new participant sees **This session is full.**; a participant already admitted can always return with the same browser, name, access link, or guest link. Installations without billing have no limit.
 
 ## Live-session retention
 

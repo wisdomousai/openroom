@@ -15,6 +15,13 @@
       "when": 1789908995811,
       "tag": "0001_guest_list",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789995395811,
+      "tag": "0002_nickname",
+      "breakpoints": true
     }
   ]
 }

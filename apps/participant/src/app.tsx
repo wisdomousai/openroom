@@ -40,7 +40,7 @@ export function App() {
   const waitingRef = useRef(false);
   waitingRef.current = waitingForStart;
 
-  const doJoin = useCallback(async (code: string, recoveryHandle?: string) => {
+  const doJoin = useCallback(async (code: string, recoveryName?: string) => {
     if (joiningRef.current) return;
     joiningRef.current = true;
     setJoining(true);
@@ -49,7 +49,7 @@ export function App() {
     const guestLink = readGuestLink();
     try {
       const normalizedCode = code.trim().toUpperCase();
-      if (recoveryHandle === undefined) {
+      if (recoveryName === undefined) {
         const existing = loadSessionByCode(normalizedCode);
         if (existing) {
           rememberSessionInUrl(existing.sessionCode);
@@ -67,7 +67,7 @@ export function App() {
        * scoped to one session, the link is scoped to a person’s whole history.
        */
       const result = await joinSession(BASE_URL, normalizedCode, {
-        ...(recoveryHandle === undefined ? {} : { recoveryHandle }),
+        ...(recoveryName === undefined ? {} : { recoveryName }),
         ...(contextLink === null ? {} : { contextLink }),
         ...(guestLink === null ? {} : { guestLink }),
       });
@@ -77,7 +77,7 @@ export function App() {
         code: normalizedCode,
         token: result.participantToken,
         participantId: result.participantId,
-        ...(result.handle === undefined ? {} : { handle: result.handle }),
+        ...(result.name === undefined ? {} : { name: result.name }),
         ...(result.identityMode === undefined ? {} : { identityMode: result.identityMode }),
       };
       saveSession(next);
@@ -104,7 +104,7 @@ export function App() {
 
   // A repeat QR scan resumes automatically when this browser kept its durable
   // session capability. Otherwise the prefilled screen leaves space for manual
-  // handle recovery before a new participant is created.
+  // name recovery before a new participant is created.
   useEffect(() => {
     if (session) return;
     const { code } = readQuery();
@@ -178,7 +178,7 @@ export function App() {
         busy={joining}
         error={error}
         onJoin={(code) => void doJoin(code)}
-        onRecover={(code, handle) => void doJoin(code, handle)}
+        onRecover={(code, name) => void doJoin(code, name)}
       />
     );
   }

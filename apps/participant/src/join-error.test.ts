@@ -26,7 +26,7 @@ describe('join error message', () => {
   });
 
   it('keeps the server message for every other join failure', () => {
-    expect(joinErrorMessage(new JoinError('That handle is not in this session.', 404, 'handle-not-found'))).toBe('That handle is not in this session.');
+    expect(joinErrorMessage(new JoinError('That name is not in this session.', 404, 'name-not-found'))).toBe('That name is not in this session.');
     expect(joinErrorMessage('offline')).toBe('Join failed.');
   });
 
@@ -36,7 +36,7 @@ describe('join error message', () => {
     ).toBe('Open the guest link you were sent to come back to the session.');
     expect(comeBackLine('guest-list')).toBe('Open the guest link you were sent to come back to the session.');
     expect(comeBackLine('identified')).toBe('Open the personal link your tutor sent you to come back to the lesson.');
-    expect(comeBackLine('pseudonymous')).toBeNull();
+    expect(comeBackLine('nickname')).toBeNull();
   });
 
   it('keeps waiting through a dropped connection or a server fault, not through a refusal', () => {

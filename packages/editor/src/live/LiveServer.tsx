@@ -127,7 +127,7 @@ export function LiveServerDialog({
         <DialogHeader>
           <DialogTitle>Live server</DialogTitle>
           <DialogDescription>
-            Signed out, live sessions run on this OpenRoom relay. Anonymous and pseudonymous sessions only.
+            Signed out, live sessions run on this OpenRoom relay. Anonymous and nickname sessions only.
           </DialogDescription>
         </DialogHeader>
         <LiveServerFields
@@ -146,7 +146,7 @@ export function LiveServerCard({ bridge }: { bridge: OpenRoomDesktopBridge }) {
       <CardHeader><CardTitle className="text-section">Live server</CardTitle></CardHeader>
       <CardContent className="flex flex-col gap-3">
         <p className="text-secondary text-muted-foreground">
-          The OpenRoom relay this computer starts live sessions on while signed out. Anonymous and pseudonymous sessions only.
+          The OpenRoom relay this computer starts live sessions on while signed out. Anonymous and nickname sessions only.
         </p>
         <LiveServerFields bridge={bridge} />
       </CardContent>

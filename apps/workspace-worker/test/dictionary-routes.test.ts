@@ -20,9 +20,9 @@ const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 const OUTLINE = {
   version: 1,
   meta: { title: 'Le passé composé', subject: 'French', level: 'B1' },
-  // Pseudonymous so the test can join without minting a context access link.
+  // Nickname so the test can join without minting a context access link.
   // The route's gate is the session's context, not the identity mode.
-  defaults: { identityMode: 'pseudonymous', resultVisibility: 'hidden-until-close' },
+  defaults: { identityMode: 'nickname', resultVisibility: 'hidden-until-close' },
   steps: [
     { id: 'intro', kind: 'title', title: 'Je rate le train' },
     { id: 'gap-step', kind: 'interaction', interactionId: 'gap' },

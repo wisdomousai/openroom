@@ -4,7 +4,7 @@
  * A pause keeps a typed draft; accent keys write at the caret and keep the
  * field focused; typed gaps sit in the sentence with numbered labels and
  * practice hints; a ranking never starts in the authored order; Leave asks
- * first; the ended view drops Leave and the handle notice; a refused seat says
+ * first; the ended view drops Leave and the name notice; a refused seat says
  * the session is no longer open; join failures read as plain sentences; a
  * personal link opened before the start waits and enters on its own, and
  * says once per browser that the tutor sees the learner's name.
@@ -570,7 +570,7 @@ test.describe('UC-44 participant phone states', () => {
     await phone.goto(joinUrl(seed.code, seed.linkToken));
     await expect(phone.getByText('Waiting for your tutor to start', { exact: true })).toBeVisible();
     await expect(phone.getByRole('button', { name: 'Join', exact: true })).toHaveCount(0);
-    await expect(phone.getByRole('button', { name: 'Rejoin with handle' })).toHaveCount(0);
+    await expect(phone.getByRole('button', { name: 'Rejoin with your name' })).toHaveCount(0);
     await expect(phone.getByText(seed.code)).toHaveCount(0);
 
     await command(seed.sessionCode, seed.hostToken, { command: 'session.start' });

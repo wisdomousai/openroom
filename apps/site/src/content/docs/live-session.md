@@ -13,7 +13,7 @@ Prepare the deck's identity policy through a connected agent or the typed outlin
 | Identity mode | Entry and identity |
 | --- | --- |
 | Anonymous | Join with the session code; individual names are withheld. |
-| Pseudonymous | Join with the code and receive a generated session name, with handle-based recovery. |
+| Nickname | Join with the code and receive a generated nickname. Rejoin with the same name to recover it. |
 | Identified | Use a personal learner credential belonging to the deck's context; joining opens after the teacher starts. |
 | Guest list | Use a personal guest link the host issued for one named guest in one session; lobby entry is available. |
 

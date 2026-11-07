@@ -41,7 +41,7 @@ New and extended journeys, owned only by this cluster: a capacity matrix (next f
  "surfaces": [
   "participant phone"
  ],
- "conditions": "Viewport width below 640px; choice with 8+ long options, ranking of 6, match of 6, 500-char prompts; also first-join handle notice present",
+ "conditions": "Viewport width below 640px; choice with 8+ long options, ranking of 6, match of 6, 500-char prompts; also first-join name notice present",
  "kind": "clipping",
  "severity": "high",
  "observed": "Page does not scroll, so lower options and the Send button are off-screen and untappable. A touch swipe and wheel scroll left the page unchanged.",
@@ -52,12 +52,12 @@ New and extended journeys, owned only by this cluster: a capacity matrix (next f
   "/private/tmp/claude-501/-Users-uti-Desktop-openroom/be4cdb41-cb1f-4f1f-bc35-860bc387267c/scratchpad/layout/stress/questions/shots/A7-match-6-long-open0-p390.png",
   "/private/tmp/claude-501/-Users-uti-Desktop-openroom/be4cdb41-cb1f-4f1f-bc35-860bc387267c/scratchpad/layout/stress/questions/shots/probe-swipe-after.png"
  ],
- "rootCause": "apps/participant/src/styles.css .page { height:100dvh; overflow:hidden } with .page__body { display:contents } (phone). Nothing between the page and the options scrolls. The first-join handle notice (about 140px) makes it worse. The cause is correct as cited.",
+ "rootCause": "apps/participant/src/styles.css .page { height:100dvh; overflow:hidden } with .page__body { display:contents } (phone). Nothing between the page and the options scrolls. The first-join name notice (about 140px) makes it worse. The cause is correct as cited.",
  "files": [
   "apps/participant/src/styles.css",
   "apps/participant/src/live/screen.tsx"
  ],
- "fix": "Make the answer region (question, options, Send) the scroll container on widths below 640px and keep Send reachable (sticky or last in the scroll flow). The fix is plain CSS and needs no contract change. Option 3 (reject long inputs at validation) is not a substitute, because a normal 6-option list plus the handle notice already overflows.",
+ "fix": "Make the answer region (question, options, Send) the scroll container on widths below 640px and keep Send reachable (sticky or last in the scroll flow). The fix is plain CSS and needs no contract change. Option 3 (reject long inputs at validation) is not a substitute, because a normal 6-option list plus the name notice already overflows.",
  "needsDecision": true,
  "options": [
   "Answer region scrolls inside .page, Send sticky",

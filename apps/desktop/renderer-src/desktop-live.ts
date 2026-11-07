@@ -3,7 +3,7 @@
  *
  *  - signed in: the workspace (control plane), as for every hosted deck;
  *  - signed out with a live server set: that relay, anonymous and
- *    pseudonymous sessions only;
+ *    nickname sessions only;
  *  - signed out without one: no live session; Present works offline.
  */
 import type { OpenRoomDesktopBridge } from '@openroom/editor';

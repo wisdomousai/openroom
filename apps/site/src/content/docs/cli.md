@@ -100,7 +100,7 @@ Guest-link administration uses the live-session API. Prepare a deck with guest-l
 | `GET /api/sessions/SESSION_CODE/guest-links` | Read the guest links and their redemption and revocation state. |
 | `DELETE /api/sessions/SESSION_CODE/guest-links/LINK_ID` | Revoke that guest link. |
 
-Send the requests with `Authorization: Bearer HOST_TOKEN` and a JSON content type for creation. Keep the returned token private. Form the participant address using `https://join.openroom.app/?code=SESSION_CODE&invite=GUEST_LINK_TOKEN`, replacing the origin for your installation.
+Send the requests with `Authorization: Bearer HOST_TOKEN` and a JSON content type for creation. Keep the returned token private. Form the participant address using `https://join.openroom.app/?code=SESSION_CODE&guest=GUEST_LINK_TOKEN`, replacing the origin for your installation.
 
 A guest list supports 200 active guest links. Names are normalized to single spaces and limited to 64 characters. Send each person their own guest link. Keep its identifier so you can revoke it later.
 

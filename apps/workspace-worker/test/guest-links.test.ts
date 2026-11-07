@@ -59,16 +59,16 @@ describe('guest-list sessions', () => {
       body: JSON.stringify({ code: session.code, guestLink: first.token }),
     });
     expect(joinFirst.status).toBe(200);
-    const a = (await joinFirst.json()) as { participantId: string; handle: string };
-    expect(a.handle).toBe('Alex');
+    const a = (await joinFirst.json()) as { participantId: string; name: string };
+    expect(a.name).toBe('Alex');
 
     const joinSecond = await call('/api/join', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ code: session.code, guestLink: second.token }),
     });
-    const b = (await joinSecond.json()) as { participantId: string; handle: string };
-    expect(b.handle).toBe('Alex');
+    const b = (await joinSecond.json()) as { participantId: string; name: string };
+    expect(b.name).toBe('Alex');
     expect(b.participantId).not.toBe(a.participantId);
 
     const again = await call('/api/join', {

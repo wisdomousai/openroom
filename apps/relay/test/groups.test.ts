@@ -5,7 +5,7 @@ import worker from '../src/index.js';
 import { BASE, command, createSessionWithOutline, join, stateJson, waitFor } from './helpers.js';
 
 const outline = { version: 1, meta: { title: 'Workshop decisions' },
-  defaults: { identityMode: 'pseudonymous', resultVisibility: 'hidden-until-close' },
+  defaults: { identityMode: 'nickname', resultVisibility: 'hidden-until-close' },
   interactions: [{ id: 'decision', type: 'text', prompt: 'What should we try?', responseMode: 'group',
     notes: 'Private facilitator note', pedagogy: { explanation: 'Private debrief guidance' } }],
   steps: [{ id: 'decision', kind: 'interaction', interactionId: 'decision' }] };
@@ -85,7 +85,7 @@ describe('group responses over HTTP and WebSocket', () => {
       expect(host.ballots.decision).toEqual({ 'group:north': { kind: 'text', text: 'Start with one team', hidden: false } });
       expect(host.groups).toEqual([{ ...group, spokespersonId: two.participantId }]);
       await command(session.code, session.hostToken, { command: 'interaction.reveal', interactionId: 'decision' });
-      expect((await stateJson(session.code, outside.participantToken, 'participant')).aggregate).toMatchObject({ total: 1, entries: [{ text: 'Start with one team', handle: 'North' }] });
+      expect((await stateJson(session.code, outside.participantToken, 'participant')).aggregate).toMatchObject({ total: 1, entries: [{ text: 'Start with one team', name: 'North' }] });
     } finally { ws.close(); }
   });
 

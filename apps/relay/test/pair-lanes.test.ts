@@ -20,7 +20,7 @@ import type { SessionDO } from '../src/session-do.js';
 const SPLIT_OUTLINE = {
   version: 1,
   meta: { title: 'Ordering in a café', subject: 'French', level: 'B1' },
-  defaults: { identityMode: 'pseudonymous' },
+  defaults: { identityMode: 'nickname' },
   steps: [
     {
       id: 'roles',
@@ -93,10 +93,10 @@ describe('pair-work lane assignment', () => {
     expect(await laneOf(session.sessionCode, second)).toBe(1);
     expect(await laneOf(session.sessionCode, third)).toBe(0);
 
-    // Re-entry by handle is the pseudonymous rejoin path: the same seat, so the
+    // Re-entry by name is the nickname rejoin path: the same seat, so the
     // same side of the pair — a learner whose page reloads mid-activity must not
     // swap partners.
-    const again = await join(session.code, second.handle);
+    const again = await join(session.code, second.name);
     expect(again.participantId).toBe(second.participantId);
     expect(await laneOf(session.sessionCode, again)).toBe(1);
 

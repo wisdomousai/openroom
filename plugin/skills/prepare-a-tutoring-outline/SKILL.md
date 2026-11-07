@@ -85,7 +85,7 @@ one.
   links, wait rather than retrying in a loop.
 
 An identified session shows the context's display name instead of a generated
-handle and can only be entered with that context's access link. It must be
+nickname and can only be entered with that context's access link. It must be
 launched from a session and must already be started; the tutor pressing start is
 the gate that makes a leaked link useless against an empty session.
 

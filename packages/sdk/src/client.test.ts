@@ -601,7 +601,7 @@ describe('joinSession', () => {
     );
   });
 
-  it('sends a trimmed recovery handle when rejoining', async () => {
+  it('sends a trimmed recovery name when rejoining', async () => {
     const calls: Call[] = [];
     const fetchFake: FetchLike = async (url, init) => {
       calls.push({ url, init });
@@ -609,30 +609,30 @@ describe('joinSession', () => {
         sessionCode: 'AB12CD34',
         participantToken: 'p2',
         participantId: 'same-participant',
-        handle: 'Amber Fox 4827',
+        name: 'Amber Fox 4827',
       });
     };
 
     await joinSession('https://api.test', 'ab12cd34', {
       fetch: fetchFake,
-      recoveryHandle: '  Amber Fox 4827  ',
+      recoveryName: '  Amber Fox 4827  ',
     });
 
     expect(JSON.parse(calls[0]?.init?.body ?? '{}')).toEqual({
       code: 'AB12CD34',
-      recoveryHandle: 'Amber Fox 4827',
+      recoveryName: 'Amber Fox 4827',
     });
   });
 
-  it('uses a top-level server message for handle recovery errors', async () => {
+  it('uses a top-level server message for name recovery errors', async () => {
     const fetchFake: FetchLike = async () =>
-      jsonRes(404, { error: 'handle-not-found', message: 'That handle is not in this session.' });
+      jsonRes(404, { error: 'name-not-found', message: 'That name is not in this session.' });
 
     await expect(
       joinSession('https://api.test', 'AB12CD34', {
         fetch: fetchFake,
-        recoveryHandle: 'Amber Fox 4827',
+        recoveryName: 'Amber Fox 4827',
       }),
-    ).rejects.toThrow('That handle is not in this session.');
+    ).rejects.toThrow('That name is not in this session.');
   });
 });

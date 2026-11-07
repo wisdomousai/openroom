@@ -7,7 +7,7 @@ interface Props {
   busy: boolean;
   error: string | null;
   onJoin: (code: string) => void;
-  onRecover: (code: string, handle: string) => void;
+  onRecover: (code: string, name: string) => void;
 }
 
 /** Join codes are Crockford-base32-ish: letters + digits, no spaces. */
@@ -18,9 +18,9 @@ export function JoinScreen({ initialCode, busy, error, onJoin, onRecover }: Prop
   useSessionTheme(null);
   const [code, setCode] = useState(initialCode);
   const [recovering, setRecovering] = useState(false);
-  const [handle, setHandle] = useState('');
+  const [name, setName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const handleRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialCode) setCode(initialCode);
@@ -31,11 +31,11 @@ export function JoinScreen({ initialCode, busy, error, onJoin, onRecover }: Prop
   }, [initialCode]);
 
   useEffect(() => {
-    if (recovering) handleRef.current?.focus();
+    if (recovering) nameRef.current?.focus();
   }, [recovering]);
 
   const ready = code.length === 8 && !busy;
-  const recoveryReady = ready && handle.trim().length >= 3;
+  const recoveryReady = ready && name.trim().length >= 3;
 
   return (
     <main className="page">
@@ -52,7 +52,7 @@ export function JoinScreen({ initialCode, busy, error, onJoin, onRecover }: Prop
           onSubmit={(e) => {
             e.preventDefault();
             if (recovering) {
-              if (recoveryReady) onRecover(code, handle.trim());
+              if (recoveryReady) onRecover(code, name.trim());
             } else if (ready) {
               onJoin(code);
             }
@@ -96,21 +96,21 @@ export function JoinScreen({ initialCode, busy, error, onJoin, onRecover }: Prop
                 disabled={!ready}
                 onClick={() => setRecovering(true)}
               >
-                Rejoin with handle
+                Rejoin with your name
               </button>
             </>
           ) : (
             <div className="stack">
               <div className="field">
-                <label className="field__label" htmlFor="session-handle">
-                  Handle
+                <label className="field__label" htmlFor="session-name">
+                  Your name
                 </label>
                 <input
-                  id="session-handle"
-                  ref={handleRef}
+                  id="session-name"
+                  ref={nameRef}
                   className="input"
-                  value={handle}
-                  onInput={(e) => setHandle(e.currentTarget.value.slice(0, 64))}
+                  value={name}
+                  onInput={(e) => setName(e.currentTarget.value.slice(0, 64))}
                   autoCapitalize="words"
                   autoCorrect="off"
                   autoComplete="off"

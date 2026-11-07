@@ -23,7 +23,7 @@ const TOKEN_SECRET = (env as unknown as { TOKEN_SECRET: string }).TOKEN_SECRET;
 const INK_OUTLINE = {
   version: 1,
   meta: { title: 'Le passé composé', subject: 'French', level: 'B1' },
-  defaults: { identityMode: 'pseudonymous', resultVisibility: 'hidden-until-close' },
+  defaults: { identityMode: 'nickname', resultVisibility: 'hidden-until-close' },
   steps: [
     { id: 'intro', kind: 'title', title: 'Le week-end dernier' },
     { id: 'gap-step', kind: 'interaction', interactionId: 'gap' },

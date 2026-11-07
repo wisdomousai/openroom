@@ -115,7 +115,7 @@ Dictionary sheet:
 Personal link before the start:
 
 - The page shows "Waiting for your tutor to start", with no "Join" or "Rejoin
-  with handle" button and without the join code.
+  with your name" button and without the join code.
 - After `session.start` the page shows "Bonjour" and the URL no longer has a
   `link` parameter.
 - "Your tutor sees your name in this lesson." appears and "Dismiss" removes it.

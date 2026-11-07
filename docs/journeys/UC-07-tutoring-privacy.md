@@ -3,7 +3,7 @@
 Status: green on local Chromium.
 
 Purpose: in an identified tutoring session the host sees the learner's name,
-while the stage and the learner plane receive no handles, signals, private
+while the stage and the learner plane receive no names, signals, private
 notes or session code.
 
 Fixture: demo account alice. A tutoring context "Léa {stamp}" (fr, B1,
@@ -25,9 +25,9 @@ Acceptance:
 
 - The learner sees "Bienvenue" or "Ready to start". The join code does not
   appear on the learner page, and there is no "I’m stuck" button.
-- Host state has no `signals` property. When it has `handles`, one name starts
+- Host state has no `signals` property. When it has `names`, one name starts
   with "Léa".
-- Stage state returns 200 and its body contains neither `"handles"` nor
+- Stage state returns 200 and its body contains neither `"names"` nor
   `"signals"`.
 - The stage shows "Bienvenue" and does not show the join code or any QR
   (`.rail__qr`, `.idle__qr`, title "QR code to join").

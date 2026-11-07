@@ -48,7 +48,7 @@ async function allInside(outer: Locator, inner: Locator): Promise<boolean> {
 test('the console keeps its slide on a portrait tablet and every live control answers the keyboard', async ({ page }, testInfo) => {
   await signIn(page);
   const created = await page.request.post('/api/decks', { headers: CSRF, data: { content: {
-    version: 1, meta: { title: 'Keyboard lesson' }, defaults: { identityMode: 'pseudonymous' }, steps: [
+    version: 1, meta: { title: 'Keyboard lesson' }, defaults: { identityMode: 'nickname' }, steps: [
       { id: 'reading', kind: 'statement', layout: 'text', title: 'Ein Plan', body: 'Am Samstag wollte Léa das Museum besuchen.' },
       { id: 'check', kind: 'interaction', interactionId: 'ready' },
     ],
@@ -319,7 +319,7 @@ test('when the notes cannot open after a session, the console says so and offers
 
 test('a focused button keeps Space, Hide results shows its state, and only the slide on screen sets the question controls', async ({ page, browser }, testInfo) => {
   const session = await createSession({
-    version: 1, meta: { title: 'Keys lesson' }, defaults: { resultVisibility: 'live', identityMode: 'pseudonymous' },
+    version: 1, meta: { title: 'Keys lesson' }, defaults: { resultVisibility: 'live', identityMode: 'nickname' },
     interactions: [{ id: 'ready', type: 'choice', prompt: 'Bist du bereit?', options: [{ id: 'yes', label: 'Ja' }, { id: 'no', label: 'Noch nicht' }] }],
     steps: [
       { id: 'intro', kind: 'statement', layout: 'text', title: 'Anfang', body: 'Wir beginnen.' },
@@ -442,7 +442,7 @@ test('a focused button keeps Space, Hide results shows its state, and only the s
 
 test('the console header keeps End session and the Session menu on a phone', async ({ page }, testInfo) => {
   const session = await createSession({
-    version: 1, meta: { title: 'A rather long lesson title for a narrow header' }, defaults: { identityMode: 'pseudonymous' },
+    version: 1, meta: { title: 'A rather long lesson title for a narrow header' }, defaults: { identityMode: 'nickname' },
     steps: [{ id: 'welcome', kind: 'title', title: 'Hallo' }], interactions: [],
   });
   await command(session.sessionCode, session.hostToken, { command: 'session.start' });

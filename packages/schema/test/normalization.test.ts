@@ -22,9 +22,9 @@ describe('normalizeSession defaults', () => {
     expect(normalized.defaults.allowAnswerChange).toBe(true);
   });
 
-  it('defaults.identityMode -> pseudonymous when omitted', () => {
+  it('defaults.identityMode -> nickname when omitted', () => {
     const normalized = normalizeSession(session([{ id: 'q', type: 'qna', prompt: 'p' }]));
-    expect(normalized.defaults.identityMode).toBe('pseudonymous');
+    expect(normalized.defaults.identityMode).toBe('nickname');
   });
 
   it('an explicit defaults.identityMode: anonymous preserves the old behavior', () => {

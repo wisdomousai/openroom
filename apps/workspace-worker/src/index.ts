@@ -468,7 +468,7 @@ async function createLiveSessionRoute(request: Request, env: Env): Promise<Respo
 }
 
 /**
- * POST /api/join on the front door. Anonymous and pseudonymous joins need
+ * POST /api/join on the front door. Anonymous and nickname joins need
  * nothing beyond the shared live route; an invite credential is verified here
  * against D1 and only its resolved name and seat key reach the session.
  */

@@ -9,7 +9,7 @@ meta:
   locale: en
   source: SEG Camp facilitator handbook, module 1
 defaults:
-  identityMode: pseudonymous
+  identityMode: nickname
   resultVisibility: hidden-until-close
   allowAnswerChange: true
 

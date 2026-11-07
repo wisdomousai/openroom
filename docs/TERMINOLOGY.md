@@ -264,8 +264,8 @@ Students and classes are free. Paid plans add shared workspaces (`team`), saved 
 | **Advance** | Move to the next pending interaction (classroom) or outline step (tutoring). |
 | **Ballot** | One participant’s response; purged after the session ends. |
 | **Session code** | The 8-character code a participant types to join. Also the live-plane path segment `/api/sessions/:code/*`. |
-| **Handle** | The participant identity shown in a session (never a global account). In the default pseudonymous mode it is generated session-locally ("Amber Fox 4827"); in an identified session it is the context's `display_name`, authored by the tutor. Typed by the participant only to recover a pseudonymous seat (**Rejoin with handle**). |
-| **Identity mode** | Outline-level `anonymous` \| `pseudonymous` \| `identified`. Default `pseudonymous`. `identified` sessions are enterable only with a context access link for that session's context. |
+| **Name** (of a participant) | The participant identity shown in a session (never a global account). In the default nickname mode it is a generated **nickname** ("Amber Fox 4827"); in an identified or guest-list session it is the display name the tutor wrote. In code and API it is `name` (join response, snapshots, ballots CSV column), `recoveryName` and `yourName`. Typed by the participant only to recover a nickname seat (**Rejoin with your name**). |
+| **Identity mode** | Outline-level `anonymous` \| `nickname` \| `identified` \| `guest-list`. Default `nickname`: each participant gets a generated nickname. `identified` sessions are enterable only with a context access link for that session's context. |
 | **Dictionary** | The full entry for a word in the language being taught: part of speech, headword properties (gender, verb class, auxiliary), and a forms table. Part-of-speech generic — verbs, nouns, adjectives, pronouns and prepositions all render through one tag-driven path. The tutor can project it onto the wall. |
 | **Meaning** | The short translation of one word into the student's own language, attached under the word on the slide. Not "gloss": that is a lexicographer's word and told a tutor nothing. Not "translation" either, which is already taken by whole-sentence translation. |
 | **Language pair** | A space's `{ taught, native }`, set at `#/space/:id/edit`. Closed to pairs the dictionary has a verified source for. Nothing else in the product carries a language. |
@@ -318,6 +318,9 @@ Facts only. Noun labels and bare verbs. No first-person, no narrative, no metaph
 | Run record | **Notes** (UI); `record` stays the API/DB word |
 | Room (as an object you start, edit or end) | **Deck** (the file) or **Session** (the started instance) — “room” is only the brand **OpenRoom** and the `.openroom` extension |
 | Roster / roster invite / roster seat / roster session | **Guest list** (the named people), **guest link** (one person's link), **guest-list session** |
+| Pseudonymous (session or mode), pseudonym | **Nickname** (`identityMode: nickname`; "participants get a generated nickname") |
+| Handle / session handle / your handle (the participant's name in a session), `recoveryHandle`, `yourHandle`, `invalid-handle`, `handle-recovery-unavailable`, "Rejoin with handle" | **Name** (`name`, `recoveryName`, `yourName`, `invalid-name`, `name-recovery-unavailable`, "Rejoin with your name") |
+| `?invite=orinv_…` on the join page | `?guest=orinv_…` |
 | Collection + create form on one screen | Dedicated `#/decks/new` and `#/decks/:id` routes; the deck's sole editor is at `#/decks/:id/edit` |
 
 ---

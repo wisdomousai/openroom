@@ -2,7 +2,7 @@
  * UC-07 — Tutoring privacy: identified join and learner allowlist.
  *
  * Identified session → learner joins with an access link → host sees the
- * context name → stage never receives handles → session ends → the session
+ * context name → stage never receives names → session ends → the session
  * record's private notes and session code never reach `/api/learner/sessions`.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
@@ -152,9 +152,9 @@ test.describe('UC-07 tutoring privacy', () => {
 
     const host = await hostState(api, seed.sessionCode, seed.hostToken);
     expect(host).not.toHaveProperty('signals');
-    const handles = host.handles as Record<string, string> | undefined;
-    if (handles) {
-      expect(Object.values(handles).some((name) => name.startsWith('Léa'))).toBe(true);
+    const names = host.names as Record<string, string> | undefined;
+    if (names) {
+      expect(Object.values(names).some((name) => name.startsWith('Léa'))).toBe(true);
     }
 
     const stageRes = await api.get(`${BASE}/api/sessions/${seed.sessionCode}/state?role=stage`, {
@@ -162,7 +162,7 @@ test.describe('UC-07 tutoring privacy', () => {
     });
     expect(stageRes.status()).toBe(200);
     const stageBody = await stageRes.text();
-    expect(stageBody).not.toMatch(/"handles"/);
+    expect(stageBody).not.toMatch(/"names"/);
     expect(stageBody).not.toMatch(/"signals"/);
 
     // The shared screen prints no join code or QR: only the access link admits

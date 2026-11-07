@@ -182,10 +182,10 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
     return null;
   }, [status, snapshot]);
 
-  // Pseudonymous sessions: the session-local handle, from the join response or (after
+  // Nickname sessions: the session-local name, from the join response or (after
   // a reload with an older stored session) from the snapshot.
-  const handle = session.handle ?? snapshot?.yourHandle;
-  const participantLabel = handle ?? snapshot?.yourLabel;
+  const name = session.name ?? snapshot?.yourName;
+  const participantLabel = name ?? snapshot?.yourLabel;
   const [noticeSeen, setNoticeSeen] = useState(() => wasNoticeSeen(session.sessionCode));
   const [namedNoticeSeen, setNamedNoticeSeen] = useState(wasNamedNoticeSeen);
   const ended = snapshot?.status === 'ended';
@@ -196,7 +196,7 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
       <div className="topbar">
         <span className="brand">OpenRoom</span>
         {participantLabel ? (
-          <span className="handle" title="Your session name">
+          <span className="participant-name" title="Your session name">
             <strong>{participantLabel}</strong>
           </span>
         ) : null}
@@ -231,12 +231,12 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
         </div>
       ) : null}
 
-      {/* The pseudonymous-handle notice promises no name is collected, which is
+      {/* The nickname notice promises no name is collected, which is
           not true of a tutoring session: the tutor already knows the learner. */}
-      {snapshot?.identityMode === 'pseudonymous' && handle && !noticeSeen && !ended ? (
+      {snapshot?.identityMode === 'nickname' && name && !noticeSeen && !ended ? (
         <div className="notice" role="status">
           <p className="notice__text">
-            Handle: <strong>{handle}</strong>. Use it to rejoin. Answers are deleted 30 minutes
+            Your name: <strong>{name}</strong>. Use it to rejoin. Answers are deleted 30 minutes
             after the session ends.
           </p>
           <button

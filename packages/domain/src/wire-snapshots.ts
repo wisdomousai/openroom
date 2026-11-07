@@ -121,7 +121,7 @@ export function participantWireSnapshot(state: SessionState, participantId: stri
     ...(snapshot.round === undefined ? {} : { round: snapshot.round }),
     ...(snapshot.round1Aggregate === undefined ? {} : { round1Aggregate: snapshot.round1Aggregate }),
     ...(snapshot.ownRound1Answer === undefined ? {} : { ownRound1Answer: snapshot.ownRound1Answer }),
-    ...(snapshot.yourHandle === undefined ? {} : { yourHandle: snapshot.yourHandle }),
+    ...(snapshot.yourName === undefined ? {} : { yourName: snapshot.yourName }),
     // Session Q&A: domain and SDK agree on the shape, straight copy.
     ...(snapshot.qna === undefined ? {} : { qna: snapshot.qna }),
     ...(snapshot.outline === undefined ? {} : { outline: snapshot.outline }),
@@ -173,7 +173,7 @@ export function stageWireSnapshot(state: SessionState): Json {
     /*
      * The identity regime, so the Stage can leave out the join code and QR of
      * an identified session (a code alone admits nobody there). It carries no
-     * name: the stage still never receives handles.
+     * name: the stage still never receives names.
      */
     identityMode: sessionOf(state).defaults.identityMode,
     ...(snapshot.endedAt === undefined ? {} : { endedAt: snapshot.endedAt }),
@@ -237,7 +237,7 @@ export function hostWireSnapshot(state: SessionState): Json {
     ...(snapshot.dictionary === undefined ? {} : { dictionary: snapshot.dictionary }),
     ...(snapshot.clock === undefined ? {} : { clock: snapshot.clock }),
     ...(snapshot.listening === undefined ? {} : { listening: snapshot.listening }),
-    ...(snapshot.handles === undefined ? {} : { handles: snapshot.handles }),
+    ...(snapshot.names === undefined ? {} : { names: snapshot.names }),
     ...(snapshot.endedAt === undefined ? {} : { endedAt: snapshot.endedAt }),
     ...(snapshot.purgedAt === undefined ? {} : { purgedAt: snapshot.purgedAt }),
   };

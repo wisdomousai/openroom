@@ -133,7 +133,7 @@ function ownAnswer(ballot: Ballot): OwnAnswer {
 function publicAggregate(
   aggregate: Aggregate,
   frozen: boolean,
-  handles?: Record<string, string>,
+  names?: Record<string, string>,
 ): Aggregate {
   if (aggregate.kind === 'text') {
     const entries = frozen
@@ -141,8 +141,8 @@ function publicAggregate(
       : aggregate.entries
           .filter((entry) => !entry.hidden)
           .map((entry) => {
-            const handle = handles?.[entry.participantId];
-            return handle === undefined ? entry : { ...entry, handle };
+            const name = names?.[entry.participantId];
+            return name === undefined ? entry : { ...entry, name };
           });
     return { kind: 'text', entries, total: aggregate.total };
   }
@@ -152,8 +152,8 @@ function publicAggregate(
       : aggregate.entries
           .filter((entry) => !entry.hidden)
           .map((entry) => {
-            const handle = handles?.[entry.participantId];
-            return handle === undefined ? entry : { ...entry, handle };
+            const name = names?.[entry.participantId];
+            return name === undefined ? entry : { ...entry, name };
           });
     return { ...aggregate, entries };
   }
@@ -161,8 +161,8 @@ function publicAggregate(
     const entries = frozen
       ? []
       : aggregate.entries.map((entry) => {
-          const handle = handles?.[entry.participantId];
-          return handle === undefined ? entry : { ...entry, handle };
+          const name = names?.[entry.participantId];
+          return name === undefined ? entry : { ...entry, name };
         });
     return { ...aggregate, entries, pairs: frozen ? {} : aggregate.pairs };
   }
@@ -183,19 +183,19 @@ function publicAggregate(
  * be omitted entirely rather than advertising a peer-instruction interaction
  * that has not been revoted.
  */
-function publicHandles(state: SessionState): Record<string, string> | undefined {
+function publicNames(state: SessionState): Record<string, string> | undefined {
   const active = state.activeInteractionId;
   if (active && sessionOf(state).interactions.find((row) => row.id === active)?.responseMode === 'group') {
     return state.interactions[active]?.groupNames;
   }
-  // Classroom poll lists do not publish handles on audience/stage aggregates.
+  // Classroom poll lists do not publish names on audience/stage aggregates.
   // Tutoring outlines may — the learner is named.
-  if (isPollOnlyOutline(state.outline) || !handlesArePublic(state)) return undefined;
-  const handles: Record<string, string> = {};
+  if (isPollOnlyOutline(state.outline) || !namesArePublic(state)) return undefined;
+  const names: Record<string, string> = {};
   for (const [id, record] of Object.entries(state.participants)) {
-    if (record.handle !== undefined) handles[id] = record.handle;
+    if (record.name !== undefined) names[id] = record.name;
   }
-  return Object.keys(handles).length > 0 ? handles : undefined;
+  return Object.keys(names).length > 0 ? names : undefined;
 }
 
 function publicRound1Aggregate(
@@ -205,7 +205,7 @@ function publicRound1Aggregate(
   const runtime = state.interactions[interactionId];
   if (runtime === undefined || runtime.round1 === undefined) return undefined;
   if (runtime.status !== 'revealed') return null;
-  return publicAggregate(runtime.round1.aggregate, state.frozen, publicHandles(state));
+  return publicAggregate(runtime.round1.aggregate, state.frozen, publicNames(state));
 }
 
 function answeredCount(state: SessionState, interactionId: string | null): number {
@@ -228,8 +228,8 @@ export interface ParticipantQnaQuestion {
   votedByYou: boolean;
   /** only ever true on the participant's OWN moderated question */
   hidden: boolean;
-  /** asker's host-authored name (identified and guest-list sessions only); never a pseudonymous handle */
-  handle?: string;
+  /** asker's host-authored name (identified and guest-list sessions only); never a nickname */
+  name?: string;
 }
 
 export interface ParticipantQnaView {
@@ -239,7 +239,7 @@ export interface ParticipantQnaView {
 
 export interface StageQnaView {
   stage: QnaStagePlacement;
-  questions: { id: string; text: string; votes: number; handle?: string }[];
+  questions: { id: string; text: string; votes: number; name?: string }[];
 }
 
 export interface HostQnaQuestion {
@@ -258,12 +258,12 @@ export interface HostQnaView {
 }
 
 /**
- * A pseudonymous handle is also its owner's recovery credential (`recoveryHandle`
+ * A nickname is also its owner's recovery credential (`recoveryName`
  * on join), so it reaches only the host and its owner. Identified and guest-list
  * names are host-authored and recovered by seat key, so they may be shown.
  */
-function handlesArePublic(state: SessionState): boolean {
-  return sessionOf(state).defaults.identityMode !== 'pseudonymous';
+function namesArePublic(state: SessionState): boolean {
+  return sessionOf(state).defaults.identityMode !== 'nickname';
 }
 
 /**
@@ -272,13 +272,13 @@ function handlesArePublic(state: SessionState): boolean {
  * panic button: all participant text disappears from public views.
  */
 function participantQnaView(state: SessionState, participantId: string): ParticipantQnaView {
-  const named = handlesArePublic(state);
+  const named = namesArePublic(state);
   const questions: ParticipantQnaQuestion[] = state.frozen
     ? []
     : sortedQuestions(state.qna)
         .filter((question) => !question.hidden || question.participantId === participantId)
         .map((question) => {
-          const handle = named ? state.participants[question.participantId]?.handle : undefined;
+          const name = named ? state.participants[question.participantId]?.name : undefined;
           return {
             id: question.id,
             text: question.text,
@@ -286,25 +286,25 @@ function participantQnaView(state: SessionState, participantId: string): Partici
             own: question.participantId === participantId,
             votedByYou: question.voters.includes(participantId),
             hidden: question.hidden,
-            ...(handle === undefined ? {} : { handle }),
+            ...(name === undefined ? {} : { name }),
           };
         });
   return { maxLength: qnaMaxLength(state), questions };
 }
 
 function stageQnaView(state: SessionState): StageQnaView {
-  const named = handlesArePublic(state);
+  const named = namesArePublic(state);
   const questions = state.frozen
     ? []
     : sortedQuestions(state.qna)
         .filter((question) => !question.hidden)
         .map((question) => {
-          const handle = named ? state.participants[question.participantId]?.handle : undefined;
+          const name = named ? state.participants[question.participantId]?.name : undefined;
           return {
             id: question.id,
             text: question.text,
             votes: question.votes,
-            ...(handle === undefined ? {} : { handle }),
+            ...(name === undefined ? {} : { name }),
           };
         });
   return { stage: state.qna.stage, questions };
@@ -355,8 +355,8 @@ export interface ParticipantSnapshot {
   round1Aggregate?: Aggregate | null;
   /** this participant's own round-1 ballot, so they can recall their first vote */
   ownRound1Answer?: OwnAnswer | null;
-  /** own session-local handle (pseudonymous sessions only); peers' handles are never sent */
-  yourHandle?: string;
+  /** own session-local name (nickname sessions only); peers' names are never sent */
+  yourName?: string;
   yourLabel: string;
   yourGroup?: { id: string; name: string; isSpokesperson: boolean };
   /** session-wide audience Q&A; present only when the session enables it */
@@ -405,7 +405,7 @@ export function participantSnapshot(
     answered: ballot !== undefined,
     results:
       visible && runtime !== undefined
-        ? publicAggregate(runtime.aggregate, state.frozen, publicHandles(state))
+        ? publicAggregate(runtime.aggregate, state.frozen, publicNames(state))
         : null,
   };
   if (runtime?.round !== undefined) snapshot.round = runtime.round;
@@ -420,8 +420,8 @@ export function participantSnapshot(
   if (runtime?.status === 'open' && runtime.closesAt !== undefined) {
     snapshot.closesAt = runtime.closesAt;
   }
-  const handle = state.participants[participantId]?.handle;
-  if (handle !== undefined) snapshot.yourHandle = handle;
+  const name = state.participants[participantId]?.name;
+  if (name !== undefined) snapshot.yourName = name;
   if (state.qna.enabled) snapshot.qna = participantQnaView(state, participantId);
   const outline = learnerOutlineView(state, participantId);
   if (outline !== undefined) snapshot.outline = outline;
@@ -505,7 +505,7 @@ export function stageSnapshot(input: SessionState): StageSnapshot {
     interactionStatus: runtime?.status ?? null,
     aggregate:
       visible && runtime !== undefined
-        ? publicAggregate(runtime.aggregate, state.frozen, publicHandles(state))
+        ? publicAggregate(runtime.aggregate, state.frozen, publicNames(state))
         : null,
   };
   if (runtime?.round !== undefined) snapshot.round = runtime.round;
@@ -591,8 +591,8 @@ export interface HostSnapshot {
    * from remainingSecAt / remainingSec while `running`.
    */
   clock?: SessionClock;
-  /** participantId -> session-local handle; present only in pseudonymous sessions */
-  handles?: Record<string, string>;
+  /** participantId -> session-local name; present only in nickname sessions */
+  names?: Record<string, string>;
   endedAt?: number;
   /** set once the ballots have been purged (PRD DATA-04); host-only */
   purgedAt?: number;
@@ -653,11 +653,11 @@ export function hostSnapshot(input: SessionState): HostSnapshot {
   if (state.clock !== undefined) snapshot.clock = state.clock;
   const listening = listeningFor(state);
   if (listening) snapshot.listening = listening;
-  const handles: Record<string, string> = {};
+  const names: Record<string, string> = {};
   for (const [id, record] of Object.entries(state.participants)) {
-    if (record.handle !== undefined) handles[id] = record.handle;
+    if (record.name !== undefined) names[id] = record.name;
   }
-  if (Object.keys(handles).length > 0) snapshot.handles = handles;
+  if (Object.keys(names).length > 0) snapshot.names = names;
   if (state.participantLimit !== undefined) snapshot.participantLimit = state.participantLimit;
   if (state.endedAt !== undefined) snapshot.endedAt = state.endedAt;
   if (state.purgedAt !== undefined) snapshot.purgedAt = state.purgedAt;

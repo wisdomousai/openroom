@@ -382,7 +382,7 @@ function Body({
       text: question.text,
       hidden: false,
       votes: question.votes,
-      ...(question.handle === undefined ? {} : { handle: question.handle }),
+      ...(question.name === undefined ? {} : { name: question.name }),
     }));
     return (
       <Question

@@ -4,8 +4,8 @@ export interface StoredSession {
   code?: string;
   token: string;
   participantId: string;
-  /** Session-local handle (pseudonymous sessions only). */
-  handle?: string;
+  /** Session-local name (nickname sessions only). */
+  name?: string;
   /** Identity regime from the join answer; says how to come back once the seat is gone. */
   identityMode?: string;
 }
@@ -98,9 +98,9 @@ export function readContextLink(): string | null {
   return value !== null && value.trim() !== '' ? value.trim() : null;
 }
 
-/** Guest link a named guest arrives with (`?invite=orinv_…`). Used once, never stored. */
+/** Guest link a named guest arrives with (`?guest=orinv_…`). Used once, never stored. */
 export function readGuestLink(): string | null {
-  const value = new URLSearchParams(location.search).get('invite');
+  const value = new URLSearchParams(location.search).get('guest');
   return value !== null && value.trim() !== '' ? value.trim() : null;
 }
 

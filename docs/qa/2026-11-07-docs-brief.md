@@ -142,10 +142,10 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "packages/editor/src/live/LiveHost.tsx",
   "DESIGN.md"
  ],
- "fix": "Add identityMode (or a boolean) to the stage wire snapshot and the SDK StageSnapshot (it carries no name, so the stage-never-gets-handles rule holds). StageView Rail (StageView.tsx:294-298) and IdleScreen (:677-680) hide the code and QR when identified, showing 'Waiting for the student' where the join block was. Leave PresenterRemote and the 'Join page' item as they are until start-join-01 is decided. Reconcile the DESIGN.md sentence ('the waiting board is the only screen that prints the join address').",
+ "fix": "Add identityMode (or a boolean) to the stage wire snapshot and the SDK StageSnapshot (it carries no name, so the stage-never-gets-names rule holds). StageView Rail (StageView.tsx:294-298) and IdleScreen (:677-680) hide the code and QR when identified, showing 'Waiting for the student' where the join block was. Leave PresenterRemote and the 'Join page' item as they are until start-join-01 is decided. Reconcile the DESIGN.md sentence ('the waiting board is the only screen that prints the join address').",
  "needsDecision": false,
  "rules": [
-  "Credential boundary: stage never receives handles (UC-07) - the flag carries no name"
+  "Credential boundary: stage never receives names (UC-07) - the flag carries no name"
  ],
  "scenario": "start-join",
  "verdict": "confirmed",
@@ -161,7 +161,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "docs",
  "kind": "gap",
  "severity": "low",
- "observed": "docs/TERMINOLOGY.md:268 says a handle is 'Never typed by the participant in any mode', but the Join screen has a typed Handle field behind 'Rejoin with handle' (join.tsx:90-110). TERMINOLOGY.md:320 limits 'room' to the brand, while apps/participant/index.html:12 titles the join page 'Join a room'. docs/TUTORING.md:398 quotes 'Your tutor has not started the session yet.' but the product says 'The tutor has not started the session.' (session-do.ts:643). apps/site/src/content/docs/live-session.md:26 says 'select the join code to copy its link', which is false for identified sessions where the code is hidden; learner-links.md:47-53 sends the tutor to a SESSION_CODE the console does not show. DESIGN.md says the waiting board is the only screen that prints the join address, but the Stage rail prints it on question slides.",
+ "observed": "docs/TERMINOLOGY.md:268 says a name is 'Never typed by the participant in any mode', but the Join screen has a typed Name field behind 'Rejoin with your name' (join.tsx:90-110). TERMINOLOGY.md:320 limits 'room' to the brand, while apps/participant/index.html:12 titles the join page 'Join a room'. docs/TUTORING.md:398 quotes 'Your tutor has not started the session yet.' but the product says 'The tutor has not started the session.' (session-do.ts:643). apps/site/src/content/docs/live-session.md:26 says 'select the join code to copy its link', which is false for identified sessions where the code is hidden; learner-links.md:47-53 sends the tutor to a SESSION_CODE the console does not show. DESIGN.md says the waiting board is the only screen that prints the join address, but the Stage rail prints it on question slides.",
  "expected": "Docs describe what the product does.",
  "repro": [
   "Read the cited lines and compare with 30-lobby-not-started.png and 21-console-identified.png"
@@ -182,11 +182,11 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "DESIGN.md",
   "apps/participant/index.html"
  ],
- "fix": "Edit the five passages after start-join-01 and start-join-05 are decided. Handle row: 'typed only to recover a pseudonymous seat'. Change the page title to 'Join a session'. Align the TUTORING.md quote with the shipped message. Make live-session.md and learner-links.md describe the identified flow as it actually works. Fix the DESIGN.md sentence about the join address.",
+ "fix": "Edit the five passages after start-join-01 and start-join-05 are decided. Name row: 'typed only to recover a nickname seat'. Change the page title to 'Join a session'. Align the TUTORING.md quote with the shipped message. Make live-session.md and learner-links.md describe the identified flow as it actually works. Fix the DESIGN.md sentence about the join address.",
  "needsDecision": false,
  "scenario": "start-join",
  "verdict": "confirmed",
- "verdictReason": "Verified each citation. TERMINOLOGY.md:268 says Handle is 'Never typed by the participant in any mode', while join.tsx:90-115 has a typed Handle field behind 'Rejoin with handle'. TERMINOLOGY.md:320 limits 'room' to the brand, and apps/participant/index.html:12 titles the page 'Join a room' (page title seen in the browser). TUTORING.md:398 quotes 'Your tutor has not started the session yet.' while the relay sends 'The tutor has not started the session.' (session-do.ts:643). live-session.md:26 says to select the join code, which an identified console hides. learner-links.md:47-53 sends the tutor to a SESSION_CODE the console does not show (only the 'Join page' href has it). DESIGN.md says the waiting board is the only screen that prints the join address, while the Stage question rail prints it. Low: docs only.",
+ "verdictReason": "Verified each citation. TERMINOLOGY.md:268 says Name is 'Never typed by the participant in any mode', while join.tsx:90-115 has a typed Name field behind 'Rejoin with your name'. TERMINOLOGY.md:320 limits 'room' to the brand, and apps/participant/index.html:12 titles the page 'Join a room' (page title seen in the browser). TUTORING.md:398 quotes 'Your tutor has not started the session yet.' while the relay sends 'The tutor has not started the session.' (session-do.ts:643). live-session.md:26 says to select the join code, which an identified console hides. learner-links.md:47-53 sends the tutor to a SESSION_CODE the console does not show (only the 'Join page' href has it). DESIGN.md says the waiting board is the only screen that prints the join address, while the Stage question rail prints it. Low: docs only.",
  "reproduced": true
 }
 ```

@@ -9,7 +9,7 @@ There are two ways to host it.
 
 The relay (`apps/relay`) is a complete live system on Workers and Durable Objects
 alone, with no D1, no R2 and no sign-in. Whoever holds `RELAY_KEY` creates sessions.
-Participants join anonymously or with a pseudonymous handle on the relay's own join
+Participants join anonymously or with a nickname on the relay's own join
 page, and the stage runs there too. Identified and guest-list sessions need the full
 deployment.
 

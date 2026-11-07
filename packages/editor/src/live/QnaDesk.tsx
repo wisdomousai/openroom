@@ -106,7 +106,7 @@ export function QnaDesk({ live, onLeave }: { live: StoredSession; onLeave: () =>
         ) : (
           <QnaQuestionList
             qna={qna}
-            handles={snapshot.handles}
+            names={snapshot.names}
             ended={ended}
             onToggleHidden={toggleQnaHidden}
             onSpotlight={host.canPresent ? (id) => setQnaStage('spotlight', id) : undefined}
@@ -155,7 +155,7 @@ export function QnaDesk({ live, onLeave }: { live: StoredSession; onLeave: () =>
  */
 export function QnaQuestionList({
   qna,
-  handles,
+  names,
   ended,
   onToggleHidden,
   onSpotlight,
@@ -166,7 +166,7 @@ export function QnaQuestionList({
   onAnswered,
 }: {
   qna: HostQnaView;
-  handles?: Record<string, string>;
+  names?: Record<string, string>;
   ended: boolean;
   onToggleHidden: (questionId: string, hidden: boolean) => void;
   onSpotlight?: (questionId: string) => void;
@@ -209,9 +209,9 @@ export function QnaQuestionList({
                     quiet && 'text-muted-foreground',
                   )}
                 >
-                  {handles?.[question.participantId] ? (
+                  {names?.[question.participantId] ? (
                     <span className="text-caption font-semibold text-muted-foreground">
-                      {handles[question.participantId]}:{' '}
+                      {names[question.participantId]}:{' '}
                     </span>
                   ) : null}
                   {question.text}
@@ -288,9 +288,9 @@ export function QnaQuestionList({
             )}
           >
             <span className="min-w-0">
-              {handles?.[question.participantId] ? (
+              {names?.[question.participantId] ? (
                 <span className="text-caption text-muted-foreground no-underline">
-                  {handles[question.participantId]}:{' '}
+                  {names[question.participantId]}:{' '}
                 </span>
               ) : null}
               {question.text}

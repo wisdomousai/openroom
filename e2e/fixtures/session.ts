@@ -108,8 +108,8 @@ export function participantUrl(code: string): string {
 
 /**
  * Drive a fresh participant page through the join screen. Since persistent
- * handles landed, ?code= prefills the form but joining is an explicit choice
- * (new participant vs rejoin with a handle).
+ * names landed, ?code= prefills the form but joining is an explicit choice
+ * (new participant vs rejoin with a name).
  */
 export async function joinInBrowser(page: Page, code: string): Promise<void> {
   await page.goto(participantUrl(code));

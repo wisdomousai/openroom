@@ -125,12 +125,27 @@ Before deploying a release that contains these migrations:
 - Local `.openroom` files and drafts saved outside D1 keep the old values and fail
   validation until someone edits them; D1 decks, versions, drafts and frozen session
   outlines are rewritten by the migration.
-- R2 session archives hold aggregates and ballot CSV only and carry none of the renamed
-  values, so no R2 rewrite script is needed so far.
+- R2 session archives (`archives/<session code>.json`) hold aggregates and the kept ballots
+  CSV. The aggregates carry no renamed value, but the CSV header names its participant
+  column. It was `handle` and is now `name`. Archives written before this release keep the
+  old header until rewritten. Run `apps/workspace-worker/scripts/terminology-archives.mjs`
+  on downloaded copies (it never contacts Cloudflare, supports `--dry-run`, and can run
+  twice): list the keys with `SELECT r2_key FROM session_archives`, fetch each with
+  `wrangler r2 object get <bucket>/<key> --remote --file <folder>/<code>.json`, run
+  `node apps/workspace-worker/scripts/terminology-archives.mjs <folder>`, and put the
+  changed files back with `wrangler r2 object put <bucket>/<key> --remote --file ...
+  --content-type application/json`. Skipping this only leaves the old column header in
+  old archived downloads.
+- The join page reads the guest link from `?guest=orinv_…` (the older query parameter is no longer read). Guest
+  links already copied or sent with the old query parameter no longer sign the guest in;
+  the host copies the link again.
+- Participants inside Durable Objects store the name under `name` (it was `handle`). This
+  is part of the live state that ends at deploy.
 
 | Migration | Rename |
 | --- | --- |
 | `0001_guest_list` | The two session guest tables are renamed to `guest_lists` and `guest_links` (indexes recreated, issued `orinv_…` tokens stay valid). The retired `identityMode` value is rewritten to `guest-list` in `deck_versions.content_json`, `sessions.source_outline_json` and `deck_drafts.content_yaml`. The retired entitlement key in `users.entitlements` is rewritten to `guestList`. The plan catalog capability must be changed to `guestList` by hand (see above). |
+| `0002_nickname` | The retired `identityMode` value is rewritten to `nickname` in `deck_versions.content_json`, `sessions.source_outline_json` and `deck_drafts.content_yaml`. No table or column changes. |
 
 ## Website pageviews
 

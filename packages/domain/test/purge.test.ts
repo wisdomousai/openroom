@@ -72,9 +72,9 @@ describe('purgeBallots', () => {
     }
   });
 
-  it('drops session-local handles along with the participants map', () => {
+  it('drops session-local names along with the participants map', () => {
     const ended = answeredRoom();
-    ended.participants['p1'] = { joinedAt: 0, handle: 'Amber Fox' };
+    ended.participants['p1'] = { joinedAt: 0, name: 'Amber Fox' };
     const purged = purgeBallots(ended, 5000);
     expect(purged.participants).toEqual({});
     expect(JSON.stringify(purged)).not.toContain('Amber Fox');

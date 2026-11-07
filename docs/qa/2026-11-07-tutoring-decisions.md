@@ -10,7 +10,7 @@ Chosen: Keep identified an agent-door feature. It leaves the credential boundary
 
 Findings: start-join-01, editor-authoring-04, site-manual-01
 
-- Identified stays an agent-door feature: The prepared outline sets identityMode and deck_start or the CLI return the finished join URL that already carries the student link (agent-path-04). The manual says the browser has no named-join control. No credential-boundary impact; a browser-only tutor runs pseudonymous lessons.
+- Identified stays an agent-door feature: The prepared outline sets identityMode and deck_start or the CLI return the finished join URL that already carries the student link (agent-path-04). The manual says the browser has no named-join control. No credential-boundary impact; a browser-only tutor runs nickname lessons.
 - Console action Copy student link: In identified sessions the Session menu offers Copy student link: the tutor pastes the student orlnk_ link once and the console builds /join/?code=..&link=.. locally without storing it. Gives browser-only tutors a path with no server change, but the presenter then handles a credential, which needs a credential-boundary review.
 - Deck-level identified switch: A continuity-gated switch writes defaults.identityMode through outline-edit.ts, classified in outline-fuzz.ts, exposed as an EditorServices slot (absent slot means no switch). Adds a new deck-level setting, still needs a link-composing step, and free accounts get 403 at start.
 - Link-only join resolved by the Worker: /join/?link=orlnk_.. resolves the live session through sessions.context_id and returns only a participant token. Creates a second association path, which AGENTS.md forbids, and is ambiguous when a context has several live sessions; needs a credential-boundary review.
@@ -175,8 +175,8 @@ Chosen: Leave forgets the device with a confirm, with the neutral ended text and
 
 Findings: start-join-03, start-join-08, learner-live-10, site-manual-10
 
-- Leave forgets the device, with a confirm; neutral ended text; one line for identified: Leave asks that you will join as a new participant; the ended view hides Leave and the handle notice; the identified ended view adds Your personal link opens your lesson page.; identified joins show Your tutor sees your name in this lesson. once per browser (the retention line waits for approved text). No credential is kept after the session and the snapshot is unchanged.
-- Leave keeps the capability while the session is live: Re-entry by code resumes the seat until the session ends. Fewer duplicate participants on a shared device, but a code alone would resume a seat, which the handle design rejects.
+- Leave forgets the device, with a confirm; neutral ended text; one line for identified: Leave asks that you will join as a new participant; the ended view hides Leave and the name notice; the identified ended view adds Your personal link opens your lesson page.; identified joins show Your tutor sees your name in this lesson. once per browser (the retention line waits for approved text). No credential is kept after the session and the snapshot is unchanged.
+- Leave keeps the capability while the session is live: Re-entry by code resumes the seat until the session ends. Fewer duplicate participants on a shared device, but a code alone would resume a seat, which the name design rejects.
 - Tutor End attaches a next-step line to the ended snapshot: New snapshot field; nextNote is excluded from the snapshot on purpose.
 - Hide stale controls only: No new text or notice; identified learners still get no notice (PRD.md says the text must exist before launch).
 

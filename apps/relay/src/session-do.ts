@@ -50,7 +50,7 @@ import {
   type SessionFacilitator,
   createSession,
   ensureQna,
-  generateHandle,
+  generateParticipantName,
   participantLimitReached,
   purgeBallots,
   resultsVisible,
@@ -597,7 +597,7 @@ export class SessionDO implements DurableObject {
    */
   async #join(request: Request): Promise<Response> {
     const body = (await request.json().catch(() => null)) as
-      | { recoveryHandle?: unknown; identity?: unknown }
+      | { recoveryName?: unknown; identity?: unknown }
       | null;
     // Body I/O may interleave with other requests. Read current state only after it finishes.
     const state = this.#load();
@@ -660,7 +660,7 @@ export class SessionDO implements DurableObject {
        * session still admits the re-entry below — a student whose page reloads
        * during a panic freeze must not be locked out of their own session.
        *
-       * Anonymous and pseudonymous sessions are untouched: they can still be
+       * Anonymous and nickname sessions are untouched: they can still be
        * joined from the lobby, which is how a class files in before the host
        * starts.
        */
@@ -683,19 +683,19 @@ export class SessionDO implements DurableObject {
       );
     }
 
-    if (body?.recoveryHandle !== undefined) {
-      if (identityMode !== 'pseudonymous') {
+    if (body?.recoveryName !== undefined) {
+      if (identityMode !== 'nickname') {
         return json(
-          { error: 'handle-recovery-unavailable', message: 'This session does not use handles.' },
+          { error: 'name-recovery-unavailable', message: 'This session does not use nicknames.' },
           409,
         );
       }
-      if (typeof body.recoveryHandle !== 'string') {
-        return json({ error: 'invalid-handle', message: 'Enter your session handle.' }, 400);
+      if (typeof body.recoveryName !== 'string') {
+        return json({ error: 'invalid-name', message: 'Enter your name.' }, 400);
       }
-      const recoveryHandle = body.recoveryHandle.trim().replace(/\s+/g, ' ');
-      if (recoveryHandle.length < 3 || recoveryHandle.length > 64) {
-        return json({ error: 'invalid-handle', message: 'Enter your complete session handle.' }, 400);
+      const recoveryName = body.recoveryName.trim().replace(/\s+/g, ' ');
+      if (recoveryName.length < 3 || recoveryName.length > 64) {
+        return json({ error: 'invalid-name', message: 'Enter your complete name.' }, 400);
       }
       if (!this.#recoveryAllowed(now)) {
         return json(
@@ -707,14 +707,14 @@ export class SessionDO implements DurableObject {
         );
       }
 
-      const recoveryKey = recoveryHandle.toLocaleLowerCase('en');
+      const recoveryKey = recoveryName.toLocaleLowerCase('en');
       const recovered = Object.entries(state.participants).find(
-        ([, record]) => record.handle?.toLocaleLowerCase('en') === recoveryKey,
+        ([, record]) => record.name?.toLocaleLowerCase('en') === recoveryKey,
       );
       if (recovered === undefined) {
         this.#recordRecoveryFailure(now);
         return json(
-          { error: 'handle-not-found', message: 'That handle is not in this session.' },
+          { error: 'name-not-found', message: 'That name is not in this session.' },
           404,
         );
       }
@@ -726,7 +726,7 @@ export class SessionDO implements DurableObject {
         participantId,
         revision: state.revision,
         identityMode,
-        handle: record.handle,
+        name: record.name,
       });
     }
 
@@ -736,7 +736,7 @@ export class SessionDO implements DurableObject {
       const existing = Object.entries(state.participants).find(
         ([, record]) =>
           (seatKey !== '' && record.seatKey === seatKey) ||
-          (record.seatKey === undefined && record.handle === identityName),
+          (record.seatKey === undefined && record.name === identityName),
       );
       if (existing !== undefined) {
         this.#setMeta('lastActivity', now);
@@ -745,7 +745,7 @@ export class SessionDO implements DurableObject {
           participantId: existing[0],
           revision: state.revision,
           identityMode,
-          handle: identityName,
+          name: identityName,
         });
       }
     }
@@ -774,15 +774,15 @@ export class SessionDO implements DurableObject {
     const joinSeq = this.#metaNumber('joinSeq', 0);
     const lane = paired ? ((joinSeq % 2) as 0 | 1) : undefined;
     if (paired) this.#setMeta('joinSeq', joinSeq + 1);
-    let handle: string | undefined;
+    let participantName: string | undefined;
     if (identityMode === 'identified' || identityMode === 'guest-list') {
-      handle = identityName;
-    } else if (identityMode === 'pseudonymous') {
+      participantName = identityName;
+    } else if (identityMode === 'nickname') {
       const taken = new Set<string>();
       for (const record of Object.values(state.participants)) {
-        if (record.handle !== undefined) taken.add(record.handle);
+        if (record.name !== undefined) taken.add(record.name);
       }
-      handle = generateHandle(taken);
+      participantName = generateParticipantName(taken);
     }
     const next: SessionState = {
       ...state,
@@ -791,7 +791,7 @@ export class SessionDO implements DurableObject {
         ...state.participants,
         [participantId]: {
           joinedAt: now,
-          ...(handle === undefined ? {} : { handle }),
+          ...(participantName === undefined ? {} : { name: participantName }),
           ...((identityMode === 'identified' || identityMode === 'guest-list') && seatKey !== ''
             ? { seatKey }
             : {}),
@@ -808,7 +808,7 @@ export class SessionDO implements DurableObject {
       participantId,
       revision: next.revision,
       identityMode,
-      ...(handle === undefined ? {} : { handle }),
+      ...(participantName === undefined ? {} : { name: participantName }),
     });
   }
 

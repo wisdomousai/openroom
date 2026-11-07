@@ -16,7 +16,7 @@ test('author a recording, choose the playback audience, reveal the transcript an
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
   const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Camille', kind: 'person', experience: 'tutoring' } })).json();
   const { deck } = await (await page.request.post('/api/decks', { headers: CSRF, data: { spaceId: context.spaceId, contextId: context.id, content: {
-    version: 1, meta: { title: 'Un changement de rendez-vous' }, defaults: { identityMode: 'pseudonymous' }, interactions: [], steps: [
+    version: 1, meta: { title: 'Un changement de rendez-vous' }, defaults: { identityMode: 'nickname' }, interactions: [], steps: [
       { id: 'listen', kind: 'media', title: 'Listen for the new time', media: { type: 'audio', url: 'https://local.openroom.invalid/openroom-pending-audio', alt: 'The appointment', listening: { mode: 'room' } } },
       { id: 'next', kind: 'title', title: 'When is the appointment?' },
     ],

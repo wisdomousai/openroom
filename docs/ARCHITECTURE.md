@@ -57,7 +57,7 @@ flowchart TB
 The app works offline. A deck is a file the teacher owns, like a PowerPoint file.
 Signing in adds the online library, sharing and live sessions. Signed out, a
 teacher with a live server (their own relay) can still run anonymous and
-pseudonymous live sessions. Agents never talk to the editor UI. They talk to the
+nickname live sessions. Agents never talk to the editor UI. They talk to the
 same MCP tools as every other client, and the editor shows what they saved.
 
 The repository splits along the same line. The **core** (`packages/*`, `apps/relay`,
@@ -237,7 +237,7 @@ flowchart TB
 The live plane is its own Worker. `apps/relay` (`openroom-relay`) owns the
 `SessionDO` class, one Durable Object per session, and serves everything a running
 session needs: state, commands, the WebSocket, per-session assets (SQLite chunks in
-the session's object), anonymous and pseudonymous joins, and the stage and
+the session's object), anonymous and nickname joins, and the stage and
 participant apps. It has no D1, no R2 and no accounts. `apps/workspace-worker` (`openroom`) is
 the control plane: accounts, spaces, decks, billing, MCP and the API catalog.
 
@@ -277,7 +277,7 @@ own.
 **On a relay deployed alone, the key creates sessions.** `POST /api/sessions` with
 `Authorization: Bearer <RELAY_KEY>` and an outline returns the session code, host and
 stage tokens and a join link on the relay. Identified and guest-list sessions are refused
-(they need workspace records), as are identified joins; anonymous and pseudonymous
+(they need workspace records), as are identified joins; anonymous and nickname
 sessions run in full, with ballots export and no participant limit unless the request
 sets `participantLimit`. Without `RELAY_KEY`, creation is off. The API is in
 `docs/CONTRACTS.md`; deployment is in `docs/DEPLOYMENT.md`.

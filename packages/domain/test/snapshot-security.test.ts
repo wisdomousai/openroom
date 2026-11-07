@@ -215,11 +215,11 @@ describe('snapshot security — text hiding and frozen sessions', () => {
   });
 });
 
-describe('snapshot security — session-local handles (pseudonymous mode)', () => {
-  const SENTINEL_HANDLE_P1 = 'SENTINEL_HANDLE_AMBER_FOX';
-  const SENTINEL_HANDLE_P2 = 'SENTINEL_HANDLE_SWIFT_WREN';
+describe('snapshot security — session-local names (nickname mode)', () => {
+  const SENTINEL_NAME_P1 = 'SENTINEL_NAME_AMBER_FOX';
+  const SENTINEL_NAME_P2 = 'SENTINEL_NAME_SWIFT_WREN';
 
-  function sessionWithHandles(): ReturnType<typeof createSession> {
+  function sessionWithNames(): ReturnType<typeof createSession> {
     let state = run(newSession(), env({ command: 'session.start' }));
     state = run(state, env({ command: 'interaction.open', interactionId: 'chat' }));
     state = run(
@@ -237,32 +237,32 @@ describe('snapshot security — session-local handles (pseudonymous mode)', () =
       ),
     );
     state = run(state, env({ command: 'interaction.reveal', interactionId: 'chat' }));
-    // handles are assigned at join by the session DO; simulate that here
-    state.participants['p1'] = { joinedAt: 0, handle: SENTINEL_HANDLE_P1 };
-    state.participants['p2'] = { joinedAt: 0, handle: SENTINEL_HANDLE_P2 };
+    // names are assigned at join by the session DO; simulate that here
+    state.participants['p1'] = { joinedAt: 0, name: SENTINEL_NAME_P1 };
+    state.participants['p2'] = { joinedAt: 0, name: SENTINEL_NAME_P2 };
     return state;
   }
 
-  it('stage snapshot never contains any handle, even post-reveal', () => {
-    const serialized = JSON.stringify(stageSnapshot(sessionWithHandles()));
-    expect(serialized).not.toContain(SENTINEL_HANDLE_P1);
-    expect(serialized).not.toContain(SENTINEL_HANDLE_P2);
+  it('stage snapshot never contains any name, even post-reveal', () => {
+    const serialized = JSON.stringify(stageSnapshot(sessionWithNames()));
+    expect(serialized).not.toContain(SENTINEL_NAME_P1);
+    expect(serialized).not.toContain(SENTINEL_NAME_P2);
   });
 
-  it("participant snapshot contains own handle but never a peer's", () => {
-    const snap = participantSnapshot(sessionWithHandles(), 'p1');
-    expect(snap.yourHandle).toBe(SENTINEL_HANDLE_P1);
-    expect(JSON.stringify(snap)).not.toContain(SENTINEL_HANDLE_P2);
+  it("participant snapshot contains own name but never a peer's", () => {
+    const snap = participantSnapshot(sessionWithNames(), 'p1');
+    expect(snap.yourName).toBe(SENTINEL_NAME_P1);
+    expect(JSON.stringify(snap)).not.toContain(SENTINEL_NAME_P2);
   });
 
-  it('host snapshot carries the full handle map', () => {
-    const snap = hostSnapshot(sessionWithHandles());
-    expect(snap.handles).toEqual({ p1: SENTINEL_HANDLE_P1, p2: SENTINEL_HANDLE_P2 });
+  it('host snapshot carries the full name map', () => {
+    const snap = hostSnapshot(sessionWithNames());
+    expect(snap.names).toEqual({ p1: SENTINEL_NAME_P1, p2: SENTINEL_NAME_P2 });
   });
 
-  it('anonymous sessions produce no handles field at all', () => {
+  it('anonymous sessions produce no names field at all', () => {
     const state = run(newSession(), env({ command: 'session.start' }));
-    expect(hostSnapshot(state).handles).toBeUndefined();
-    expect(participantSnapshot(state, 'p1').yourHandle).toBeUndefined();
+    expect(hostSnapshot(state).names).toBeUndefined();
+    expect(participantSnapshot(state, 'p1').yourName).toBeUndefined();
   });
 });

@@ -59,9 +59,9 @@
                   "code": {
                     "type": "string"
                   },
-                  "recoveryHandle": {
+                  "recoveryName": {
                     "type": "string",
-                    "description": "Existing session-local handle used to recover a pseudonymous participant"
+                    "description": "Generated nickname used to rejoin a nickname session as the same participant"
                   },
                   "contextLink": {
                     "type": "string",
@@ -97,7 +97,7 @@
                     "identityMode": {
                       "type": "string"
                     },
-                    "handle": {
+                    "name": {
                       "type": "string"
                     }
                   }
@@ -106,16 +106,16 @@
             }
           },
           "400": {
-            "description": "Missing session code or invalid recovery handle"
+            "description": "Missing session code or invalid recovery name"
           },
           "403": {
             "description": "Identified session joined without a context link (context-link-required), or a link that is invalid, revoked, expired, or issued for a different context (context-link-invalid)"
           },
           "404": {
-            "description": "Unknown session or recovery handle"
+            "description": "Unknown session or recovery name"
           },
           "409": {
-            "description": "Handle recovery is unavailable for this session, a context link was offered to a session that is not identified (identified-join-unavailable), or the identified session has not been started yet (session-not-started), or the session admits no new participant (session-full): without the space owner's largeSessions capability at start a session admits 50 participants. Re-entry with an existing recovery handle, access link or guest link is never refused for size"
+            "description": "Name recovery is unavailable for this session, a context link was offered to a session that is not identified (identified-join-unavailable), or the identified session has not been started yet (session-not-started), or the session admits no new participant (session-full): without the space owner's largeSessions capability at start a session admits 50 participants. Re-entry with an existing recovery name, access link or guest link is never refused for size"
           },
           "429": {
             "description": "Too many failed recovery attempts"

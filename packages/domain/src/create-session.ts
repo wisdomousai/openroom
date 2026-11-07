@@ -84,7 +84,7 @@ export const SESSION_PARTICIPANT_HARD_LIMIT = 1000;
 
 /**
  * Whether a genuinely new participant would exceed the session's limit.
- * Re-entry with an existing seat or handle is not an admission and is never
+ * Re-entry with an existing seat or name is not an admission and is never
  * checked against it.
  */
 export function participantLimitReached(state: SessionState): boolean {

@@ -34,7 +34,7 @@ Check the current eight-character code or guest link and the network connection.
 
 For a named learner session, use the personal learner credential for that context and wait until the host starts. For a guest-list session, use its individual guest link. Ask the issuer to replace an expired or revoked link.
 
-To restore a generated session name in another browser, use **Rejoin with handle** and enter the exact name shown previously. To retain the current browser's participation, return using the same browser and session address.
+To restore a generated session name in another browser, use **Rejoin with your name** and enter the exact name shown previously. To retain the current browser's participation, return using the same browser and session address.
 
 ## An answer is not accepted
 

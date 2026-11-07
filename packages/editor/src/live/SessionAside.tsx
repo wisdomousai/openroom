@@ -19,7 +19,7 @@ export interface SessionAsideProps {
   /** Entries of the focused text/qna interaction; null for other types. */
   entries: (TextEntry | QnaEntry)[] | null;
   isWordCloud: boolean;
-  handles: Record<string, string> | undefined;
+  names: Record<string, string> | undefined;
   ended: boolean;
   canPresent: boolean;
   onToggleEntry: (entry: TextEntry) => void;
@@ -75,7 +75,7 @@ export function SessionAside({
   onSelectItem,
   entries,
   isWordCloud,
-  handles,
+  names,
   ended,
   canPresent,
   onToggleEntry,
@@ -262,9 +262,9 @@ export function SessionAside({
                       }
                     >
                       <span>
-                        {handles?.[entry.participantId] ? (
+                        {names?.[entry.participantId] ? (
                           <span className="text-caption font-semibold text-muted-foreground">
-                            {handles[entry.participantId]}:{' '}
+                            {names[entry.participantId]}:{' '}
                           </span>
                         ) : null}
                         {entry.text}
@@ -299,7 +299,7 @@ export function SessionAside({
                 </div>
                 <QnaQuestionList
                   qna={qna}
-                  handles={handles}
+                  names={names}
                   ended={ended}
                   variant="cards"
                   answeredIds={answeredQna}

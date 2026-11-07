@@ -68,8 +68,8 @@ export function SessionQna({ qna, frozen, busy, onAsk, onUpvote }: Props) {
             <div className="qna__text">
               {question.own ? <span className="qna__own-tag">Your question</span> : null}
               <div>{question.text}</div>
-              {question.handle && !question.own ? (
-                <span className="qna__handle">{question.handle}</span>
+              {question.name && !question.own ? (
+                <span className="qna__name">{question.name}</span>
               ) : null}
               {question.hidden ? (
                 <p className="hint">Hidden</p>

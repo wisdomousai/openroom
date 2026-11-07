@@ -32,7 +32,7 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Session-wide Q&A, moderation, spotlight | facilitation | `live/QnaDesk.tsx`, `live/SessionAside.tsx` |
 | Group membership, spokesperson, shared responses | facilitation, questions, participant | `live/GroupsPanel.tsx`, domain groups |
 | Co-facilitation, handoff, recovery, revocation | facilitation, sharing | host facilitator strip, `apps/workspace-worker/src/index.ts`, entitlement checks |
-| Anonymous, pseudonymous, identified, guest-list identity | live-session, participant, cli | schema defaults, participant `session.ts`, Worker `index.ts`, `guest-links.ts` |
+| Anonymous, nickname, identified, guest-list identity | live-session, participant, cli | schema defaults, participant `session.ts`, Worker `index.ts`, `guest-links.ts` |
 | Learner link creation, replacement, expiry, revocation | learner-links | `pages/tutor/ContextLinks.tsx`, `apps/workspace-worker/src/context-links.ts` |
 | Outcomes, tutor-private notes, next step, artifacts | notes, limits, learner | `pages/tutor/SessionNotes.tsx`, `apps/workspace-worker/src/learner.ts` |
 | Reading, writing, voice, quiz homework and audiences | homework, learner | `packages/schema/src/homework.ts`, Notes form, learner task views |

@@ -56,7 +56,7 @@ describe('RFC 9727 API catalog', () => {
     expect(body.paths['/api/sessions/{sessionId}/launch']).toBeTruthy();
   });
 
-  it('documents session-local handle recovery on the join endpoint', async () => {
+  it('documents session-local name recovery on the join endpoint', async () => {
     const res = await call('/openapi.json');
     const body = (await res.json()) as {
       paths: Record<
@@ -73,7 +73,7 @@ describe('RFC 9727 API catalog', () => {
     const properties =
       body.paths['/api/join']?.post?.requestBody?.content?.['application/json']?.schema?.properties;
 
-    expect(properties?.recoveryHandle).toBeTruthy();
+    expect(properties?.recoveryName).toBeTruthy();
   });
 
   it('documents the credentials accepted by the session-creation route', async () => {

@@ -147,7 +147,7 @@ describe('full lifecycle e2e (examples/seg-camp.yaml)', () => {
     expect(csvExportRes.status).toBe(200);
     const csvText = await csvExportRes.text();
     const lines = csvText.split('\n').filter((line) => line.length > 0);
-    expect(lines[0]).toBe('interactionId,prompt,participantId,handle,answer,hidden');
+    expect(lines[0]).toBe('interactionId,prompt,participantId,name,answer,hidden');
 
     const expectedRows = Object.values(hostAfterEnd.ballots as Record<string, Record<string, unknown>>).reduce(
       (sum, ballotsForInteraction) => sum + Object.keys(ballotsForInteraction).length,

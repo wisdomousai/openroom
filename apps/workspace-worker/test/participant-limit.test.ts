@@ -26,7 +26,7 @@ async function admit(code: string, count: number, target: Env = configured) {
   for (let i = 0; i < count; i++) {
     const result = await join(code, {}, target);
     expect(result.status, JSON.stringify(result.body)).toBe(200);
-    joined.push(result.body as { participantId: string; handle?: string });
+    joined.push(result.body as { participantId: string; name?: string });
   }
   return joined;
 }
@@ -40,13 +40,13 @@ async function startDeck(starter: Account, spaceId: string, identityMode = 'anon
 }
 
 describe('free session participant limit', () => {
-  it('admits the limit, refuses the next new participant, and always readmits a handle', async () => {
+  it('admits the limit, refuses the next new participant, and always readmits a name', async () => {
     const owner = await account();
-    const code = await startDeck(owner, owner.spaceId, 'pseudonymous');
+    const code = await startDeck(owner, owner.spaceId, 'nickname');
     const admitted = await admit(code, LIMIT);
     expect(await join(code)).toEqual({ status: 409, body: { error: 'session-full', message: 'This session is full.' } });
 
-    const back = await join(code, { recoveryHandle: admitted[0]!.handle });
+    const back = await join(code, { recoveryName: admitted[0]!.name });
     expect(back.status).toBe(200);
     expect(back.body.participantId).toBe(admitted[0]!.participantId);
     expect((await join(code)).status).toBe(409);

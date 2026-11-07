@@ -1,16 +1,16 @@
 /**
- * Session-local handles (PRD "Pseudonymous mode"): a random adjective+animal+number
- * handle assigned at join time, stable within one session and never linked across
+ * Session-local names (PRD "Nickname mode"): a random adjective+animal+number
+ * name assigned at join time, stable within one session and never linked across
  * sessions. System-assigned — participants never type a name, so no self-declared
  * PII enters the system and the text blocklist is not needed here. The numeric
  * suffix gives manual session-local recovery enough search space to rate-limit
- * sensibly while keeping the handle easy to read and type.
+ * sensibly while keeping the name easy to read and type.
  *
- * This wordlist serves `identityMode: 'pseudonymous'` only. It is not the sole
- * source of handles in the product: `'anonymous'` assigns none, and
- * `'identified'` takes the handle from `contexts.display_name` — a name the
+ * This wordlist serves `identityMode: 'nickname'` only. It is not the sole
+ * source of names in the product: `'anonymous'` assigns none, and
+ * `'identified'` takes the name from `contexts.display_name` — a name the
  * tutor authored, reached through a context access link. The "participants
- * never type a name" invariant holds in every mode; "the handle is
+ * never type a name" invariant holds in every mode; "the name is
  * system-generated" holds only here.
  */
 
@@ -43,11 +43,11 @@ function pickSuffix(): number {
 }
 
 /**
- * Generate a handle not present in `taken`. The four-digit suffix expands the
- * space to 14.4 million session-local handles. The final monotonic fallback keeps
+ * Generate a name not present in `taken`. The four-digit suffix expands the
+ * space to 14.4 million session-local names. The final monotonic fallback keeps
  * the function terminating even under deliberately hostile collision input.
  */
-export function generateHandle(taken: ReadonlySet<string>): string {
+export function generateParticipantName(taken: ReadonlySet<string>): string {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const candidate = `${pick(ADJECTIVES)} ${pick(ANIMALS)} ${pickSuffix()}`;
     if (!taken.has(candidate)) return candidate;

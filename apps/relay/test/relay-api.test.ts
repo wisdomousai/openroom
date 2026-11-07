@@ -1,5 +1,5 @@
 /**
- * The relay's own surface: key-gated creation, anonymous and pseudonymous
+ * The relay's own surface: key-gated creation, anonymous and nickname
  * joins, the refusals that keep identified sessions on the control plane, and
  * the participant limit a key holder sets.
  */
@@ -116,13 +116,13 @@ describe('POST /api/join', () => {
     expect(host.participantCount).toBe(5);
   });
 
-  it('hands out a recovery handle in a pseudonymous session', async () => {
-    const created = await createSessionWithOutline(withOutlineMode('pseudonymous'));
+  it('hands out a recovery name in a nickname session', async () => {
+    const created = await createSessionWithOutline(withOutlineMode('nickname'));
     const first = await join(created.code);
-    expect(first.identityMode).toBe('pseudonymous');
-    expect(typeof first.handle).toBe('string');
+    expect(first.identityMode).toBe('nickname');
+    expect(typeof first.name).toBe('string');
 
-    const again = await join(created.code, first.handle);
+    const again = await join(created.code, first.name);
     expect(again.participantId).toBe(first.participantId);
   });
 
@@ -150,7 +150,7 @@ describe('POST /api/join', () => {
     };
     expect(await seat('guest-list', 'context-link')).toMatchObject({ status: 403, body: { error: 'context-link-invalid' } });
     expect(await seat('identified', 'guest-link')).toMatchObject({ status: 403, body: { error: 'guest-link-invalid' } });
-    expect(await seat('guest-list', 'guest-link')).toMatchObject({ status: 200, body: { handle: 'Camille' } });
+    expect(await seat('guest-list', 'guest-link')).toMatchObject({ status: 200, body: { name: 'Camille' } });
   });
 
   it('answers an unissued code with 404 and leaves no storage behind', async () => {

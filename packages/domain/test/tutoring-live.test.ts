@@ -62,7 +62,7 @@ describe('tutoring closed answers', () => {
     let state = liveSession();
     state = {
       ...state,
-      participants: { lea: { joinedAt: 0, handle: 'Léa' } },
+      participants: { lea: { joinedAt: 0, name: 'Léa' } },
     };
     state = run(state, env({ command: 'outline.goto', stepId: 'check' }));
     state = run(
@@ -77,7 +77,7 @@ describe('tutoring closed answers', () => {
     expect(stage.aggregate?.kind).toBe('text');
     if (stage.aggregate?.kind === 'text') {
       expect(stage.aggregate.entries[0]?.text).toBe('hello');
-      expect(stage.aggregate.entries[0]?.handle).toBe('Léa');
+      expect(stage.aggregate.entries[0]?.name).toBe('Léa');
     }
     const serialized = JSON.stringify(participantSnapshot(state, 'lea'));
     expect(serialized).not.toContain('correctAnswers');
@@ -107,8 +107,8 @@ describe('split cards', () => {
     state = {
       ...state,
       participants: {
-        lea: { joinedAt: 1, handle: 'Léa', lane: 0 },
-        tom: { joinedAt: 2, handle: 'Tom', lane: 1 },
+        lea: { joinedAt: 1, name: 'Léa', lane: 0 },
+        tom: { joinedAt: 2, name: 'Tom', lane: 1 },
       },
     };
     const lea = participantSnapshot(state, 'lea').outline?.currentStep;

@@ -31,7 +31,7 @@ test('lookup drafts stay private; selected forms publish atomically and stale lo
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
   const { context } = await (await page.request.post('/api/tutoring/contexts', { headers: CSRF, data: { displayName: 'Camille', kind: 'person', experience: 'tutoring' } })).json();
   const { deck } = await (await page.request.post('/api/decks', { headers: CSRF, data: { contextId: context.id, spaceId: context.spaceId,
-    content: { version: 1, meta: { title: 'Les verbes du voyage' }, defaults: { identityMode: 'pseudonymous' }, steps: [{ id: 'one', kind: 'title', title: 'Je rate le train' }, { id: 'two', kind: 'title', title: 'La suite' }], interactions: [] },
+    content: { version: 1, meta: { title: 'Les verbes du voyage' }, defaults: { identityMode: 'nickname' }, steps: [{ id: 'one', kind: 'title', title: 'Je rate le train' }, { id: 'two', kind: 'title', title: 'La suite' }], interactions: [] },
   } })).json();
   let releaseLate!: () => void;
   const late = new Promise<void>((resolve) => { releaseLate = resolve; });
