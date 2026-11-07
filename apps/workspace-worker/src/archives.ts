@@ -177,6 +177,7 @@ export async function downloadArchiveRoute(
     return json({ file: fileView(row), results: summary });
   }
   const format = parseExportFormat(url.searchParams.get('format'));
+  if (format === null) return json({ error: 'invalid-format' }, 400);
   if (format === 'answers') {
     if (record.answersCsv === undefined) return json({ error: 'answers-not-kept' }, 404);
     return new Response(record.answersCsv, {

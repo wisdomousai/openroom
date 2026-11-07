@@ -140,6 +140,12 @@ describe('full lifecycle e2e (examples/seg-camp.yaml)', () => {
     const countsText = await countsRes.text();
     expect(countsText.split('\n')[0]).toBe('interactionId,prompt,type,status,total,summary');
 
+    const unknownFormat = await call(`/api/sessions/${session.sessionCode}/export?format=everything`, {
+      headers: { authorization: `Bearer ${session.hostToken}` },
+    });
+    expect(unknownFormat.status).toBe(400);
+    expect(await unknownFormat.json()).toEqual({ error: 'invalid-format' });
+
     // ---- export: answers csv (ops / unowned sessions) ------------------------
     const csvExportRes = await call(`/api/sessions/${session.sessionCode}/export?format=answers`, {
       headers: { authorization: `Bearer ${session.hostToken}` },

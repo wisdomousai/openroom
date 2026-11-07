@@ -147,8 +147,8 @@ Before deploying a release that contains these migrations:
   `answers-deleted` and `answers-not-kept`. The host snapshot field `ballots` is `answers`
   and `purgedAt` is `answersDeletedAt`; the participant snapshot field names did not change
   (`yourAnswer`). The entitlement key `rawExport` did not change. Old bookmarks, scripts and
-  Playwright or load-test fixtures that use `format=ballots` do not fail: the relay treats an
-  unknown format as the aggregate CSV, so they download the wrong file. Update them.
+  Playwright or load-test fixtures that use `format=ballots` now get `400 invalid-format`
+  (any unknown format is refused). Update them.
   Session state inside Durable Objects stores `answers` (it was `ballots`); a session that
   is live at deploy time ends, as noted above.
 - The tutoring entity is now a student in every API route, field, error code and table. Old

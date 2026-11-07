@@ -658,6 +658,7 @@ self-hosted: every account sees every flag `true` except `connectors`
 
 - `format=json` — aggregates only. Free until the DO is wiped.
 - `format=csv` — **aggregate** CSV (one row per interaction, counts). Free until the DO is wiped.
+- Any `format` other than `csv` (the default), `json` or `answers` is `400 invalid-format`.
 - `format=answers` — today's per-answer CSV (including `name` when the session is not anonymous). Requires `rawExport` or `identityMode === 'guest-list'`. `410 answers-deleted` after DATA-04 unless a `keep` archive exists.
 
 `session_results` (MCP) stays the JSON aggregate shape. Do not add an answer tool on the free MCP path.

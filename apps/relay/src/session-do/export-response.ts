@@ -11,6 +11,7 @@ import { json } from './http.js';
  */
 export function exportResponse(state: SessionState, url: URL): Response {
   const format = parseExportFormat(url.searchParams.get('format'));
+  if (format === null) return json({ error: 'invalid-format' }, 400);
   const stamp = new Date().toISOString().slice(0, 10);
   if (format === 'json') {
     return json(exportJson(state), 200, {

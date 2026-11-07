@@ -18,9 +18,11 @@ import { savedResults } from './saved-results.js';
 
 export type ExportFormat = 'json' | 'csv' | 'answers';
 
-export function parseExportFormat(raw: string | null): ExportFormat {
+/** No format means csv; any other unknown value is refused rather than guessed. */
+export function parseExportFormat(raw: string | null): ExportFormat | null {
+  if (raw === null || raw === '' || raw === 'csv') return 'csv';
   if (raw === 'json' || raw === 'answers') return raw;
-  return 'csv';
+  return null;
 }
 
 function answerText(answer: Answer): string {

@@ -336,6 +336,7 @@ export async function exportRoute<G>(live: Live<G>, request: Request, url: URL, 
   const auth = await authenticate(live, request, url, sessionCode, 'host');
   if (!auth.ok) return auth.response;
   const format = parseExportFormat(url.searchParams.get('format'));
+  if (format === null) return json({ error: 'invalid-format' }, 400);
   const allowAnswers = format === 'answers' && (await live.authority.mayExportAnswers(sessionCode));
   const exported = await sessionStub(live.env, sessionCode).fetch(
     sessionDoUrl('/__export', { format, ...(allowAnswers ? { allowAnswers: '1' } : {}) }),
