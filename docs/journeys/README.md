@@ -71,9 +71,27 @@ and themes are document content and may use the saved design system's gradients.
 | UC-32 | Shared brand kits | contrast + logo/master authoring + deck copy + trash/restore + scrolling | `e2e/journeys/UC-32-brand-kits.spec.ts` | green in Chromium |
 | UC-31 | Co-facilitation and presenter handoff | shared access + moderation + remote + recovery + removal | `e2e/journeys/UC-31-co-facilitation.spec.ts` | green in Chromium |
 | UC-30 | Workshop sequences and shared group responses | editing + group assignment + spokesperson handoff + private updates | `e2e/journeys/UC-30-workshop-groups.spec.ts` | green in Chromium |
+| UC-39 | First tutoring lesson, from sign-in to the next deck | new tutor + Chromium and WebKit learner browsers | `e2e/journeys/UC-39-first-tutoring-lesson.spec.ts` | green in Chromium and WebKit |
+| UC-40 | One slide composition across displays | editor, stage, phone at 16:9, 16:10 and 4:3 | `e2e/journeys/UC-40-slide-display-parity.spec.ts` | green in Chromium |
+| UC-41 | Homework documents and slide overflow | long homework + overfull slides | `e2e/journeys/UC-41-editor-overflow.spec.ts` | green in Chromium |
+| UC-42 | Empty draft fields | new slides with empty fields | `e2e/journeys/UC-42-empty-drafts.spec.ts` | green on macOS development build |
 | UC-43 | Relay-only session | `examples/seg-camp.yaml` · `myth-great-idea` on a relay without a control plane | `e2e/journeys/UC-43-relay-only.spec.ts` | green in Chromium (needs `OPENROOM_RELAY_URL` + `OPENROOM_RELAY_KEY`) |
+| UC-44 | Participant phone states | iPhone 13 profile, four outlines, personal link | `e2e/journeys/UC-44-participant-phone-states.spec.ts` | green in Chromium |
+| UC-47 | A student's place in the Library | student, folders and decks, group | `e2e/journeys/UC-47-student-place.spec.ts` | green in Chromium |
+| UC-49 | Live console at portrait widths, keyboard, long charts | Presenter deck, long-label sessions, tutoring session | `e2e/journeys/UC-49-live-console-narrow-and-keys.spec.ts` | green in Chromium |
+| UC-50 | Chart labels on the Stage wall | ranking, columns, scale, number histogram | `e2e/journeys/UC-50-wall-chart-labels.spec.ts` | green in Chromium |
+| UC-51 | Notes after a lesson | one student, two decks | `e2e/journeys/UC-51-notes-after-lesson.spec.ts` | green in Chromium |
+| UC-53 | Deck editor recovery | seven decks, stubbed picture and dictionary routes | `e2e/journeys/UC-53-deck-editor-recovery.spec.ts` | green in Chromium |
+| UC-54 | Insert dialogs, pictures and the task pane | decks of one to twelve slides, stubbed dictionary | `e2e/journeys/UC-54-editor-insert-and-panes.spec.ts` | green in Chromium |
+| UC-55 | Desktop: menu save, close prompt, recovery, damaged file, signed out | two `.openroom` files, `RUN_DESKTOP_JOURNEY=1` | `e2e/journeys/UC-55-desktop-save-and-close.spec.ts` | green on macOS development build |
+| UC-56 | Text at the documented budgets fits the wall and the phone | capacity matrix, wall and phone Slide | `e2e/journeys/UC-56-slide-capacity.spec.ts` | green in Chromium |
+| UC-57 | A picture takes its place and size | portrait, square and landscape pictures × three aspects | `e2e/journeys/UC-57-picture-place-size.spec.ts` | green in Chromium |
+| UC-58 | Revealing a part does not move the parts already shown | grids, split lists, centred stacks | `e2e/journeys/UC-58-reveal-stability.spec.ts` | green in Chromium |
+| UC-59 | Slide content fits its box in the editor and on the stage | editor at 1440 × 900, stage at 1920 × 1080 | `e2e/journeys/UC-59-slide-fitting.spec.ts` | green in Chromium |
+| UC-60 | Rejoin a running lesson | student, linked deck, live session | `e2e/journeys/UC-60-live-rejoin.spec.ts` | green when added |
+| UC-61 | Workspace pages at phone and laptop widths | student with two decks and records | `e2e/journeys/UC-61-workspace-widths.spec.ts` | green when added |
 
-Status values: `planned` · `draft` · `red` · `green`.
+Status values: `planned` · `draft` · `red` · `green`. `green when added` means the journey passed when it was committed and has not been re-run since.
 
 ## Contract shape
 
