@@ -642,6 +642,15 @@ describe('step union error pruning', () => {
     expect(result.errors[0]!.message).toContain('cell-0');
     expect(result.errors[0]!.message).not.toContain('^(');
   });
+
+  it('names the allowed reveal values for a bare string other than together', () => {
+    const result = withStep({ id: 's', kind: 'statement', body: 'Le zoo', reveal: 'nope' });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errors).toEqual([
+      expect.objectContaining({ path: '/steps/0/reveal', message: expect.stringContaining('"together" or a list of groups of part keys') }),
+    ]);
+  });
 });
 
 describe('YAML colons in unquoted French text', () => {

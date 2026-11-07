@@ -361,6 +361,11 @@ export function describeSchemaError(err: ErrorObject, input: unknown): SessionEr
   if (err.keyword === 'enum' && Array.isArray(params['allowedValues'])) {
     message = `must be one of: ${quoted(params['allowedValues'] as unknown[])}`;
   }
+  if (err.keyword === 'const' && 'allowedValue' in params) {
+    message = /^\/steps\/\d+\/reveal$/.test(err.instancePath)
+      ? 'must be "together" or a list of groups of part keys, for example [["header"], ["body"]]'
+      : `must be ${JSON.stringify(params['allowedValue'])}`;
+  }
   if (err.keyword === 'pattern' && params['pattern'] === PART_KEY_PATTERN) {
     message =
       `"${String(value)}" is not a part key: the keys are header, stat, body, materials, image, option-N, cell-N, gap-N and el-<element id>; ` +
