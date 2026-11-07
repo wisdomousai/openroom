@@ -959,6 +959,10 @@ describe('learner practice writes', () => {
     expect((await feedback(2, 'save', 'PRIVATE REVISION')).status).toBe(200);
     expect(await (await asLearner(lea, '/api/learner/feedback')).text()).toBe(published);
     expect((await feedback(2, 'publish', 'Stale editor')).status).toBe(409);
+    // A private draft may keep a correction whose words are not in the response yet; sharing it is refused.
+    const unquoted = (action: string) => asBrowser(cookie, `${base}/response-first/feedback`, { method: 'PUT', body: JSON.stringify({ version: 3, action, feedback: { message: 'Draft', corrections: [{ original: 'not in the response', replacement: '', explanation: '' }] } }) });
+    expect(await (await unquoted('publish')).json()).toEqual({ error: 'correction-not-in-submission' });
+    expect((await unquoted('save')).status).toBe(200);
     expect((await asLearner(lea, `${base}/response-first`)).status).toBe(401);
     expect((await asLearner(noor, `${base}/response-first/feedback`, { method: 'PUT', body: '{}' })).status).toBe(401);
     expect((await write('response-second', 'Je suis allée à Berlin.')).status).toBe(200);

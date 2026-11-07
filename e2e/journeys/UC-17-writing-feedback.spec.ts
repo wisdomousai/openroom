@@ -41,11 +41,15 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   const theirWords = page.getByLabel('Their words', { exact: true });
   await expect(theirWords).toBeFocused();
   await theirWords.fill('allé à Paris');
+  // A private draft keeps the unmatched words; sharing them is refused at the field.
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible();
+  await expect(theirWords).not.toHaveAttribute('aria-invalid');
+  await page.getByRole('button', { name: 'Share feedback', exact: true }).click();
   await expect(theirWords).toHaveAttribute('aria-invalid', 'true');
   await expect(theirWords).toHaveAccessibleDescription('These words are not in the response. Copy them exactly as the learner wrote them.');
   await expect(theirWords).toBeFocused();
-  await expect(page.getByRole('alert').filter({ hasText: 'Fix the marked fields, then save again.' })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'Fix the marked fields, then share again.' })).toBeVisible();
   await theirWords.fill('allé');
   await expect(theirWords).not.toHaveAttribute('aria-invalid');
   await page.getByLabel('Suggested wording', { exact: true }).fill('allée');

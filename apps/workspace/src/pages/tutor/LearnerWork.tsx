@@ -49,12 +49,13 @@ type FieldIssues = Record<string, string>;
 /**
  * The checks the worker makes before it stores a draft or shares feedback,
  * named per field so the tutor sees which correction or comment to fix.
+ * A draft is private, so a quote that is not in the response yet only stops Share.
  */
-function feedbackIssues(feedback: LearnerFeedback, body: string): FieldIssues {
+function feedbackIssues(feedback: LearnerFeedback, body: string, action: 'save' | 'publish'): FieldIssues {
   const issues: FieldIssues = {};
   feedback.corrections.forEach((correction, index) => {
     if (!correction.original.trim()) issues[`correction-${index}-original`] = 'Quote the words this correction is about.';
-    else if (!body.includes(correction.original)) issues[`correction-${index}-original`] = 'These words are not in the response. Copy them exactly as the learner wrote them.';
+    else if (action === 'publish' && !body.includes(correction.original)) issues[`correction-${index}-original`] = 'These words are not in the response. Copy them exactly as the learner wrote them.';
   });
   (feedback.audioComments ?? []).forEach((note, index) => {
     if (!note.comment.trim()) issues[`audio-comment-${index}`] = 'Write a comment or remove it.';
@@ -106,7 +107,7 @@ function ReviewForm({ contextId, detail }: { contextId: string; detail: LearnerW
   };
   const save = async (action: 'save' | 'publish') => {
     setError(null); setNotice('');
-    if (markIssues(feedbackIssues(feedback, work.body))) { setError('Fix the marked fields, then save again.'); return; }
+    if (markIssues(feedbackIssues(feedback, work.body, action))) { setError(action === 'publish' ? 'Fix the marked fields, then share again.' : 'Fix the marked fields, then save again.'); return; }
     setBusy(true);
     try {
       const saved = await saveLearnerFeedback(contextId, work.id, { feedback, version, action });

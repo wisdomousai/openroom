@@ -83,8 +83,8 @@ export async function contextWorkRoute(request: Request, env: ControlEnv, contex
   if (!value || (body?.action !== 'save' && body?.action !== 'publish') || !Number.isInteger(body.version) || Number(body.version) < 0) return json({ error: 'invalid-feedback' }, 422);
   if (body.action === 'publish' && !value.message.trim() && value.corrections.length === 0 && !value.audioComments?.length) return json({ error: 'empty-feedback' }, 422);
   if (value.audioComments?.some((note) => row.duration_ms === null || note.atMs > row.duration_ms)) return json({ error: 'invalid-audio-comment' }, 422);
-  // A correction must point to this submitted text, not a later resubmission.
-  if (value.corrections.some((correction) => !row.body.includes(correction.original))) return json({ error: 'correction-not-in-submission' }, 422);
+  // Shared corrections must point to this submitted text, not a later resubmission. A private draft may hold one still being typed.
+  if (body.action === 'publish' && value.corrections.some((correction) => !row.body.includes(correction.original))) return json({ error: 'correction-not-in-submission' }, 422);
   if (body.version !== (row.version ?? 0)) return json({ error: 'feedback-conflict' }, 409);
   const draft = JSON.stringify(value);
   const published = body.action === 'publish' ? draft : row.published_json;
