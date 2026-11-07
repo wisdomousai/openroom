@@ -116,6 +116,17 @@ function Rule() {
   return <span aria-hidden="true" className="my-1.5 w-px shrink-0 self-stretch bg-hairline" />;
 }
 
+/** Consecutive catalog entries with the same starter, in catalog order. */
+function starterRuns<T extends { starter: string }>(items: readonly T[]): T[][] {
+  const runs: T[][] = [];
+  for (const item of items) {
+    const last = runs[runs.length - 1];
+    if (last !== undefined && last[0]!.starter === item.starter) last.push(item);
+    else runs.push([item]);
+  }
+  return runs;
+}
+
 function Row({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-[76px] items-stretch overflow-x-auto px-2 py-2 pb-1.5">{children}</div>
@@ -492,31 +503,36 @@ export function Ribbon(props: RibbonProps) {
               <div key={group.group} className="flex">
                 {index > 0 ? <Rule /> : null}
                 <Group label={group.group}>
-                  {group.items.map((item, itemIndex) => {
-                    const Icon = INSERT_ICONS[item.kind];
-                    // Freeform inserts lead each group; the rule marks where
-                    // boxed compositions end and wired layouts begin.
-                    const previous = group.items[itemIndex - 1];
-                    return (
-                      <Fragment key={item.kind}>
-                      {previous !== undefined && previous.starter !== item.starter ? <Rule /> : null}
-                      <Button
-                        key={item.kind}
-                        type="button"
-                        size="sm"
-                        variant="subtle"
-                        disabled={noBlock}
-                        onClick={() => {
-                          if (item.kind === 'question') props.onOpenAsk();
-                          else props.onInsert(item.kind);
-                        }}
-                      >
-                        <Icon aria-hidden="true" />
-                        {item.label}
-                      </Button>
-                      </Fragment>
-                    );
-                  })}
+                  {/* Freeform inserts lead each group; the rule marks where
+                      boxed compositions end and wired layouts begin. Each run
+                      stacks two buttons per column, so the tab fits a laptop. */}
+                  {starterRuns(group.items).map((run, runIndex) => (
+                    <Fragment key={run[0]!.kind}>
+                      {runIndex > 0 ? <Rule /> : null}
+                      <div className="grid grid-flow-col grid-rows-2 gap-x-1 gap-y-px">
+                        {run.map((item) => {
+                          const Icon = INSERT_ICONS[item.kind];
+                          return (
+                            <Button
+                              key={item.kind}
+                              type="button"
+                              size="sm"
+                              variant="subtle"
+                              className="h-7 justify-start"
+                              disabled={noBlock}
+                              onClick={() => {
+                                if (item.kind === 'question') props.onOpenAsk();
+                                else props.onInsert(item.kind);
+                              }}
+                            >
+                              <Icon aria-hidden="true" />
+                              {item.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </Fragment>
+                  ))}
                 </Group>
               </div>
             ))}
