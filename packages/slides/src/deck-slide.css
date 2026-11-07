@@ -825,7 +825,6 @@
   justify-content: safe center;
   gap: 1.25cqw;
   min-width: 0;
-  padding: 3.75cqw;
   overflow: hidden;
 }
 
@@ -1288,7 +1287,6 @@
   flex-direction: column;
   gap: 1.25cqw;
   min-width: 0;
-  padding: 3.1cqw 3.4cqw;
   overflow: hidden;
 }
 
@@ -1298,7 +1296,6 @@
   justify-content: flex-end;
   justify-content: safe flex-end;
   min-width: 0;
-  padding: 3.1cqw 3.4cqw;
   border-left: 1px solid var(--border);
   background: var(--background);
   overflow: hidden;
@@ -1502,7 +1499,9 @@
 .slide-surface[data-slide-decoration='corner']::after { content: ''; position: absolute; right: 0; bottom: 0; width: 14cqw; height: 1.4cqw; background: var(--slide-accent); pointer-events: none; }
 
 /* Content shares the master's inset; only master backgrounds reach the edge.
-   Regions divide the inner canvas rather than applying competing outer margins. */
+   Regions divide the inner canvas rather than applying competing outer margins.
+   Split and activity regions have no padding of their own: the 3cqw gap is
+   all that separates their columns (COLUMN_GAP in the schema's outline-fit.ts). */
 .slide-surface > .outline-step--layout-split,
 .slide-surface > .outline-step--layout-activity,
 .slide-surface > .outline-step--layout-media { padding: var(--slide-safe-area, 8cqw); }

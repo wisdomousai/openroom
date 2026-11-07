@@ -45,7 +45,11 @@ import type {
 const FOOTER_BAND = 1.6 + 2 * 1.4 * 1.4 + 1.2;
 /** `.slide-surface__logo`: top 2, right 3, 9 x 4 cqw. */
 const LOGO = { top: 2, right: 3, width: 9, height: 4 } as const;
-/** Gap between the two columns of split and activity. */
+/**
+ * Gap between the two columns of split and activity. The regions themselves
+ * have no padding (the master inset rule sets it to 0), so a column's words
+ * get its full width and the content box's full height.
+ */
 const COLUMN_GAP = 3;
 /** Width of the second column when no picture sets it: split 42%, activity 38%. */
 const SPLIT_SUPPORT = 0.42;
