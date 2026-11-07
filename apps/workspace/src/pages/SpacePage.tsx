@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react
 import {
   copyFolder,
   createFolder,
-  facilitateSession,
+  coHostSession,
   getStudent,
   getDeckFileLink,
   getSpaceMembers,
@@ -398,7 +398,7 @@ export function SpacePage({
   const rejoin = async (live: MySession) => {
     setRejoining(true);
     try {
-      onOpenSession({ ...await facilitateSession(live.sessionCode), title: live.title ?? undefined });
+      onOpenSession({ ...await coHostSession(live.sessionCode), title: live.title ?? undefined });
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Could not join the session.', 'error');
     } finally {

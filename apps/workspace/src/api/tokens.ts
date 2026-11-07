@@ -57,6 +57,6 @@ export async function listMySessions(): Promise<MySession[]> {
   return body.sessions ?? [];
 }
 
-export function facilitateSession(code: string): Promise<import('@openroom/editor').StoredSession> {
-  return request(`/api/my/sessions/${encodeURIComponent(code)}/facilitate`, { method: 'POST', mutating: true });
+export function coHostSession(code: string): Promise<import('@openroom/editor').StoredSession> {
+  return request(`/api/my/sessions/${encodeURIComponent(code)}/co-host`, { method: 'POST', mutating: true });
 }

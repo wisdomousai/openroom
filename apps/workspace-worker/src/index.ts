@@ -31,7 +31,7 @@ import {
   type ControlEnv,
   type SessionUser,
 } from './auth.js';
-import { facilitateSessionRoute, facilitatorAccess, facilitatorCommandAllowed, registerSessionFacilitator, type FacilitatorAccess } from './facilitation.js';
+import { coHostSessionRoute, hostAccess, hostCommandAllowed, registerSessionHost, type HostAccess } from './hosting.js';
 import { accountRecapRoute, forwardRecap } from './recap-route.js';
 import { connectionsRoute } from './oauth-connections.js';
 import { mySessionsRoute, recordLiveSession, sessionQuotaExceeded } from './control.js';
@@ -153,28 +153,28 @@ export interface Env extends ControlEnv {
 /**
  * The control plane's authority over the shared live routes. Account-bound
  * host tokens are rechecked against D1 on every call (revoked connection,
- * removed facilitator); `session.end` archives; ballots exports follow the
+ * removed host); `session.end` archives; ballots exports follow the
  * owner's paid access and fall back to the archive.
  */
-function controlAuthority(env: Env): LiveAuthority<FacilitatorAccess> {
+function controlAuthority(env: Env): LiveAuthority<HostAccess> {
   return {
     async host(payload, sessionCode) {
       if (payload.userId === undefined) return { ok: true, canRecover: true };
       if (payload.connectionId && !(await connectionActive(env, payload.connectionId, payload.userId))) {
         return { ok: false, response: json({ error: 'connection-revoked' }, 403) };
       }
-      const facilitator = await facilitatorAccess(env, sessionCode, payload.userId);
-      if (!facilitator) return { ok: false, response: json({ error: 'session-access-revoked' }, 403) };
-      return { ok: true, grant: facilitator, canRecover: facilitator.canRecover };
+      const host = await hostAccess(env, sessionCode, payload.userId);
+      if (!host) return { ok: false, response: json({ error: 'session-access-revoked' }, 403) };
+      return { ok: true, grant: host, canRecover: host.canRecover };
     },
-    commandAllowed: (grant, sessionCode, command) => facilitatorCommandAllowed(env, sessionCode, grant, command),
+    commandAllowed: (grant, sessionCode, command) => hostCommandAllowed(env, sessionCode, grant, command),
     sessionEnded: (sessionCode) => finishEndedSession(env, sessionCode),
     mayExportBallots: (sessionCode) => ownerMayExportBallots(env, sessionCode),
     archivedBallots: (sessionCode) => archivedBallotsCsv(env, sessionCode),
   };
 }
 
-function liveFor(env: Env): Live<FacilitatorAccess> {
+function liveFor(env: Env): Live<HostAccess> {
   return { env, authority: controlAuthority(env) };
 }
 
@@ -184,7 +184,7 @@ function authenticate(
   env: Env,
   sessionCode: string,
   requiredRole?: Role,
-): Promise<LiveAuth<FacilitatorAccess>> {
+): Promise<LiveAuth<HostAccess>> {
   return authenticateLive(liveFor(env), request, url, sessionCode, requiredRole);
 }
 
@@ -230,7 +230,7 @@ function sessionShareUrls(
 export async function createSessionFromOutline(
   env: Env,
   outline: Outline,
-  options: { outlineVersion?: number; user?: SessionUser; entitlementOwnerId?: string; connectionId?: string; reservedCode?: string; initialFacilitator?: { id: string; name: string } } = {},
+  options: { outlineVersion?: number; user?: SessionUser; entitlementOwnerId?: string; connectionId?: string; reservedCode?: string; initialHost?: { id: string; name: string } } = {},
 ): Promise<{ ok: true; session: CreatedSession } | { ok: false; response: Response }> {
   // Durable launches check before reservation. Every direct creation, including MCP,
   // comes through this check before a live audience can be allocated.
@@ -254,7 +254,7 @@ export async function createSessionFromOutline(
     outline,
     sessionCode,
     ...(participantLimit === null ? {} : { participantLimit }),
-    ...(options.initialFacilitator ? { facilitator: options.initialFacilitator } : options.user ? { facilitator: { id: options.user.id, name: options.user.name?.trim().slice(0, 200) || 'Presenter' } } : {}),
+    ...(options.initialHost ? { host: options.initialHost } : options.user ? { host: { id: options.user.id, name: options.user.name?.trim().slice(0, 200) || 'Presenter' } } : {}),
     ...(options.outlineVersion === undefined ? {} : { outlineVersion: options.outlineVersion }),
   });
   if (!initResponse.ok) {
@@ -266,7 +266,7 @@ export async function createSessionFromOutline(
     env,
     sessionCode,
     options.user
-      ? { facilitatorId: options.user.id, userId: options.user.id, ...(options.connectionId ? { connectionId: options.connectionId } : {}) }
+      ? { hostId: options.user.id, userId: options.user.id, ...(options.connectionId ? { connectionId: options.connectionId } : {}) }
       : {},
   );
   return { ok: true, session };
@@ -341,16 +341,16 @@ export async function launchSessionForUser(
     user,
     entitlementOwnerId,
     reservedCode: reserved.code,
-    initialFacilitator: { id: reserved.user_id, name: reserved.name?.trim().slice(0, 200) || 'Presenter' },
+    initialHost: { id: reserved.user_id, name: reserved.name?.trim().slice(0, 200) || 'Presenter' },
     ...(input.connectionId ? { connectionId: input.connectionId } : {}),
   });
   if (!created.ok) return created.response;
-  const access = await facilitatorAccess(env, reserved.code, user.id);
+  const access = await hostAccess(env, reserved.code, user.id);
   if (!access) return json({ error: 'session-not-found' }, 404);
-  const registered = await registerSessionFacilitator(env, reserved.code, access);
+  const registered = await registerSessionHost(env, reserved.code, access);
   if (!registered.ok) return registered;
   const snapshot = async () => {
-    const result = await stub(env, reserved!.code).fetch(doUrl('/__state', { role: 'host', facilitatorId: user.id }));
+    const result = await stub(env, reserved!.code).fetch(doUrl('/__state', { role: 'host', hostId: user.id }));
     if (!result.ok) return null;
     return result.json() as Promise<{ status: 'lobby' | 'live' | 'ended' }>;
   };
@@ -363,7 +363,7 @@ export async function launchSessionForUser(
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         idempotencyKey: `session-launch-${input.sessionId}`,
-        actor: { role: 'host', facilitatorId: user.id },
+        actor: { role: 'host', hostId: user.id },
         command: { command: 'session.start', ...(input.cursor === undefined ? {} : { cursor: input.cursor }) },
       }),
     });
@@ -864,8 +864,8 @@ export default {
     if (path === '/api/me' && request.method === 'GET') {
       return meRoute(request, env);
     }
-    const facilitateMatch = /^\/api\/my\/sessions\/([^/]+)\/facilitate$/.exec(path);
-    if (facilitateMatch && request.method === 'POST') return facilitateSessionRoute(request, env, facilitateMatch[1]!);
+    const coHostMatch = /^\/api\/my\/sessions\/([^/]+)\/co-host$/.exec(path);
+    if (coHostMatch && request.method === 'POST') return coHostSessionRoute(request, env, coHostMatch[1]!);
     const recapMatch = /^\/api\/my\/sessions\/([^/]+)\/recap$/.exec(path);
     if (recapMatch) return accountRecapRoute(request, env, recapMatch[1]!);
     if (path === '/api/my/sessions' && request.method === 'GET') {
@@ -969,7 +969,7 @@ export default {
         const blocked = await requireNamedSessionAccess(env, owner.userId);
         if (blocked !== null) return blocked;
         // Minting a credential is a privilege escalation primitive, so in a space
-        // session a presenter co-facilitator may not; an editor or owner may.
+        // session a presenter co-host may not; an editor or owner may.
         if (owner.spaceId !== null) {
           const minter = await env.DB.prepare('SELECT role FROM space_members WHERE space_id = ?1 AND user_id = ?2')
             .bind(owner.spaceId, auth.payload.userId ?? '')

@@ -213,9 +213,9 @@ export interface QnaState {
 }
 
 export interface SessionState {
-  facilitation: {
+  hosting: {
     presenterId: string;
-    facilitators: Record<string, SessionFacilitator>;
+    hosts: Record<string, SessionHost>;
   };
   /** 8-char Crockford-base32 join code, vowels and ambiguous glyphs removed */
   code: string;
@@ -416,7 +416,7 @@ export interface SessionGroup {
   removed?: boolean;
 }
 
-export interface SessionFacilitator {
+export interface SessionHost {
   id: string;
   name: string;
   /** The session creator and space owner can explicitly recover presentation control. */
@@ -424,7 +424,7 @@ export interface SessionFacilitator {
 }
 
 export type Command =
-  | { command: 'presentation.handoff'; facilitatorId: string }
+  | { command: 'presentation.handoff'; hostId: string }
   | { command: 'presentation.recover' }
   | { command: 'group.set'; group: Omit<SessionGroup, 'removed'> }
   | { command: 'group.remove'; groupId: string }
@@ -523,7 +523,7 @@ export type Command =
 
 export type CommandName = Command['command'];
 
-export type Actor = { role: 'host' | 'participant' | 'stage'; participantId?: string; facilitatorId?: string };
+export type Actor = { role: 'host' | 'participant' | 'stage'; participantId?: string; hostId?: string };
 
 export interface CommandEnvelope {
   idempotencyKey: string;

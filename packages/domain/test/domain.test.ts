@@ -40,7 +40,7 @@ const session: Session = {
 };
 
 let keyCounter = 0;
-function env(command: Command, actor: CommandEnvelope['actor'] = { role: 'host', facilitatorId: 'creator' }): CommandEnvelope {
+function env(command: Command, actor: CommandEnvelope['actor'] = { role: 'host', hostId: 'creator' }): CommandEnvelope {
   keyCounter += 1;
   return { idempotencyKey: `k${keyCounter}`, actor, command };
 }

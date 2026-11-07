@@ -12,7 +12,7 @@ related: [sharing, learner-links, results, homework, account]
 | --- | --- |
 | Space and its folder tree | Current members, according to owner, editor, or presenter role. |
 | Personal API token | The issuing account's control-plane authority. Store it as an account secret. |
-| Live host, stage, and remote links | Their designated role in one live session. Keep host and remote links with the facilitators. |
+| Live host, stage, and remote links | Their designated role in one live session. Keep host and remote links with the hosts. |
 | Access link | One named learner's records within one student, including assigned tasks and published feedback. |
 | Guest link | One personal link for a guest the host named, valid for one session. |
 | Uploaded deck media | Anyone possessing its asset URL. |

@@ -52,11 +52,11 @@ export async function cmdSession(
       else reporter.emit(result);
       return 0;
     }
-    case 'facilitate': {
+    case 'co-host': {
       const code = args.positionals[2];
-      if (!code) throw new UsageError('usage: openroom session facilitate <code> --url <base> --token <personal-token>');
+      if (!code) throw new UsageError('usage: openroom session co-host <code> --url <base> --token <personal-token>');
       const client = clientFor(requireFlag(args, 'url'), deps);
-      const joined = await client.facilitateSession(code, requireFlag(args, 'token'));
+      const joined = await client.coHostSession(code, requireFlag(args, 'token'));
       const state: SessionState = {
         url: client.base, sessionCode: String(joined.sessionCode), code: String(joined.code),
         hostToken: String(joined.hostToken), stageToken: String(joined.stageToken),
@@ -64,13 +64,13 @@ export async function cmdSession(
       };
       const statePath = writeState(state, deps.cwd);
       reporter.line(`Joined session ${state.code}`);
-      reporter.emit({ ok: true, code: state.code, statePath, facilitation: joined.facilitation });
+      reporter.emit({ ok: true, code: state.code, statePath, hosting: joined.hosting });
       return 0;
     }
     case 'handoff': {
-      const facilitatorId = args.positionals[2];
-      if (!facilitatorId) throw new UsageError('usage: openroom session handoff <facilitatorId>');
-      return runCommand({ command: 'presentation.handoff', facilitatorId }, args, reporter, deps);
+      const hostId = args.positionals[2];
+      if (!hostId) throw new UsageError('usage: openroom session handoff <hostId>');
+      return runCommand({ command: 'presentation.handoff', hostId }, args, reporter, deps);
     }
     case 'recover':
       return runCommand({ command: 'presentation.recover' }, args, reporter, deps);

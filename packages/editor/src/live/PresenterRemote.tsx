@@ -1,4 +1,4 @@
-import { FacilitationControls } from './FacilitationControls';
+import { HostingControls } from './HostingControls';
 import { canAdvanceOutline, canRetreatOutline } from './outline-navigation';
 /**
  * Phone-first presenter remote — a companion, not a second console.
@@ -278,7 +278,7 @@ export function PresenterRemote({
           End
         </Button>
       </header>
-      <FacilitationControls snapshot={host.snapshot} run={host.run} />
+      <HostingControls snapshot={host.snapshot} run={host.run} />
 
       <div className="mb-4 flex flex-col gap-1.5 rounded-xl bg-background px-4 py-3.5">
         <span className="text-caption text-muted-foreground">

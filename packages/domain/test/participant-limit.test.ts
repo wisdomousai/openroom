@@ -20,7 +20,7 @@ function admit(state: SessionState, count: number): SessionState {
 }
 
 function host(state: SessionState, command: Command): SessionState {
-  const result = applyCommand(state, { idempotencyKey: command.command, command, actor: { role: 'host', facilitatorId: 'creator' } }, 1);
+  const result = applyCommand(state, { idempotencyKey: command.command, command, actor: { role: 'host', hostId: 'creator' } }, 1);
   if (!result.ok) throw new Error(JSON.stringify(result.error));
   return result.state;
 }

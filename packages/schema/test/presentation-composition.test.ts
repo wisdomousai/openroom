@@ -3,7 +3,7 @@ import { composePresentation, defaultDeckDesign, resolveSlideDesign, validateOut
 
 const outline = (family: 'clean' | 'board'): Outline => ({
   version: 1, meta: { title: family }, design: defaultDeckDesign(family), defaults: { resultVisibility: family === 'board' ? 'hidden-until-close' : 'live', allowAnswerChange: family === 'clean' },
-  steps: [{ id: 'question', kind: 'interaction', interactionId: 'answer', tutorNotes: 'Facilitator guidance' }, { id: 'detail', kind: 'statement', body: 'Explain', breakoutOf: { stepId: 'question', afterKey: 'header' } }, { id: 'unselected', kind: 'interaction', interactionId: 'extra' }],
+  steps: [{ id: 'question', kind: 'interaction', interactionId: 'answer', tutorNotes: 'Host guidance' }, { id: 'detail', kind: 'statement', body: 'Explain', breakoutOf: { stepId: 'question', afterKey: 'header' } }, { id: 'unselected', kind: 'interaction', interactionId: 'extra' }],
   interactions: [{ id: 'answer', type: 'choice', prompt: 'What next?', options: [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }] }, { id: 'extra', type: 'text', prompt: 'Unselected' }],
   homework: { body: 'Homework stays in the source deck' },
 });

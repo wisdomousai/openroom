@@ -47,8 +47,8 @@ Usage:
 
   openroom session start <file> --url <base> --token <personal-token>   (or --admin-key <ops-key>)
   openroom session status
-  openroom session facilitate <code> --url <base> --token <personal-token>
-  openroom session handoff <facilitatorId>
+  openroom session co-host <code> --url <base> --token <personal-token>
+  openroom session handoff <hostId>
   openroom session recover
   openroom session group-set <group.json>
   openroom session group-remove <groupId>
@@ -70,7 +70,7 @@ Usage:
 
 Options:
   --json          machine-readable single-object output on stdout
-  --url <base>    API base URL (deck start, session start and session facilitate require it;
+  --url <base>    API base URL (deck start, session start and session co-host require it;
                   later session commands reuse .openroom.json)
   --force         allow init to overwrite an existing file
   -h, --help      show this help

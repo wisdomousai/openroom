@@ -9,7 +9,7 @@ session, so the host does not start a second session by accident.
 Fixture: demo account bob (cookie re-added without `Secure`), window 1280 × 800.
 A tutoring student "Léa {stamp}" and a deck "Au café {stamp}" linked to that
 student, with one title slide. The session is started from the Library
-inspector. At the end the spec ends the session through the `facilitate`
+inspector. At the end the spec ends the session through the `co-host`
 endpoint and `session.end`.
 
 Surfaces: Library inspector at

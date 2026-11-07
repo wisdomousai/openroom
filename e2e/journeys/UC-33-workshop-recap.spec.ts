@@ -4,7 +4,7 @@ import { createSession, command, hostUrl, join, waitForWorker } from '../fixture
 
 test.beforeAll(async () => { await waitForWorker(); });
 
-test('facilitator selects, reviews and downloads a private-data-free recap, refreshing stale choices explicitly', async ({ page, context }, testInfo) => {
+test('host selects, reviews and downloads a private-data-free recap, refreshing stale choices explicitly', async ({ page, context }, testInfo) => {
   const session = await createSession({ version: 1, meta: { title: 'Making the pilot work' }, qna: { enabled: true }, interactions: [
     { id: 'decision', type: 'choice', prompt: 'Where should we start?', options: [{ id: 'a', label: 'One team', correct: true }, { id: 'b', label: 'Every team', misconception: 'PRIVATE answer guidance' }], notes: 'PRIVATE teaching note' },
     { id: 'ideas', type: 'text', prompt: 'What would make this useful?' },

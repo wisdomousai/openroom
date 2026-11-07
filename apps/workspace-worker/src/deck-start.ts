@@ -4,7 +4,7 @@ import { requireControlUser } from './control-auth';
 import { readJson } from './control-utils';
 import { deckAccess, identifiedNeedsStudent, latestContent, sessionAccess, type SessionLauncher } from './delivery/shared';
 import { requireIdentifiedSessionAccess } from './continuity-access';
-import { facilitateSessionRoute } from './facilitation';
+import { coHostSessionRoute } from './hosting';
 import { spaceRole } from './members';
 import { readEntitlements } from './entitlements';
 import { presentationComposition } from './presentation-start';
@@ -64,7 +64,7 @@ export async function resumeSessionRoute(request: Request, env: ControlEnv & { S
   if (!session || session.deleted_at !== null) return json({ error: 'session-not-found' }, 404);
   const live = await env.DB.prepare('SELECT code FROM live_sessions WHERE session_id = ?1').bind(id).first<{ code: string }>();
   if (!live) return json({ error: 'session-not-started' }, 409);
-  const result = await facilitateSessionRoute(request, env, live.code);
+  const result = await coHostSessionRoute(request, env, live.code);
   if (!result.ok) return result;
   return json({ ...await result.json() as object, sessionId: session.id, deckId: session.deck_id, deckVersion: session.deck_version, presentation: presentationComposition(session) });
 }

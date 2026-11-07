@@ -3,7 +3,7 @@ title: Results, exports, and workshop recaps
 description: Read saved responses, download data, and select material for a shareable recap.
 section: Teaching and follow-up
 order: 190
-related: [live-session, facilitation, notes, limits]
+related: [live-session, hosting, notes, limits]
 ---
 
 ## Download live results

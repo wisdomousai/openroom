@@ -69,7 +69,7 @@ and themes are document content and may use the saved design system's gradients.
 | UC-38 | Saved result files | owner-paid capture, readable report, downloads, downgrade and membership removal | `e2e/journeys/UC-38-saved-results.spec.ts` | green in Chromium with disposable local accounts and real D1/R2/session objects |
 | UC-33 | Selected workshop recap | explicit selection + stale-source refresh + preview + HTML download + privacy | `e2e/journeys/UC-33-workshop-recap.spec.ts` | green in Chromium |
 | UC-32 | Shared brand kits | contrast + logo/master authoring + deck copy + trash/restore + scrolling | `e2e/journeys/UC-32-brand-kits.spec.ts` | green in Chromium |
-| UC-31 | Co-facilitation and presenter handoff | shared access + moderation + remote + recovery + removal | `e2e/journeys/UC-31-co-facilitation.spec.ts` | green in Chromium |
+| UC-31 | Co-hosting and presenter handoff | shared access + moderation + remote + recovery + removal | `e2e/journeys/UC-31-co-hosting.spec.ts` | green in Chromium |
 | UC-30 | Workshop sequences and shared group responses | editing + group assignment + spokesperson handoff + private updates | `e2e/journeys/UC-30-workshop-groups.spec.ts` | green in Chromium |
 | UC-39 | First tutoring lesson, from sign-in to the next deck | new tutor + Chromium and WebKit learner browsers | `e2e/journeys/UC-39-first-tutoring-lesson.spec.ts` | green in Chromium and WebKit |
 | UC-40 | One slide composition across displays | editor, stage, phone at 16:9, 16:10 and 4:3 | `e2e/journeys/UC-40-slide-display-parity.spec.ts` | green in Chromium |

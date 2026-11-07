@@ -63,7 +63,7 @@ export const MCP_TOOLS = {
   deckSaveVersion: 'deck_save_version',
   deckDraftPut: 'deck_draft_put',
   deckStart: 'deck_start',
-  sessionFacilitate: 'session_facilitate',
+  sessionCoHost: 'session_co_host',
   sessionRecap: 'session_recap',
 } as const;
 

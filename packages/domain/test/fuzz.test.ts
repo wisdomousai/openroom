@@ -169,7 +169,7 @@ function randomCommand(
   const isParticipantCommand = command.command === 'answer.submit' || command.command === 'qna.vote';
   const actor: CommandEnvelope['actor'] = isParticipantCommand
     ? { role: 'participant', participantId: pick(rng, PARTICIPANT_POOL) }
-    : { role: 'host', facilitatorId: 'creator' };
+    : { role: 'host', hostId: 'creator' };
 
   return {
     idempotencyKey: `fuzz-${Math.floor(rng() * 1e9)}`,

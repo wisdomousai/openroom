@@ -156,6 +156,18 @@ Before deploying a release that contains these migrations:
   the host copies the link again.
 - Participants inside Durable Objects store the name under `name` (it was `handle`). This
   is part of the live state that ends at deploy.
+- Facilitators are now hosts. No D1 table or column, R2 object or archive names a
+  facilitator, so this change has no D1 migration and no script. The session state inside
+  Durable Objects holds `hosting.hosts` (it was `facilitation.facilitators`), and host tokens
+  carry `hostId` (it was `facilitatorId`). A session that is live at deploy time ends: its
+  state does not load under the new keys, and every host, stage-remote and capability token
+  issued before the deploy fails verification. Hosts reopen the session from the Library
+  with their account; a relay-only presenter starts a new session. External callers that use
+  `POST /api/my/sessions/:code/facilitate`, the MCP tool `session_facilitate`, the CLI
+  command `session facilitate`, the `presentation.handoff` field `facilitatorId` or the
+  `facilitation` object in session snapshots must switch to `/co-host`, `session_co_host`,
+  `session co-host`, `hostId` and `hosting`. Host tokens kept in an old `.openroom.json`
+  file of the CLI stop working; run `openroom session co-host <code>` again.
 
 | Migration | Rename |
 | --- | --- |

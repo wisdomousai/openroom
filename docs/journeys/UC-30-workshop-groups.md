@@ -2,7 +2,7 @@
 
 Status: green in local Chromium (2026-09-18).
 
-The facilitator can add a complete workshop sequence to an ordinary deck, edit its
+The host can add a complete workshop sequence to an ordinary deck, edit its
 questions, then collect a single shared response from each explicitly assigned group.
 
 ## Editor journey
@@ -45,12 +45,12 @@ questions, then collect a single shared response from each explicitly assigned g
 Executable browser evidence: `e2e/journeys/UC-30-workshop-groups.spec.ts`.
 Focused domain/Worker tests cover authorization, projection, coalescing and retention.
 
-This journey does not establish co-facilitator authorization, presenter ownership handoff,
+This journey does not establish co-host authorization, presenter ownership handoff,
 selected recap export, PowerPoint integration, signed Desktop distribution, Safari,
 Windows, physical phones, or a production deployment. Those remain separate plan items.
 
 Final verification: both UC-30 journeys and all three UC-03 journeys passed in one
-run. The workshop gallery, saved deck, facilitator group pane and phone receipt
+run. The workshop gallery, saved deck, host group pane and phone receipt
 were visually inspected. Artifacts: `/tmp/openroom-workshop-verified-20260918/`.
 The first editor run caught a stale Saved indicator; the final run checks the
 acknowledged draft immediately after Saved before reloading.

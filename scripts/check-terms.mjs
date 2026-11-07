@@ -40,6 +40,13 @@ export const BANNED = [
     pattern: /student_json|StudentFields|student-fields|fieldsFromStudent|studentFromFields|StudentChip|studentChips|studentIsEmpty|StudentDialog|student-must-be-object|student-too-large/i,
     use: 'profile (profile, profile_json, ProfileFields, profile-fields.ts, profile-must-be-object, profile-too-large; UI: "{Name}\u2019s profile")',
   },
+  {
+    name: 'facilitator',
+    pattern: /facilitat/i,
+    // The GPL license text says "facilitating copying of software".
+    exceptPaths: [/(?:^|\/)LICENSE$/],
+    use: 'host, co-host, hosting (hostId, hosts, HostAccess, hosting, /co-host, session_co_host, session co-host, /__host)',
+  },
 ];
 
 const ALLOWED_PATHS = [

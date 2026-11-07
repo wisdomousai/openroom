@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Teachers, lecturers, trainers, workshop facilitators, and independent tutors running live sessions online or in person. They operate under time pressure, often with material received shortly before the hour they teach. Participants need no OpenRoom account to join a session. A tutor can hand one student a revocable access link to that student's own place — a capability scoped to one student, not an account and not a login. The stage can be projected, screen-shared, or shown on a tablet; video calls remain in the tutor's existing video service.
+Teachers, lecturers, trainers, workshop hosts, and independent tutors running live sessions online or in person. They operate under time pressure, often with material received shortly before the hour they teach. Participants need no OpenRoom account to join a session. A tutor can hand one student a revocable access link to that student's own place — a capability scoped to one student, not an account and not a login. The stage can be projected, screen-shared, or shown on a tablet; video calls remain in the tutor's existing video service.
 
 ## Product Purpose
 

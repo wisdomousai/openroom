@@ -8,7 +8,7 @@ import { WORKSHOP_SEQUENCES } from '@openroom/schema';
 
 function send(state: SessionState, command: Command, participantId?: string) {
   return applyCommand(state, { idempotencyKey: 'test', command,
-    actor: participantId ? { role: 'participant', participantId } : { role: 'host', facilitatorId: 'creator' } }, 100);
+    actor: participantId ? { role: 'participant', participantId } : { role: 'host', hostId: 'creator' } }, 100);
 }
 function ok(state: SessionState, command: Command, participantId?: string) {
   const result = send(state, command, participantId);
@@ -114,7 +114,7 @@ describe('session-local group responses', () => {
     state = ok(state, answer(), 'p1');
     state = ok(state, group('p2'));
     expect(send(state, answer(), 'p2')).toMatchObject({ ok: false });
-    expect(applyCommand(state, { idempotencyKey: 'stale', command: group(), actor: { role: 'host', facilitatorId: 'creator' }, expectedRevision: 0 }, 200)).toMatchObject({ ok: false, error: { code: 'E_REVISION_CONFLICT' } });
+    expect(applyCommand(state, { idempotencyKey: 'stale', command: group(), actor: { role: 'host', hostId: 'creator' }, expectedRevision: 0 }, 200)).toMatchObject({ ok: false, error: { code: 'E_REVISION_CONFLICT' } });
     state = ok(state, { command: 'session.freeze' });
     expect(send(state, answer(), 'p2')).toMatchObject({ ok: false, error: { code: 'E_FROZEN' } });
     state = ok(state, { command: 'session.end' });

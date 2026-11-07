@@ -6,7 +6,7 @@ An Agent Plugins package and Codex / ChatGPT plugin for OpenRoom. Compatible cli
   at `https://openroom.app/api/mcp`, with tools
   `outline_validate`, `session_create`, `session_status`,
   `session_results`, `openroom_api`, `deck_get`, `deck_preview`,
-  `deck_save_version`, `deck_draft_put`, `deck_start`, `session_facilitate`, `session_recap`, `session_command`,
+  `deck_save_version`, `deck_draft_put`, `deck_start`, `session_co_host`, `session_recap`, `session_command`,
   and `picture_search`.
   `deck_preview` returns a read-only ChatGPT widget (`text/html+skybridge`);
   clients without UI support receive the validated preview data as ordinary JSON text. Auth is

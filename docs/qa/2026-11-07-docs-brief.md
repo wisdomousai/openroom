@@ -972,8 +972,8 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  "surface": "docs",
  "kind": "defect",
  "severity": "medium",
- "observed": "docs/AGENT.md:73-96 prescribes `openroom session start session.yaml --url $BASE --admin-key $KEY`, an HTTP table using header x-openroom-admin, and says 'That is the whole happy path'. The same file (lines 147-155) says to prefer a personal token and that the ops key is limited to ops requests. `session start` has no --token option: with the PAT as --admin-key it answers 'error: POST /api/sessions -> unauthorized'; with --token it answers 'missing required option --admin-key'. A tutor's agent has only a PAT. What works for a tutor is `deck start` followed by `session facilitate <code> --token`, which the happy path never mentions; `deck start` itself prints no stage URL and does not write .openroom.json, and a following `session status` says 'run \"openroom session start\" first', pointing back at the command that cannot work.",
- "expected": "The documented happy path works with the credential the Settings page hands out, and the CLI error after `deck start` points at `session facilitate`.",
+ "observed": "docs/AGENT.md:73-96 prescribes `openroom session start session.yaml --url $BASE --admin-key $KEY`, an HTTP table using header x-openroom-admin, and says 'That is the whole happy path'. The same file (lines 147-155) says to prefer a personal token and that the ops key is limited to ops requests. `session start` has no --token option: with the PAT as --admin-key it answers 'error: POST /api/sessions -> unauthorized'; with --token it answers 'missing required option --admin-key'. A tutor's agent has only a PAT. What works for a tutor is `deck start` followed by `session co-host <code> --token`, which the happy path never mentions; `deck start` itself prints no stage URL and does not write .openroom.json, and a following `session status` says 'run \"openroom session start\" first', pointing back at the command that cannot work.",
+ "expected": "The documented happy path works with the credential the Settings page hands out, and the CLI error after `deck start` points at `session co-host`.",
  "repro": [
   "Create a token in Settings.",
   "openroom init s.yaml; openroom session start s.yaml --url <origin> --admin-key <orpat_ token> -> unauthorized.",
@@ -984,7 +984,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "docs/AGENT.md:73-96, 142-155",
   "packages/cli/src/commands/session.ts:180-190",
   "packages/cli/src/state.ts:46-55 (E_NO_SESSION text)",
-  "apps/site/src/content/docs/cli.md:60-66 (the manual does show deck start then session facilitate)"
+  "apps/site/src/content/docs/cli.md:60-66 (the manual does show deck start then session co-host)"
  ],
  "files": [
   "docs/AGENT.md",
@@ -992,7 +992,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
   "packages/cli/src/state.ts",
   "packages/cli/src/commands/deck.ts"
  ],
- "fix": "Rewrite the docs/AGENT.md happy path around token + deck start + session facilitate and keep the ops-key flow labelled as operator/self-host only. Change E_NO_SESSION to name both `session start` and `session facilitate <code> --token`. Optionally let `session start` accept --token (POST /api/sessions already accepts a PAT) and let `deck start` write the state file. Fix the 'open the live console' help text. Do not duplicate command lists in more places (AGENTS.md one source per fact).",
+ "fix": "Rewrite the docs/AGENT.md happy path around token + deck start + session co-host and keep the ops-key flow labelled as operator/self-host only. Change E_NO_SESSION to name both `session start` and `session co-host <code> --token`. Optionally let `session start` accept --token (POST /api/sessions already accepts a PAT) and let `deck start` write the state file. Fix the 'open the live console' help text. Do not duplicate command lists in more places (AGENTS.md one source per fact).",
  "needsDecision": false,
  "rules": [
   "AGENTS.md one source per fact",
@@ -1000,7 +1000,7 @@ Update the manual, reference docs, plugin docs and landing page after the code c
  ],
  "scenario": "agent-path",
  "verdict": "confirmed",
- "verdictReason": "Reproduced with the built CLI. `session start s.yaml --admin-key <orpat_>` answers 'error: POST /api/sessions -> unauthorized'; with --token it exits 2 'missing required option --admin-key'; it only works with the deployment ops key (dev-admin). `deck start <id> --url --token` prints 'session X / code X / join /join/?code=X', writes no .openroom.json, and the next `session status` says 'no active session ... run \"openroom session start\" first' (packages/cli/src/state.ts:46-55). docs/AGENT.md:73-96 presents the ops-key flow as 'the whole happy path', while the same file (142-155) says tutors use a personal token. The public manual apps/site/src/content/docs/cli.md:60-66 already shows the working path (deck start, then session facilitate, which stores state), so the damage is the internal canonical doc, the E_NO_SESSION text, and the help line 'deck start ... open the live console' (nothing opens). Downgraded from high to medium because the public manual and MCP are correct.",
+ "verdictReason": "Reproduced with the built CLI. `session start s.yaml --admin-key <orpat_>` answers 'error: POST /api/sessions -> unauthorized'; with --token it exits 2 'missing required option --admin-key'; it only works with the deployment ops key (dev-admin). `deck start <id> --url --token` prints 'session X / code X / join /join/?code=X', writes no .openroom.json, and the next `session status` says 'no active session ... run \"openroom session start\" first' (packages/cli/src/state.ts:46-55). docs/AGENT.md:73-96 presents the ops-key flow as 'the whole happy path', while the same file (142-155) says tutors use a personal token. The public manual apps/site/src/content/docs/cli.md:60-66 already shows the working path (deck start, then session co-host, which stores state), so the damage is the internal canonical doc, the E_NO_SESSION text, and the help line 'deck start ... open the live console' (nothing opens). Downgraded from high to medium because the public manual and MCP are correct.",
  "reproduced": true
 }
 ```

@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { facilitatorAccounts } from '../fixtures/facilitators';
+import { hostAccounts } from '../fixtures/hosts';
 import { waitForWorker } from '../fixtures/session';
 
 // Billing API and Paddle.js are deterministic fixtures here. Worker tests verify
@@ -45,7 +45,7 @@ async function fixture(context: BrowserContext) {
 }
 test.beforeAll(async () => { await waitForWorker(); });
 test('chooses and cancels a plan, completes checkout only after verified access, and opens billing management', async ({ page }, testInfo) => {
-  const accounts = facilitatorAccounts(), state = await fixture(page.context());
+  const accounts = hostAccounts(), state = await fixture(page.context());
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
   try {
     await accounts.owner.signIn(page.context());

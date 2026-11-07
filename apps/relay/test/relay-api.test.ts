@@ -186,7 +186,7 @@ describe('session routes', () => {
     const accountToken = await signToken(env.TOKEN_SECRET, {
       sessionCode: created.sessionCode,
       role: 'host',
-      facilitatorId: 'user-1',
+      hostId: 'user-1',
       userId: 'user-1',
     });
     const response = await call(`/api/sessions/${created.sessionCode}/state?role=host`, {

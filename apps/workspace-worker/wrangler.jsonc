@@ -15,7 +15,7 @@
     { "pattern": "join.openroom.app", "custom_domain": true }
   ],
   // The live plane is the relay Worker (apps/relay, script "openroom-relay").
-  // SESSIONS binds the relay's SessionDO namespace so launches, facilitator
+  // SESSIONS binds the relay's SessionDO namespace so launches, host
   // registration, recap, archive and the MCP/A2A tools reach a session in one
   // hop; RELAY forwards the stage and participant pages. Deploy the relay
   // first: both bindings resolve against the deployed script.

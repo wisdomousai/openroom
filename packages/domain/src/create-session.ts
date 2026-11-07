@@ -28,7 +28,7 @@ export function createSession(
   document: Session | Outline,
   code: string,
   now: number,
-  options?: { outlineVersion?: number; facilitator?: { id: string; name: string }; participantLimit?: number },
+  options?: { outlineVersion?: number; host?: { id: string; name: string }; participantLimit?: number },
 ): SessionState {
   const outline = asOutline(document);
   const normalized = normalizeSession(toSession(outline));
@@ -53,9 +53,9 @@ export function createSession(
   // `now` is part of the factory signature for symmetry with applyCommand and
   // for future createdAt use; the lobby state itself carries no timestamps.
   void now;
-  const facilitator = { ...(options?.facilitator ?? { id: 'creator', name: 'Presenter' }), canRecover: true };
+  const host = { ...(options?.host ?? { id: 'creator', name: 'Presenter' }), canRecover: true };
   return {
-    facilitation: { presenterId: facilitator.id, facilitators: { [facilitator.id]: facilitator } },
+    hosting: { presenterId: host.id, hosts: { [host.id]: host } },
     code,
     status: 'lobby',
     revision: 0,

@@ -52,8 +52,8 @@ function handler(req: IncomingMessage, res: ServerResponse): void {
       res.end(JSON.stringify(payload));
     };
 
-    if (req.method === 'POST' && url === '/api/my/sessions/CODE1234/facilitate') {
-      send(200, { sessionCode: 'CODE1234', code: 'CODE1234', hostToken: 'joined-host', stageToken: 'joined-stage', facilitation: { canPresent: false } });
+    if (req.method === 'POST' && url === '/api/my/sessions/CODE1234/co-host') {
+      send(200, { sessionCode: 'CODE1234', code: 'CODE1234', hostToken: 'joined-host', stageToken: 'joined-stage', hosting: { canPresent: false } });
       return;
     }
     if (url === '/api/sessions/CODE1234/recap') {
@@ -258,13 +258,13 @@ describe('host live controls over the CLI', () => {
     expect(received.filter((item) => item.url.endsWith('/commands')).every((item) => item.headers.authorization === 'Bearer host-token')).toBe(true);
   });
 
-  it('facilitates using account auth then hands off with its session capability', async () => {
-    expect(await run(['session', 'facilitate', 'CODE1234', '--url', baseUrl, '--token', 'orpat_personal'], { io: capture().io })).toBe(0);
-    expect(received[0]?.url).toBe('/api/my/sessions/CODE1234/facilitate');
+  it('co-hosts using account auth then hands off with its session capability', async () => {
+    expect(await run(['session', 'co-host', 'CODE1234', '--url', baseUrl, '--token', 'orpat_personal'], { io: capture().io })).toBe(0);
+    expect(received[0]?.url).toBe('/api/my/sessions/CODE1234/co-host');
     expect(received[0]?.headers.authorization).toBe('Bearer orpat_personal');
     expect(await run(['session', 'handoff', 'other'], { io: capture().io })).toBe(0);
     expect(await run(['session', 'recover'], { io: capture().io })).toBe(0);
-    expect(commandsSent()).toEqual([{ command: 'presentation.handoff', facilitatorId: 'other' }, { command: 'presentation.recover' }]);
+    expect(commandsSent()).toEqual([{ command: 'presentation.handoff', hostId: 'other' }, { command: 'presentation.recover' }]);
     expect(received.filter((item) => item.url.endsWith('/commands')).every((item) => item.headers.authorization === 'Bearer joined-host')).toBe(true);
   });
 

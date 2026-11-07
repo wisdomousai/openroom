@@ -53,7 +53,7 @@ export interface Env extends LiveEnv {
 }
 
 /** The host seat on a relay session is the one its creator holds. */
-const RELAY_FACILITATOR_ID = 'creator';
+const RELAY_HOST_ID = 'creator';
 
 /**
  * Standalone authority: the capability token is the whole credential.
@@ -137,12 +137,12 @@ async function createSessionRoute(request: Request, env: Env): Promise<Response>
       outline,
       sessionCode,
       outlineVersion: 1,
-      facilitator: { id: RELAY_FACILITATOR_ID, name: 'Presenter' },
+      host: { id: RELAY_HOST_ID, name: 'Presenter' },
       ...(participantLimit === undefined ? {} : { participantLimit }),
     });
     if (init.status === 409) continue; // code already taken — draw another
     if (!init.ok) return withApiHeaders(init);
-    const created = await issueSessionTokens(env, sessionCode, { facilitatorId: RELAY_FACILITATOR_ID });
+    const created = await issueSessionTokens(env, sessionCode, { hostId: RELAY_HOST_ID });
     return json(created, 201);
   }
   return json({ ok: false, error: 'session-allocation-failed' }, 503);

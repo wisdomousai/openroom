@@ -1,7 +1,7 @@
 import { normalizeSessionCode } from '@openroom/domain';
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
-import { facilitatorAccess } from './facilitation.js';
+import { hostAccess } from './hosting.js';
 
 type RecapEnv = ControlEnv & { SESSIONS: DurableObjectNamespace };
 
@@ -19,6 +19,6 @@ export async function accountRecapRoute(request: Request, env: RecapEnv, rawCode
   if (!guard.ok) return guard.response;
   if (!['GET', 'POST'].includes(request.method)) return json({ error: 'method-not-allowed' }, 405);
   const code = normalizeSessionCode(decodeURIComponent(rawCode));
-  if (!await facilitatorAccess(env, code, guard.user.id)) return json({ error: 'session-not-found' }, 404);
+  if (!await hostAccess(env, code, guard.user.id)) return json({ error: 'session-not-found' }, 404);
   return forwardRecap(request, env, code);
 }

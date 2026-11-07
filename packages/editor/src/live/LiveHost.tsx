@@ -1,4 +1,4 @@
-import { FacilitationControls } from './FacilitationControls';
+import { HostingControls } from './HostingControls';
 import { focusOwnsKey, usePresentationKeys } from '../presenter/usePresentationKeys';
 import { canAdvanceOutline, canRetreatOutline } from './outline-navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -773,7 +773,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
         </div>
       ) : null}
 
-      <FacilitationControls snapshot={snapshot} run={run} />
+      <HostingControls snapshot={snapshot} run={run} />
       {!ended ? (
         <fieldset disabled={!canPresent} className="min-w-0 border-0 p-0 disabled:opacity-60"><LiveRibbon
           tab={ribbonTab}

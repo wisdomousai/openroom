@@ -121,7 +121,7 @@ describe('guest-list sessions', () => {
     expect(sneak.status).toBe(403);
   });
 
-  it('lets a space editor mint guest links but not a presenter co-facilitator', async () => {
+  it('lets a space editor mint guest links but not a presenter co-host', async () => {
     const owner = await seedUser(JSON.stringify({ guestList: true, team: true }));
     const presenter = await seedUser('{}');
     const space = (await (await asUser(owner, '/api/my/spaces', {
@@ -137,9 +137,9 @@ describe('guest-list sessions', () => {
     });
     expect(created.status).toBe(201);
     const session = (await created.json()) as { sessionCode: string; hostToken: string; code: string };
-    const facilitate = await asUser(presenter, `/api/my/sessions/${session.code}/facilitate`, { method: 'POST' });
-    expect(facilitate.status).toBe(200);
-    const { hostToken } = (await facilitate.json()) as { hostToken: string };
+    const coHost = await asUser(presenter, `/api/my/sessions/${session.code}/co-host`, { method: 'POST' });
+    expect(coHost.status).toBe(200);
+    const { hostToken } = (await coHost.json()) as { hostToken: string };
 
     const refused = await call(`/api/sessions/${session.sessionCode}/guest-links`, {
       method: 'POST',

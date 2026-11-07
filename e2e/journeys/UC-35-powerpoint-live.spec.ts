@@ -1,7 +1,7 @@
 import { colorContrast } from '../../packages/schema/src/brand-kit';
 import { defaultDeckDesign } from '../../packages/schema/src/deck-design';
 import { expect, test, type Page } from '@playwright/test';
-import { facilitatorAccounts } from '../fixtures/facilitators';
+import { hostAccounts } from '../fixtures/hosts';
 import { officeHostFixture } from '../fixtures/office';
 import { command, join, waitForWorker } from '../fixtures/session';
 
@@ -18,7 +18,7 @@ const file = (page: Page) => page.evaluate(() => (window as unknown as { __offic
 test.beforeAll(async () => { await waitForWorker(); });
 test('recovers a lost start response, retains answers across revisits and reloads, and shares control with the companion', async ({ page }, testInfo) => {
   test.setTimeout(120_000);
-  const accounts = facilitatorAccounts();
+  const accounts = hostAccounts();
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
   try {
     await accounts.owner.signIn(page.context()); await officeHostFixture(page.context());

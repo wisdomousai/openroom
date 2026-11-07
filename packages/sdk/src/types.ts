@@ -541,7 +541,7 @@ export type AnswerInput =
   | { kind: 'dont-know' };
 
 export type Command =
-  | { command: 'presentation.handoff'; facilitatorId: string }
+  | { command: 'presentation.handoff'; hostId: string }
   | { command: 'presentation.recover' }
   | { command: 'group.set'; group: SessionGroupView }
   | { command: 'group.remove'; groupId: string }
@@ -885,16 +885,16 @@ export interface SessionGroupView {
   spokespersonId: string | null;
 }
 
-export interface FacilitationView {
+export interface HostingView {
   presenterId: string;
-  facilitators: { id: string; name: string }[];
+  hosts: { id: string; name: string }[];
   yourId: string;
   canPresent: boolean;
   canRecover: boolean;
 }
 
 export interface HostSnapshot {
-  facilitation: FacilitationView;
+  hosting: HostingView;
   groups?: SessionGroupView[];
   participants?: { id: string; label: string }[];
   responseNames?: Record<string, string>;

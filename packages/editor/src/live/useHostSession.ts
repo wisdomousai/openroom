@@ -92,7 +92,7 @@ export function useHostSession(live: StoredSession, onCommitted?: () => void) {
 
   const run = useCallback(
     async (command: HostCommand) => {
-      const permissions = snapshotRef.current?.facilitation;
+      const permissions = snapshotRef.current?.hosting;
       const moderation = ['text.hide', 'text.unhide', 'qna.hide', 'qna.unhide', 'group.set', 'group.remove'].includes(command.command);
       const recovery = command.command === 'presentation.recover' && permissions?.canRecover;
       if (!permissions?.canPresent && !moderation && !recovery) {
@@ -292,7 +292,7 @@ export function useHostSession(live: StoredSession, onCommitted?: () => void) {
     toasts,
     push,
     run,
-    canPresent: snapshot?.facilitation?.canPresent === true,
+    canPresent: snapshot?.hosting?.canPresent === true,
     session,
     items,
     activeId,

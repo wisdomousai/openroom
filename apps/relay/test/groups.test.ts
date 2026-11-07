@@ -7,7 +7,7 @@ import { BASE, command, createSessionWithOutline, join, stateJson, waitFor } fro
 const outline = { version: 1, meta: { title: 'Workshop decisions' },
   defaults: { identityMode: 'nickname', resultVisibility: 'hidden-until-close' },
   interactions: [{ id: 'decision', type: 'text', prompt: 'What should we try?', responseMode: 'group',
-    notes: 'Private facilitator note', pedagogy: { explanation: 'Private debrief guidance' } }],
+    notes: 'Private host note', pedagogy: { explanation: 'Private debrief guidance' } }],
   steps: [{ id: 'decision', kind: 'interaction', interactionId: 'decision' }] };
 
 describe('group responses over HTTP and WebSocket', () => {

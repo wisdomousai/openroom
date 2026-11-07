@@ -123,7 +123,7 @@ export interface ToolDeps {
     path: string,
     body?: unknown,
   ): Promise<{ status: number; body: unknown }>;
-  /** Apply one command with the caller’s current facilitator authority (pass idempotencyKey for safe retries). */
+  /** Apply one command with the caller’s current host authority (pass idempotencyKey for safe retries). */
   sessionCommand(
     code: string,
     command: Record<string, unknown>,
@@ -503,15 +503,15 @@ const TOOLS: ToolDefinition[] = [
     },
   },
   {
-    name: 'session_facilitate',
+    name: 'session_co_host',
     annotations: WRITE,
-    description: 'Join an existing live session as a facilitator using your account and current space membership. Shared access uses the space owner’s team entitlement; invitees need no licence. Returns session capabilities and facilitation (presenterId, facilitators, yourId, canPresent, canRecover). Joining never takes presentation control. Use presentation.handoff through session_command to pass control to a joined facilitator, or presentation.recover if you are the session creator or space owner. Names are session-local; this grants no learner identity.',
+    description: 'Join an existing live session as a host using your account and current space membership. Shared access uses the space owner’s team entitlement; invitees need no licence. Returns session capabilities and hosting (presenterId, hosts, yourId, canPresent, canRecover). Joining never takes presentation control. Use presentation.handoff through session_command to pass control to a joined host, or presentation.recover if you are the session creator or space owner. Names are session-local; this grants no learner identity.',
     inputSchema: { type: 'object', properties: { code: { type: 'string', description: 'Session join code.' } }, required: ['code'], additionalProperties: false },
   },
   {
     name: 'session_recap',
     annotations: READ_ONLY,
-    description: 'Prepare a facilitator-selected workshop recap. With code only, returns candidate results (choice/scale/numeric/ranking), visible discussion points and visible Q&A, each with an id, plus source revision and title. Nothing is selected by default. With selection, returns an identity-free JSON document containing only the selected content and your supplied discussion/followUp. Obtain the facilitator’s choice of what to share; review authored and audience text for any names it contains. No participant ids, handles, raw numeric values, private notes, answer keys or hidden text are copied. Selection requires revision from the candidate response, title (1–160 characters), resultIds, discussionIds, questionIds (arrays, up to 200 each), discussion and followUp (plain text, up to 10000 characters each; use empty strings when omitted). 409 recap-source-changed means fetch candidates again and reselect; never silently reuse ids against a newer revision. 422 rejects invalid, unavailable or empty selections; 410 means the source was purged. Requires current account/space facilitator access, including the owner team entitlement for shared access. This reads live state without joining or taking control. The returned document is not saved or published; share only after the facilitator reviews it.',
+    description: 'Prepare a host-selected workshop recap. With code only, returns candidate results (choice/scale/numeric/ranking), visible discussion points and visible Q&A, each with an id, plus source revision and title. Nothing is selected by default. With selection, returns an identity-free JSON document containing only the selected content and your supplied discussion/followUp. Obtain the host’s choice of what to share; review authored and audience text for any names it contains. No participant ids, handles, raw numeric values, private notes, answer keys or hidden text are copied. Selection requires revision from the candidate response, title (1–160 characters), resultIds, discussionIds, questionIds (arrays, up to 200 each), discussion and followUp (plain text, up to 10000 characters each; use empty strings when omitted). 409 recap-source-changed means fetch candidates again and reselect; never silently reuse ids against a newer revision. 422 rejects invalid, unavailable or empty selections; 410 means the source was purged. Requires current account/space host access, including the owner team entitlement for shared access. This reads live state without joining or taking control. The returned document is not saved or published; share only after the host reviews it.',
     inputSchema: {
       type: 'object', properties: { code: { type: 'string' }, selection: {
         type: 'object', properties: { revision: { type: 'integer', minimum: 0 }, title: { type: 'string', minLength: 1, maxLength: 160 }, resultIds: { type: 'array', items: { type: 'string' }, maxItems: 200 }, discussionIds: { type: 'array', items: { type: 'string' }, maxItems: 200 }, questionIds: { type: 'array', items: { type: 'string' }, maxItems: 200 }, discussion: { type: 'string', maxLength: 10000 }, followUp: { type: 'string', maxLength: 10000 } }, required: ['revision', 'title', 'resultIds', 'discussionIds', 'questionIds', 'discussion', 'followUp'], additionalProperties: false,
@@ -522,7 +522,7 @@ const TOOLS: ToolDefinition[] = [
     name: 'session_command',
     annotations: DESTRUCTIVE_WRITE,
     description:
-      'Control a live session you created or joined with session_facilitate. Only the active presenter may change slides, reveals, timers, playback settings, annotations, or end the session. Other facilitators may use text.hide/unhide, qna.hide/unhide and group.set/remove. presentation.handoff takes {facilitatorId} from the joined facilitator list, retaining slide, reveal and ballot state. presentation.recover restores control to the current caller, only for the creator or space owner. Account/space access is rechecked on every request. Supports every host command, ' +
+      'Control a live session you created or joined with session_co_host. Only the active presenter may change slides, reveals, timers, playback settings, annotations, or end the session. Other hosts may use text.hide/unhide, qna.hide/unhide and group.set/remove. presentation.handoff takes {hostId} from the joined host list, retaining slide, reveal and ballot state. presentation.recover restores control to the current caller, only for the creator or space owner. Account/space access is rechecked on every request. Supports every host command, ' +
       'including session.start/end/freeze/unfreeze/advance, interaction open/close/reveal, session.theme, and ' +
       'outline.goto/next/previous/insert/replace. Use outline.insert only after the tutor has approved a private AI preview. ' +
       'Drive a session that has slides (every deck) with outline.next/previous/goto: they open the question on an interaction slide and close it on leaving. session.advance only opens the next pending question and does not move the slide. ' +
@@ -873,8 +873,8 @@ export async function callTool(
         ...launched,
       };
     }
-    case 'session_facilitate': {
-      const result = await deps.controlRequest('POST', `/api/my/sessions/${encodeURIComponent(requireString(args, 'code'))}/facilitate`);
+    case 'session_co_host': {
+      const result = await deps.controlRequest('POST', `/api/my/sessions/${encodeURIComponent(requireString(args, 'code'))}/co-host`);
       return { ok: result.status >= 200 && result.status < 300, ...result };
     }
     case 'session_recap': {

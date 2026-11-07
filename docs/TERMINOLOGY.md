@@ -139,6 +139,7 @@ records.
 | --- | --- | --- | --- |
 | **Session** | session (`/api/sessions*`) | One **deck that was started**: who (student), which deck version, the live plane, the Notes written afterwards. | Nested under deck / student / space folder; `#/sessions/:code`, `#/sessions/:id/record`. |
 | **Live session** | the ephemeral plane (Durable Object + `/api/sessions/:code/*`) | Ephemeral synchronized live state: host, stage, participants, ballots. Lifecycle is driven by the `session.*` commands. Purged on a short TTL. | Host console, remote, stage, participant join. **Live now** · **Rejoin** in the Library and the deck editor. |
+| **Host** (of a session) · **co-host** · **hosting** | host (`hostId`, `hosts`, `HostAccess`), co-host (`POST /api/my/sessions/:code/co-host`, MCP `session_co_host`, CLI `session co-host`), hosting (`state.hosting`, `HostingView`) | An account that can run a live session. Extra hosts joined to a session are co-hosts. The active one is the presenter (`presenterId`); co-hosts moderate and organize groups, and a handoff passes the presenter role. | Host console, **Hosts** strip, `#/sessions/:code`. Not the host workspace (`/host/`) and not the `host` token role, which is what a host's token carries. |
 | **Notes** | session record | Compact post-session outcomes (not a transcript). UI word is **Notes**; API/DB word stays `record`. | `#/sessions/:id/record`; a typed row in the session’s folder. |
 
 ### A session is browsable, but not a library peer
@@ -318,6 +319,7 @@ Facts only. Noun labels and bare verbs. No first-person, no narrative, no metaph
 | People (as a nav shelf) | **Students** as folder rows in the rail group; the entity is a **student** in UI and API alike |
 | Context (the tutoring entity), contexts, `contextId`, `context_access_links`, `/api/tutoring/contexts`, "context access link" | **Student** (`student`, `studentId`, `student_access_links`, `/api/tutoring/students`); **student access link** in docs, **access link** in UI |
 | The details object of a student called `student` (`student.student`, request field `student`, `students.student_json`, `student-must-be-object`, `student-too-large`, "{Name}’s student" dialog title) | **Profile** (`profile`, `profile_json`, `profile-must-be-object`, `profile-too-large`, "{Name}’s profile") |
+| Facilitator, co-facilitator, facilitation, `facilitatorId`, `facilitators`, `FacilitatorAccess`, `/api/my/sessions/:code/facilitate`, `session_facilitate`, `session facilitate`, `/__facilitator` | **Host**, **co-host**, **hosting** (`hostId`, `hosts`, `HostAccess`, `/api/my/sessions/:code/co-host`, `session_co_host`, `session co-host`, `/__host`) |
 | Prep / Outline Designer / Session Builder / Builder / “Edit outline file” | **Open** / **Edit deck**; in code, `DeckEditor` |
 | Schedule / book / “Not scheduled yet” | **Start session** — a session is started, never booked |
 | Run (as a noun for a started teaching) | **Session** |

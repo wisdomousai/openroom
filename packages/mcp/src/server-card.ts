@@ -55,7 +55,7 @@ export function buildMcpServerCard(options: {
       name: serverInfo.name,
       version: serverInfo.version,
       description:
-        'OpenRoom facilitated interactions and tutoring sessions. Prepare and save typed outlines, ' +
+        'OpenRoom hosted interactions and tutoring sessions. Prepare and save typed outlines, ' +
         'manage students and decks, start sessions, control them live, and read aggregate results.',
       homepage: origin,
     },

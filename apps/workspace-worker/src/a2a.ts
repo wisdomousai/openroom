@@ -71,7 +71,7 @@ function makeDeps(env: Env, identity: A2aIdentity): ToolDeps {
         const user = await env.DB.prepare('SELECT id, name, email FROM users WHERE id = ?1').bind(identity.userId).first<{ id: string; name: string | null; email: string }>();
         if (!user) throw new Error('unauthorized');
         // Bind the host token to the account and connection, as MCP does, so
-        // revoking the connection or the facilitator seat ends host control.
+        // revoking the connection or the host seat ends host control.
         const created = await createSessionFromOutline(env, validation.outline, { user, ...(identity.connectionId ? { connectionId: identity.connectionId } : {}) });
         if (!created.ok) throw new Error('session-init-failed');
         await recordLiveSession(env, created.session.code, identity.userId, validation.outline.meta.title, now);

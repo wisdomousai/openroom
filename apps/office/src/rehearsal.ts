@@ -13,7 +13,7 @@ export function rehearse(outline: Outline, stepId: string, now = Date.now()): Se
 }
 
 export function rehearsalCommand(state: SessionState, command: Command, now = Date.now()): SessionState {
-  const result = applyCommand(state, { idempotencyKey: 'local-rehearsal', actor: { role: 'host', facilitatorId: state.facilitation.presenterId }, command }, now);
+  const result = applyCommand(state, { idempotencyKey: 'local-rehearsal', actor: { role: 'host', hostId: state.hosting.presenterId }, command }, now);
   if (!result.ok) throw new Error(result.error.message);
   return result.state;
 }

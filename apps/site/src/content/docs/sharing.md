@@ -3,7 +3,7 @@ title: Share a space
 description: Invite colleagues, set their roles, and manage access to shared decks and live sessions.
 section: Workspace
 order: 30
-related: [library, facilitation, learner-links, account]
+related: [library, hosting, learner-links, account]
 ---
 
 ## Invite a colleague
@@ -31,7 +31,7 @@ If acceptance fails, check the signed-in email and ask the owner to confirm the 
 | --- | --- |
 | Owner | Manage the space, invite and remove members, change member roles, and perform all editor and presenter work. |
 | Editor | Create and edit decks and teaching records, organize content, manage learner access links, and start sessions. |
-| Presenter | Read shared material and start or facilitate permitted sessions. |
+| Presenter | Read shared material and start or host permitted sessions. |
 
 Sharing applies to the space's folder tree. Place material requiring a different group of colleagues in another space.
 
@@ -49,9 +49,9 @@ The owner's row is managed by the space. The member role form offers Editor and 
 
 The audience remains in its session after a colleague's removal. Current membership is checked when a colleague attempts further host operations.
 
-## Share live facilitation
+## Share live hosting
 
-Open the ongoing session from the shared space. Use the facilitation controls to join the host team, moderate questions, and hand over presentation. One facilitator holds presenter control at a time; the other facilitators can use the supported moderation controls.
+Open the ongoing session from the shared space. Use the hosting controls to join the host team, moderate questions, and hand over presentation. One host holds presenter control at a time; the other hosts can use the supported moderation controls.
 
 An already-created collaborative session keeps its collaboration setting if the owner's subscription changes. Each colleague still needs current space membership and a valid connection.
 

@@ -1,7 +1,7 @@
 ---
 title: Present, annotate, and explain
 description: Navigate slides, use an audience screen, mark passages, and control listening and word lookup.
-section: Teach and facilitate
+section: Teach and host
 order: 90
 related: [live-session, slides, media, shortcuts]
 ---

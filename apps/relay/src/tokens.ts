@@ -14,7 +14,7 @@ export interface TokenPayload {
   sessionCode: string;
   role: Role;
   participantId?: string;
-  facilitatorId?: string;
+  hostId?: string;
   /** Account identity for live access rechecks; never a control-plane credential. */
   userId?: string;
   /** Issuing OAuth connection, when present. Revocation applies to this host seat too. */
@@ -78,7 +78,7 @@ export async function signToken(
     sessionCode: payload.sessionCode,
     role: payload.role,
     ...(payload.participantId === undefined ? {} : { participantId: payload.participantId }),
-    ...(payload.role === 'host' ? { facilitatorId: payload.facilitatorId ?? 'creator', ...(payload.userId === undefined ? {} : { userId: payload.userId }) } : {}),
+    ...(payload.role === 'host' ? { hostId: payload.hostId ?? 'creator', ...(payload.userId === undefined ? {} : { userId: payload.userId }) } : {}),
     ...(payload.role === 'host' && payload.connectionId ? { connectionId: payload.connectionId } : {}),
     exp,
   };
@@ -117,16 +117,16 @@ export async function verifyToken(
   }
   if (typeof parsed !== 'object' || parsed === null) return { ok: false, reason: 'malformed' };
   const candidate = parsed as Record<string, unknown>;
-  const { sessionCode, role, participantId, facilitatorId, userId, connectionId, exp } = candidate;
+  const { sessionCode, role, participantId, hostId, userId, connectionId, exp } = candidate;
   if (
     typeof sessionCode !== 'string' ||
     (role !== 'host' && role !== 'participant' && role !== 'stage') ||
     typeof exp !== 'number' ||
     (participantId !== undefined && typeof participantId !== 'string') ||
-    (role === 'host' && (typeof facilitatorId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(facilitatorId))) ||
-    (userId !== undefined && (role !== 'host' || typeof userId !== 'string' || userId !== facilitatorId)) ||
+    (role === 'host' && (typeof hostId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(hostId))) ||
+    (userId !== undefined && (role !== 'host' || typeof userId !== 'string' || userId !== hostId)) ||
     (connectionId !== undefined && (role !== 'host' || typeof userId !== 'string' || typeof connectionId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(connectionId))) ||
-    (role !== 'host' && facilitatorId !== undefined)
+    (role !== 'host' && hostId !== undefined)
   ) {
     return { ok: false, reason: 'malformed' };
   }
@@ -138,7 +138,7 @@ export async function verifyToken(
       sessionCode,
       role,
       ...(participantId === undefined ? {} : { participantId }),
-      ...(role === 'host' ? { facilitatorId: facilitatorId as string, ...(userId === undefined ? {} : { userId: userId as string }) } : {}),
+      ...(role === 'host' ? { hostId: hostId as string, ...(userId === undefined ? {} : { userId: userId as string }) } : {}),
       ...(connectionId === undefined ? {} : { connectionId: connectionId as string }),
       exp,
     },

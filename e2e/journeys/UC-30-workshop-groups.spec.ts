@@ -52,7 +52,7 @@ test('workshop gallery inserts editable, themed sequences and preserves response
   await page.screenshot({ path: testInfo.outputPath('workshop-editor.png') });
 });
 
-test('facilitator assigns groups, hands off one shared response and returns to individual answers', async ({ page, browser }, testInfo) => {
+test('host assigns groups, hands off one shared response and returns to individual answers', async ({ page, browser }, testInfo) => {
   const session = await createSession({ version: 1, meta: { title: 'Workshop group decisions' }, defaults: { resultVisibility: 'hidden-until-close' },
     interactions: [
       { id: 'team', type: 'text', prompt: 'What should our group try?', responseMode: 'group', display: 'cards', notes: 'Private group guidance' },
@@ -70,7 +70,7 @@ test('facilitator assigns groups, hands off one shared response and returns to i
   await stage.goto(stageUrl(session));
   const joinPhone = async (phone: Page) => {
     await joinInBrowser(phone, session.code);
-    await expect(phone.getByText('Your facilitator will assign you to a group.')).toBeVisible();
+    await expect(phone.getByText('Your host will assign you to a group.')).toBeVisible();
     const name = (await phone.locator('.topbar .participant-name').textContent())!.trim();
     const dismiss = phone.getByRole('button', { name: 'Dismiss', exact: true });
     if (await dismiss.isVisible()) await dismiss.click();
@@ -106,7 +106,7 @@ test('facilitator assigns groups, hands off one shared response and returns to i
   await expect(first.getByText('Test with one team', { exact: true })).toBeVisible();
   const state = await (await page.request.get(`/api/sessions/${session.code}/state?view=host`, { headers: { authorization: `Bearer ${session.hostToken}` } })).json();
   expect(state.aggregate.total).toBe(1);
-  await page.screenshot({ path: testInfo.outputPath('facilitator-groups.png') });
+  await page.screenshot({ path: testInfo.outputPath('host-groups.png') });
   await second.screenshot({ path: testInfo.outputPath('group-spokesperson.png'), fullPage: true });
   await command(session.code, session.hostToken, { command: 'interaction.reveal', interactionId: 'team' });
   await expect(stage.getByText('Test with one team', { exact: true })).toBeVisible();

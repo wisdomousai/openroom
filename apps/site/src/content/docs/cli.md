@@ -65,11 +65,11 @@ Coordinate draft changes with anyone currently editing the same deck. After a dr
 
 ```sh
 openroom deck start DECK_ID --url https://openroom.app --token "$OPENROOM_TOKEN" --json
-openroom session facilitate SESSION_CODE --url https://openroom.app --token "$OPENROOM_TOKEN"
+openroom session co-host SESSION_CODE --url https://openroom.app --token "$OPENROOM_TOKEN"
 openroom session status
 ```
 
-Use the session code returned by the start command in the second command. `deck start` reports the launched session; `session facilitate` attaches the CLI to it and stores its control state in the current directory. Check a returned start warning before assuming participation is open.
+Use the session code returned by the start command in the second command. `deck start` reports the launched session; `session co-host` attaches the CLI to it and stores its control state in the current directory. Check a returned start warning before assuming participation is open.
 
 The following operations use that attached session:
 
@@ -83,7 +83,7 @@ The following operations use that attached session:
 | Change the live interface theme | `session theme default` (also `chalkboard`, `paper`, `projector`, `sherbet`) |
 | Moderate an entry | `session hide INTERACTION_ID PARTICIPANT_ID`, `session unhide INTERACTION_ID PARTICIPANT_ID` |
 | Manage groups | `session group-set group.json`, `session group-remove GROUP_ID` |
-| Transfer presenter control | `session handoff FACILITATOR_ID`, `session recover` |
+| Transfer presenter control | `session handoff HOST_ID`, `session recover` |
 | Finish | `session end` |
 
 Use identifiers from the current outline and session state. Presenter and membership requirements apply to CLI commands just as they do in the browser.

@@ -28,73 +28,73 @@ async function fixture() {
   const created = await owner.request('/api/sessions', 'POST', { outline: SMOKE_OUTLINE, spaceId: space.id });
   expect(created.status).toBe(201);
   const session = await created.json() as { code: string; hostToken: string; stageToken: string };
-  const facilitate = (who: typeof owner) => who.request(`/api/my/sessions/${session.code}/facilitate`, 'POST');
-  return { owner, helper, space, session, facilitate };
+  const coHost = (who: typeof owner) => who.request(`/api/my/sessions/${session.code}/co-host`, 'POST');
+  return { owner, helper, space, session, coHost };
 }
 
-describe('account-backed co-facilitation', () => {
+describe('account-backed co-hosting', () => {
   it('joins through space access, moderates, hands off explicitly, preserves state and recovers', async () => {
-    const { owner, helper, session, facilitate } = await fixture();
+    const { owner, helper, session, coHost } = await fixture();
     const listed = await (await helper.request('/api/my/sessions')).json() as { sessions: { code: string; shared: boolean; hostToken?: string }[] };
     expect(listed.sessions).toContainEqual(expect.objectContaining({ code: session.code, shared: true }));
     expect(listed.sessions.find((item) => item.code === session.code)?.hostToken).toBeUndefined();
-    expect((await helper.request(`/api/my/sessions/${session.code}/facilitate`, 'POST', undefined, false)).status).toBe(403);
-    const joinedResponse = await facilitate(helper);
+    expect((await helper.request(`/api/my/sessions/${session.code}/co-host`, 'POST', undefined, false)).status).toBe(403);
+    const joinedResponse = await coHost(helper);
     expect(joinedResponse.status).toBe(200);
-    const joined = await joinedResponse.json() as { hostToken: string; facilitation: object };
-    expect(joined.facilitation).toMatchObject({ yourId: helper.id, canPresent: false, canRecover: false });
+    const joined = await joinedResponse.json() as { hostToken: string; hosting: object };
+    expect(joined.hosting).toMatchObject({ yourId: helper.id, canPresent: false, canRecover: false });
     const h = (cmd: Record<string, unknown>) => command(session.code, joined.hostToken, cmd);
     expect((await h({ command: 'session.start' })).status).toBe(403);
-    expect((await command(session.code, session.hostToken, { command: 'presentation.handoff', facilitatorId: { invalid: true } })).status).toBe(403);
+    expect((await command(session.code, session.hostToken, { command: 'presentation.handoff', hostId: { invalid: true } })).status).toBe(403);
     expect((await h({ command: 'group.set', group: { id: 'a', name: 'Team A', memberIds: [], spokespersonId: null } })).status).toBe(200);
     expect((await command(session.code, session.hostToken, { command: 'session.start' })).status).toBe(200);
     const before = await stateJson(session.code, session.hostToken, 'host');
-    expect((await command(session.code, session.hostToken, { command: 'presentation.handoff', facilitatorId: helper.id })).status).toBe(200);
+    expect((await command(session.code, session.hostToken, { command: 'presentation.handoff', hostId: helper.id })).status).toBe(200);
     const after = await stateJson(session.code, joined.hostToken, 'host');
     expect(after.outline).toEqual(before.outline);
     expect(after.groups).toEqual(before.groups);
-    expect(after.facilitation).toMatchObject({ presenterId: helper.id, canPresent: true });
+    expect(after.hosting).toMatchObject({ presenterId: helper.id, canPresent: true });
     expect((await command(session.code, session.hostToken, { command: 'session.end' })).status).toBe(403);
     expect((await h({ command: 'presentation.recover' })).status).toBe(403);
     expect((await h({ command: 'session.freeze' })).status).toBe(200);
     expect((await command(session.code, session.hostToken, { command: 'presentation.recover' })).status).toBe(200);
-    expect((await stateJson(session.code, session.hostToken, 'host')).facilitation).toMatchObject({ presenterId: owner.id, canPresent: true });
+    expect((await stateJson(session.code, session.hostToken, 'host')).hosting).toMatchObject({ presenterId: owner.id, canPresent: true });
     const participant = await join(session.code);
-    expect((await stateJson(session.code, participant.participantToken, 'participant')).facilitation).toBeUndefined();
-    expect((await stateJson(session.code, session.stageToken, 'stage')).facilitation).toBeUndefined();
-    const asCapability = await worker.fetch(new Request(`${BASE}/api/my/sessions/${session.code}/facilitate`, { method: 'POST', headers: { authorization: `Bearer ${joined.hostToken}` } }), env as never);
+    expect((await stateJson(session.code, participant.participantToken, 'participant')).hosting).toBeUndefined();
+    expect((await stateJson(session.code, session.stageToken, 'stage')).hosting).toBeUndefined();
+    const asCapability = await worker.fetch(new Request(`${BASE}/api/my/sessions/${session.code}/co-host`, { method: 'POST', headers: { authorization: `Bearer ${joined.hostToken}` } }), env as never);
     expect(asCapability.status).toBe(401);
   });
 
   it('revokes removed members immediately and preserves an existing session across a billing downgrade', async () => {
-    const { owner, helper, space, session, facilitate } = await fixture();
-    const joined = await (await facilitate(helper)).json() as { hostToken: string };
+    const { owner, helper, space, session, coHost } = await fixture();
+    const joined = await (await coHost(helper)).json() as { hostToken: string };
     expect((await command(session.code, session.hostToken, { command: 'session.start' })).status).toBe(200);
     await env.DB.prepare('DELETE FROM space_members WHERE space_id = ?1 AND user_id = ?2').bind(space.id, helper.id).run();
-    const state = await worker.fetch(new Request(`${BASE}/api/sessions/${session.code}/state?afterRevision=999999&facilitatorId=${owner.id}`, { headers: { authorization: `Bearer ${joined.hostToken}` } }), env as never);
+    const state = await worker.fetch(new Request(`${BASE}/api/sessions/${session.code}/state?afterRevision=999999&hostId=${owner.id}`, { headers: { authorization: `Bearer ${joined.hostToken}` } }), env as never);
     expect(state.status).toBe(403);
     expect((await command(session.code, joined.hostToken, { command: 'group.remove', groupId: 'a' })).status).toBe(403);
-    expect((await facilitate(helper)).status).toBe(404);
+    expect((await coHost(helper)).status).toBe(404);
     expect((await helper.request(`/api/my/sessions/${session.code}/recap`)).status).toBe(404);
     expect((await worker.fetch(new Request(`${BASE}/api/sessions/${session.code}/recap`, { headers: { authorization: `Bearer ${joined.hostToken}` } }), env as never)).status).toBe(403);
-    expect((await command(session.code, session.hostToken, { command: 'presentation.handoff', facilitatorId: helper.id })).status).toBe(403);
+    expect((await command(session.code, session.hostToken, { command: 'presentation.handoff', hostId: helper.id })).status).toBe(403);
     await env.DB.prepare('INSERT INTO space_members (space_id,user_id,role,created_at) VALUES (?1,?2,?3,?4)').bind(space.id, helper.id, 'editor', Date.now()).run();
     await env.DB.prepare('UPDATE users SET entitlements = ?1 WHERE id = ?2').bind('{}', owner.id).run();
-    expect((await facilitate(helper)).status).toBe(200);
+    expect((await coHost(helper)).status).toBe(200);
     expect((await command(session.code, joined.hostToken, { command: 'group.set', group: { id: 'after-downgrade', name: 'Discussion', memberIds: [], spokespersonId: null } })).status).toBe(200);
-    expect((await facilitate(owner)).status).toBe(200);
+    expect((await coHost(owner)).status).toBe(200);
     expect((await helper.request('/api/sessions', 'POST', { outline: SMOKE_OUTLINE, spaceId: space.id })).status).toBe(403);
   });
 
   it('does not let a former presenter replay or forge presentation authority', async () => {
-    const { owner, helper, session, facilitate } = await fixture();
-    const joined = await (await facilitate(helper)).json() as { hostToken: string };
+    const { owner, helper, session, coHost } = await fixture();
+    const joined = await (await coHost(helper)).json() as { hostToken: string };
     const send = (token: string, cmd: object, key: string, actorId: string) => worker.fetch(new Request(`${BASE}/api/sessions/${session.code}/commands`, {
       method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ command: cmd, idempotencyKey: key, actor: { role: 'host', facilitatorId: actorId } }),
+      body: JSON.stringify({ command: cmd, idempotencyKey: key, actor: { role: 'host', hostId: actorId } }),
     }), env as never);
     expect((await send(session.hostToken, { command: 'session.start' }, 'start', owner.id)).status).toBe(200);
-    await command(session.code, session.hostToken, { command: 'presentation.handoff', facilitatorId: helper.id });
+    await command(session.code, session.hostToken, { command: 'presentation.handoff', hostId: helper.id });
     expect((await send(session.hostToken, { command: 'session.start' }, 'start', helper.id)).status).toBe(403);
     expect((await send(session.hostToken, { command: 'outline.next' }, 'next', helper.id)).status).toBe(403);
     expect((await send(joined.hostToken, { command: 'session.freeze' }, 'start', helper.id)).status).toBe(200);
@@ -106,7 +106,7 @@ describe('account-backed co-facilitation', () => {
     const created = await helper.request('/api/sessions', 'POST', { outline: SMOKE_OUTLINE, spaceId: space.id });
     expect(created.status).toBe(201);
     const session = await created.json() as { code: string; hostToken: string };
-    const minted = await owner.request('/api/my/tokens', 'POST', { name: 'Co-facilitator test' });
+    const minted = await owner.request('/api/my/tokens', 'POST', { name: 'Co-host test' });
     const { token } = await minted.json() as { token: string };
     const tool = async (name: string, args: object) => {
       const response = await worker.fetch(new Request(`${BASE}/api/mcp`, {
@@ -117,12 +117,12 @@ describe('account-backed co-facilitation', () => {
       const body = await response.json() as { result: { content: { text: string }[] } };
       return JSON.parse(body.result.content[0]!.text);
     };
-    expect(await tool('session_facilitate', { code: session.code })).toMatchObject({ ok: true, body: { facilitation: { canPresent: false, canRecover: true } } });
+    expect(await tool('session_co_host', { code: session.code })).toMatchObject({ ok: true, body: { hosting: { canPresent: false, canRecover: true } } });
     expect(await tool('session_command', { code: session.code, command: { command: 'session.start' } })).toMatchObject({ ok: false, status: 403 });
     expect(await tool('session_command', { code: session.code, command: { command: 'presentation.recover' } })).toMatchObject({ ok: true });
     expect(await tool('session_command', { code: session.code, command: { command: 'session.start' } })).toMatchObject({ ok: true });
     expect((await owner.request(`/api/my/spaces/${space.id}/members/${helper.id}`, 'DELETE')).status).toBe(200);
     expect((await command(session.code, session.hostToken, { command: 'presentation.recover' })).status).toBe(403);
-    expect((await helper.request(`/api/my/sessions/${session.code}/facilitate`, 'POST')).status).toBe(404);
+    expect((await helper.request(`/api/my/sessions/${session.code}/co-host`, 'POST')).status).toBe(404);
   });
 });

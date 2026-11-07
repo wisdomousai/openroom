@@ -25,9 +25,9 @@ The **Insert** ribbon and slide context menu also offer individual content types
 
 ## Insert a workshop sequence
 
-In **Choose a slide**, select **Workshops**. Select a sequence to insert its slides, questions, and facilitator notes together. Review the stated duration and adapt the examples to your group.
+In **Choose a slide**, select **Workshops**. Select a sequence to insert its slides, questions, and host notes together. Review the stated duration and adapt the examples to your group.
 
-For shared answers, select a question and choose **Design → Responses → One per group**. Assign group members and spokespersons after participants join; see [facilitation](/docs/facilitation/).
+For shared answers, select a question and choose **Design → Responses → One per group**. Assign group members and spokespersons after participants join; see [hosting](/docs/hosting/).
 
 ## Reveal content progressively
 

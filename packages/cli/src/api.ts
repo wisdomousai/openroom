@@ -19,7 +19,7 @@ export type SessionCredential = { token: string } | { adminKey: string };
 
 /** A host-visible command as accepted by POST /api/sessions/:sessionCode/commands. */
 export type HostCommand =
-  | { command: 'presentation.handoff'; facilitatorId: string }
+  | { command: 'presentation.handoff'; hostId: string }
   | { command: 'presentation.recover' }
   | { command: 'group.set'; group: { id: string; name: string; memberIds: string[]; spokespersonId: string | null } }
   | { command: 'group.remove'; groupId: string }
@@ -203,8 +203,8 @@ export class ApiClient {
     return { envelope, result: body };
   }
 
-  async facilitateSession(code: string, token: string): Promise<Record<string, unknown>> {
-    const { body } = await this.request(`/api/my/sessions/${encodeURIComponent(code)}/facilitate`, {
+  async coHostSession(code: string, token: string): Promise<Record<string, unknown>> {
+    const { body } = await this.request(`/api/my/sessions/${encodeURIComponent(code)}/co-host`, {
       method: 'POST', headers: { authorization: `Bearer ${token}` },
     });
     return body as Record<string, unknown>;

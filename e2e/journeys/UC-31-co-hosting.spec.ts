@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { facilitatorAccounts } from '../fixtures/facilitators';
+import { hostAccounts } from '../fixtures/hosts';
 import { command, hostUrl, stageUrl, waitForWorker } from '../fixtures/session';
 
 const CSRF = { 'x-openroom-csrf': '1' };
 test.beforeAll(async () => { await waitForWorker(); });
-test('shared facilitators moderate, pass presentation, use a phone remote, recover and lose access on removal', async ({ page, browser }, testInfo) => {
+test('shared hosts moderate, pass presentation, use a phone remote, recover and lose access on removal', async ({ page, browser }, testInfo) => {
   test.setTimeout(120_000);
-  const accounts = facilitatorAccounts();
+  const accounts = hostAccounts();
   const helperContext = await browser.newContext(), remoteContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   let live: Awaited<ReturnType<typeof import('../fixtures/session').createSession>> | undefined;
   try {
@@ -14,7 +14,7 @@ test('shared facilitators moderate, pass presentation, use a phone remote, recov
     await accounts.helper.signIn(helperContext);
     await accounts.helper.signIn(remoteContext);
     const helper = await helperContext.newPage(), remote = await remoteContext.newPage(), stage = await browser.newPage();
-    const spaceResponse = await page.request.post('/api/my/spaces', { headers: CSRF, data: { name: 'Co-facilitation workshop', experience: 'training' } });
+    const spaceResponse = await page.request.post('/api/my/spaces', { headers: CSRF, data: { name: 'Co-hosting workshop', experience: 'training' } });
     expect(spaceResponse.status()).toBe(201);
     const space = await spaceResponse.json();
     const invitation = await page.request.post(`/api/my/spaces/${space.id}/invites`, { headers: CSRF, data: { email: accounts.helper.email, role: 'presenter' } });
@@ -32,7 +32,7 @@ test('shared facilitators moderate, pass presentation, use a phone remote, recov
     await stage.goto(stageUrl(live!));
     await helper.goto(`/host/#/space/${space.id}`);
     await helper.getByRole('button', { name: 'Join session Better decisions together', exact: true }).click();
-    await expect(helper.getByRole('region', { name: 'Facilitators' }).getByText('Alex is presenting')).toBeVisible();
+    await expect(helper.getByRole('region', { name: 'Hosts' }).getByText('Alex is presenting')).toBeVisible();
     await expect(helper.getByRole('button', { name: 'Next', exact: true }).first()).toBeDisabled();
     await helper.getByRole('tab', { name: 'Groups', exact: true }).click();
     await helper.getByRole('button', { name: 'New group', exact: true }).click();
@@ -45,14 +45,14 @@ test('shared facilitators moderate, pass presentation, use a phone remote, recov
     await page.getByRole('menuitem', { name: 'Sam', exact: true }).click();
     await expect(helper.getByText('You are presenting', { exact: true })).toBeVisible();
     await expect(page.getByText('Sam is presenting', { exact: true })).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath('facilitator-handoff.png') });
-    const capability = await (await remote.request.post(`/api/my/sessions/${live!.code}/facilitate`, { headers: CSRF })).json();
+    await page.screenshot({ path: testInfo.outputPath('host-handoff.png') });
+    const capability = await (await remote.request.post(`/api/my/sessions/${live!.code}/co-host`, { headers: CSRF })).json();
     await remote.goto(hostUrl({ ...live!, ...capability }));
     await remote.getByRole('button', { name: 'Presenter view', exact: true }).click();
     await expect(remote.getByText('You are presenting', { exact: true })).toBeVisible();
     await remote.getByRole('button', { name: 'Next →', exact: true }).click();
     await expect(stage.getByText('Make it practical', { exact: true })).toBeVisible();
-    await remote.screenshot({ path: testInfo.outputPath('facilitator-remote.png') });
+    await remote.screenshot({ path: testInfo.outputPath('host-remote.png') });
     await page.getByRole('button', { name: 'Take back presentation', exact: true }).click();
     await expect(page.getByText('You are presenting', { exact: true })).toBeVisible();
     await expect(remote.getByRole('button', { name: '← Back', exact: true })).toBeDisabled();

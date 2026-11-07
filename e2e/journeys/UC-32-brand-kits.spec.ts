@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { parse as parseYaml } from 'yaml';
-import { facilitatorAccounts } from '../fixtures/facilitators';
+import { hostAccounts } from '../fixtures/hosts';
 import { waitForWorker } from '../fixtures/session';
 import { defaultDeckDesign } from '../../packages/schema/src/deck-design';
 
@@ -8,7 +8,7 @@ const CSRF = { 'x-openroom-csrf': '1' };
 test.beforeAll(async () => { await waitForWorker(); });
 test('creates a branded master, applies a kit to a deck and keeps that copy after editing and trashing the kit', async ({ page }, testInfo) => {
   test.setTimeout(120_000);
-  const accounts = facilitatorAccounts({ branding: true });
+  const accounts = hostAccounts({ branding: true });
   let assetId: string | undefined;
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
   try {

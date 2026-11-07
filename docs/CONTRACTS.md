@@ -334,7 +334,7 @@ POST /api/mcp                            stateless MCP endpoint (Streamable HTTP
                                          tools outline_validate / session_create / session_status /
                                          session_results / openroom_api / deck_get / deck_preview /
                                          deck_save_version / deck_draft_put / deck_start /
-                                         session_facilitate / session_recap / session_command / picture_search
+                                         session_co_host / session_recap / session_command / picture_search
                                          PAT / user-scoped OAuth: tutoring records and owned sessions only;
                                          ADMIN_KEY cannot access user tutoring records
 GET|POST /api/tutoring/students          list or create students (person|group|class|event|other)
@@ -503,7 +503,7 @@ GET  /                                    302 → /join/ (query kept) · /join/,
 
 The relay refuses a host token that carries a `userId` (`403 account-session`): a
 control-plane session never runs under relay rules. Relay host tokens carry
-`facilitatorId: 'creator'` and no account.
+`hostId: 'creator'` and no account.
 
 ## SDK (browser client)
 
@@ -896,25 +896,25 @@ On load: one `/api/me`. Signed out, it probes `/api/auth/status` and shows Googl
 `DB: D1Database`; `MEDIA: R2Bucket` (bucket `openroom-media`; `wrangler dev` and the vitest pool simulate it locally from the binding alone, no setup — a first deploy needs `wrangler r2 bucket create openroom-media`); secrets `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional vars `GOOGLE_AUTH_URL`, `GOOGLE_TOKEN_URL`; dev-only `DEMO_AUTH=1`. Source: `apps/workspace-worker/src/auth.ts` (identity, cookies, OIDC, demo login) and `apps/workspace-worker/src/control.ts` (live-session directory, quota, recovery) and `apps/workspace-worker/src/delivery.ts` (decks and filed sessions).
 
 
-## Live co-facilitation
+## Live co-hosting
 
-An account-backed host capability identifies one facilitator inside one session.
+An account-backed host capability identifies one host inside one session.
 It never authenticates the control plane. Live host requests recheck current D1
 membership. Collaboration paid for at session creation is retained for that session,
 so billing expiry does not interrupt teaching; otherwise current owner team access
 is required. New shared sessions always require current owner access. Participant
-ballots remain entirely on the session Durable Object path. Joining as a facilitator is explicit and does not
+ballots remain entirely on the session Durable Object path. Joining as a host is explicit and does not
 change the active presenter. Moderator commands cover hiding responses and managing
 live groups. All presentation changes require the active presenter; only the creator
 or current space owner can explicitly recover presentation control. Handoff preserves
 the cursor, reveals, timers and ballots. A presenter may use multiple devices.
 
 Command authorization runs before idempotency replay. Idempotency keys are scoped to
-the verified actor. Facilitator identity and recovery permission on host snapshots
+the verified actor. Host identity and recovery permission on host snapshots
 come from verified server input, never public query parameters. Stage and participant
-projections omit facilitator details. A removed member may retain a revision-only
+projections omit host details. A removed member may retain a revision-only
 socket, but cannot read any subsequent host snapshot or execute commands. Session
-retention purges facilitator names along with participant names and group membership.
+retention purges host names along with participant names and group membership.
 
 ## Paddle billing boundary
 
@@ -948,7 +948,7 @@ openroom_api tool in packages/mcp/src/tools.ts.
 
 ## Selected workshop recap boundary
 
-A recap is a downloaded document produced from a facilitator's explicit selection.
+A recap is a downloaded document produced from a host's explicit selection.
 Its source is one live session, including its ended state before response retention
 expires. It is not a session collection, a new library record, or a copy of the host
 snapshot. No content is selected by default and nothing is automatically published.
@@ -959,20 +959,20 @@ scale, numeric and ranking results are supported; numeric results contain only m
 and median, not individual values. Text and Q&A are selected separately. Hidden
 content, participant identifiers/names, answer keys, tutor notes, private pedagogy,
 credential material and session identifiers are excluded from the final artifact.
-Names written inside authored or audience text remain text for facilitator review.
+Names written inside authored or audience text remain text for host review.
 
 Selections carry the source revision. Any intervening session change returns 409;
-refresh clears item choices while preserving the facilitator's authored text.
+refresh clears item choices while preserving the host's authored text.
 The final JSON is assembled from the current authoritative source, never from
 client-supplied result objects. Purged source data returns 410. Rendering escapes
 plain text and produces script-free HTML with no remote assets. The browser preview
 and HTML download use the same renderer. Editing invalidates the reviewed download.
 
 The live endpoint accepts only host session capabilities. The account endpoint
-accepts the control-plane credentials and rechecks current facilitator access,
+accepts the control-plane credentials and rechecks current host access,
 including the owner's shared-space entitlement; cookie POSTs require CSRF. CLI,
 MCP and the browser reach the same projection/selection service. Reading a recap
-neither joins facilitation nor takes presentation control, and leaves ballot state
+neither joins hosting nor takes presentation control, and leaves ballot state
 unchanged. The MCP tool description owns its callable contract.
 
 ## Frozen PowerPoint slide composition

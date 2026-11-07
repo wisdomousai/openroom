@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { facilitatorAccounts } from '../fixtures/facilitators';
+import { hostAccounts } from '../fixtures/hosts';
 import { officeHostFixture } from '../fixtures/office';
 import { waitForWorker } from '../fixtures/session';
 
@@ -7,7 +7,7 @@ const CSRF = { 'x-openroom-csrf': '1' };
 test.beforeAll(async () => { await waitForWorker(); });
 test('connects through real browser consent, binds and copies a slide, then revokes access from Settings', async ({ page }, testInfo) => {
   test.setTimeout(120_000);
-  const accounts = facilitatorAccounts();
+  const accounts = hostAccounts();
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
   try {
     await accounts.owner.signIn(page.context()); await officeHostFixture(page.context());

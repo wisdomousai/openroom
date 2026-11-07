@@ -12,7 +12,7 @@
  */
 import { isPollOnlyOutline } from './create-session.js';
 import { ensureQna } from './qna.js';
-import { applyFacilitationCommand, facilitatorCanCommand } from './facilitation.js';
+import { applyHostingCommand, hostCanCommand } from './hosting.js';
 import type { ApplyResult, Command, CommandEnvelope, SessionState } from './types.js';
 
 import { detectNoop } from './apply/detect-noop.js';
@@ -110,8 +110,8 @@ export function applyCommand(
     }
   } else if (actor.role !== 'host') {
     return fail('E_FORBIDDEN', `${command.command} is host-only`);
-  } else if (!facilitatorCanCommand(state, actor.facilitatorId ?? '', command)) {
-    return fail('E_FORBIDDEN', 'The active presenter controls this action. Co-facilitators can moderate responses and organize groups.');
+  } else if (!hostCanCommand(state, actor.hostId ?? '', command)) {
+    return fail('E_FORBIDDEN', 'The active presenter controls this action. Co-hosts can moderate responses and organize groups.');
   }
 
   // ---- terminal state -----------------------------------------------
@@ -139,7 +139,7 @@ export function applyCommand(
   }
 
   return (
-    applyFacilitationCommand(state, command, actor.facilitatorId ?? '') ??
+    applyHostingCommand(state, command, actor.hostId ?? '') ??
     applySessionCommands(state, command, actor, now) ??
     applyInteractionCommands(state, command, actor, now) ??
     applyNavigateCommands(state, command, actor, now) ??

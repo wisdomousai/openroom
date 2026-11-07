@@ -1,6 +1,6 @@
 export * from './types.js';
 export { applyCommand } from './apply-command.js';
-export { registerFacilitator, facilitatorCanCommand } from './facilitation.js';
+export { registerHost, hostCanCommand } from './hosting.js';
 export { computeAggregate, emptyAggregate } from './aggregate.js';
 export {
   applyBlocklist,

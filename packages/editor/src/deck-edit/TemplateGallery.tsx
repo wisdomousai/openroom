@@ -36,7 +36,7 @@ export function TemplateGallery({ open, onOpenChange, outline, onPick, onWorksho
             aria-label={`Insert ${workshop.name} workshop`} onClick={() => onWorkshop(workshop.id)}>
             <span className="block w-full shrink-0 border-b border-border" style={{ aspectRatio: outline.design?.aspectRatio.replace(':', '/') ?? '16 / 9' }}><SlideThumbnail outline={preview} step={workshop.steps[0]!} /></span>
             <span className="grid gap-1 p-3"><span className="font-semibold">{workshop.name}</span><span className="text-secondary text-muted-foreground">{workshop.description}</span>
-              <span className="mt-1 text-caption text-muted-foreground">{workshop.steps.length} slides · about {workshop.minutes} minutes · facilitator notes</span></span>
+              <span className="mt-1 text-caption text-muted-foreground">{workshop.steps.length} slides · about {workshop.minutes} minutes · host notes</span></span>
           </button>;
         })}
         {templates.length === 0 && workshops.length === 0 ? <p className="col-span-full py-8 text-center text-muted-foreground">No templates match that search.</p> : null}

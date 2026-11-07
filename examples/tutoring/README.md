@@ -19,7 +19,7 @@ available to the teacher's own agent and CLI.
 
 Each lesson has a saved palette, opening and content masters, twelve authored
 slides (including an optional transcript on A1 lessons), two questions with keys,
-facilitator guidance, and four homework tasks: reading, practice, writing and voice.
+host guidance, and four homework tasks: reading, practice, writing and voice.
 Reading homework contains the source text it refers to, so learners do not need
 the original deck. Homework reaches learners only when deliberately published in
 Notes; tutors can choose shared or individual recipients there.

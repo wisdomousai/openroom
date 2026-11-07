@@ -8,7 +8,7 @@
 
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
-import { facilitatorAccess } from './facilitation.js';
+import { hostAccess } from './hosting.js';
 import { signToken } from 'openroom-relay/tokens';
 import { readEntitlements } from './entitlements.js';
 
@@ -100,7 +100,7 @@ export async function mySessionsRoute(request: Request, env: ControlEnv): Promis
 
   const sessions = await Promise.all(
     (results ?? []).map(async (row) => {
-      const access = await facilitatorAccess(env, row.code, guard.user.id);
+      const access = await hostAccess(env, row.code, guard.user.id);
       if (!access) return null;
       const shared = row.user_id !== guard.user.id;
       const recoverable = row.ended === 0 && now - row.created_at < RECOVERY_WINDOW_MS;
@@ -120,7 +120,7 @@ export async function mySessionsRoute(request: Request, env: ControlEnv): Promis
         };
       }
       const [hostToken, stageToken] = await Promise.all([
-        signToken(env.TOKEN_SECRET, { sessionCode: row.code, role: 'host', facilitatorId: guard.user.id, userId: guard.user.id, ...(guard.connectionId ? { connectionId: guard.connectionId } : {}) }),
+        signToken(env.TOKEN_SECRET, { sessionCode: row.code, role: 'host', hostId: guard.user.id, userId: guard.user.id, ...(guard.connectionId ? { connectionId: guard.connectionId } : {}) }),
         signToken(env.TOKEN_SECRET, { sessionCode: row.code, role: 'stage' }),
       ]);
       return {

@@ -131,7 +131,7 @@ export function purgeBallots(input: SessionState, now: number): SessionState {
     qna: purgeQna(state.qna),
     participants: {},
     groups: {},
-    facilitation: { presenterId: '', facilitators: {} },
+    hosting: { presenterId: '', hosts: {} },
     purgedAt: now,
   };
 }

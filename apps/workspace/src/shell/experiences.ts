@@ -24,7 +24,7 @@ export const EXPERIENCES: Record<WorkspaceExperience, {
   },
   training: {
     label: 'Training',
-    description: 'Workshops, group decisions and facilitation.',
+    description: 'Workshops, group decisions and hosting.',
     studentLabel: null,
     addStudentLabel: null,
     starterTitle: 'Workshop · Make a decision',

@@ -9,14 +9,14 @@ import type { BrowserContext } from '@playwright/test';
 
 const workerDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../apps/workspace-worker');
 
-export function facilitatorAccounts(options: { branding?: boolean; keep?: boolean; rawExport?: boolean } = {}) {
+export function hostAccounts(options: { branding?: boolean; keep?: boolean; rawExport?: boolean } = {}) {
   const origin = process.env.OPENROOM_URL ?? 'http://127.0.0.1:8787';
   const persist = process.env.OPENROOM_E2E_PERSIST_TO;
-  if (!persist || !['127.0.0.1', 'localhost'].includes(new URL(origin).hostname)) throw new Error('Co-facilitation fixtures require a local Worker and OPENROOM_E2E_PERSIST_TO.');
+  if (!persist || !['127.0.0.1', 'localhost'].includes(new URL(origin).hostname)) throw new Error('Co-hosting fixtures require a local Worker and OPENROOM_E2E_PERSIST_TO.');
   const raw = process.env.OPENROOM_E2E_TOKEN_SECRET ? undefined : /^TOKEN_SECRET\s*=\s*(.+)$/m.exec(readFileSync(resolve(workerDir, '.dev.vars'), 'utf8'))?.[1]?.trim();
   const secret = process.env.OPENROOM_E2E_TOKEN_SECRET ?? (raw?.startsWith('"') ? JSON.parse(raw) as string : raw?.replace(/^'|'$/g, ''));
   if (!secret) throw new Error('Local TOKEN_SECRET is required.');
-  const temp = mkdtempSync(resolve(tmpdir(), 'openroom-facilitators-'));
+  const temp = mkdtempSync(resolve(tmpdir(), 'openroom-hosts-'));
   const captured = new Set<string>();
   const sql = (source: string) => {
     const file = resolve(temp, 'fixture.sql'); writeFileSync(file, source, { mode: 0o600 });

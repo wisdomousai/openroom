@@ -125,11 +125,11 @@ describe('ballot purge 30 minutes after a session ends', () => {
     expect(typeof host.purgedAt).toBe('number');
     expect(host.revision).toBe((before.revision as number) + 1);
 
-    // Ballots, participants and facilitator identities are gone.
+    // Ballots, participants and host identities are gone.
     expect(host.ballots.warmup).toEqual({});
     expect(host.ballots.reflect).toEqual({});
     expect(host.participantCount).toBe(0);
-    expect(host.facilitation).toEqual({ presenterId: '', facilitators: [], yourId: '', canPresent: false, canRecover: false });
+    expect(host.hosting).toEqual({ presenterId: '', hosts: [], yourId: '', canPresent: false, canRecover: false });
     expect((await command(session.sessionCode, session.hostToken, { command: 'session.start' })).status).toBe(403);
 
     // the aggregate of the still-active interaction survives, anonymized

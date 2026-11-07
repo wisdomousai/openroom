@@ -48,7 +48,7 @@ Restore the network and check the host's connection label. **Connected** means c
 
 Use **Rejoin** under **Live now** in the Library or the deck editor to resume the same session. If a stage link failed to load, use **Stage — retry**. Permit the new window when the browser blocks it. Open the stage on the intended projector or shared screen.
 
-For co-facilitation, check the current presenter. Pass presentation to the correct person or use the available recovery action.
+For co-hosting, check the current presenter. Pass presentation to the correct person or use the available recovery action.
 
 ## Sound, pictures, or embedded pages fail
 

@@ -1,4 +1,4 @@
-# UC-31 — shared facilitation and presenter handoff
+# UC-31 — shared hosting and presenter handoff
 
 1. Create a training space under an owner with the team entitlement. Invite a second
    account as presenter; the invitee has no paid entitlement.
@@ -20,7 +20,7 @@ and rejection of session capabilities on account routes. Domain tests cover unch
 presentation/answer state and the moderator command boundary. CLI tests verify account
 authentication for joining and session-capability authentication for later commands.
 
-Executable evidence: `e2e/journeys/UC-31-co-facilitation.spec.ts`.
+Executable evidence: `e2e/journeys/UC-31-co-hosting.spec.ts`.
 
 The browser fixture is local-only. Start Wrangler with a known `--persist-to` directory,
 then set `OPENROOM_E2E_PERSIST_TO` to that same directory when running this journey from

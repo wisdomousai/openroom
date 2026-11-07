@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { facilitateSession, type MySession } from '../api/tokens';
+import { coHostSession, type MySession } from '../api/tokens';
 import { useQuery } from '@tanstack/react-query';
 import { listMySessions } from '../api';
 import type { StoredSession } from '@openroom/editor';
@@ -32,7 +32,7 @@ export function LiveNow({ onOpen, studentId = null }: { onOpen: (session: Stored
     <span className="text-caption text-muted-foreground">Live now</span>
     {sessions.map((session) => <Button key={session.sessionCode} size="sm" variant="outline" disabled={joining !== null} onClick={async () => {
       setJoining(session.sessionCode); setError(null);
-      try { onOpen({ ...await facilitateSession(session.sessionCode), title: session.title ?? undefined }); }
+      try { onOpen({ ...await coHostSession(session.sessionCode), title: session.title ?? undefined }); }
       catch (err) { setError(err instanceof Error ? err.message : 'Could not join the session.'); }
       finally { setJoining(null); }
     }}>{joining === session.sessionCode ? 'Joining…' : liveNowLabel(session)}</Button>)}

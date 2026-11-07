@@ -1,9 +1,9 @@
 ---
 title: Run a live session
 description: Manage participation, question state, results, remote control, and session recovery.
-section: Teach and facilitate
+section: Teach and host
 order: 100
-related: [present, facilitation, participant, results, notes]
+related: [present, hosting, participant, results, notes]
 ---
 
 ## Choose participant identity

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { facilitatorAccounts } from '../fixtures/facilitators';
+import { hostAccounts } from '../fixtures/hosts';
 import { hostUrl, waitForWorker } from '../fixtures/session';
 
 const csrf = { 'x-openroom-csrf': '1' };
@@ -8,7 +8,7 @@ test.beforeAll(async () => { await waitForWorker(); });
 
 test('opens retained result files from their deck, downloads a readable report and enforces current sharing after downgrade', async ({ page, browser }, testInfo) => {
   test.setTimeout(120_000);
-  const accounts = facilitatorAccounts({ keep: true, rawExport: true });
+  const accounts = hostAccounts({ keep: true, rawExport: true });
   const helper = await browser.newContext({ baseURL: process.env.OPENROOM_URL ?? 'http://127.0.0.1:8787' });
   const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
   try {

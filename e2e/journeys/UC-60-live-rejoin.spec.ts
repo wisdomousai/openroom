@@ -88,7 +88,7 @@ test('a live deck offers Rejoin beside Start session, and Start asks once', asyn
     await expect(presenter).toBeVisible();
     expect((await liveOfDeck()).map((session) => session.sessionCode)).toEqual([code]);
   } finally {
-    const host = await (await api.post(`/api/my/sessions/${code}/facilitate`, { headers: CSRF })).json() as { hostToken: string };
+    const host = await (await api.post(`/api/my/sessions/${code}/co-host`, { headers: CSRF })).json() as { hostToken: string };
     await command(code, host.hostToken, { command: 'session.end' });
   }
 });

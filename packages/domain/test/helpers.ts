@@ -109,7 +109,7 @@ let keyCounter = 0;
 /** Build a fresh CommandEnvelope with a unique idempotency key. */
 export function env(
   command: Command,
-  actor: CommandEnvelope['actor'] = { role: 'host', facilitatorId: 'creator' },
+  actor: CommandEnvelope['actor'] = { role: 'host', hostId: 'creator' },
   expectedRevision?: number,
 ): CommandEnvelope {
   keyCounter += 1;
@@ -119,7 +119,7 @@ export function env(
 }
 
 export function host(): CommandEnvelope['actor'] {
-  return { role: 'host', facilitatorId: 'creator' };
+  return { role: 'host', hostId: 'creator' };
 }
 
 export function participant(id: string): CommandEnvelope['actor'] {

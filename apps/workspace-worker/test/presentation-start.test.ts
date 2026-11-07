@@ -16,7 +16,7 @@ async function account() {
   return { id, cookie, request, spaceId: spaces[0]!.id };
 }
 async function source(owner: Awaited<ReturnType<typeof account>>, family: 'clean' | 'board' = 'clean') {
-  const reply = await owner.request('/api/decks', { spaceId: owner.spaceId, content: { ...SMOKE_OUTLINE, design: defaultDeckDesign(family), steps: [{ id: 'question', kind: 'interaction', interactionId: 'warmup', tutorNotes: 'private facilitator note' }] } });
+  const reply = await owner.request('/api/decks', { spaceId: owner.spaceId, content: { ...SMOKE_OUTLINE, design: defaultDeckDesign(family), steps: [{ id: 'question', kind: 'interaction', interactionId: 'warmup', tutorNotes: 'private host note' }] } });
   expect(reply.status).toBe(201);
   return (await reply.json() as { deck: { id: string } }).deck;
 }
@@ -92,7 +92,7 @@ describe('one audience for a PowerPoint presentation', () => {
     const recovered = await owner.request(`/api/sessions/${body.requestId}/resume`, {});
     expect((await recovered.json() as Live).presentation).toEqual(live!.presentation);
     expect((await owner.request(`/api/decks/${first.id}/start`, { requestId: body.requestId })).status).toBe(409);
-    expect(JSON.stringify(await state(live!, 'stage'))).not.toContain('private facilitator note');
+    expect(JSON.stringify(await state(live!, 'stage'))).not.toContain('private host note');
     const detail = await (await owner.request(`/api/sessions/${body.requestId}`)).json() as { session: object };
     expect(detail.session).not.toHaveProperty('source_outline_json');
   });

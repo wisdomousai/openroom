@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { facilitatorAccounts } from '../fixtures/facilitators';
+import { hostAccounts } from '../fixtures/hosts';
 import { officeHostFixture } from '../fixtures/office';
 import { command, join, waitForWorker } from '../fixtures/session';
 
@@ -7,7 +7,7 @@ const CSRF = { 'x-openroom-csrf': '1' };
 test.beforeAll(async () => { await waitForWorker(); });
 test('rehearses locally and projects only the bound activity and released results into an embedded display', async ({ page, context }, testInfo) => {
   test.setTimeout(120_000);
-  const accounts = facilitatorAccounts(), errors: string[] = [];
+  const accounts = hostAccounts(), errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
     await accounts.owner.signIn(context); await officeHostFixture(context);
@@ -15,7 +15,7 @@ test('rehearses locally and projects only the bound activity and released result
     const created = await page.request.post('/api/decks', { headers: CSRF, data: { spaceId: space.id, content: {
       version: 1, meta: { title: 'A constructive conversation' }, defaults: { resultVisibility: 'hidden-until-close' },
       steps: [{ id: 'opening', kind: 'interaction', interactionId: 'question', tutorNotes: 'Private slide guidance' }],
-      interactions: [{ id: 'question', type: 'choice', prompt: 'What would you say first?', notes: 'Private facilitator note', options: [{ id: 'a', label: 'Ask what matters most', correct: true }, { id: 'b', label: 'Explain the process' }] }],
+      interactions: [{ id: 'question', type: 'choice', prompt: 'What would you say first?', notes: 'Private host note', options: [{ id: 'a', label: 'Ask what matters most', correct: true }, { id: 'b', label: 'Explain the process' }] }],
     } } });
     expect(created.status()).toBe(201); const { deck } = await created.json();
     await page.setViewportSize({ width: 340, height: 900 }); await page.goto('/office/taskpane.html');
@@ -66,7 +66,7 @@ test('rehearses locally and projects only the bound activity and released result
     }, document.presentationTags.OPENROOM_PRESENTATION!);
     expect(Object.keys(projection).sort()).toEqual(['presentation', 'presentationId', 'sessionId', 'snapshot', 'status', 'type', 'version']);
     expect(projection.snapshot).toMatchObject({ role: 'stage', aggregate: null, answeredCount: 1 });
-    expect(JSON.stringify(projection)).not.toContain('Private facilitator note');
+    expect(JSON.stringify(projection)).not.toContain('Private host note');
     expect(JSON.stringify(projection)).not.toContain('Private slide guidance');
     expect(JSON.stringify(projection)).not.toContain(live.hostToken); expect(JSON.stringify(projection)).not.toContain(live.stageToken);
     const controls = page.getByRole('region', { name: 'Session controls' });
@@ -92,7 +92,7 @@ test('rehearses locally and projects only the bound activity and released result
 
 test('copies a saved content slide into the embedded picker and activates a question only in slideshow view', async ({ page, context }, testInfo) => {
   test.setTimeout(120_000);
-  const accounts = facilitatorAccounts(), errors: string[] = [];
+  const accounts = hostAccounts(), errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
     await accounts.owner.signIn(context); await officeHostFixture(context);

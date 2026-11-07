@@ -25,7 +25,7 @@ import { invalidateManagementData, queryClient } from '../query-client';
 
 import {
   addDeckVersion,
-  facilitateSession,
+  coHostSession,
   getStudent,
   getDeck,
   getDeckDraft,
@@ -313,7 +313,7 @@ export function DeckEditorPage({
     setRejoining(true);
     setLoadError(null);
     try {
-      onOpenSession({ ...await facilitateSession(session.sessionCode), title: session.title ?? undefined });
+      onOpenSession({ ...await coHostSession(session.sessionCode), title: session.title ?? undefined });
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : 'Could not join the session.');
     } finally { setRejoining(false); }

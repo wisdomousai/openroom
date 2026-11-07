@@ -7,7 +7,7 @@ meta:
     myths against the evidence, estimate a market number, and leave a one-word
     takeaway for the closing word cloud.
   locale: en
-  source: SEG Camp facilitator handbook, module 1
+  source: SEG Camp host handbook, module 1
 defaults:
   identityMode: nickname
   resultVisibility: hidden-until-close

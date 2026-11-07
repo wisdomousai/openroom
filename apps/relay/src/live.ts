@@ -75,7 +75,7 @@ export async function readJson(request: Request): Promise<Record<string, unknown
 
 /**
  * What the deployment adds on top of a valid capability token. `G` is the
- * deployment's own grant for a host seat (the control plane's facilitator
+ * deployment's own grant for a host seat (the control plane's host
  * access); the live routes carry it through without reading it.
  */
 export interface LiveAuthority<G = unknown> {
@@ -144,7 +144,7 @@ export interface SessionInit {
   sessionCode: string;
   /** Absent admits any number of participants. */
   participantLimit?: number;
-  facilitator?: { id: string; name: string };
+  host?: { id: string; name: string };
   outlineVersion?: number;
 }
 
@@ -157,7 +157,7 @@ export function initSession(env: LiveEnv, init: SessionInit): Promise<Response> 
       outline: init.outline,
       sessionCode: init.sessionCode,
       ...(init.participantLimit === undefined ? {} : { participantLimit: init.participantLimit }),
-      ...(init.facilitator === undefined ? {} : { facilitator: init.facilitator }),
+      ...(init.host === undefined ? {} : { host: init.host }),
       ...(init.outlineVersion === undefined ? {} : { outlineVersion: init.outlineVersion }),
     }),
   });
@@ -177,7 +177,7 @@ export interface CreatedSession {
 export async function issueSessionTokens(
   env: LiveEnv,
   sessionCode: string,
-  host: Pick<TokenPayload, 'facilitatorId' | 'userId' | 'connectionId'> = {},
+  host: Pick<TokenPayload, 'hostId' | 'userId' | 'connectionId'> = {},
 ): Promise<CreatedSession> {
   const [hostToken, stageToken] = await Promise.all([
     signToken(env.TOKEN_SECRET, { sessionCode, role: 'host', ...host }),
@@ -270,7 +270,7 @@ export async function stateRoute<G>(live: Live<G>, request: Request, url: URL, s
   }
 
   const params: Record<string, string> = { role: auth.payload.role };
-  if (auth.payload.facilitatorId) params.facilitatorId = auth.payload.facilitatorId;
+  if (auth.payload.hostId) params.hostId = auth.payload.hostId;
   if (auth.payload.role === 'host') params.canRecover = String(auth.canRecover);
   const after = url.searchParams.get('afterRevision');
   if (after !== null) params.afterRevision = after;
@@ -312,7 +312,7 @@ export async function commandRoute<G>(live: Live<G>, request: Request, url: URL,
     ...(expectedRevision === undefined ? {} : { expectedRevision }),
     actor: {
       role: auth.payload.role,
-      ...(auth.payload.facilitatorId ? { facilitatorId: auth.payload.facilitatorId } : {}),
+      ...(auth.payload.hostId ? { hostId: auth.payload.hostId } : {}),
       ...(auth.payload.participantId === undefined ? {} : { participantId: auth.payload.participantId }),
     },
     command,
@@ -399,7 +399,7 @@ export async function sessionAssetRoute<G>(
   if (request.method === 'PUT') {
     const auth = await authenticate(live, request, url, sessionCode, 'host');
     if (!auth.ok) return auth.response;
-    params.facilitatorId = auth.payload.facilitatorId ?? '';
+    params.hostId = auth.payload.hostId ?? '';
   } else if (request.method !== 'GET' && request.method !== 'HEAD') {
     return json({ error: 'method-not-allowed' }, 405);
   }

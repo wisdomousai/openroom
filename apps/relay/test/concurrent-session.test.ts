@@ -58,16 +58,16 @@ describe('concurrent session mutations across body decoding', () => {
     expect(state.revision).toBe(6);
   });
 
-  it('registers a facilitator without reverting a concurrent participant join', async () => {
+  it('registers a host without reverting a concurrent participant join', async () => {
     const session = await createLiveSession();
     const stub = env.SESSIONS.get(env.SESSIONS.idFromName(session.sessionCode));
     const result = await runInDurableObject(stub, (instance: SessionDO) => interleave(instance,
-      '/__facilitator', { id: 'second-facilitator', name: 'Second facilitator', canRecover: false }, '/__join', {}));
+      '/__host', { id: 'second-host', name: 'Second host', canRecover: false }, '/__join', {}));
     expect(result.fast.status).toBe(200);
     expect(result.slow.status).toBe(200);
     const state = await stateJson(session.sessionCode, session.hostToken, 'host');
     expect(state.participantCount).toBe(1);
-    expect(state.facilitation.facilitators).toEqual(expect.arrayContaining([{ id: 'second-facilitator', name: 'Second facilitator' }]));
+    expect(state.hosting.hosts).toEqual(expect.arrayContaining([{ id: 'second-host', name: 'Second host' }]));
     expect(state.revision).toBe(2);
   });
 });

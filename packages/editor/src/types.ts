@@ -276,7 +276,7 @@ export interface HostQnaView {
 }
 
 export interface HostSnapshot {
-  facilitation?: import('@openroom/sdk').FacilitationView;
+  hosting?: import('@openroom/sdk').HostingView;
   groups?: import('@openroom/sdk').SessionGroupView[];
   participants?: { id: string; label: string }[];
   responseNames?: Record<string, string>;
@@ -329,7 +329,7 @@ export interface HostSnapshot {
 // ---- Commands (host subset) -------------------------------------------------
 
 export type HostCommand =
-  | { command: 'presentation.handoff'; facilitatorId: string }
+  | { command: 'presentation.handoff'; hostId: string }
   | { command: 'presentation.recover' }
   | { command: 'group.set'; group: import('@openroom/sdk').SessionGroupView }
   | { command: 'group.remove'; groupId: string }

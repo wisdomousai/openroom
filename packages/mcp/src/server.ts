@@ -33,7 +33,7 @@ function mcpResources(
 export const PROTOCOL_VERSION = '2025-06-18';
 
 const SERVER_INSTRUCTIONS =
-  'OpenRoom: facilitated classroom interactions and tutor-delivered sessions. Heavy outline preparation ' +
+  'OpenRoom: hosted classroom interactions and tutor-delivered sessions. Heavy outline preparation ' +
   'stays in this external agent: validate an Outline, read a deck with deck_get, inspect the ' +
   'read-only result with deck_preview when useful, stamp it with ' +
   'deck_save_version (baseVersion guards against overwriting someone else), park work in progress ' +

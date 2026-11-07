@@ -73,7 +73,7 @@ export const WORKSHOP_SEQUENCES: readonly WorkshopSequence[] = [
     steps: [
       { id: 'reflect', kind: 'timer', seconds: 60, title: 'Choose an action', body: 'Think of your next opportunity to use what you practised. Choose a step within your control.', placement: 'slide', style: 'ring', tutorNotes: 'Give one minute of quiet thinking. Sharing is voluntary; this is not a manager-visible performance record.' },
       { id: 'commitment', kind: 'interaction', interactionId: 'commitment', tutorNotes: 'Allow one minute. Invite only actions people are comfortable sharing with the room. Close to show responses; do not ask for personal or sensitive detail.' },
-      { id: 'recap', kind: 'debrief', title: 'Carry one thing forward', prompts: ['What idea will you use?', 'What support would help?', 'What should our shared recap include?'], tutorNotes: 'Allow three minutes. Agree which takeaways may be shared. Private facilitator notes and individual responses are not the recap.' },
+      { id: 'recap', kind: 'debrief', title: 'Carry one thing forward', prompts: ['What idea will you use?', 'What support would help?', 'What should our shared recap include?'], tutorNotes: 'Allow three minutes. Agree which takeaways may be shared. Private host notes and individual responses are not the recap.' },
     ],
     interactions: [{ id: 'commitment', type: 'text', prompt: 'Next time I… I will try…', display: 'cards', maxLength: 200, timerSec: 60, resultVisibility: 'hidden-until-close' }],
   },

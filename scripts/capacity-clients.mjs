@@ -14,7 +14,7 @@ if (!origin || !/^http:\/\/127\.0\.0\.1:\d+$/.test(origin) || !process.env.OPENR
 }
 const count = 500;
 const concurrency = 25;
-const privateNotes = 'capacity-private-facilitator-note';
+const privateNotes = 'capacity-private-host-note';
 const report = {
   startedAt: new Date().toISOString(), status: 'running', localOnly: true,
   requestedParticipants: count, requestConcurrency: concurrency,

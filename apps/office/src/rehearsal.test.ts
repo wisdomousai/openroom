@@ -4,7 +4,7 @@ import { addRehearsalAnswers, rehearse, rehearsalCommand, rehearsalSnapshot } fr
 import { displayMatches, displayIsCurrent } from './display-channel';
 
 const questions: Interaction[] = [
-  { id: 'choice', type: 'choice', prompt: 'Choose', notes: 'Private facilitator note', options: [{ id: 'a', label: 'A', correct: true }, { id: 'b', label: 'B' }] },
+  { id: 'choice', type: 'choice', prompt: 'Choose', notes: 'Private host note', options: [{ id: 'a', label: 'A', correct: true }, { id: 'b', label: 'B' }] },
   { id: 'scale', type: 'scale', prompt: 'Confidence', min: 1, max: 5 },
   { id: 'numeric', type: 'numeric', prompt: 'Estimate', correct: 15 },
   { id: 'text', type: 'text', prompt: 'Reflect', maxLength: 5 },

@@ -39,15 +39,15 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 }
 
 describe('ephemeral session resources', () => {
-  it('lets only the active presenter replace an asset, not a co-facilitator seat', async () => {
+  it('lets only the active presenter replace an asset, not a co-host seat', async () => {
     const session = await createSessionWithOutline(outline);
     const stub = env.SESSIONS.get(env.SESSIONS.idFromName(session.sessionCode));
-    const seat = await stub.fetch('https://session.internal/__facilitator', {
+    const seat = await stub.fetch('https://session.internal/__host', {
       method: 'POST',
       body: JSON.stringify({ id: 'co-host', name: 'Co-host', canRecover: false }),
     });
     expect(seat.status).toBe(200);
-    const coHostToken = await signToken(env.TOKEN_SECRET, { sessionCode: session.sessionCode, role: 'host', facilitatorId: 'co-host' });
+    const coHostToken = await signToken(env.TOKEN_SECRET, { sessionCode: session.sessionCode, role: 'host', hostId: 'co-host' });
     const put = async (token: string, bytes: Uint8Array) => call(`/api/sessions/${session.sessionCode}/assets/${resourceId}`, {
       method: 'PUT',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/pdf', 'x-openroom-sha256': await sha256(bytes) },
@@ -77,7 +77,7 @@ describe('ephemeral session resources', () => {
       let release!: () => void;
       const reading = new Promise<void>((resolve) => { entered = resolve; });
       const pendingBody = new Promise<void>((resolve) => { release = resolve; });
-      const upload = new Request(`https://session.test/__assets/${resourceId}?facilitatorId=${host.facilitation.yourId}`, {
+      const upload = new Request(`https://session.test/__assets/${resourceId}?hostId=${host.hosting.yourId}`, {
         method: 'PUT', headers: { 'content-type': 'application/pdf', 'x-openroom-sha256': replacementHash }, body: replacement,
       });
       vi.spyOn(upload, 'arrayBuffer').mockImplementation(async () => {
@@ -90,7 +90,7 @@ describe('ephemeral session resources', () => {
       await reading;
       try {
         const start = await instance.fetch(new Request('https://session.test/__command', { method: 'POST', body: JSON.stringify({
-          actor: { role: 'host', facilitatorId: host.facilitation.yourId }, idempotencyKey: 'start-during-upload', command: { command: 'session.start' },
+          actor: { role: 'host', hostId: host.hosting.yourId }, idempotencyKey: 'start-during-upload', command: { command: 'session.start' },
         }) }));
         expect(start.status).toBe(200);
         release();

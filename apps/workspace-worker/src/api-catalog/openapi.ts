@@ -175,15 +175,15 @@ export function openapiDocument(origin: string): unknown {
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         post: { operationId: 'restoreBrandKit', summary: 'Restore a trashed brand kit', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], responses: { '200': { description: 'Brand kit restored' }, '403': { description: 'Editor access required' } } },
       },
-      '/api/my/sessions/{code}/facilitate': {
+      '/api/my/sessions/{code}/co-host': {
         post: {
-          operationId: 'facilitateSession',
+          operationId: 'coHostSession',
           security: [{ SessionCookie: [], CsrfHeader: [] }, { UserBearer: [] }],
           summary: 'Join a live session through current account and space access',
           description: 'Uses account authentication, with CSRF for cookie writes. Joining does not take presentation control. Shared access uses the space owner’s team entitlement.',
           parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
           responses: {
-            '200': { description: 'Session capabilities and current facilitator authority' },
+            '200': { description: 'Session capabilities and current host authority' },
             '401': { description: 'Account authentication required' },
             '403': { description: 'CSRF missing or session unavailable' },
             '404': { description: 'Session not accessible' },

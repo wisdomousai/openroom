@@ -96,7 +96,7 @@ Every mutating command needs an `idempotencyKey`. Host uses `Authorization: Bear
 
 `session start` writes `.openroom.json` in the working directory, so the later
 `openroom session …` commands need no code or token. `openroom deck start` writes
-the same file for a saved deck, and `openroom session facilitate <code> --token …`
+the same file for a saved deck, and `openroom session co-host <code> --token …`
 writes it for a session that is already running. The personal token (`orpat_…`) is
 minted in Settings → Connect an agent; sessions created with it belong to the
 tutor's account. `--admin-key` (header `x-openroom-admin`) is the deployment
@@ -213,8 +213,8 @@ Fourteen focused tools:
 | `deck_draft_put` | `{ deckId, source, baseVersion }` | `{ savedAt }` — unvalidated working text, never delivered |
 | `deck_start` | `{ deckId, version?, title?, start? }` | `{ sessionId, sessionCode, code, joinUrl, stageUrl, hostToken, stageToken, deckId }`; an identified session has no `joinUrl` (see below) |
 | `openroom_api` | `{ method, path, body? }` | user-scoped authoring, billing and retained-archive operations through the browser's application services; the tool description is the path contract |
-| `session_recap` | `{ code, selection? }` | selects a workshop recap for facilitator review and download |
-| `session_facilitate` | `{ code }` | joins a shared live session without taking presentation control |
+| `session_recap` | `{ code, selection? }` | selects a workshop recap for host review and download |
+| `session_co_host` | `{ code }` | joins a shared live session without taking presentation control |
 | `session_command` | `{ code, command }` | applies a host command within the caller’s presenter or moderation authority, including outline navigation and approved insertion |
 | `picture_search` | `{ query?, page? }` | hosted stock photographs, each with a ready `media` object to paste onto a step |
 

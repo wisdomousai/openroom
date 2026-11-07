@@ -29,7 +29,7 @@ async function populated() {
   return { session, first, second, host, recap };
 }
 
-describe('facilitator-selected recap HTTP boundary', () => {
+describe('host-selected recap HTTP boundary', () => {
   it('projects only safe candidates and exports only explicit selections without identity or private teaching content', async () => {
     const { session, first, second, recap } = await populated();
     const source = await (await recap()).json() as RecapCandidates;
@@ -61,7 +61,7 @@ describe('facilitator-selected recap HTTP boundary', () => {
 
   it('uses account/PAT/MCP authority separately from session capabilities and rechecks ownership', async () => {
     const id = crypto.randomUUID(), authId = crypto.randomUUID(), now = Date.now();
-    await env.DB.prepare('INSERT INTO users (id,google_sub,email,name,created_at,entitlements) VALUES (?1,?1,?2,?3,?4,?5)').bind(id, `${id}@example.test`, 'Facilitator', now, '{"team":true}').run();
+    await env.DB.prepare('INSERT INTO users (id,google_sub,email,name,created_at,entitlements) VALUES (?1,?1,?2,?3,?4,?5)').bind(id, `${id}@example.test`, 'Host', now, '{"team":true}').run();
     await env.DB.prepare('INSERT INTO auth_sessions (id,user_id,created_at,expires_at) VALUES (?1,?2,?3,?4)').bind(authId, id, now, now + 3600000).run();
     const cookie = `${SESSION_COOKIE}=${encodeURIComponent(await signCookieValue('test-secret', authId))}`;
     const account = (path: string, method = 'GET', body?: object) => call(path, { method, headers: { cookie, [CSRF_HEADER]: '1', 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });

@@ -5,7 +5,7 @@ import type { Env } from '../src/index';
 import { FREE_ENTITLEMENTS, SELF_HOSTED_ENTITLEMENTS, readEntitlements } from '../src/entitlements';
 import { paddleCatalog, paddleTime, verifyPaddleSignature } from '../src/billing/paddle';
 import { recordLiveSession } from '../src/control';
-import { facilitatorAccess } from '../src/facilitation';
+import { hostAccess } from '../src/hosting';
 
 const makeId = (prefix: string) => `${prefix}_${crypto.randomUUID().replaceAll('-', '').slice(0, 26)}`;
 const PRICE = 'pri_01gsz8x8sawmvhz1pv30nge1ke';
@@ -144,14 +144,14 @@ describe('Paddle subscription access', () => {
     await env.DB.prepare('INSERT INTO spaces (id,owner_user_id,name,created_at) VALUES (?1,?2,\'Workshop\',?3)').bind(space, a.userId, Date.now()).run();
     await env.DB.prepare('INSERT INTO space_members (space_id,user_id,role,created_at) VALUES (?1,?2,\'presenter\',?3)').bind(space, helper.userId, Date.now()).run();
     await recordLiveSession(configured, code, a.userId, 'Workshop', Date.now(), { spaceId: space });
-    expect(await facilitatorAccess(configured, code, helper.userId)).not.toBeNull();
+    expect(await hostAccess(configured, code, helper.userId)).not.toBeNull();
     await send(a.event('canceled'));
     expect(await a.access()).toEqual(FREE_ENTITLEMENTS);
-    expect(await facilitatorAccess(configured, code, helper.userId)).not.toBeNull();
+    expect(await hostAccess(configured, code, helper.userId)).not.toBeNull();
     const next = crypto.randomUUID();
     await recordLiveSession(configured, next, a.userId, 'Next workshop', Date.now(), { spaceId: space });
-    expect(await facilitatorAccess(configured, next, helper.userId)).toBeNull();
+    expect(await hostAccess(configured, next, helper.userId)).toBeNull();
     await env.DB.prepare('DELETE FROM space_members WHERE space_id=?1 AND user_id=?2').bind(space, helper.userId).run();
-    expect(await facilitatorAccess(configured, code, helper.userId)).toBeNull();
+    expect(await hostAccess(configured, code, helper.userId)).toBeNull();
   });
 });

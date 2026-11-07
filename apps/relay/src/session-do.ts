@@ -45,9 +45,9 @@
 
 import {
   applyCommand,
-  registerFacilitator,
-  facilitatorCanCommand,
-  type SessionFacilitator,
+  registerHost,
+  hostCanCommand,
+  type SessionHost,
   createSession,
   ensureQna,
   generateParticipantName,
@@ -461,7 +461,7 @@ export class SessionDO implements DurableObject {
           state,
           {
             idempotencyKey: `expiry-${now}`,
-            actor: { role: 'host', facilitatorId: state.facilitation.presenterId },
+            actor: { role: 'host', hostId: state.hosting.presenterId },
             command: { command: 'session.end' },
           },
           now,
@@ -502,15 +502,15 @@ export class SessionDO implements DurableObject {
     const assetMatch = /^\/__assets\/([^/]+)$/.exec(url.pathname);
     if (assetMatch !== null) {
       const resourceId = decodeURIComponent(assetMatch[1] as string);
-      if (request.method === 'PUT') return this.#putAsset(request, resourceId, url.searchParams.get('facilitatorId') ?? '');
+      if (request.method === 'PUT') return this.#putAsset(request, resourceId, url.searchParams.get('hostId') ?? '');
       if (request.method === 'GET' || request.method === 'HEAD') return this.#getAsset(request, resourceId);
       return json({ error: 'method-not-allowed' }, 405);
     }
     switch (url.pathname) {
       case '/__init':
         return this.#init(request);
-      case '/__facilitator':
-        return this.#facilitator(request);
+      case '/__host':
+        return this.#host(request);
       case '/__join':
         return this.#join(request);
       case '/__state':
@@ -547,7 +547,7 @@ export class SessionDO implements DurableObject {
       outline: Outline;
       sessionCode: string;
       outlineVersion?: number;
-      facilitator?: { id: string; name: string };
+      host?: { id: string; name: string };
       /** Captured by the Worker from the owner's billing; absent admits any number. */
       participantLimit?: number;
     };
@@ -563,7 +563,7 @@ export class SessionDO implements DurableObject {
     const sessionOutline = outlineWithSessionAssetUrls(body.outline, body.sessionCode);
     const state = createSession(sessionOutline, body.sessionCode, now, {
       outlineVersion: body.outlineVersion ?? 1,
-      ...(body.facilitator ? { facilitator: body.facilitator } : {}),
+      ...(body.host ? { host: body.host } : {}),
       ...(participantLimit === undefined ? {} : { participantLimit }),
     });
     this.#persist(state);
@@ -572,17 +572,17 @@ export class SessionDO implements DurableObject {
     return json({ ok: true, sessionCode: state.code, code: state.code, revision: state.revision });
   }
 
-  async #facilitator(request: Request): Promise<Response> {
-    const facilitator = await request.json() as SessionFacilitator;
+  async #host(request: Request): Promise<Response> {
+    const host = await request.json() as SessionHost;
     const state = this.#load();
     if (!state) return json({ error: 'session-not-found' }, 404);
-    const result = registerFacilitator(state, facilitator);
+    const result = registerHost(state, host);
     if (!result.ok) return json({ ok: false, error: result.error }, statusForError(result.error));
     if (result.state !== state) {
       this.#persist(result.state);
       await this.#notify(result.revision, Date.now());
     }
-    return json({ ok: true, facilitation: result.state.facilitation });
+    return json({ ok: true, hosting: result.state.hosting });
   }
 
   /* ---------------------------------------------------------------- join */
@@ -831,11 +831,11 @@ export class SessionDO implements DurableObject {
     // An await between that read and the write can discard another acknowledged mutation.
     const state = this.#load();
     if (state === null) return json({ error: 'session-not-found' }, 404);
-    if (envelope.actor.role === 'host' && !facilitatorCanCommand(state, envelope.actor.facilitatorId ?? '', envelope.command)) {
+    if (envelope.actor.role === 'host' && !hostCanCommand(state, envelope.actor.hostId ?? '', envelope.command)) {
       return PRESENTER_ONLY();
     }
     const key = typeof envelope.idempotencyKey === 'string' && envelope.idempotencyKey !== ''
-      ? JSON.stringify([envelope.actor.role, envelope.actor.facilitatorId ?? envelope.actor.participantId ?? '', envelope.idempotencyKey])
+      ? JSON.stringify([envelope.actor.role, envelope.actor.hostId ?? envelope.actor.participantId ?? '', envelope.idempotencyKey])
       : '';
 
     if (typeof key === 'string' && key !== '') {
@@ -909,10 +909,10 @@ export class SessionDO implements DurableObject {
     return json(payload.body, payload.status);
   }
 
-  async #putAsset(request: Request, resourceId: string, facilitatorId: string): Promise<Response> {
+  async #putAsset(request: Request, resourceId: string, hostId: string): Promise<Response> {
     const state = this.#load();
     if (state === null) return json({ error: 'session-not-found' }, 404);
-    if (state.facilitation.presenterId !== facilitatorId) return PRESENTER_ONLY();
+    if (state.hosting.presenterId !== hostId) return PRESENTER_ONLY();
     if (state.status !== 'lobby') return json({ error: 'session-already-started' }, 409);
     if (!RESOURCE_ID_PATTERN.test(resourceId) || !this.#resourceIds().includes(resourceId)) {
       return json({ error: 'resource-not-in-session' }, 404);
@@ -934,7 +934,7 @@ export class SessionDO implements DurableObject {
     // Start/end may have completed while the upload or digest was pending.
     const current = this.#load();
     if (current === null) return json({ error: 'session-not-found' }, 404);
-    if (current.facilitation.presenterId !== facilitatorId) return PRESENTER_ONLY();
+    if (current.hosting.presenterId !== hostId) return PRESENTER_ONLY();
     if (current.status !== 'lobby') return json({ error: 'session-already-started' }, 409);
     if (!this.#resourceIds().includes(resourceId)) return json({ error: 'resource-not-in-session' }, 404);
     const otherSize = this.#sql.exec<{ total: number }>(

@@ -1,7 +1,7 @@
 ---
-title: Q&A, groups, and co-facilitation
+title: Q&A, groups, and co-hosting
 description: Moderate audience questions, collect shared group responses, and pass presenter control.
-section: Teach and facilitate
+section: Teach and host
 order: 110
 related: [sharing, live-session, questions, results]
 ---
@@ -43,14 +43,14 @@ Earlier answers stay associated with their original group. Changing the spokespe
 
 Use this behavior deliberately when regrouping between activities: review the current question and answer-change policy before a new spokesperson responds.
 
-## Work with another facilitator
+## Work with another host
 
 **Required:** shared-session collaboration enabled for the session, current membership of its space, and an authorized host connection.
 
-Have each colleague open the ongoing session through the shared Library. When multiple facilitators are connected, the facilitation strip identifies the current presenter.
+Have each colleague open the ongoing session through the shared Library. When multiple hosts are connected, the hosting strip identifies the current presenter.
 
 - The presenter changes slides, controls reveals, freezes participation, and ends the session.
-- Other facilitators can moderate responses and manage groups using the controls available to them.
+- Other hosts can moderate responses and manage groups using the controls available to them.
 
 To hand over, select **Pass presentation** and choose the colleague. Confirm that their strip shows **You are presenting** before they take over. The audience remains in the same session with its existing answers.
 

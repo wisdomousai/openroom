@@ -75,7 +75,7 @@ describe('revocable connected applications', () => {
     const live = JSON.parse(rpc.result.content[0]!.text) as { code: string; hostToken: string };
     expect((await api(live.hostToken, `/api/sessions/${live.code}/state?role=host`)).status).toBe(200);
     const recovered = await (await api(first.access_token, '/api/my/sessions')).json() as { sessions: { hostToken: string }[] };
-    const joined = await (await api(first.access_token, `/api/my/sessions/${live.code}/facilitate`, 'POST')).json() as { hostToken: string };
+    const joined = await (await api(first.access_token, `/api/my/sessions/${live.code}/co-host`, 'POST')).json() as { hostToken: string };
     const spaces = await (await api(first.access_token, '/api/my/spaces')).json() as { spaces: { id: string }[] };
     const deck = await api(first.access_token, '/api/decks', 'POST', { spaceId: spaces.spaces[0]!.id, content: { ...SMOKE_OUTLINE, steps: [{ id: 'warmup-slide', kind: 'interaction', interactionId: 'warmup' }] }, createSession: true });
     expect(deck.status, await deck.clone().text()).toBe(201);

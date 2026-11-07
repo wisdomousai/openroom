@@ -1,4 +1,4 @@
-import { facilitateSessionRoute, facilitatorAccess, facilitatorCommandAllowed } from './facilitation.js';
+import { coHostSessionRoute, hostAccess, hostCommandAllowed } from './hosting.js';
 import { accountRecapRoute } from './recap-route.js';
 import { billingRoute } from './billing/routes';
 import { sharingRoute } from './sharing';
@@ -107,14 +107,14 @@ async function tutoringRequest(
     const response = await billingRoute(request, env, url);
     return { status: response.status, body: await responseBody(response) };
   }
-  const facilitateMatch = /^\/api\/my\/sessions\/([^/]+)\/facilitate$/.exec(path);
+  const coHostMatch = /^\/api\/my\/sessions\/([^/]+)\/co-host$/.exec(path);
   const resumeMatch = /^\/api\/sessions\/([^/]+)\/resume$/.exec(path);
   if (resumeMatch) {
     const response = await resumeSessionRoute(request, env, resumeMatch[1]!);
     return { status: response.status, body: await responseBody(response) };
   }
-  if (facilitateMatch && method === 'POST') {
-    const response = await facilitateSessionRoute(request, env, facilitateMatch[1]!);
+  if (coHostMatch && method === 'POST') {
+    const response = await coHostSessionRoute(request, env, coHostMatch[1]!);
     return { status: response.status, body: await responseBody(response) };
   }
   const recapMatch = /^\/api\/my\/sessions\/([^/]+)\/recap$/.exec(path);
@@ -158,7 +158,7 @@ function makeDeps(env: Env, identity: McpIdentity, bearer: string, origin: strin
     async getExport(code) {
       const sessionCode = normalizeSessionCode(code);
       if (identity.kind === 'user') {
-        if (!await facilitatorAccess(env, sessionCode, identity.userId)) return null;
+        if (!await hostAccess(env, sessionCode, identity.userId)) return null;
       }
       const id = env.SESSIONS.idFromName(sessionCode);
       const response = await env.SESSIONS.get(id).fetch(
@@ -174,9 +174,9 @@ function makeDeps(env: Env, identity: McpIdentity, bearer: string, origin: strin
     async sessionCommand(code, command, options) {
       const sessionCode = normalizeSessionCode(code);
       if (identity.kind === 'user') {
-        const access = await facilitatorAccess(env, sessionCode, identity.userId);
+        const access = await hostAccess(env, sessionCode, identity.userId);
         if (!access) throw new ToolError('session-not-found');
-        if (!await facilitatorCommandAllowed(env, sessionCode, access, command as import('@openroom/domain').Command)) throw new ToolError('presentation-access-denied');
+        if (!await hostCommandAllowed(env, sessionCode, access, command as import('@openroom/domain').Command)) throw new ToolError('presentation-access-denied');
       }
       const idempotencyKey =
         typeof options?.idempotencyKey === 'string' && options.idempotencyKey !== ''
@@ -194,7 +194,7 @@ function makeDeps(env: Env, identity: McpIdentity, bearer: string, origin: strin
           body: JSON.stringify({
             idempotencyKey,
             ...(expectedRevision === undefined ? {} : { expectedRevision }),
-            actor: { role: 'host', facilitatorId: identity.kind === 'user' ? identity.userId : 'creator' },
+            actor: { role: 'host', hostId: identity.kind === 'user' ? identity.userId : 'creator' },
             command,
           }),
         },

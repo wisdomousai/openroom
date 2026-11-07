@@ -29,9 +29,9 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Live slide editing and insertion | present | `live/LiveHost.tsx`, `live/LiveRibbon.tsx`, `live/` insertion controls |
 | Open/close/reveal/reopen, countdown, freeze, end | live-session | `live/useHostSession.ts`, `live/LiveHost.tsx`, domain command handlers |
 | Connection fallback, remote, rejoin | live-session, participant, troubleshooting | `PresenterRemote.tsx`, participant `session.ts`, SDK connection state |
-| Session-wide Q&A, moderation, spotlight | facilitation | `live/QnaDesk.tsx`, `live/SessionAside.tsx` |
-| Group membership, spokesperson, shared responses | facilitation, questions, participant | `live/GroupsPanel.tsx`, domain groups |
-| Co-facilitation, handoff, recovery, revocation | facilitation, sharing | host facilitator strip, `apps/workspace-worker/src/index.ts`, entitlement checks |
+| Session-wide Q&A, moderation, spotlight | hosting | `live/QnaDesk.tsx`, `live/SessionAside.tsx` |
+| Group membership, spokesperson, shared responses | hosting, questions, participant | `live/GroupsPanel.tsx`, domain groups |
+| Co-hosting, handoff, recovery, revocation | hosting, sharing | host strip, `apps/workspace-worker/src/index.ts`, entitlement checks |
 | Anonymous, nickname, identified, guest-list identity | live-session, participant, cli | schema defaults, participant `session.ts`, Worker `index.ts`, `guest-links.ts` |
 | Learner link creation, replacement, expiry, revocation | learner-links | `pages/tutor/StudentLinks.tsx`, `apps/workspace-worker/src/student-links.ts` |
 | Outcomes, tutor-private notes, next step, artifacts | notes, limits, learner | `pages/tutor/SessionNotes.tsx`, `apps/workspace-worker/src/learner.ts` |
@@ -51,7 +51,7 @@ Reviewed against the repository build on 2026-09-20. Paths below are implementat
 | Billing checkout, pending payment, portal, refresh | account | `pages/BillingPage.tsx`, `apps/workspace-worker/src/billing/` |
 | Personal API tokens, connection revocation | account, agents | `pages/SettingsPage.tsx`, `components/ConnectedApps.tsx` |
 | External MCP, account consent, token/stdio setup | agents, cli | `packages/mcp/src/tools.ts`, server instructions, CLI backend selection |
-| CLI validate, author, versions, drafts, facilitate, export | cli | `packages/cli/src/run.ts`, `commands/` |
+| CLI validate, author, versions, drafts, co-host, export | cli | `packages/cli/src/run.ts`, `commands/` |
 | Guest-link mint/list/revoke API workflow | cli | `apps/workspace-worker/src/guest-links.ts`, live guest-link routing in `index.ts` |
 | Limits, visibility, retention, credential distinctions | limits | schema validators, `session-do.ts`, archives and learner-audio services |
 | Keyboard, Reading view, languages, recovery guidance | shortcuts, troubleshooting | actual input handlers, learner copy, public manual browser checks |

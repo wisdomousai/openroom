@@ -217,7 +217,7 @@ export function Body({
         <div className="round" role="status">
           <p className="round__title">{snapshot.yourGroup?.name ?? 'Group response'}</p>
           <p className="hint">{!snapshot.yourGroup
-            ? 'Your facilitator will assign you to a group.'
+            ? 'Your host will assign you to a group.'
             : canAnswer
               ? 'You are the spokesperson. Discuss together, then send one shared answer.'
               : 'Discuss together. Your spokesperson sends the shared answer.'}</p>

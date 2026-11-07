@@ -107,7 +107,7 @@ export function LivePanel({ connection, selection, failed, onRehearse }: { conne
       if (event.data?.type !== 'openroom.slide.activate' || event.data.sessionId !== grant.sessionId) return;
       const requested = parseBinding(JSON.stringify(event.data.binding));
       const latest = client.current?.getSnapshot();
-      if (!requested || !composedStep(grant.presentation, requested) || latest?.status !== 'live' || !latest.facilitation.canPresent) return;
+      if (!requested || !composedStep(grant.presentation, requested) || latest?.status !== 'live' || !latest.hosting.canPresent) return;
       void action(() => activate({ slideId: requested.slideId, presentationId: requested.presentationId, rawBinding: JSON.stringify(requested) }, true));
     };
     return () => channel.close();
@@ -119,7 +119,7 @@ export function LivePanel({ connection, selection, failed, onRehearse }: { conne
   const selectedInSession = !!selectedStepId && snapshot?.outline?.content.steps.some((step) => step.id === selectedStepId);
   const selectedIsCurrent = selectedInSession && currentStep?.id === selectedStepId;
   const connected = status === 'live' || status === 'polling';
-  const controlsDisabled = busy || !connected || !live || !snapshot?.facilitation.canPresent;
+  const controlsDisabled = busy || !connected || !live || !snapshot?.hosting.canPresent;
   const interactionId = snapshot?.activeInteractionId;
   const currentInteraction = snapshot?.interactions.find((item) => item.id === interactionId);
   const remote = grant ? `/host/#/sessions/${encodeURIComponent(grant.sessionCode)}/remote?token=${encodeURIComponent(grant.hostToken)}` : '';
@@ -137,8 +137,8 @@ export function LivePanel({ connection, selection, failed, onRehearse }: { conne
       {!ended ? <><div className="join-code"><span className="eyebrow">JOIN CODE</span><strong>{grant.sessionCode}</strong><a href={snapshot?.joinUrl ?? `/join/?code=${encodeURIComponent(grant.sessionCode)}`} target="_blank" rel="noopener noreferrer">Open participant link ↗</a></div>
         {snapshot ? <><p className="live-counts">{snapshot.participantCount} joined · {snapshot.answeredCount} answered</p><h3>{snapshot.interaction?.prompt ?? (currentStep && 'title' in currentStep ? currentStep.title : snapshot.outline?.content.meta.title)}</h3></> : <p role="status">Loading session…</p>}
         {status === 'offline' ? <p>Connection lost. Controls will return when the session reconnects.</p> : null}
-        {snapshot?.status === 'lobby' ? <button className="primary" disabled={busy || !connected || !snapshot.facilitation.canPresent} onClick={() => void action(() => send({ command: 'session.start' }))}>Start participation</button> : null}
-        {snapshot && !snapshot.facilitation.canPresent ? <><p>Another facilitator is presenting.</p>{snapshot.facilitation.canRecover ? <button disabled={busy || !connected} onClick={() => void action(() => send({ command: 'presentation.recover' }))}>Take presentation control</button> : null}</> : null}
+        {snapshot?.status === 'lobby' ? <button className="primary" disabled={busy || !connected || !snapshot.hosting.canPresent} onClick={() => void action(() => send({ command: 'session.start' }))}>Start participation</button> : null}
+        {snapshot && !snapshot.hosting.canPresent ? <><p>Another host is presenting.</p>{snapshot.hosting.canRecover ? <button disabled={busy || !connected} onClick={() => void action(() => send({ command: 'presentation.recover' }))}>Take presentation control</button> : null}</> : null}
         <div className="live-actions"><button className="primary" disabled={controlsDisabled || !selectedInSession || selectedIsCurrent} onClick={() => void action(() => activate())}>{selectedIsCurrent ? 'Selected slide is live' : 'Show selected slide'}</button>
           {bound && !selectedInSession && snapshot ? <p className="quiet">This slide was embedded or changed after the session started. Start a new session to include it.</p> : null}
           {interactionId ? <div className="control-grid"><button disabled={controlsDisabled || snapshot?.interactionStatus !== 'open'} onClick={() => void action(() => send({ command: 'interaction.close', interactionId }))}>Close answers</button><button disabled={controlsDisabled || snapshot?.interactionStatus === 'revealed'} onClick={() => void action(() => send({ command: 'interaction.reveal', interactionId }))}>Reveal results</button><button disabled={controlsDisabled || snapshot?.interactionStatus === 'open'} onClick={() => void action(() => send({ command: 'interaction.open', interactionId }))}>Reopen answers</button><button disabled={controlsDisabled || snapshot?.interactionStatus !== 'revealed'} onClick={() => void action(() => send({ command: currentInteraction?.resultsHidden ? 'interaction.showResults' : 'interaction.hideResults', interactionId }))}>{currentInteraction?.resultsHidden ? 'Show results' : 'Hide results'}</button></div> : null}
