@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useEditorServices, type EditorDestination } from '../services';
 import { Button } from '@openroom/ui/components/button';
 import type { DraftStatus } from './useDraftSave';
+import { LiveNowButton, type LiveNowCue } from '../live/LiveStart';
 
 /**
  * The deck editor's 44px chrome title bar.
@@ -16,6 +17,7 @@ export function DeckEditorTopBar({
   title,
   onRename,
   fileStatus,
+  studentName,
   folderName,
   libraryTo,
   shareTo,
@@ -33,6 +35,8 @@ export function DeckEditorTopBar({
   title: string;
   onRename?: (title: string) => void;
   fileStatus?: ReactNode;
+  /** The student the deck is linked to. Read-only here; absent without a context. */
+  studentName?: string | null;
   /** Null while the deck sits at the root of its space. */
   folderName: string | null;
   libraryTo: EditorDestination;
@@ -51,7 +55,7 @@ export function DeckEditorTopBar({
    * A session of this deck is live now. The bar says so beside Start session
    * and offers the way back in, so a reload never hides a running lesson.
    */
-  live?: { label: string; onRejoin: () => void; rejoining: boolean } | null;
+  live?: LiveNowCue | null;
   error: string | null;
 }) {
   const { Link } = useEditorServices().navigation;
@@ -80,6 +84,14 @@ export function DeckEditorTopBar({
           <span className="sr-only">Back</span>
         </Link>
         <div className="flex min-w-0 items-baseline gap-2">
+          {studentName ? (
+            <>
+              <span className="truncate text-caption text-muted-foreground" data-deck-student>{studentName}</span>
+              <span aria-hidden="true" className="text-caption text-muted-foreground">
+                /
+              </span>
+            </>
+          ) : null}
           {folderName === null ? null : (
             <>
               <span className="truncate text-caption text-muted-foreground">{folderName}</span>
@@ -118,14 +130,7 @@ export function DeckEditorTopBar({
             <Link to={shareTo}>Share</Link>
           </Button>
         )}
-        {live ? (
-          <span className="flex shrink-0 items-center gap-2" data-deck-live-now>
-            <span className="text-caption text-muted-foreground">Live now</span>
-            <Button size="sm" variant="outline" disabled={live.rejoining} onClick={live.onRejoin}>
-              {live.rejoining ? 'Joining…' : live.label}
-            </Button>
-          </span>
-        ) : null}
+        {live ? <LiveNowButton live={live} /> : null}
         <Button
           data-deck-present
           disabled={!canPresent}

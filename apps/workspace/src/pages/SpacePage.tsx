@@ -5,19 +5,21 @@ import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react
 import {
   copyFolder,
   createFolder,
+  facilitateSession,
   getContext,
-  getDeck,
   getDeckFileLink,
   getSpaceMembers,
   getSpaceTree,
   linkDeckFile,
   listAllSpaces,
   listContexts,
+  listMySessions,
   restoreContext,
   trashDeck,
   trashFolder,
   updateDeck,
   updateFolder,
+  type MySession,
   type SpaceTree,
 } from '../api';
 import { ContextLinksCard } from './tutor/ContextLinks';
@@ -54,7 +56,8 @@ import { parseRows, ROW_DRAG_MIME, type DragRow } from '../lib/row-drag';
 import { to } from '../destinations';
 import { invalidateManagementData } from '../query-client';
 import type { AuthSession } from '../useAuth';
-import type { StoredSession } from '@openroom/editor';
+import { LiveStartDialog, type LiveNowCue, type StoredSession } from '@openroom/editor';
+import { liveSessionOf } from '../lib/live-sessions';
 import { stringifyOpenRoomFile, type OpenRoomFileV1 } from '@openroom/schema';
 
 interface Props {
@@ -92,6 +95,9 @@ export function SpacePage({
   const [deleting, setDeleting] = useState(false);
   const [query, setQuery] = useState('');
   const [dropTarget, setDropTarget] = useState<string | 'root' | null>(null);
+  /** The deck whose Start waits on "rejoin or start another". */
+  const [confirmLive, setConfirmLive] = useState<PanelItem | null>(null);
+  const [rejoining, setRejoining] = useState(false);
 
   const signedIn = session.user !== null && session.user !== undefined;
   const currentFolderId = folderIdProp ?? null;
@@ -149,6 +155,9 @@ export function SpacePage({
   const sharedWith = members.find((member) => member.role !== 'owner') ?? null;
 
   const activeItemId = itemIdProp ?? null;
+
+  // Shares its cache with the Live now strip above the list.
+  const liveQuery = useQuery({ queryKey: ['sessions', 'live-now'], queryFn: listMySessions, refetchInterval: 15_000, enabled: signedIn });
 
   const goTo = useCallback(
     (next: { folderId?: string | null; itemId?: string | null; contextId?: string | null }, replace = false) => {
@@ -363,6 +372,30 @@ export function SpacePage({
     }
   };
 
+  const rejoin = async (live: MySession) => {
+    setRejoining(true);
+    try {
+      onOpenSession({ ...await facilitateSession(live.sessionCode), title: live.title ?? undefined });
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not join the session.', 'error');
+    } finally {
+      setRejoining(false);
+    }
+  };
+
+  const liveCue = (item: PanelItem | null): LiveNowCue | null => {
+    const live = item ? liveSessionOf(liveQuery.data ?? [], item.data) : null;
+    return live
+      ? { label: live.shared ? 'Join' : 'Rejoin', who: live.contextName ?? null, onRejoin: () => void rejoin(live), rejoining }
+      : null;
+  };
+
+  /** Start files a new session; while one of this deck and student runs, it asks once first. */
+  const requestStart = (item: PanelItem) => {
+    if (liveCue(item)) setConfirmLive(item);
+    else void startItem(item);
+  };
+
   const duplicateItem = async (item: PanelItem) => {
     if (!spaceId) return;
     setBusyId(item.data.id);
@@ -469,7 +502,7 @@ export function SpacePage({
     ? {
         onStart: (deckId) => {
           const deck = decks.find((d) => d.id === deckId);
-          if (deck) void startItem({ kind: 'deck', data: deck });
+          if (deck) requestStart({ kind: 'deck', data: deck });
         },
         onDuplicate: (row) => {
           if (row.kind === 'folder') { void folderActions.onCopyFolder(row.id); return; }
@@ -546,7 +579,8 @@ export function SpacePage({
       place={{ spaceId, folderId: currentFolderId }}
       canEdit={canEdit}
       busy={busyId === activePanelItem.data.id}
-      onStart={(item) => void startItem(item)}
+      onStart={requestStart}
+      live={liveCue(activePanelItem)}
       onDuplicate={(item) => void duplicateItem(item)}
       onTrash={(item) => {
         setPendingDelete({ kind: item.kind, id: item.data.id, label: item.data.title });
@@ -694,6 +728,13 @@ export function SpacePage({
 
         {inspector}
       </div>
+
+      <LiveStartDialog
+        live={liveCue(confirmLive)}
+        open={confirmLive !== null}
+        onOpenChange={(open) => { if (!open) setConfirmLive(null); }}
+        onStartAnother={() => { if (confirmLive) void startItem(confirmLive); }}
+      />
 
       <ConfirmActionDialog
         open={pendingDelete !== null}

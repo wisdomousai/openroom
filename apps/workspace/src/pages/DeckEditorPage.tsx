@@ -4,6 +4,7 @@ import {
   DeckEditor,
   DeckEditorTopBar,
   desktopBridge,
+  LiveStartDialog,
   Presenter,
   questionReadinessIssue,
   questionReadinessMessage,
@@ -11,6 +12,7 @@ import {
   seedAgentWithReading,
   useDraftSave,
   type DeckEditorFocus,
+  type LiveNowCue,
   type PresentationPosition,
   type StoredSession,
 } from '@openroom/editor';
@@ -19,15 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import { parseOutline, slideEmbedCode } from '@openroom/schema';
 import { stringify } from 'yaml';
 import { Button } from '@openroom/ui/components/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@openroom/ui/components/dialog';
-import { invalidateManagementData } from '../query-client';
+import { invalidateManagementData, queryClient } from '../query-client';
 
 import {
   addDeckVersion,
@@ -41,14 +35,10 @@ import {
   type MySession,
 } from '../api';
 import { startSessionFromDeck } from '../lib/library-actions';
+import { liveSessionOf } from '../lib/live-sessions';
 import { downloadCloudDocument } from '../lib/cloud-document';
 import { sessionStartMessage } from '../components/ContinuityLock';
 import { isMissing, NotAvailable } from './tutor/shared';
-
-/** The live session of this deck the tutor can rejoin, if any. */
-function liveSessionOf(sessions: readonly MySession[], deckId: string): MySession | null {
-  return sessions.find((session) => session.deckId === deckId && !session.ended && session.recoverable) ?? null;
-}
 
 
 /**
@@ -112,8 +102,8 @@ export function DeckEditorPage({
     retry: (count, error) => !isMissing(error) && count < 2,
   });
   const liveQuery = useQuery({ queryKey: ['sessions', 'live-now'], queryFn: listMySessions, refetchInterval: 15_000 });
-  const liveSession = liveSessionOf(liveQuery.data ?? [], deckId);
   const contextId = designQuery.data?.detail.deck.contextId ?? null;
+  const liveSession = designQuery.data ? liveSessionOf(liveQuery.data ?? [], { id: deckId, contextId }) : null;
   const contextQuery = useQuery({
     queryKey: ['contexts', contextId],
     queryFn: () => getContext(contextId!),
@@ -124,6 +114,12 @@ export function DeckEditorPage({
     : contextId === null || contextId === ''
       ? null
       : contextQuery.data?.displayName;
+
+  // The Library row and inspector summarise the draft; leaving the editor makes them read it again.
+  useEffect(() => () => {
+    void queryClient.invalidateQueries({ queryKey: ['spaces'] });
+    void queryClient.invalidateQueries({ queryKey: ['decks', deckId, 'outline'] });
+  }, [deckId]);
 
   useEffect(() => {
     const data = designQuery.data;
@@ -324,6 +320,9 @@ export function DeckEditorPage({
   };
 
   const openStart = () => { setStartImmediately(true); setPresentFrom(0); };
+  const liveNow: LiveNowCue | null = liveSession
+    ? { label: liveSession.shared ? 'Join' : 'Rejoin', who: liveSession.contextName ?? recipient ?? null, onRejoin: () => void rejoin(liveSession), rejoining }
+    : null;
   const readiness = validation?.ok ? questionReadinessIssue(validation.outline) : null;
 
   const detail = designQuery.data?.detail ?? null;
@@ -355,6 +354,7 @@ export function DeckEditorPage({
     <div className="flex h-svh min-h-0 min-w-0 flex-col bg-background">
       <DeckEditorTopBar
         fileStatus={copying ? <span role="status">Preparing copy…</span> : undefined}
+        studentName={recipient ?? null}
         title={validation?.ok ? validation.outline.meta.title : title}
         onRename={(name) => { if (validation?.ok) setSource(stringify(renameDeck(validation.outline, name), { lineWidth: 100 })); }}
         folderName={detail?.folderName ?? null}
@@ -382,9 +382,7 @@ export function DeckEditorPage({
               setFocus((previous) => ({ target, nonce: (previous?.nonce ?? 0) + 1 }));
             }
           : undefined}
-        live={liveSession
-          ? { label: liveSession.shared ? 'Join' : 'Rejoin', onRejoin: () => void rejoin(liveSession), rejoining }
-          : null}
+        live={liveNow}
         error={loadMessage}
       />
       {draftConflict ? <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-border px-3 py-2 text-secondary">
@@ -392,27 +390,7 @@ export function DeckEditorPage({
         <Button type="button" size="sm" variant="outline" onClick={() => void resolveDraft(true)}>Keep this draft</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => void resolveDraft(false)}>Use saved version</Button>
       </div> : null}
-      <Dialog open={confirmStart} onOpenChange={setConfirmStart}>
-        <DialogContent aria-describedby="deck-live-confirm">
-          <DialogHeader>
-            <DialogTitle>This deck is live now</DialogTitle>
-            <DialogDescription id="deck-live-confirm">
-              A session of this deck is still running. Rejoin it, or start another session.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setConfirmStart(false)}>Cancel</Button>
-            <Button type="button" variant="outline" onClick={() => { setConfirmStart(false); openStart(); }}>Start another</Button>
-            <Button
-              type="button"
-              disabled={rejoining || liveSession === null}
-              onClick={() => { setConfirmStart(false); if (liveSession) void rejoin(liveSession); }}
-            >
-              Rejoin
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <LiveStartDialog live={liveNow} open={confirmStart} onOpenChange={setConfirmStart} onStartAnother={openStart} />
       {!documentLoaded ? (
         designQuery.isError ? (
           <div className="flex flex-col items-start gap-2 p-5" role="alert">
@@ -467,6 +445,7 @@ export function DeckEditorPage({
           outline={validation.outline}
           fromStep={presentFrom}
           startImmediately={startImmediately}
+          liveNow={liveNow}
           onStart={start}
           onClose={(stepId) => { setActiveStepId(stepId); setPresentFrom(null); }}
         />
