@@ -46,8 +46,8 @@ export async function servePictures(page: Page): Promise<void> {
 
 /**
  * Measures every drawn part once fonts and pictures are ready. The cut test is
- * the editor's overflow detector (slide-overflow.ts) plus the margin rule of
- * W_TEXT_FIT: a part may not reach into the master's safe area.
+ * ported from the editor's overflow detector (slide-overflow.ts), plus the
+ * margin rule of W_TEXT_FIT: a part may not reach into the master's safe area.
  */
 export async function measureSlide(surface: Locator, safeArea: number): Promise<SlideMeasure> {
   for (const picture of await surface.locator('img').all()) {
@@ -81,11 +81,16 @@ export async function measureSlide(surface: Locator, safeArea: number): Promise<
       const box = element.getBoundingClientRect();
       parts[key] = { x: (box.left - frame.left) / frame.width, y: (box.top - frame.top) / frame.width, w: box.width / frame.width, h: box.height / frame.width };
       const style = getComputedStyle(element);
+      // Text past a clipping box is lost; text past a visible box (a tight
+      // line height on a big number) still counts for the margin.
+      const hides = (overflow: string) => overflow === 'hidden' || overflow === 'clip';
       const text = !!element.textContent?.trim() &&
-        ((style.overflowY !== 'auto' && style.overflowY !== 'scroll' && element.scrollHeight > element.clientHeight + TOLERANCE) ||
-         (style.overflowX !== 'auto' && style.overflowX !== 'scroll' && element.scrollWidth > element.clientWidth + TOLERANCE));
-      const inMargin = box.top < frame.top + margin - TOLERANCE || box.bottom > frame.bottom - margin + TOLERANCE ||
-        box.left < frame.left + margin - TOLERANCE || box.right > frame.right - margin + TOLERANCE;
+        ((hides(style.overflowY) && element.scrollHeight > element.clientHeight + TOLERANCE) ||
+         (hides(style.overflowX) && element.scrollWidth > element.clientWidth + TOLERANCE));
+      const bottom = Math.max(box.bottom, box.top + element.scrollHeight);
+      const right = Math.max(box.right, box.left + element.scrollWidth);
+      const inMargin = box.top < frame.top + margin - TOLERANCE || bottom > frame.bottom - margin + TOLERANCE ||
+        box.left < frame.left + margin - TOLERANCE || right > frame.right - margin + TOLERANCE;
       if (text || inMargin || clipped(element)) cut.push(key);
     }
     return { height: frame.height / frame.width, parts, cut };
