@@ -597,7 +597,10 @@ export function DesktopFileEditor() {
             }}
           />
         </div>
-        {agentOpen ? <AgentPane onBeforeRun={flushForAgent} onClose={() => showAgent(false)} /> : null}
+        {/* Closing only hides the pane: a preparation keeps streaming into it and Cancel survives reopening. */}
+        <div className={agentOpen ? 'contents' : 'hidden'}>
+          <AgentPane onBeforeRun={flushForAgent} onClose={() => showAgent(false)} />
+        </div>
       </div>
       {presentFrom === null || validation?.ok !== true ? null : (
         <RelayLiveServices origin={relayOrigin}>
