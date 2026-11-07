@@ -48,6 +48,8 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await page.getByRole('button', { name: 'Listen · 0:04', exact: true }).click();
   const tutorAudio = page.getByLabel('Voice response', { exact: true });
   await expect(tutorAudio).toHaveJSProperty('duration', 4);
+  // Listen plays the recording; it does not stop at a paused player.
+  await expect.poll(() => tutorAudio.evaluate((element: HTMLAudioElement) => element.currentTime)).toBeGreaterThan(0);
   // Comments sort by their time in the recording, whatever order they are added in.
   await tutorAudio.evaluate((element: HTMLAudioElement) => { element.pause(); element.currentTime = 3.2; element.dispatchEvent(new Event('timeupdate')); });
   await page.getByRole('button', { name: 'Comment at 0:03', exact: true }).click();

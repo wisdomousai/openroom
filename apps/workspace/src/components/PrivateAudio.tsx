@@ -53,7 +53,8 @@ export function PrivateAudio({ submissionId, available, durationMs, recoverable 
   };
   const listen = async (atMs?: number) => {
     if (source && player.current) { if (atMs !== undefined) player.current.currentTime = atMs / 1000; void player.current.play().catch(() => {}); return; }
-    setBusy(true); setError(null); seek.current = atMs ?? null;
+    // Listen starts playback once the recording loads, from the start or from a comment's time.
+    setBusy(true); setError(null); seek.current = atMs ?? 0;
     try {
       const blob = await (await fetchAudio()).blob();
       if (request.current?.signal.aborted) return;
