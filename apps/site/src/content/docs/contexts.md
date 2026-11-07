@@ -34,7 +34,7 @@ The first selection narrows the supported teaching languages. Changing it may cl
 
 ## Prepare the next lesson
 
-Read the previous private **Next step** in the context panel. Open Notes for the relevant lesson to review outcomes and homework. Select **Review learner work** for submitted writing and voice responses.
+Read the previous private **Next session** in the context panel. Open Notes for the relevant lesson to review outcomes and homework. Select **Review learner work** for submitted writing and voice responses.
 
 In a context-linked deck, open the editor's **Notes** pane to find **Practice to revisit** and **From learner feedback**. Inspect an item before copying it into the new deck. The [review instructions](/docs/review/#bring-selected-work-into-the-next-deck) explain which material becomes visible when copied.
 

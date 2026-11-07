@@ -39,6 +39,7 @@ import {
 import {
   EmptyInspector,
   ItemDetailPanel,
+  labelRecords,
   type PanelItem,
   type DeckAside,
 } from '../components/ItemDetailPanel';
@@ -320,6 +321,12 @@ export function SpacePage({
       return session?.deckId === deckId;
     });
   }, [activePanelItem, records, tree?.sessions]);
+
+  /** The person's quiet Notes group: titles only, most recent first, no dates. */
+  const personNotes = useMemo(
+    () => (currentContextId === null ? [] : labelRecords(records.filter((record) => record.contextId === currentContextId))),
+    [currentContextId, records],
+  );
 
   const renameItem = async (item: PanelItem, name: string) => {
     try {
@@ -732,6 +739,21 @@ export function SpacePage({
             scroll={personView ? 'page' : 'list'}
             {...(rowActions ? { rowActions } : {})}
           />
+
+          {personView && personNotes.length > 0 ? (
+            <section aria-labelledby="person-notes" className="mx-8 mb-6 flex flex-col gap-0.5">
+              <h2 id="person-notes" className="mb-1.5 px-2 text-caption text-muted-foreground">Notes</h2>
+              {personNotes.map((record) => (
+                <Link
+                  key={record.id}
+                  {...to.sessionNotes(record.sessionId)}
+                  className="w-fit max-w-full truncate rounded-md px-2 py-1.5 text-rail font-normal hover:bg-chrome"
+                >
+                  {record.label}
+                </Link>
+              ))}
+            </section>
+          ) : null}
 
           {/* Below the decks, which are what a tutor opens this page for; open, so a link's state is seen without a click. */}
           {personView && canEdit && currentContextId ? (

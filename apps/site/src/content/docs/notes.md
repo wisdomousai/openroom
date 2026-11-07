@@ -17,15 +17,15 @@ Notes belong to the session that was taught. Check the session title before edit
 | Field | Content and audience |
 | --- | --- |
 | Outcomes (one per line) | Short statements of what was achieved. Shared through learner links when the session has a learner context. |
-| Next step | A private teaching reminder used when preparing the next session. |
+| Next session | A private teaching reminder used when preparing the next session. |
 | Tutor notes / Private notes | Private teaching observations, available to authorized colleagues in the space. |
 | Homework | Published tasks and their learner recipients for this session. |
 
-Enter outcomes on separate lines. Keep **Next step** actionable. Review the homework inherited from the taught deck, adjust its instructions or recipients, then select **Save notes** or **Update notes**.
+Enter outcomes on separate lines. Keep **Next session** actionable. Review the homework inherited from the taught deck, adjust its instructions or recipients, then select **Save notes** or **Update notes**.
 
 ![Session Notes form with shared outcomes, private next step and tutor notes, and the homework section](/docs/images/session-notes.png)
 
-*Outcomes are shared with learners; Next step and Tutor notes remain on the teaching side.*
+*Outcomes are shared with learners; Next session and Tutor notes remain on the teaching side.*
 
 Sessions without a learner context retain their Notes in the space. A context-linked session shares only its learner-facing fields and the tasks each learner is entitled to receive.
 

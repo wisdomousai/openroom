@@ -26,7 +26,7 @@ A space shares one Library tree. Put material for a different membership group i
 | --- | --- |
 | Slide presenter notes | Host-side preparation and teaching surfaces. |
 | Live Private notes | The current browser's scratchpad until saved into the teaching record. |
-| Notes: Tutor notes and Next step | Authorized workspace users. |
+| Notes: Tutor notes and Next session | Authorized workspace users. |
 | Notes: Outcomes | Learners in the context. |
 | Homework assigned to everyone | Learners in the context. |
 | Homework assigned to selected learners | The selected learner identities. |
