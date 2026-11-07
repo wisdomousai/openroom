@@ -35,7 +35,7 @@ describe('write-notes prompt', () => {
   it('lists ended and settled sessions without Notes, newest first, with the student name', async () => {
     const owner = await account();
     const change = await subscribe(owner);
-    const created = await owner.request('/api/tutoring/students', 'POST', { displayName: 'Léa', kind: 'person', student: {} });
+    const created = await owner.request('/api/tutoring/students', 'POST', { displayName: 'Léa', kind: 'person', profile: {} });
     expect(created.status).toBe(201);
     const student = created.body.student as { id: string; spaceId: string };
     const now = Date.now();

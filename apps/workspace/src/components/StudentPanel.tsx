@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import type { LinkTarget } from '../destinations';
 import type { StudentKind, SpaceSettings } from '@openroom/schema';
 
-import { studentChips, studentIsEmpty, fieldsFromStudent } from '../lib/student-fields';
+import { profileChips, profileIsEmpty, fieldsFromProfile } from '../lib/profile-fields';
 import { givenName } from '../lib/initials';
 import { cn } from '@openroom/ui/utils';
 
@@ -12,7 +12,7 @@ interface Props {
   displayName: string;
   /** A person is called by their given name; a group or class by its whole name. */
   kind: StudentKind;
-  student: Record<string, unknown>;
+  profile: Record<string, unknown>;
   nextNote?: string;
   onEdit?: () => void;
   /** The space's language pair, which word lookup reads. */
@@ -28,15 +28,15 @@ interface Props {
 export function StudentPanel({
   displayName,
   kind,
-  student,
+  profile,
   nextNote,
   onEdit,
   languages,
   settingsTo,
 }: Props) {
-  const fields = fieldsFromStudent(student);
-  const chips = studentChips(fields);
-  const empty = studentIsEmpty(fields);
+  const fields = fieldsFromProfile(profile);
+  const chips = profileChips(fields);
+  const empty = profileIsEmpty(fields);
   const who = kind === 'person' ? givenName(displayName) : displayName;
 
   return (

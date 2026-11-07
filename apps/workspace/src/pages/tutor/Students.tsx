@@ -15,16 +15,16 @@ import {
   type MySpace,
 } from '../../api';
 import { LanguagePairFields, useLanguagePair } from '../../components/LanguagePairFields';
-import { StudentFieldsEditor } from '../../components/StudentFieldsEditor';
+import { ProfileFieldsEditor } from '../../components/ProfileFieldsEditor';
 import { ConfirmActionDialog } from '../../components/ManagementTable';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import {
-  studentFromFields,
-  fieldsFromStudent,
+  profileFromFields,
+  fieldsFromProfile,
   LEVEL_CHIPS,
-  type StudentFields,
-} from '../../lib/student-fields';
+  type ProfileFields,
+} from '../../lib/profile-fields';
 import { to, type LinkTarget } from '../../destinations';
 import { invalidateManagementData } from '../../query-client';
 import {
@@ -82,7 +82,7 @@ function StudentForm({
   initial?: StudentDetail;
   submitLabel: string;
   cancelTo: LinkTarget;
-  onSubmit: (input: { displayName: string; student: Record<string, unknown> }) => Promise<void>;
+  onSubmit: (input: { displayName: string; profile: Record<string, unknown> }) => Promise<void>;
   kind?: StudentKind;
   onKindChange?: (kind: 'person' | 'group') => void;
   /** Fields that belong to the new student's space rather than the student. */
@@ -91,7 +91,7 @@ function StudentForm({
   footer?: ReactNode;
 }) {
   const [displayName, setDisplayName] = useState(initial?.displayName ?? '');
-  const [fields, setFields] = useState<StudentFields>(() => fieldsFromStudent(initial?.student));
+  const [fields, setFields] = useState<ProfileFields>(() => fieldsFromProfile(initial?.profile));
   /** The empty-name message sits under Name; a failed save is reported by the buttons. */
   const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +111,7 @@ function StudentForm({
     setError(null);
     setBusy(true);
     try {
-      await onSubmit({ displayName: name, student: studentFromFields(fields) });
+      await onSubmit({ displayName: name, profile: profileFromFields(fields) });
     } catch (cause) {
       setError(messageOf(cause, 'Could not save the student'));
       setBusy(false);
@@ -152,7 +152,7 @@ function StudentForm({
         {nameError ? <p id="student-name-error" role="alert" className="text-secondary text-destructive">{nameError}</p> : null}
       </div>
 
-      <StudentFieldsEditor value={fields} onChange={setFields} levelSuggestions={kind === 'class' ? LEVEL_CHIPS : undefined} />
+      <ProfileFieldsEditor value={fields} onChange={setFields} levelSuggestions={kind === 'class' ? LEVEL_CHIPS : undefined} />
 
       {extra}
 
@@ -223,7 +223,7 @@ export function StudentNewPage({ sourceSpaceId, experience = 'tutoring', notify 
         const created = await createStudent({
           displayName: input.displayName,
           kind: experience === 'classroom' ? 'class' : kind,
-          student: input.student,
+          profile: input.profile,
           sourceSpaceId,
           experience,
         });
@@ -301,7 +301,7 @@ export function StudentEditPage({ studentId }: { studentId: string }) {
         await updateStudent(studentId, {
           displayName: input.displayName,
           kind: detail.kind,
-          student: input.student,
+          profile: input.profile,
         });
         await invalidateManagementData();
         await navigate(place);

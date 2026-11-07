@@ -108,7 +108,7 @@ async function createStudent(
     body: JSON.stringify({
       displayName,
       kind: 'person',
-      student: { level: 'B1' },
+      profile: { level: 'B1' },
       ...(spaceId === undefined ? {} : { spaceId }),
     }),
   });

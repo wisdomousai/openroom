@@ -242,7 +242,7 @@ test('long match pairs and long pie or radial labels stay inside the Stage plate
 test('a long Next session note takes two lines above the console until Show all', async ({ page }, testInfo) => {
   await signIn(page);
   const stamp = Date.now();
-  const studentRes = await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: `Noor ${stamp}`, kind: 'person', student: { language: 'de', level: 'A2' } } });
+  const studentRes = await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: `Noor ${stamp}`, kind: 'person', profile: { language: 'de', level: 'A2' } } });
   expect(studentRes.status()).toBe(201);
   const { id: studentId, spaceId } = (await studentRes.json()).student as { id: string; spaceId: string };
   const content = { version: 1, meta: { title: 'Pickup lesson' }, defaults: { identityMode: 'identified' }, steps: [{ id: 'welcome', kind: 'title', title: 'Willkommen' }], interactions: [] };
@@ -475,7 +475,7 @@ test('the console header keeps End session and the Session menu on a phone', asy
 test('Library from the console menu of a tutoring session opens the student place', async ({ page }, testInfo) => {
   await signIn(page);
   const stamp = Date.now();
-  const studentRes = await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: `Lina ${stamp}`, kind: 'person', student: { language: 'de', level: 'A2' } } });
+  const studentRes = await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: `Lina ${stamp}`, kind: 'person', profile: { language: 'de', level: 'A2' } } });
   expect(studentRes.status()).toBe(201);
   const { id: studentId, spaceId } = (await studentRes.json()).student as { id: string; spaceId: string };
   const content = { version: 1, meta: { title: 'Place lesson' }, defaults: { identityMode: 'identified' }, steps: [{ id: 'welcome', kind: 'title', title: 'Willkommen' }], interactions: [] };

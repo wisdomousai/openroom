@@ -387,7 +387,7 @@
                   "spaceId": {
                     "type": "string"
                   },
-                  "student": {
+                  "profile": {
                     "type": "object",
                     "additionalProperties": true
                   }

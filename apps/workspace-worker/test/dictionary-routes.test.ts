@@ -86,7 +86,7 @@ async function tutoringSession(): Promise<{
   const cookie = await seedCookie();
   const studentRes = await asBrowser(cookie, '/api/tutoring/students', {
     method: 'POST',
-    body: JSON.stringify({ displayName: 'Camille', kind: 'person', student: { level: 'B1' } }),
+    body: JSON.stringify({ displayName: 'Camille', kind: 'person', profile: { level: 'B1' } }),
   });
   expect(studentRes.status).toBe(201);
   const studentId = ((await studentRes.json()) as { student: { id: string } }).student.id;

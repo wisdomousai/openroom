@@ -10,7 +10,7 @@ related: [learner-links, homework, review, library]
 
 In a Tutoring space, open **Students → Add student or group**. Choose **Individual** or **Small group**. In a Classroom space, open **Classes → Add class**.
 
-Enter a **Name** and select **Save**. The remaining student fields are optional. Use them to record the learner's level, goals, and teaching background in concise terms.
+Enter a **Name** and select **Save**. The remaining profile fields are optional. Use them to record the learner's level, goals, and teaching background in concise terms.
 
 The student appears beside that person's or class's decks. Open its **Edit** action to update it, then save. Agents connected to your workspace can read this information when preparing material.
 

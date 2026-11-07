@@ -94,7 +94,7 @@ async function createStudent(cookie: string, spaceId?: string): Promise<string> 
     body: JSON.stringify({
       displayName: 'Camille',
       kind: 'person',
-      student: { language: 'French', level: 'B1', goals: ['Friday test'] },
+      profile: { language: 'French', level: 'B1', goals: ['Friday test'] },
       ...(spaceId === undefined ? {} : { spaceId }),
     }),
   });
@@ -284,8 +284,8 @@ describe('folder-scoped decks and sessions', () => {
     const { deckId } = await createDeckWithSession(cookie, studentId);
 
     const ctxRes = await asBrowser(cookie, `/api/tutoring/students/${studentId}`);
-    const ctxBody = await ctxRes.json() as { student: { student: { level: string } } };
-    expect(ctxBody.student.student.level).toBe('B1');
+    const ctxBody = await ctxRes.json() as { student: { profile: { level: string } } };
+    expect(ctxBody.student.profile.level).toBe('B1');
 
     const deck = await asBrowser(cookie, `/api/decks/${deckId}`);
     const deckBody = await deck.json() as {
@@ -461,7 +461,7 @@ describe('folder-scoped decks and sessions', () => {
     const studentResult = await mcpTool(token, 'openroom_api', {
       method: 'POST',
       path: '/api/tutoring/students',
-      body: { displayName: 'MCP person', kind: 'person', student: { language: 'French', level: 'B1' } },
+      body: { displayName: 'MCP person', kind: 'person', profile: { language: 'French', level: 'B1' } },
     });
     expect(studentResult.value.status).toBe(201);
     const studentId = studentResult.value.body.student.id as string;

@@ -91,7 +91,7 @@ async function inkSession(): Promise<InkSession> {
   const cookie = await seedCookie();
   const studentResponse = await asBrowser(cookie, '/api/tutoring/students', {
     method: 'POST',
-    body: JSON.stringify({ displayName: 'Camille', kind: 'person', student: { level: 'B1' } }),
+    body: JSON.stringify({ displayName: 'Camille', kind: 'person', profile: { level: 'B1' } }),
   });
   expect(studentResponse.status).toBe(201);
   const studentId = ((await studentResponse.json()) as { student: { id: string } }).student.id;

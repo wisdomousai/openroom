@@ -71,7 +71,7 @@ interface StudentRow {
   created_by: string;
   kind: string;
   display_name: string;
-  student_json: string;
+  profile_json: string;
   next_note: string;
   created_at: number;
   updated_at: number;
@@ -103,14 +103,14 @@ async function studentEditable(env: ControlEnv, user: SessionUser, spaceId: stri
  * so it is shown only while the space owner holds `continuity`; it is retained,
  * not cleared, and returns with access.
  */
-function studentJson(row: StudentRow, includeStudent = true, withNextNote = true): Record<string, unknown> {
+function studentJson(row: StudentRow, includeProfile = true, withNextNote = true): Record<string, unknown> {
   const nextNote = withNextNote && typeof row.next_note === 'string' ? row.next_note : '';
   return {
     id: row.id,
     spaceId: row.space_id,
     kind: row.kind,
     displayName: row.display_name,
-    ...(includeStudent ? { student: parseJson(row.student_json, {}) } : {}),
+    ...(includeProfile ? { profile: parseJson(row.profile_json, {}) } : {}),
     ...(nextNote !== '' ? { nextNote } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -171,10 +171,10 @@ export async function studentsCollectionRoute(
   if (body === null) return json({ error: 'invalid-json' }, 400);
   const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
   if (displayName === '') return json({ error: 'display-name-required' }, 422);
-  const student = body.student === undefined ? {} : plainObject(body.student);
-  if (student === null) return json({ error: 'student-must-be-object' }, 422);
-  const serializedStudent = JSON.stringify(student);
-  if (serializedStudent.length > 100_000) return json({ error: 'student-too-large' }, 413);
+  const profile = body.profile === undefined ? {} : plainObject(body.profile);
+  if (profile === null) return json({ error: 'profile-must-be-object' }, 422);
+  const serializedProfile = JSON.stringify(profile);
+  if (serializedProfile.length > 100_000) return json({ error: 'profile-too-large' }, 413);
   const kind = parseKind(body.kind);
   const id = randomId();
   const now = Date.now();
@@ -228,10 +228,10 @@ export async function studentsCollectionRoute(
 
   await env.DB.prepare(
     `INSERT INTO students
-       (id, space_id, created_by, kind, display_name, student_json, created_at, updated_at, deleted_at)
+       (id, space_id, created_by, kind, display_name, profile_json, created_at, updated_at, deleted_at)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, NULL)`,
   )
-    .bind(id, spaceId, guard.user.id, kind, displayName.slice(0, 200), serializedStudent, now)
+    .bind(id, spaceId, guard.user.id, kind, displayName.slice(0, 200), serializedProfile, now)
     .run();
   await linkStudent(env, spaceId, id, now);
   const row = await studentAccess(env, guard.user.id, id);
@@ -274,22 +274,22 @@ export async function studentItemRoute(
       ? body.displayName.trim().slice(0, 200)
       : '';
   if (displayName === '') return json({ error: 'display-name-required' }, 422);
-  const currentStudent = parseJson(row.student_json, {});
-  const student = body.student === undefined ? currentStudent : plainObject(body.student);
-  if (student === null) return json({ error: 'student-must-be-object' }, 422);
-  const serialized = JSON.stringify(student);
-  if (serialized.length > 100_000) return json({ error: 'student-too-large' }, 413);
+  const currentProfile = parseJson(row.profile_json, {});
+  const profile = body.profile === undefined ? currentProfile : plainObject(body.profile);
+  if (profile === null) return json({ error: 'profile-must-be-object' }, 422);
+  const serialized = JSON.stringify(profile);
+  if (serialized.length > 100_000) return json({ error: 'profile-too-large' }, 413);
   const kind = body.kind === undefined ? row.kind : parseKind(body.kind, row.kind);
   const now = Date.now();
   await env.DB.prepare(
-    'UPDATE students SET display_name = ?1, student_json = ?2, kind = ?3, updated_at = ?4 WHERE id = ?5',
+    'UPDATE students SET display_name = ?1, profile_json = ?2, kind = ?3, updated_at = ?4 WHERE id = ?5',
   )
     .bind(displayName, serialized, kind, now, studentId)
     .run();
   const payload = studentJson({
     ...row,
     display_name: displayName,
-    student_json: serialized,
+    profile_json: serialized,
     kind,
     updated_at: now,
   }, true, await withNextNote());

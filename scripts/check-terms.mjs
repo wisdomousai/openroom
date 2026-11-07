@@ -35,6 +35,11 @@ export const BANNED = [
     exceptPaths: [/^apps\/workspace-worker\/src\/a2a\.ts$/],
     use: 'student (studentId, student_id, students, StudentKind, studentLink, student-link-invalid, "student access link"; UI: "access link")',
   },
+  {
+    name: 'student details object',
+    pattern: /student_json|StudentFields|student-fields|fieldsFromStudent|studentFromFields|StudentChip|studentChips|studentIsEmpty|StudentDialog|student-must-be-object|student-too-large/i,
+    use: 'profile (profile, profile_json, ProfileFields, profile-fields.ts, profile-must-be-object, profile-too-large; UI: "{Name}\u2019s profile")',
+  },
 ];
 
 const ALLOWED_PATHS = [

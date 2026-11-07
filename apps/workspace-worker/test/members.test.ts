@@ -63,7 +63,7 @@ async function homeSpace(user: Seeded): Promise<string> {
 async function studentForSpace(user: Seeded, spaceId: string, displayName: string): Promise<string> {
   const res = await asUser(user, '/api/tutoring/students', {
     method: 'POST',
-    body: JSON.stringify({ displayName, kind: 'class', student: {}, spaceId }),
+    body: JSON.stringify({ displayName, kind: 'class', profile: {}, spaceId }),
   });
   if (res.status === 409) {
     const listed = (await (

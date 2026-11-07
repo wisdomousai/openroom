@@ -161,7 +161,7 @@ test('a student place at laptop sizes: open links, whole group name, page-length
 
   const studentName = `Inès ${stamp}`;
   const { student } = await json<{ student: { id: string; spaceId: string } }>(
-    api.post('/api/tutoring/students', { headers: CSRF, data: { displayName: studentName, kind: 'person', experience: 'tutoring', student: { goals: 'Order at a café', notes: 'Prefers speaking. Slow on the subjunctive.' } } }), 201);
+    api.post('/api/tutoring/students', { headers: CSRF, data: { displayName: studentName, kind: 'person', experience: 'tutoring', profile: { goals: 'Order at a café', notes: 'Prefers speaking. Slow on the subjunctive.' } } }), 201);
   const { id: studentId, spaceId } = student;
   let sessionId = '';
   for (let index = 1; index <= 8; index++) {

@@ -29,6 +29,13 @@
       "when": 1790081795811,
       "tag": "0003_student",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790168195811,
+      "tag": "0004_profile",
+      "breakpoints": true
     }
   ]
 }

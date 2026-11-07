@@ -104,7 +104,8 @@ These are **filed work**, not peer nav apps. Only decks appear as folder rows.
 | UI term | API / code | What it is | Not |
 | --- | --- | --- | --- |
 | **Deck** | deck (`/api/decks*`, D1 `decks` / `deck_versions`) | The file: reusable prepared content + structure (versioned). Browser: `#/decks/:id`. Verbs: New deck · Edit deck · Duplicate · Move to trash · Start session. | Not an “outline” as the entity name. Not a session. |
-| **Student** | student (`/api/tutoring/students*`) | Who it is for. Four light questions and a paragraph, nothing required. Shown with that student's decks. One per space. Original school docs stay in the external agent. | Not a folder; not a participant account; not a CRM form; not a nav shelf. |
+| **Student** | student (`/api/tutoring/students*`) | Who it is for. Shown with that student's decks. One per space. Original school docs stay in the external agent. | Not a folder; not a participant account; not a CRM form; not a nav shelf. |
+| **Profile** | `profile` (field of a student in `/api/tutoring/students*`; D1 `students.profile_json`) | A student's details: four light questions and a paragraph (level, frequency, goals, notes), nothing required. UI: "{Name}’s profile". | Not the student itself; not an account profile. |
 | **Outline** | outline (`deck_versions.content_json`, Outline v1) | The file contents of a deck: steps + interactions. What a live session runs. | Not a third product noun; it is what is *in* the deck. |
 
 ### Access link ↔ learner view
@@ -316,6 +317,7 @@ Facts only. Noun labels and bare verbs. No first-person, no narrative, no metaph
 | Designs / Templates / Rooms (as product nav, label or noun for the file) | **Decks** |
 | People (as a nav shelf) | **Students** as folder rows in the rail group; the entity is a **student** in UI and API alike |
 | Context (the tutoring entity), contexts, `contextId`, `context_access_links`, `/api/tutoring/contexts`, "context access link" | **Student** (`student`, `studentId`, `student_access_links`, `/api/tutoring/students`); **student access link** in docs, **access link** in UI |
+| The details object of a student called `student` (`student.student`, request field `student`, `students.student_json`, `student-must-be-object`, `student-too-large`, "{Name}’s student" dialog title) | **Profile** (`profile`, `profile_json`, `profile-must-be-object`, `profile-too-large`, "{Name}’s profile") |
 | Prep / Outline Designer / Session Builder / Builder / “Edit outline file” | **Open** / **Edit deck**; in code, `DeckEditor` |
 | Schedule / book / “Not scheduled yet” | **Start session** — a session is started, never booked |
 | Run (as a noun for a started teaching) | **Session** |

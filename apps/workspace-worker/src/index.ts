@@ -561,7 +561,7 @@ async function sessionStudentRoute(
   const row = await env.DB.prepare(
     `SELECT session.id AS session_id, session.title AS session_title,
             ctx.id AS student_id, ctx.kind AS kind, ctx.display_name AS display_name,
-            ctx.student_json AS student_json, ctx.next_note AS next_note
+            ctx.profile_json AS profile_json, ctx.next_note AS next_note
        FROM live_sessions ro
        JOIN sessions session ON session.id = ro.session_id
        LEFT JOIN students ctx ON ctx.id = session.student_id
@@ -574,7 +574,7 @@ async function sessionStudentRoute(
       student_id: string | null;
       kind: string | null;
       display_name: string | null;
-      student_json: string | null;
+      profile_json: string | null;
       next_note: string | null;
     }>();
 
@@ -585,7 +585,7 @@ async function sessionStudentRoute(
 
   let level: string | null = null;
   try {
-    const parsed = JSON.parse(row.student_json ?? '{}') as { level?: unknown };
+    const parsed = JSON.parse(row.profile_json ?? '{}') as { level?: unknown };
     if (typeof parsed.level === 'string' && parsed.level !== '') level = parsed.level;
   } catch {
     /* a student with unparseable JSON simply has no level to show */

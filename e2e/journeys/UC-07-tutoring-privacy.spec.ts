@@ -45,7 +45,7 @@ async function seedTutoringRoom(api: APIRequestContext): Promise<Seeded> {
     data: {
       displayName: `Léa ${stamp}`,
       kind: 'person',
-      student: { language: 'fr', level: 'B1', goals: ['speaking'] },
+      profile: { language: 'fr', level: 'B1', goals: ['speaking'] },
     },
   });
   expect(studentRes.status()).toBe(201);

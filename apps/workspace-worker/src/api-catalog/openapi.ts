@@ -446,7 +446,7 @@ export function openapiDocument(origin: string): unknown {
                       description: 'Defaults to person',
                     },
                     spaceId: { type: 'string' },
-                    student: { type: 'object', additionalProperties: true },
+                    profile: { type: 'object', additionalProperties: true },
                   },
                 },
               },

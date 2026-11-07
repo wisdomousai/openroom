@@ -778,7 +778,7 @@ Anonymous-by-default is a compliance architecture, not only an ethics choice. FE
   >    session: ballots purge 30 minutes after end, sessions delete at 24 hours. The durable
   >    tutoring tables have **no retention policy at all** — the only TTL in the control
   >    plane is the 15-minute deletion-confirmation token. `students.display_name`,
-  >    `students.student_json` and `session_records.notes` persist until a human trashes *and*
+  >    `students.profile_json` and `session_records.notes` persist until a human trashes *and*
   >    purges them. A child's records survive indefinitely by default. This is the widest
   >    gap and it is an engineering one, not a legal one.
   > 2. **Age floor on the account path.** Sign in with Apple and Google both effectively
@@ -788,7 +788,7 @@ Anonymous-by-default is a compliance architecture, not only an ethics choice. FE
   > 3. **Notice text.** The line below already requires identified mode to ship its own
   >    participant notice and retention defaults *before* launch. That text does not exist.
   >
-  > Unexamined free text remains unpreventable by design: `student_json`, `session_records.notes`,
+  > Unexamined free text remains unpreventable by design: `profile_json`, `session_records.notes`,
   > `outcomes_json`, `homework_json` and outline `tutorNotes` accept anything a tutor types.
   > OpenRoom does not inspect them, and inspecting them would be worse. What the product
   > controls is reach and lifetime — reach is enforced, lifetime is item 1.

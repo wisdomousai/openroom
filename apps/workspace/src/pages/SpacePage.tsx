@@ -694,7 +694,7 @@ export function SpacePage({
               <StudentPanel
                 displayName={person.displayName}
                 kind={person.kind}
-                student={person.student}
+                profile={person.profile}
                 nextNote={person.nextNote}
                 onEdit={canEdit ? () => void navigate(to.studentEdit(person.id)) : undefined}
                 languages={space?.settings?.languages}

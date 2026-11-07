@@ -1,8 +1,8 @@
 import {
   FREQUENCY_CHIPS,
   LANGUAGE_LEVEL_CHIPS,
-  type StudentFields,
-} from '../lib/student-fields';
+  type ProfileFields,
+} from '../lib/profile-fields';
 import { cn } from '@openroom/ui/utils';
 import { Input } from '@openroom/ui/components/input';
 import { Textarea } from '@openroom/ui/components/textarea';
@@ -34,13 +34,13 @@ function Chip({
 }
 
 interface Props {
-  value: StudentFields;
-  onChange: (next: StudentFields) => void;
+  value: ProfileFields;
+  onChange: (next: ProfileFields) => void;
   levelSuggestions?: readonly string[];
 }
 
-/** The four questions. Shared by the student dialog and the create page. */
-export function StudentFieldsEditor({ value, onChange, levelSuggestions = LANGUAGE_LEVEL_CHIPS }: Props) {
+/** The four questions. Shared by the profile dialog and the create page. */
+export function ProfileFieldsEditor({ value, onChange, levelSuggestions = LANGUAGE_LEVEL_CHIPS }: Props) {
   const customLevel = value.level !== '' && !levelSuggestions.includes(value.level);
 
   return (

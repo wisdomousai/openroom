@@ -16,7 +16,7 @@ export interface StudentSummary {
 }
 
 export interface StudentDetail extends StudentSummary {
-  student: Record<string, unknown>;
+  profile: Record<string, unknown>;
   nextNote?: string;
 }
 
@@ -45,7 +45,7 @@ export async function getStudent(id: string): Promise<StudentDetail> {
 export async function createStudent(input: {
   displayName: string;
   kind?: StudentKind;
-  student?: Record<string, unknown>;
+  profile?: Record<string, unknown>;
   sourceSpaceId?: string;
   experience?: WorkspaceExperience;
 }): Promise<StudentDetail> {
@@ -59,7 +59,7 @@ export async function createStudent(input: {
 
 export async function updateStudent(
   id: string,
-  input: { displayName: string; kind?: StudentKind; student: Record<string, unknown> },
+  input: { displayName: string; kind?: StudentKind; profile: Record<string, unknown> },
 ): Promise<StudentDetail> {
   const body = await request<{ student: StudentDetail }>(
     `/api/tutoring/students/${encodeURIComponent(id)}`,

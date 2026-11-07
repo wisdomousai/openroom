@@ -107,7 +107,7 @@ async function seedDesign(api: APIRequestContext): Promise<Seed> {
     data: {
       displayName: `Léa ${stamp}`,
       kind: 'person',
-      student: { language: 'fr', level: 'B1', goals: ['speaking'] },
+      profile: { language: 'fr', level: 'B1', goals: ['speaking'] },
     },
   });
   expect(studentRes.status()).toBe(201);

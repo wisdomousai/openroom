@@ -662,7 +662,7 @@ async function seedIdentifiedLobby(api: APIRequestContext, outline: typeof OUTLI
   const stamp = Date.now();
   const studentRes = await api.post(`${BASE}/api/tutoring/students`, {
     headers: CSRF,
-    data: { displayName: `Léa ${stamp}`, kind: 'person', student: { language: 'fr' } },
+    data: { displayName: `Léa ${stamp}`, kind: 'person', profile: { language: 'fr' } },
   });
   expect(studentRes.status()).toBe(201);
   const { id: studentId, spaceId } = (await studentRes.json()).student as { id: string; spaceId: string };

@@ -25,7 +25,7 @@ async function learner(token: string, target: Env = configured): Promise<{ statu
 /** A student with one session filed against it. Free for every kind. */
 async function studentSetup(tutor: Account, kind: 'person' | 'class' = 'person') {
   const created = await tutor.request('/api/tutoring/students', 'POST', {
-    displayName: kind === 'class' ? 'Year 9 French' : 'Camille', kind, student: {},
+    displayName: kind === 'class' ? 'Year 9 French' : 'Camille', kind, profile: {},
     ...(kind === 'class' ? { experience: 'classroom' } : {}),
   });
   expect(created.status, JSON.stringify(created.body)).toBe(201);

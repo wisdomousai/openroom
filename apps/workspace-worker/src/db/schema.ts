@@ -337,7 +337,7 @@ export const students = sqliteTable(
       .references(() => users.id),
     kind: text('kind').notNull().default('person'),
     displayName: text('display_name').notNull(),
-    studentJson: text('student_json').notNull().default('{}'),
+    profileJson: text('profile_json').notNull().default('{}'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
     deletedAt: integer('deleted_at'),

@@ -56,7 +56,7 @@ export async function createSmokeStudent(
     body: JSON.stringify({
       displayName: 'Test student',
       kind: 'person',
-      student: { language: 'en', level: 'A1', goals: ['test'] },
+      profile: { language: 'en', level: 'A1', goals: ['test'] },
     }),
   });
   if (res.status !== 201) {
