@@ -695,6 +695,13 @@
   padding: 4.4cqw 4.7cqw;
 }
 
+/* A title, statement or media step revealed part by part starts at the top,
+   so a centred stack does not move the parts already shown (LD6). */
+.slide-surface .outline-step[data-has-reveal]:not(.outline-step--layout-split),
+.slide-surface .outline-step--layout-split[data-has-reveal] > .outline-step__region--lede {
+  justify-content: flex-start;
+}
+
 .slide-surface .outline-step--layout-title h1 {
   font-size: 5.8cqw;
   line-height: 1.1;

@@ -1,8 +1,6 @@
 # UC-58 — Revealing a part does not move the parts already shown
 
-Status: grid and split lists green on local Chromium (wall at 1920 × 1080).
-Title and statement stacks red: they re-centre on every reveal until LD6
-(top-align stacks that have a reveal) is built.
+Status: green on local Chromium (wall at 1920 × 1080).
 
 Spec: `e2e/journeys/UC-58-reveal-stability.spec.ts`. Helpers:
 `e2e/fixtures/slide-geometry.ts`.
@@ -28,7 +26,10 @@ Grid and split lists:
 - 3 steps on split with the picture revealed last;
 - 3 cards on split with the picture revealed first.
 
-Title and statement stacks:
+Title and statement stacks. A title, statement or media step with a reveal
+carries `data-has-reveal` on its root and starts at the top instead of
+centring (LD6); a statement's stat comes first in its reveal order, as it does
+on the slide:
 
 - a statement with a stat, revealed stat, heading, body (the order they are
   drawn in);

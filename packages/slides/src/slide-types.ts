@@ -209,11 +209,11 @@ export interface SlideJoin {
 const SAMPLE_JOIN: SlideJoin = { url: 'https://join.openroom.app/', code: 'ABCD1234' };
 
 /**
- * A step as this renderer sees it: its content, plus the optional `layout` every
- * step carries (`OutlineStepBase.layout`). Intersecting rather than repeating
- * the field keeps `step.kind` narrowing intact.
+ * A step as this renderer sees it: its content, plus the optional `layout` and
+ * `reveal` every step carries (`OutlineStepBase`). Intersecting rather than
+ * repeating the fields keeps `step.kind` narrowing intact.
  */
-export type SlideStep = SlideStepContent & { layout?: SlideLayout };
+export type SlideStep = SlideStepContent & { layout?: SlideLayout; reveal?: 'together' | readonly (readonly string[])[] };
 
 export interface SlideOption {
   id: string;

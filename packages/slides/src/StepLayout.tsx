@@ -206,6 +206,11 @@ function StepContent(props: StepLayoutProps): ReactNode {
   const picture = stepPictureOf(step);
   const hasPicture = picture !== undefined;
   const pictureProps = pictureRootProps(picture, layout);
+  /**
+   * A step revealed part by part: centred stacks start at the top instead, so
+   * the parts already shown do not move as the next one appears (LD6).
+   */
+  const revealProps = Array.isArray(step.reveal) && step.reveal.length > 0 ? { 'data-has-reveal': 'true' } : {};
   const extras = elementsLayer(step, show, part, decorate);
   const picturePart = (): ReactNode => {
     if (picture === undefined || !show('image')) return null;
@@ -252,7 +257,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
   switch (step.kind) {
     case 'title':
       return (
-        <section className={rootClass('title', layout, hasPicture)} {...pictureProps}>
+        <section className={rootClass('title', layout, hasPicture)} {...pictureProps} {...revealProps}>
           {region(
             'lede',
             split,
@@ -292,7 +297,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
 
     case 'statement':
       return (
-        <section className={rootClass('statement', layout, hasPicture)} {...pictureProps}>
+        <section className={rootClass('statement', layout, hasPicture)} {...pictureProps} {...revealProps}>
           {region(
             'lede',
             split,
@@ -533,6 +538,7 @@ function StepContent(props: StepLayoutProps): ReactNode {
           data-media-orientation={orientation}
           data-media-aspect={mediaAspect}
           {...pictureProps}
+          {...revealProps}
         >
           {region(
             'lede',
