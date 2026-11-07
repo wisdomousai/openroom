@@ -142,9 +142,11 @@ export function HostHeader({
             onClick={onCopyJoin}
             title="Tap to copy"
             aria-label={`Join code ${code}. Copy join link.`}
-            className="inline-flex items-center rounded-full bg-live-tint px-2.5 py-0.5 text-rail text-live-tint-foreground tabular-nums"
+            className="inline-flex items-center gap-1.5 rounded-full bg-live-tint px-2.5 py-0.5 text-rail text-live-tint-foreground tabular-nums"
           >
             {code}
+            {/* The copy mark shows the chip is a control, not a label. */}
+            <Copy aria-hidden="true" className="size-3.5" />
           </button>
         </Hint>
       ) : (
