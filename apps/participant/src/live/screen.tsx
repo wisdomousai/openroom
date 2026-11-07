@@ -187,6 +187,7 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
   const handle = session.handle ?? snapshot?.yourHandle;
   const participantLabel = handle ?? snapshot?.yourLabel;
   const [noticeSeen, setNoticeSeen] = useState(() => wasNoticeSeen(session.sessionCode));
+  const [namedNoticeSeen, setNamedNoticeSeen] = useState(wasNamedNoticeSeen);
   const ended = snapshot?.status === 'ended';
   const comeBack = comeBackLine(snapshot?.identityMode ?? session.identityMode);
 
@@ -244,6 +245,24 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
             onClick={() => {
               markNoticeSeen(session.sessionCode);
               setNoticeSeen(true);
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
+      {/* Identified sessions: the learner joined through a personal link, so the
+          tutor sees their name. Said once per browser, not once per lesson. */}
+      {snapshot?.identityMode === 'identified' && !namedNoticeSeen && !ended ? (
+        <div className="notice" role="status">
+          <p className="notice__text">Your tutor sees your name in this lesson.</p>
+          <button
+            type="button"
+            className="btn btn--gotit"
+            onClick={() => {
+              markNamedNoticeSeen();
+              setNamedNoticeSeen(true);
             }}
           >
             Dismiss
@@ -395,6 +414,25 @@ function wasNoticeSeen(sessionCode: string): boolean {
 
 function markNoticeSeen(sessionCode: string): void {
   writeSessionValue(NOTICE_PREFIX, sessionCode, '1');
+}
+
+/** Browser-wide, unlike the per-session flags: the notice is the same for every lesson. */
+const NAMED_NOTICE_KEY = 'openroom:notice:identified';
+
+function wasNamedNoticeSeen(): boolean {
+  try {
+    return localStorage.getItem(NAMED_NOTICE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markNamedNoticeSeen(): void {
+  try {
+    localStorage.setItem(NAMED_NOTICE_KEY, '1');
+  } catch {
+    /* private mode */
+  }
 }
 
 function friendlyError(code: string, message: string): string {

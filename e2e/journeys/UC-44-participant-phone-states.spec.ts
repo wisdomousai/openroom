@@ -6,7 +6,8 @@
  * practice hints; a ranking never starts in the authored order; Leave asks
  * first; the ended view drops Leave and the handle notice; a refused seat says
  * the session is no longer open; join failures read as plain sentences; a
- * personal link opened before the start waits and enters on its own.
+ * personal link opened before the start waits and enters on its own, and
+ * says once per browser that the tutor sees the learner's name.
  *
  * The phone page scrolls by finger at short, narrow and landscape sizes, so
  * Send, the answered state and the results stay reachable; list-heavy slides
@@ -574,6 +575,12 @@ test.describe('UC-44 participant phone states', () => {
     await expect(phone.getByText('Bonjour', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
     expect(new URL(phone.url()).searchParams.has('link')).toBe(false);
 
+    // The learner is told the tutor sees their name, once per browser.
+    const named = phone.getByText('Your tutor sees your name in this lesson.', { exact: true });
+    await expect(named).toBeVisible();
+    await phone.getByRole('button', { name: 'Dismiss', exact: true }).click();
+    await expect(named).toHaveCount(0);
+
     // Leave names the way back; the code alone then says to use the link.
     await phone.getByRole('button', { name: 'Leave', exact: true }).click();
     await expect(
@@ -589,6 +596,7 @@ test.describe('UC-44 participant phone states', () => {
     // The link re-seats the learner; the ended view points at the lesson page.
     await phone.goto(joinUrl(seed.code, seed.linkToken));
     await expect(phone.getByText('Bonjour', { exact: true }).first()).toBeVisible();
+    await expect(named).toHaveCount(0);
     await command(seed.sessionCode, seed.hostToken, { command: 'session.end' });
     await expect(phone.getByText('Session ended', { exact: true })).toBeVisible();
     await expect(phone.getByText('Your personal link opens your lesson page.', { exact: true })).toBeVisible();
