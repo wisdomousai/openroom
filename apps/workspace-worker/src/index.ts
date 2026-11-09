@@ -85,6 +85,7 @@ import {
   issueSessionTokens,
   joinRoute as liveJoinRoute,
   json,
+  participantTokenRoute as liveParticipantTokenRoute,
   readJson,
   sessionAssetRoute as liveSessionAssetRoute,
   sessionDoUrl as doUrl,
@@ -994,7 +995,7 @@ export default {
     }
 
     const sessionMatch =
-      /^\/api\/sessions\/([^/]+)\/(state|commands|export|recap|ws|stage-token|student|dictionary)$/.exec(path);
+      /^\/api\/sessions\/([^/]+)\/(state|commands|export|recap|ws|stage-token|participant-token|student|dictionary)$/.exec(path);
     if (sessionMatch !== null) {
       const sessionCode = normalizeSessionCode(decodeURIComponent(sessionMatch[1] as string));
       const leaf = sessionMatch[2];
@@ -1038,6 +1039,9 @@ export default {
       }
       if (leaf === 'stage-token' && request.method === 'GET') {
         return liveStageTokenRoute(live, request, url, sessionCode);
+      }
+      if (leaf === 'participant-token' && request.method === 'POST') {
+        return liveParticipantTokenRoute(env, request, url, sessionCode);
       }
       return json({ error: 'method-not-allowed' }, 405);
     }

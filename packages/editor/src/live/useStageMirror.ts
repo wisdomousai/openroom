@@ -16,6 +16,10 @@ import type { StoredSession } from '../types';
  * A failed fetch leaves the Stage menu item rendered but disabled with a
  * retry, never silently absent — a projector the host cannot reach from the
  * console is a dead path.
+ *
+ * When the server refuses the stage token for good, the mirror re-mints one
+ * through the host token once. Only when that also fails is the preview
+ * unavailable (`stageGone`), until the host retries from the Stage item.
  */
 export function useStageMirror(live: StoredSession) {
   const { fetchStageToken, sessions } = useEditorServices().live;
@@ -23,10 +27,13 @@ export function useStageMirror(live: StoredSession) {
   const [attempt, setAttempt] = useState(0);
   const [stageSnapshot, setStageSnapshot] = useState<StageSnapshot | null>(null);
   const [stageStatus, setStageStatus] = useState<StageConnectionStatus>('connecting');
+  const [stageGone, setStageGone] = useState(false);
+  /** The refused stage token has been re-minted once already. */
+  const remintedRef = useRef(false);
   const clientRef = useRef<SessionClient<StageSnapshot> | null>(null);
 
   useEffect(() => {
-    if (stageToken) return;
+    if (stageToken || stageGone) return;
     let cancelled = false;
     fetchStageToken(live.sessionCode, live.hostToken)
       .then((token) => {
@@ -35,14 +42,15 @@ export function useStageMirror(live: StoredSession) {
         sessions.save({ ...live, stageToken: token });
       })
       .catch(() => {
-        /* the Stage item shows a retry */
+        // The Stage item shows a retry; after a refused token the preview says so.
+        if (!cancelled && remintedRef.current) setStageGone(true);
       });
     return () => {
       cancelled = true;
     };
     // `live` is part of the contract: a replaced session row re-runs the probe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stageToken, live, attempt]);
+  }, [stageToken, stageGone, live, attempt]);
 
   useEffect(() => {
     if (!stageToken) return;
@@ -53,6 +61,12 @@ export function useStageMirror(live: StoredSession) {
       role: 'stage',
       onChange: setStageSnapshot,
       onStatus: setStageStatus,
+      onGone: () => {
+        if (clientRef.current === client) clientRef.current = null;
+        setStageToken('');
+        if (remintedRef.current) setStageGone(true);
+        remintedRef.current = true;
+      },
     });
     clientRef.current = client;
     return () => {
@@ -61,7 +75,10 @@ export function useStageMirror(live: StoredSession) {
     };
   }, [live.sessionCode, stageToken]);
 
-  const retryStageToken = useCallback(() => setAttempt((n) => n + 1), []);
+  const retryStageToken = useCallback(() => {
+    setStageGone(false);
+    setAttempt((n) => n + 1);
+  }, []);
   const statusRef = useRef(stageStatus);
   statusRef.current = stageStatus;
   /**
@@ -75,5 +92,5 @@ export function useStageMirror(live: StoredSession) {
     });
   }, []);
 
-  return { stageToken, stageSnapshot, stageStatus, retryStageToken, refreshStage };
+  return { stageToken, stageSnapshot, stageStatus, stageGone, retryStageToken, refreshStage };
 }

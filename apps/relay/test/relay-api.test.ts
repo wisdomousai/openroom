@@ -16,6 +16,7 @@ import {
   BASE,
   SMOKE_OUTLINE,
   call,
+  command,
   createRequest,
   createSessionWithOutline,
   join,
@@ -209,6 +210,42 @@ describe('session routes', () => {
       headers: { authorization: `Bearer ${created.stageToken}` },
     });
     expect(asStage.status).toBe(403);
+  });
+
+  it('renews an expired participant token for the same seat while the session runs', async () => {
+    const created = await createSessionWithOutline(withOutlineMode('nickname'), { participantLimit: 1 });
+    const seated = await join(created.code);
+    const expired = await signToken(env.TOKEN_SECRET, {
+      sessionCode: created.sessionCode,
+      role: 'participant',
+      participantId: seated.participantId,
+      exp: Math.floor(Date.now() / 1000) - 7 * 60 * 60,
+    });
+    const renew = (token: string) =>
+      call(`/api/sessions/${created.sessionCode}/participant-token`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+    const stale = await call(`/api/sessions/${created.sessionCode}/state?role=participant`, {
+      headers: { authorization: `Bearer ${expired}` },
+    });
+    expect(await stale.json()).toMatchObject({ error: 'invalid-token', reason: 'expired' });
+
+    // The session is at its limit: renewal re-enters the seat, it does not take a new one.
+    const renewed = await renew(expired);
+    expect(renewed.status).toBe(200);
+    const body = (await renewed.json()) as { participantToken: string; participantId: string };
+    expect(body.participantId).toBe(seated.participantId);
+    expect((await stateJson(created.sessionCode, body.participantToken, 'participant')).status).toBe('lobby');
+
+    expect((await renew(seated.participantToken)).status).toBe(409);
+    expect((await renew(`${expired}x`)).status).toBe(401);
+
+    await command(created.sessionCode, created.hostToken, { command: 'session.end' });
+    const afterEnd = await renew(expired);
+    expect(afterEnd.status).toBe(404);
+    expect(await afterEnd.json()).toMatchObject({ error: 'session-not-found' });
   });
 
   it('exports answers to the host', async () => {

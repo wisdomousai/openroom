@@ -13,6 +13,8 @@
    the slide stays where it was.
 7. Remove the helper from the space. Their retained host token cannot read a snapshot,
    even with an afterRevision value that would otherwise produce a 304.
+8. After the next slide change, the helper's phone remote shows "Your access to this
+   session was removed." with a Library button, and no "Offline" label.
 
 The Worker tests separately cover malformed/forged requests, per-actor idempotency,
 entitlement removal, the space owner recovering a member-created session through MCP,

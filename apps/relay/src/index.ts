@@ -10,6 +10,7 @@
  *   GET  /api/sessions/:code/ws             WebSocket (any capability token)
  *   GET  /api/sessions/:code/export         export (host token)
  *   GET  /api/sessions/:code/stage-token    stage token (host token)
+ *   POST /api/sessions/:code/participant-token  renew an expired participant token
  *   PUT|GET|HEAD /api/sessions/:code/assets/:id
  *   /stage/*, /join/*, join.* host          the stage and participant apps
  *
@@ -31,6 +32,7 @@ import {
   issueSessionTokens,
   joinRoute,
   json,
+  participantTokenRoute,
   readJson,
   serveJoinHost,
   sessionAssetRoute,
@@ -218,7 +220,7 @@ export default {
       );
     }
 
-    const sessionMatch = /^\/api\/sessions\/([^/]+)\/(state|commands|export|ws|stage-token)$/.exec(path);
+    const sessionMatch = /^\/api\/sessions\/([^/]+)\/(state|commands|export|ws|stage-token|participant-token)$/.exec(path);
     if (sessionMatch !== null) {
       const sessionCode = normalizeSessionCode(decodeURIComponent(sessionMatch[1] as string));
       const leaf = sessionMatch[2];
@@ -227,6 +229,9 @@ export default {
       if (leaf === 'export' && request.method === 'GET') return exportRoute(live, request, url, sessionCode);
       if (leaf === 'ws') return wsRoute(live, request, url, sessionCode);
       if (leaf === 'stage-token' && request.method === 'GET') return stageTokenRoute(live, request, url, sessionCode);
+      if (leaf === 'participant-token' && request.method === 'POST') {
+        return participantTokenRoute(env, request, url, sessionCode);
+      }
       return json({ error: 'method-not-allowed' }, 405);
     }
 

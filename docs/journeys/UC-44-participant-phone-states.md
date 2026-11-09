@@ -55,8 +55,9 @@ Drafts, accents, gaps, ranking, Leave and ending:
   a new participant." "Stay" keeps the seat and the ranking.
 - After `session.end` the phone shows "Session ended", has no "Leave" button
   and no "Use it to rejoin" text.
-- With a stored seat token changed and a reload, the phone shows "This session
-  is no longer open" and no "Offline" text.
+- With a stored seat token changed and a reload, the phone shows "This device
+  lost its seat in the session" and no "Offline" text. A token the relay did not
+  sign is never renewed.
 - A wrong code through "Join with a code" shows "This session has ended, or the
   code is wrong. Check it with your tutor." and no "(404)".
 

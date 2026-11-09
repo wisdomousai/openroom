@@ -60,6 +60,11 @@ test('shared hosts moderate, pass presentation, use a phone remote, recover and 
     expect((await page.request.delete(`/api/my/spaces/${space.id}/members/${accounts.helper.id}`, { headers: CSRF })).ok()).toBe(true);
     const denied = await remote.request.get(`/api/sessions/${live!.code}/state?afterRevision=999999`, { headers: { authorization: `Bearer ${capability.hostToken}` } });
     expect(denied.status()).toBe(403);
+    // The next change sends the removed colleague's remote to a refused read: it says why instead of Offline.
+    await command(live!.code, live!.hostToken, { command: 'outline.previous' });
+    await expect(remote.getByText('Your access to this session was removed.', { exact: true })).toBeVisible();
+    await expect(remote.getByText('Offline', { exact: true })).toHaveCount(0);
+    await expect(remote.getByRole('button', { name: 'Library', exact: true })).toBeVisible();
     await stage.close();
   } finally {
     if (live) await command(live.code, live.hostToken, { command: 'session.end' });

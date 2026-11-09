@@ -515,6 +515,8 @@ export class SessionDO implements DurableObject {
         return this.#join(request);
       case '/__state':
         return this.#snapshot(url);
+      case '/__seat':
+        return this.#seat(url);
       case '/__command':
         return this.#command(request);
       case '/__export':
@@ -810,6 +812,25 @@ export class SessionDO implements DurableObject {
       identityMode,
       ...(participantName === undefined ? {} : { name: participantName }),
     });
+  }
+
+  /* ---------------------------------------------------------------- seat */
+
+  /**
+   * Does this session still hold this participant? Asked before an expired
+   * participant token is renewed. Same guard as `#join`: an ended or wiped
+   * session holds no seats.
+   */
+  #seat(url: URL): Response {
+    const state = this.#load();
+    if (state === null || state.status === 'ended') {
+      return json({ error: 'session-not-found' }, 404);
+    }
+    const participantId = url.searchParams.get('participantId') ?? '';
+    if (!Object.prototype.hasOwnProperty.call(state.participants, participantId)) {
+      return json({ error: 'seat-not-found' }, 404);
+    }
+    return json({ participantId });
   }
 
   /* ------------------------------------------------------------ snapshot */

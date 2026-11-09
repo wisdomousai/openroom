@@ -65,7 +65,9 @@ When audience Q&A is enabled, open its question area, type your question, and se
 
 ## Rejoin
 
-Reloading in the same browser normally restores its saved participation. Restore network access first if the page reports an offline state.
+Reloading in the same browser normally restores its saved participation. Restore network access first if the page reports an offline state. The browser keeps its seat for as long as the session runs, including a session that runs longer than six hours.
+
+If the page says **This device lost its seat in the session**, the session did not accept the saved seat. In a generated-name session, the page shows your name once more; select **Rejoin as** with that name to return to the same seat and answers. The page forgets the name when you leave it.
 
 To recover a generated-name session in another browser, enter the session code, select **Rejoin with your name**, enter the displayed name exactly, and select **Rejoin**. For learner or guest-list participation, reopen the original personal link.
 
