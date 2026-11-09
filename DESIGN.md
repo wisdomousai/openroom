@@ -286,7 +286,7 @@ tokens, Space members) and the student-link lifecycle card (credential expiry
 is security, not delivery), (3) a **live session's own live counts**
 (joined / answered / votes / countdown). A row states what is *in* the file.
 Sorting by recency silently is fine; exposing the sort as visible metadata is
-not. `Live now` on Home is a state of *now*, not history — allowed with its
+not. `Live now` in the Library is a state of *now*, not history — allowed with its
 word.
 
 The Kind Legend is **retired**. A row says what it is in words, or the
