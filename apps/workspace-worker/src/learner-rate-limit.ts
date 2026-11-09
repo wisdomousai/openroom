@@ -47,8 +47,12 @@
  *   and, in the overwhelmingly common case of no row, no write at all.
  */
 
+import { eq, lte, sql } from 'drizzle-orm';
+
 import { sha256Hex } from './api-tokens.js';
 import { json, type ControlEnv } from './auth.js';
+import { orm } from './db/client.js';
+import { learnerAuthAttempts } from './db/schema.js';
 
 /**
  * Window and budget.
@@ -71,10 +75,7 @@ export const LEARNER_AUTH_FAILURE_LIMIT = 10;
 /** Stand-in key for callers with no `CF-Connecting-IP` (local dev, tests). */
 const NO_CLIENT_IP = '__no-cf-connecting-ip__';
 
-export interface LearnerAttemptRow {
-  window_start: number;
-  failures: number;
-}
+export type LearnerAttemptRow = Pick<typeof learnerAuthAttempts.$inferSelect, 'windowStart' | 'failures'>;
 
 /**
  * Salted digest of the caller's IP. Salting with `TOKEN_SECRET` means the stored
@@ -102,21 +103,22 @@ export function learnerRateLimitedResponse(): Response {
  * This client's bookkeeping row, if any. Deliberately *not* window-filtered: the
  * caller needs to know a row physically exists so a success can clean it up.
  */
-export function readLearnerAttempts(
+export async function readLearnerAttempts(
   env: ControlEnv,
   key: string,
 ): Promise<LearnerAttemptRow | null> {
-  return env.DB.prepare(
-    'SELECT window_start, failures FROM learner_auth_attempts WHERE client_hash = ?1',
-  )
-    .bind(key)
-    .first<LearnerAttemptRow>();
+  const row = await orm(env)
+    .select({ windowStart: learnerAuthAttempts.windowStart, failures: learnerAuthAttempts.failures })
+    .from(learnerAuthAttempts)
+    .where(eq(learnerAuthAttempts.clientHash, key))
+    .get();
+  return row ?? null;
 }
 
 /** Has this client spent its budget for the window that is currently running? */
 export function learnerOverBudget(row: LearnerAttemptRow | null, now: number): boolean {
   if (row === null) return false;
-  if (now - row.window_start >= LEARNER_AUTH_WINDOW_MS) return false;
+  if (now - row.windowStart >= LEARNER_AUTH_WINDOW_MS) return false;
   return row.failures >= LEARNER_AUTH_FAILURE_LIMIT;
 }
 
@@ -130,21 +132,20 @@ export async function recordLearnerAuthFailure(
   key: string,
   now: number,
 ): Promise<void> {
-  await env.DB.batch([
-    env.DB.prepare(
-      `INSERT INTO learner_auth_attempts (client_hash, window_start, failures)
-       VALUES (?1, ?2, 1)
-       ON CONFLICT(client_hash) DO UPDATE SET
-         window_start = CASE
-           WHEN ?2 - learner_auth_attempts.window_start >= ?3 THEN ?2
-           ELSE learner_auth_attempts.window_start END,
-         failures = CASE
-           WHEN ?2 - learner_auth_attempts.window_start >= ?3 THEN 1
-           ELSE learner_auth_attempts.failures + 1 END`,
-    ).bind(key, now, LEARNER_AUTH_WINDOW_MS),
-    env.DB.prepare('DELETE FROM learner_auth_attempts WHERE window_start <= ?1').bind(
-      now - LEARNER_AUTH_WINDOW_MS,
-    ),
+  const db = orm(env);
+  const lapsed = sql`${now} - ${learnerAuthAttempts.windowStart} >= ${LEARNER_AUTH_WINDOW_MS}`;
+  await db.batch([
+    db
+      .insert(learnerAuthAttempts)
+      .values({ clientHash: key, windowStart: now, failures: 1 })
+      .onConflictDoUpdate({
+        target: learnerAuthAttempts.clientHash,
+        set: {
+          windowStart: sql`CASE WHEN ${lapsed} THEN ${now} ELSE ${learnerAuthAttempts.windowStart} END`,
+          failures: sql`CASE WHEN ${lapsed} THEN 1 ELSE ${learnerAuthAttempts.failures} + 1 END`,
+        },
+      }),
+    db.delete(learnerAuthAttempts).where(lte(learnerAuthAttempts.windowStart, now - LEARNER_AUTH_WINDOW_MS)),
   ]);
 }
 
@@ -155,7 +156,5 @@ export async function recordLearnerAuthFailure(
  * successful learner request performs no D1 write at all.
  */
 export async function clearLearnerAuthFailures(env: ControlEnv, key: string): Promise<void> {
-  await env.DB.prepare('DELETE FROM learner_auth_attempts WHERE client_hash = ?1')
-    .bind(key)
-    .run();
+  await orm(env).delete(learnerAuthAttempts).where(eq(learnerAuthAttempts.clientHash, key)).run();
 }

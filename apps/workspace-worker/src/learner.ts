@@ -37,8 +37,12 @@
  * - draft sessions and trashed sessions — unpublished tutor planning.
  */
 
+import { and, desc, eq, isNull, ne } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
 import { parseJson } from './control-utils.js';
+import { orm } from './db/client.js';
+import { sessionRecords, sessions } from './db/schema.js';
 import { requireStudentLink } from './student-links.js';
 import {
   learnerPracticeGet,
@@ -49,17 +53,6 @@ import {
 import { homeworkForLearner, publishedHomeworkOf } from '@openroom/schema';
 import { learnerFeedbackRoute } from './learner-work.js';
 import { learnerAudioRoute, learnerVoiceUpload } from './learner-audio.js';
-
-interface LearnerSessionRow {
-  id: string;
-  title: string;
-  status: string;
-  outcomes_json: string | null;
-  homework_json: string | null;
-  homework_revision: number | null;
-  homework_audience_json: string | null;
-  artifacts_json: string | null;
-}
 
 function jsonArray(value: string | null): unknown[] {
   if (value === null) return [];
@@ -82,42 +75,44 @@ export async function learnerSessionsRoute(request: Request, env: ControlEnv): P
   // Column list is an allowlist, not a `SELECT *` with deletions afterwards:
   // a future column added to `sessions` or `session_records` must be opted in here
   // explicitly rather than leaking the moment the migration lands.
-  const { results } = await env.DB.prepare(
-    `SELECT r.id AS id, r.title AS title, r.status AS status,
-            rec.outcomes_json AS outcomes_json, rec.homework_json AS homework_json, rec.homework_revision, rec.homework_audience_json,
-            rec.artifacts_json AS artifacts_json
-       FROM sessions r
-       LEFT JOIN session_records rec ON rec.session_id = r.id
-      WHERE r.student_id = ?1
-        AND r.deleted_at IS NULL
-        AND r.status <> 'draft'
-      ORDER BY r.created_at DESC
-      LIMIT 200`,
-  )
-    .bind(guard.link.studentId)
-    .all<LearnerSessionRow>();
+  const results = await orm(env)
+    .select({
+      id: sessions.id,
+      title: sessions.title,
+      status: sessions.status,
+      outcomesJson: sessionRecords.outcomesJson,
+      homeworkJson: sessionRecords.homeworkJson,
+      homeworkRevision: sessionRecords.homeworkRevision,
+      homeworkAudienceJson: sessionRecords.homeworkAudienceJson,
+      artifactsJson: sessionRecords.artifactsJson,
+    })
+    .from(sessions)
+    .leftJoin(sessionRecords, eq(sessionRecords.sessionId, sessions.id))
+    .where(and(eq(sessions.studentId, guard.link.studentId), isNull(sessions.deletedAt), ne(sessions.status, 'draft')))
+    .orderBy(desc(sessions.createdAt))
+    .limit(200);
 
   const submissions = await submissionsForLearner(env, guard.link.learnerId);
   return json({
-    sessions: (results ?? []).map((row) => {
-      const homework = homeworkForLearner(publishedHomeworkOf(parseJson(row.homework_json ?? '[]', [])), parseJson(row.homework_audience_json ?? '{}', null), guard.link.learnerId);
+    sessions: results.map((row) => {
+      const homework = homeworkForLearner(publishedHomeworkOf(parseJson(row.homeworkJson ?? '[]', [])), parseJson(row.homeworkAudienceJson ?? '{}', null), guard.link.learnerId);
       const withWriting = homework.map((task) => {
-        if (task.kind !== 'writing' && task.kind !== 'voice') return { ...task, assignmentRevision: row.homework_revision };
+        if (task.kind !== 'writing' && task.kind !== 'voice') return { ...task, assignmentRevision: row.homeworkRevision };
         const submitted = submissions.get(`${row.id}:${task.id}`);
-        return { ...task, assignmentRevision: row.homework_revision,
+        return { ...task, assignmentRevision: row.homeworkRevision,
           ...(submitted === undefined ? {} : task.kind === 'voice' ? { audio: submitted.audio } : { submitted: submitted.body }) };
       });
       return {
         id: row.id,
         title: row.title,
         status: row.status,
-        ...(row.outcomes_json === null && row.homework_json === null && row.artifacts_json === null
+        ...(row.outcomesJson === null && row.homeworkJson === null && row.artifactsJson === null
           ? {}
           : {
               record: {
-                outcomes: jsonArray(row.outcomes_json),
+                outcomes: jsonArray(row.outcomesJson),
                 homework: withWriting,
-                artifacts: jsonArray(row.artifacts_json),
+                artifacts: jsonArray(row.artifactsJson),
               },
             }),
       };

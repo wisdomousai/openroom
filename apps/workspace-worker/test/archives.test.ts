@@ -163,7 +163,7 @@ describe('physical archive retention', () => {
     const expired = await saved(Date.now() - 1), prepare = env.DB.prepare.bind(env.DB);
     const database = new Proxy(env.DB, { get(target, property) {
       if (property === 'prepare') return (sql: string) => {
-        if (sql.includes('FROM learner_audio')) throw new Error('PRIVATE_PROVIDER_DETAIL');
+        if (/from "?learner_audio"?/i.test(sql)) throw new Error('PRIVATE_PROVIDER_DETAIL');
         return prepare(sql);
       };
       return Reflect.get(target, property);

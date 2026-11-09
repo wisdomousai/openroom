@@ -28,7 +28,6 @@ const NOT_YET_CONVERTED = new Set([
   'billing/routes.ts',
   'billing/state.ts',
   'brand-kits.ts',
-  'continuity-access.ts',
   'deck-start.ts',
   'delivery/decks.ts',
   'delivery/session-status.ts',
@@ -37,19 +36,11 @@ const NOT_YET_CONVERTED = new Set([
   'dictionary-route.ts',
   'embed-route.ts',
   'entitlements.ts',
-  'guest-links.ts',
   'index.ts',
-  'learner-audio.ts',
-  'learner-practice.ts',
-  'learner-rate-limit.ts',
-  'learner-work.ts',
-  'learner.ts',
   'mcp-oauth.ts',
   'mcp.ts',
   'oauth-connections.ts',
   'presentation-start.ts',
-  'student-links.ts',
-  'tutoring.ts',
 ]);
 
 const RAW = /\bDB\.(prepare|batch|exec)\(|\bD1PreparedStatement\b/;

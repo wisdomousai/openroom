@@ -25,12 +25,16 @@
  */
 
 import { normalizeSessionCode } from '@openroom/domain';
+import { and, asc, count, desc, eq, gt, isNull, or } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
 import { joinUrlForCode, type JoinOriginEnv } from 'openroom-relay/join-url';
 
 import { sha256Hex } from './api-tokens.js';
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { readJson } from './control-utils.js';
+import { orm } from './db/client.js';
+import { liveSessions, sessions, spaceMembers, studentAccessLinks, studentLearners, students } from './db/schema.js';
 import {
   clearLearnerAuthFailures,
   learnerClientKey,
@@ -101,21 +105,29 @@ export async function verifyStudentLink(
 ): Promise<VerifiedStudentLink | null> {
   if (!isValidLinkShape(raw)) return null;
   const hash = await sha256Hex(raw);
-  const row = await env.DB.prepare(
-    `SELECT l.id AS id, l.student_id AS student_id, l.learner_id AS learner_id,
-            person.display_name AS display_name
-       FROM student_access_links l
-       JOIN students c ON c.id = l.student_id
-       JOIN student_learners person ON person.id = l.learner_id AND person.student_id = l.student_id
-      WHERE l.token_hash = ?1
-        AND l.revoked_at IS NULL
-        AND (l.expires_at IS NULL OR l.expires_at > ?2)
-        AND c.deleted_at IS NULL`,
-  )
-    .bind(hash, now)
-    .first<{ id: string; student_id: string; learner_id: string; display_name: string }>();
-  if (row === null) return null;
-  return { linkId: row.id, learnerId: row.learner_id, studentId: row.student_id, displayName: row.display_name };
+  const row = await orm(env)
+    .select({
+      linkId: studentAccessLinks.id,
+      learnerId: studentAccessLinks.learnerId,
+      studentId: studentAccessLinks.studentId,
+      displayName: studentLearners.displayName,
+    })
+    .from(studentAccessLinks)
+    .innerJoin(students, eq(students.id, studentAccessLinks.studentId))
+    .innerJoin(
+      studentLearners,
+      and(eq(studentLearners.id, studentAccessLinks.learnerId), eq(studentLearners.studentId, studentAccessLinks.studentId)),
+    )
+    .where(
+      and(
+        eq(studentAccessLinks.tokenHash, hash),
+        isNull(studentAccessLinks.revokedAt),
+        or(isNull(studentAccessLinks.expiresAt), gt(studentAccessLinks.expiresAt, now)),
+        isNull(students.deletedAt),
+      ),
+    )
+    .get();
+  return row ?? null;
 }
 
 /**
@@ -148,15 +160,13 @@ export async function studentIdForSessionCode(
   env: ControlEnv,
   code: string,
 ): Promise<string | null> {
-  const row = await env.DB.prepare(
-    `SELECT r.student_id AS student_id
-       FROM live_sessions ro
-       JOIN sessions r ON r.id = ro.session_id
-      WHERE ro.code = ?1`,
-  )
-    .bind(code)
-    .first<{ student_id: string | null }>();
-  return row?.student_id ?? null;
+  const row = await orm(env)
+    .select({ studentId: sessions.studentId })
+    .from(liveSessions)
+    .innerJoin(sessions, eq(sessions.id, liveSessions.sessionId))
+    .where(eq(liveSessions.code, code))
+    .get();
+  return row?.studentId ?? null;
 }
 
 export type LearnerGuard =
@@ -213,13 +223,7 @@ export async function requireStudentLink(
 
 /* ------------------------------------------------------------- tutor side */
 
-interface StudentForLinks {
-  kind: string;
-  id: string;
-  space_id: string;
-  display_name: string;
-  deleted_at: number | null;
-}
+type StudentForLinks = Pick<typeof students.$inferSelect, 'kind' | 'id' | 'spaceId' | 'displayName' | 'deletedAt'>;
 
 /**
  * Tutor-side authorization for link management: space member, editor or above.
@@ -238,17 +242,20 @@ async function linkAdminAccess(
 > {
   const guard = await requireControlUser(request, env, mutating);
   if (!guard.ok) return { ok: false, response: guard.response };
-  const student = await env.DB.prepare(
-    `SELECT c.id AS id, c.kind AS kind, c.space_id AS space_id, c.display_name AS display_name,
-            c.deleted_at AS deleted_at
-       FROM students c
-       JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?2
-      WHERE c.id = ?1`,
-  )
-    .bind(studentId, guard.user.id)
-    .first<StudentForLinks>();
-  if (student === null) return { ok: false, response: json({ error: 'not-found' }, 404) };
-  const access = await spaceRole(env, guard.user, student.space_id);
+  const student = await orm(env)
+    .select({
+      id: students.id,
+      kind: students.kind,
+      spaceId: students.spaceId,
+      displayName: students.displayName,
+      deletedAt: students.deletedAt,
+    })
+    .from(students)
+    .innerJoin(spaceMembers, and(eq(spaceMembers.spaceId, students.spaceId), eq(spaceMembers.userId, guard.user.id)))
+    .where(eq(students.id, studentId))
+    .get();
+  if (student === undefined) return { ok: false, response: json({ error: 'not-found' }, 404) };
+  const access = await spaceRole(env, guard.user, student.spaceId);
   if (access === null || !roleAtLeast(access.role, 'editor')) {
     return { ok: false, response: json({ error: 'forbidden' }, 403) };
   }
@@ -259,23 +266,16 @@ async function linkAdminAccess(
   return { ok: true, student };
 }
 
-interface LinkRow {
-  id: string;
-  token_prefix: string;
-  created_at: number;
-  expires_at: number | null;
-  revoked_at: number | null;
-  learner_id: string;
-  display_name: string;
-}
-
 /** People are student-local; this control-plane read carries no credentials. */
 export async function listStudentLearnersRoute(request: Request, env: ControlEnv, studentId: string): Promise<Response> {
   const access = await linkAdminAccess(request, env, studentId, false);
   if (!access.ok) return access.response;
-  const { results } = await env.DB.prepare('SELECT id, display_name FROM student_learners WHERE student_id = ?1 ORDER BY display_name, id')
-    .bind(studentId).all<{ id: string; display_name: string }>();
-  return json({ learners: (results ?? []).map((person) => ({ id: person.id, displayName: person.display_name })) });
+  const learners = await orm(env)
+    .select({ id: studentLearners.id, displayName: studentLearners.displayName })
+    .from(studentLearners)
+    .where(eq(studentLearners.studentId, studentId))
+    .orderBy(asc(studentLearners.displayName), asc(studentLearners.id));
+  return json({ learners });
 }
 
 /** GET /api/tutoring/students/:id/links */
@@ -287,27 +287,25 @@ export async function listStudentLinksRoute(
   const access = await linkAdminAccess(request, env, studentId, false);
   if (!access.ok) return access.response;
 
-  const { results } = await env.DB.prepare(
-    `SELECT l.id, l.token_prefix, l.created_at, l.expires_at, l.revoked_at, l.learner_id, person.display_name
-       FROM student_access_links l
-       JOIN student_learners person ON person.id = l.learner_id AND person.student_id = l.student_id
-      WHERE l.student_id = ?1
-      ORDER BY l.created_at DESC`,
-  )
-    .bind(studentId)
-    .all<LinkRow>();
+  const links = await orm(env)
+    .select({
+      id: studentAccessLinks.id,
+      tokenPrefix: studentAccessLinks.tokenPrefix,
+      createdAt: studentAccessLinks.createdAt,
+      expiresAt: studentAccessLinks.expiresAt,
+      revokedAt: studentAccessLinks.revokedAt,
+      learnerId: studentAccessLinks.learnerId,
+      displayName: studentLearners.displayName,
+    })
+    .from(studentAccessLinks)
+    .innerJoin(
+      studentLearners,
+      and(eq(studentLearners.id, studentAccessLinks.learnerId), eq(studentLearners.studentId, studentAccessLinks.studentId)),
+    )
+    .where(eq(studentAccessLinks.studentId, studentId))
+    .orderBy(desc(studentAccessLinks.createdAt));
 
-  return json({
-    links: (results ?? []).map((row) => ({
-      id: row.id,
-      tokenPrefix: row.token_prefix,
-      createdAt: row.created_at,
-      expiresAt: row.expires_at,
-      revokedAt: row.revoked_at,
-      learnerId: row.learner_id,
-      displayName: row.display_name,
-    })),
-  });
+  return json({ links });
 }
 
 /**
@@ -332,7 +330,8 @@ export async function mintStudentLinkRoute(
 ): Promise<Response> {
   const access = await linkAdminAccess(request, env, studentId, true);
   if (!access.ok) return access.response;
-  if (access.student.deleted_at !== null) {
+  const db = orm(env);
+  if (access.student.deletedAt !== null) {
     return json({ error: 'resource-in-trash' }, 409);
   }
 
@@ -354,14 +353,17 @@ export async function mintStudentLinkRoute(
   let displayName: string;
   let createLearner = false;
   if (typeof requestedId === 'string') {
-    const person = await env.DB.prepare('SELECT id, display_name FROM student_learners WHERE id = ?1 AND student_id = ?2')
-      .bind(requestedId, studentId).first<{ id: string; display_name: string }>();
+    const person = await db
+      .select({ id: studentLearners.id, displayName: studentLearners.displayName })
+      .from(studentLearners)
+      .where(and(eq(studentLearners.id, requestedId), eq(studentLearners.studentId, studentId)))
+      .get();
     if (!person) return json({ error: 'learner-not-found' }, 404);
-    learnerId = person.id; displayName = person.display_name;
+    learnerId = person.id; displayName = person.displayName;
   } else {
     if (requestedName === undefined && access.student.kind !== 'person') return json({ error: 'learner-name-required' }, 422);
     learnerId = requestedName === undefined ? `person-${studentId}` : randomBase64Url(16);
-    displayName = typeof requestedName === 'string' ? requestedName.trim().replace(/\s+/g, ' ') : access.student.display_name;
+    displayName = typeof requestedName === 'string' ? requestedName.trim().replace(/\s+/g, ' ') : access.student.displayName;
     createLearner = true;
   }
   let ttl = STUDENT_LINK_TTL_MS;
@@ -374,13 +376,17 @@ export async function mintStudentLinkRoute(
     if (ttl < MIN_TTL_MS || ttl > MAX_TTL_MS) return json({ error: 'invalid-expiry' }, 422);
   }
 
-  const countRow = await env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM student_access_links
-      WHERE student_id = ?1 AND revoked_at IS NULL
-        AND (expires_at IS NULL OR expires_at > ?2)`,
-  )
-    .bind(studentId, now)
-    .first<{ n: number }>();
+  const countRow = await db
+    .select({ n: count() })
+    .from(studentAccessLinks)
+    .where(
+      and(
+        eq(studentAccessLinks.studentId, studentId),
+        isNull(studentAccessLinks.revokedAt),
+        or(isNull(studentAccessLinks.expiresAt), gt(studentAccessLinks.expiresAt, now)),
+      ),
+    )
+    .get();
   if ((countRow?.n ?? 0) >= MAX_LINKS_PER_STUDENT) {
     return json({ error: 'link-limit', max: MAX_LINKS_PER_STUDENT }, 429);
   }
@@ -392,16 +398,26 @@ export async function mintStudentLinkRoute(
   const prefix = token.slice(0, PREFIX_LEN);
   const expiresAt = now + ttl;
 
-  const statements = [];
-  if (createLearner) statements.push(env.DB.prepare(
-    'INSERT INTO student_learners (id, student_id, display_name, created_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(id) DO UPDATE SET display_name = excluded.display_name',
-  ).bind(learnerId, studentId, displayName, now));
-  statements.push(env.DB.prepare(
-    `INSERT INTO student_access_links
-       (id, student_id, learner_id, token_hash, token_prefix, created_at, expires_at, revoked_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)`,
-  ).bind(id, studentId, learnerId, hash, prefix, now, expiresAt));
-  await env.DB.batch(statements);
+  const insertLink = db.insert(studentAccessLinks).values({
+    id,
+    studentId,
+    learnerId,
+    tokenHash: hash,
+    tokenPrefix: prefix,
+    createdAt: now,
+    expiresAt,
+    revokedAt: null,
+  });
+  const statements: [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]] = createLearner
+    ? [
+        db
+          .insert(studentLearners)
+          .values({ id: learnerId, studentId, displayName, createdAt: now })
+          .onConflictDoUpdate({ target: studentLearners.id, set: { displayName } }),
+        insertLink,
+      ]
+    : [insertLink];
+  await db.batch(statements);
 
   const origin = new URL(request.url).origin;
   const join = sessionCode === undefined ? undefined : joinUrlForCode(env as ControlEnv & JoinOriginEnv, sessionCode);
@@ -441,11 +457,10 @@ export async function revokeStudentLinkRoute(
   const access = await linkAdminAccess(request, env, studentId, true, false);
   if (!access.ok) return access.response;
 
-  const result = await env.DB.prepare(
-    `UPDATE student_access_links SET revoked_at = ?1
-      WHERE id = ?2 AND student_id = ?3 AND revoked_at IS NULL`,
-  )
-    .bind(now, linkId, studentId)
+  const result = await orm(env)
+    .update(studentAccessLinks)
+    .set({ revokedAt: now })
+    .where(and(eq(studentAccessLinks.id, linkId), eq(studentAccessLinks.studentId, studentId), isNull(studentAccessLinks.revokedAt)))
     .run();
   if ((result.meta.changes ?? 0) === 0) return json({ error: 'not-found' }, 404);
   return json({ ok: true });
