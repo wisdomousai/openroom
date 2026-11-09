@@ -27,10 +27,13 @@
  *    outbound requests, which is what the `seen` assertion in the tests pins.
  */
 import { iframeUrlIssue } from '@openroom/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { readJson } from './control-utils.js';
+import { orm } from './db/client.js';
+import { decks } from './db/schema.js';
 import { MAX_HTML_BYTES, pageToReadingMarkdown } from './markdown-negotiation.js';
 import { spaceRole } from './members.js';
 
@@ -173,10 +176,12 @@ async function guardScope(
 ): Promise<Response | null> {
   if (deckId === undefined || deckId === null || deckId === '') return null;
   if (typeof deckId !== 'string') return json({ error: 'not-found' }, 404);
-  const row = await env.DB.prepare('SELECT space_id FROM decks WHERE id = ?1 AND deleted_at IS NULL')
-    .bind(deckId)
-    .first<{ space_id: string | null }>();
-  const spaceId = row?.space_id ?? null;
+  const row = await orm(env)
+    .select({ spaceId: decks.spaceId })
+    .from(decks)
+    .where(and(eq(decks.id, deckId), isNull(decks.deletedAt)))
+    .get();
+  const spaceId = row?.spaceId ?? null;
   if (spaceId === null) return json({ error: 'not-found' }, 404);
   const access = await spaceRole(env, user, spaceId);
   if (access === null) return json({ error: 'not-found' }, 404);

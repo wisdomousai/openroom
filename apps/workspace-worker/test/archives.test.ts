@@ -74,7 +74,8 @@ describe('session archives', () => {
     const user = await seedUser(JSON.stringify({ keep: true, rawExport: true })), session = await createOwnedSession(user);
     const capture = () => maybeArchiveEndedSession(env, session.sessionCode, async (format) => format === 'json' ? Response.json({ code: session.sessionCode, preserved: true }) : new Response('original responses'));
     await env.DB.exec("CREATE TRIGGER archive_test_failure BEFORE INSERT ON session_archives BEGIN SELECT RAISE(ABORT,'test failure'); END");
-    try { await expect(capture()).rejects.toThrow('test failure'); }
+    // Drizzle wraps the D1 error; the trigger's message is on `cause`.
+    try { await expect(capture()).rejects.toMatchObject({ cause: { message: expect.stringContaining('test failure') } }); }
     finally { await env.DB.exec('DROP TRIGGER archive_test_failure'); }
     const object = await env.MEDIA.head(`archives/${session.sessionCode}.json`);
     expect(object).not.toBeNull();

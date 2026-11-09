@@ -4,24 +4,22 @@
  */
 import {
   canonicalOutlineJson,
-  clipNextNote,
-  compileRecordHomework,
   validateOutline,
-  DECK_DRAFT_MAX_CHARS,
   DECK_SHAPES,
   SESSION_STATUSES,
   SESSION_STATUSES_CLIENT_WRITABLE,
   type Outline,
   type PresentationPosition,
-  type OutlineValidateResult,
 } from '@openroom/schema';
+import { and, desc, eq } from 'drizzle-orm';
 
 import { sha256Hex } from '../api-tokens.js';
 import { json, type ControlEnv, type SessionUser } from '../auth.js';
 import { requireControlUser } from '../control-auth.js';
-import { DELETION_INTENT_TTL_MS, compactArray, memberOfSpace, parseJson, plainObject, randomId, randomToken, readJson, resolveSpace } from '../control-utils.js';
+import { DELETION_INTENT_TTL_MS, memberOfSpace, parseJson, resolveSpace } from '../control-utils.js';
+import { orm } from '../db/client.js';
+import { deckFileLocations, deckVersions, decks, sessions, spaceMembers, students } from '../db/schema.js';
 import { folderAccess, spaceRole, roleAtLeast } from '../members.js';
-import { ensureWorkspace } from '../workspace.js';
 
 /**
  * Shared plumbing for the delivery routes: row shapes, access checks,
@@ -90,101 +88,52 @@ export async function resolveFolder(
   return { ok: true, folderId: currentFolderId };
 }
 
-export interface DeckRow {
-  id: string;
-  space_id: string;
-  folder_id: string | null;
-  student_id: string | null;
-  created_by: string;
-  title: string;
-  shape: string;
-  current_version: number;
-  metadata_json: string;
-  created_at: number;
-  updated_at: number;
-  deleted_at: number | null;
-}
+export type DeckRow = typeof decks.$inferSelect;
 
-export interface SessionRow {
-  id: string;
-  space_id: string;
-  folder_id: string | null;
-  deck_id: string;
-  deck_version: number;
-  student_id: string | null;
-  created_by: string;
-  title: string;
-  shape: string;
-  status: string;
-  metadata_json: string;
-  source_outline_json: string | null;
-  created_at: number;
-  updated_at: number;
-  deleted_at: number | null;
-}
+export type SessionRow = typeof sessions.$inferSelect;
 
-export interface DeckFileLinkRow {
-  file_id: string;
-  deck_id: string;
-  created_by: string;
-  created_at: number;
-}
-
-export interface DeckFileLocationRow {
-  file_id: string;
-  user_id: string;
-  device_id: string;
-  device_name: string;
-  path: string;
-  local_revision: number;
-  content_hash: string;
-  synced_version: number;
-  synced_hash: string;
-  last_seen_at: number;
-}
+export type DeckFileLocationRow = typeof deckFileLocations.$inferSelect;
 
 export const FILE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const CONTENT_HASH_PATTERN = /^[0-9a-f]{64}$/;
 
 export function deckFileLocationJson(row: DeckFileLocationRow): Record<string, unknown> {
   return {
-    deviceId: row.device_id,
-    deviceName: row.device_name,
+    deviceId: row.deviceId,
+    deviceName: row.deviceName,
     path: row.path,
-    localRevision: row.local_revision,
-    contentHash: row.content_hash,
-    syncedVersion: row.synced_version,
-    syncedHash: row.synced_hash,
-    lastSeenAt: row.last_seen_at,
+    localRevision: row.localRevision,
+    contentHash: row.contentHash,
+    syncedVersion: row.syncedVersion,
+    syncedHash: row.syncedHash,
+    lastSeenAt: row.lastSeenAt,
   };
 }
 
 export async function deckAccess(env: ControlEnv, userId: string, deckId: string): Promise<DeckRow | null> {
-  const row = await env.DB.prepare('SELECT * FROM decks WHERE id = ?1')
-    .bind(deckId)
-    .first<DeckRow>();
-  if (row === null) return null;
-  return (await memberOfSpace(env, userId, row.space_id)) ? row : null;
+  const row = await orm(env).select().from(decks).where(eq(decks.id, deckId)).get();
+  if (row === undefined) return null;
+  return (await memberOfSpace(env, userId, row.spaceId)) ? row : null;
 }
 
 export async function sessionAccess(env: ControlEnv, userId: string, sessionId: string): Promise<SessionRow | null> {
-  const row = await env.DB.prepare('SELECT * FROM sessions WHERE id = ?1')
-    .bind(sessionId)
-    .first<SessionRow>();
-  if (row === null) return null;
-  return (await memberOfSpace(env, userId, row.space_id)) ? row : null;
+  const row = await orm(env).select().from(sessions).where(eq(sessions.id, sessionId)).get();
+  if (row === undefined) return null;
+  return (await memberOfSpace(env, userId, row.spaceId)) ? row : null;
 }
 
 export async function studentAccess(
   env: ControlEnv,
   userId: string,
   studentId: string,
-): Promise<{ id: string; space_id: string; deleted_at: number | null } | null> {
-  return env.DB.prepare(
-    `SELECT c.id, c.space_id, c.deleted_at FROM students c
-      JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?2
-     WHERE c.id = ?1`,
-  ).bind(studentId, userId).first();
+): Promise<{ id: string; spaceId: string; deletedAt: number | null } | null> {
+  const row = await orm(env)
+    .select({ id: students.id, spaceId: students.spaceId, deletedAt: students.deletedAt })
+    .from(students)
+    .innerJoin(spaceMembers, and(eq(spaceMembers.spaceId, students.spaceId), eq(spaceMembers.userId, userId)))
+    .where(eq(students.id, studentId))
+    .get();
+  return row ?? null;
 }
 
 /** Editing a deck or session needs `editor` on the space that holds it. */
@@ -222,7 +171,7 @@ export async function targetSpace(
     input.studentId !== ''
   ) {
     const student = await studentAccess(env, user.id, input.studentId);
-    if (student !== null) return student.space_id;
+    if (student !== null) return student.spaceId;
   }
   return resolveSpace(env, user, input.spaceId);
 }
@@ -243,34 +192,34 @@ export async function requestedLocationEditable(
 export function deckJson(row: DeckRow): Record<string, unknown> {
   return {
     id: row.id,
-    spaceId: row.space_id,
-    folderId: row.folder_id,
-    studentId: row.student_id,
+    spaceId: row.spaceId,
+    folderId: row.folderId,
+    studentId: row.studentId,
     title: row.title,
     shape: row.shape,
-    currentVersion: row.current_version,
-    metadata: parseJson(row.metadata_json, {}),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    deletedAt: row.deleted_at,
+    currentVersion: row.currentVersion,
+    metadata: parseJson(row.metadataJson, {}),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    deletedAt: row.deletedAt,
   };
 }
 
 export function sessionJson(row: SessionRow): Record<string, unknown> {
   return {
     id: row.id,
-    spaceId: row.space_id,
-    folderId: row.folder_id,
-    deckId: row.deck_id,
-    deckVersion: row.deck_version,
-    studentId: row.student_id,
+    spaceId: row.spaceId,
+    folderId: row.folderId,
+    deckId: row.deckId,
+    deckVersion: row.deckVersion,
+    studentId: row.studentId,
     title: row.title,
     shape: row.shape,
     status: row.status,
-    metadata: parseJson(row.metadata_json, {}),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    deletedAt: row.deleted_at,
+    metadata: parseJson(row.metadataJson, {}),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    deletedAt: row.deletedAt,
   };
 }
 
@@ -279,17 +228,16 @@ export async function latestContent(
   deckId: string,
   version?: number,
 ): Promise<{ version: number; outline: Outline; contentHash: string } | null> {
+  const versions = orm(env)
+    .select({ version: deckVersions.version, contentJson: deckVersions.contentJson, contentHash: deckVersions.contentHash })
+    .from(deckVersions);
   const row = version === undefined
-    ? await env.DB.prepare(
-        'SELECT version, content_json, content_hash FROM deck_versions WHERE deck_id = ?1 ORDER BY version DESC LIMIT 1',
-      ).bind(deckId).first<{ version: number; content_json: string; content_hash: string | null }>()
-    : await env.DB.prepare(
-        'SELECT version, content_json, content_hash FROM deck_versions WHERE deck_id = ?1 AND version = ?2',
-      ).bind(deckId, version).first<{ version: number; content_json: string; content_hash: string | null }>();
-  if (row === null) return null;
-  const validation = validateOutline(parseJson(row.content_json, null));
+    ? await versions.where(eq(deckVersions.deckId, deckId)).orderBy(desc(deckVersions.version)).limit(1).get()
+    : await versions.where(and(eq(deckVersions.deckId, deckId), eq(deckVersions.version, version))).get();
+  if (row === undefined) return null;
+  const validation = validateOutline(parseJson(row.contentJson, null));
   if (!validation.ok) return null;
-  const contentHash = row.content_hash ?? await sha256Hex(canonicalOutlineJson(validation.outline));
+  const contentHash = row.contentHash ?? await sha256Hex(canonicalOutlineJson(validation.outline));
   return { version: row.version, outline: validation.outline, contentHash };
 }
 

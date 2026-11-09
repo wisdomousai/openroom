@@ -3,29 +3,40 @@
  * Students stay in tutoring.ts. Live sessions are launched from a session.
  */
 import {
-  canonicalOutlineJson,
   clipNextNote,
   compileRecordHomework,
   HOMEWORK_QUIZ_TYPES,
   HOMEWORK_TASK_MAX,
   parseHomeworkAudience,
-  validateOutline,
   isPresentationPosition,
-  DECK_DRAFT_MAX_CHARS,
-  DECK_SHAPES,
   SESSION_STATUSES,
-  SESSION_STATUSES_CLIENT_WRITABLE,
-  type Outline,
   type PresentationPosition,
-  type OutlineValidateResult,
   type PublishedHomeworkTask,
 } from '@openroom/schema';
+import { and, desc, eq, exists, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm';
 
 import { sha256Hex } from '../api-tokens.js';
 import { json, type ControlEnv, type SessionUser } from '../auth.js';
 import { requireControlUser } from '../control-auth.js';
-import { DELETION_INTENT_TTL_MS, compactArray, memberOfSpace, parseJson, plainObject, randomId, randomToken, readJson, resolveSpace } from '../control-utils.js';
-import { folderAccess, spaceRole, roleAtLeast } from '../members.js';
+import { DELETION_INTENT_TTL_MS, compactArray, parseJson, plainObject, randomId, randomToken, readJson } from '../control-utils.js';
+import { orm } from '../db/client.js';
+import {
+  deckDrafts,
+  deckVersions,
+  decks,
+  deletionIntents,
+  itemTags,
+  learnerFeedback,
+  learnerPracticeAttempts,
+  learnerSrs,
+  learnerSubmissions,
+  liveSessions,
+  sessionRecords,
+  sessions,
+  spaceMembers,
+  studentLearners,
+  students,
+} from '../db/schema.js';
 import { ensureWorkspace } from '../workspace.js';
 import { deleteLearnerAudioPermanently } from '../learner-audio.js';
 import { requireSpaceContinuity } from '../continuity-access.js';
@@ -37,21 +48,10 @@ import {
   sessionAccess,
   studentAccess,
   mutationAllowed,
-  targetSpace,
-  requestedLocationEditable,
-  deckJson,
   sessionJson,
   latestContent,
-  deckFileLocationJson,
-  FILE_ID_PATTERN,
-  CONTENT_HASH_PATTERN,
   SESSION_STATUSES_SERVER_OWNED,
-  type DeckRow,
-  type SessionRow,
-  type DeckFileLinkRow,
-  type DeckFileLocationRow,
   type DeliveryResourceType,
-  type SessionLaunchInput,
   type SessionLauncher,
 } from './shared.js';
 
@@ -70,38 +70,30 @@ export async function sessionsCollectionRoute(
     const studentId = url.searchParams.get('studentId');
     const folderId = url.searchParams.get('folderId');
     const spaceId = url.searchParams.get('spaceId');
-    const binds: string[] = [guard.user.id];
-    let where = trashed ? 'r.deleted_at IS NOT NULL' : 'r.deleted_at IS NULL';
-    let n = 2;
-    if (deckId !== null) {
-      where += ` AND r.deck_id = ?${n}`;
-      binds.push(deckId);
-      n += 1;
-    }
-    if (studentId !== null) {
-      where += ` AND r.student_id = ?${n}`;
-      binds.push(studentId);
-      n += 1;
-    }
-    if (spaceId !== null && spaceId !== '') {
-      where += ` AND r.space_id = ?${n}`;
-      binds.push(spaceId);
-      n += 1;
-    }
+    const conditions: SQL[] = [
+      exists(
+        orm(env)
+          .select({ one: sql`1` })
+          .from(spaceMembers)
+          .where(and(eq(spaceMembers.spaceId, sessions.spaceId), eq(spaceMembers.userId, guard.user.id))),
+      ),
+      trashed ? isNotNull(sessions.deletedAt) : isNull(sessions.deletedAt),
+    ];
+    if (deckId !== null) conditions.push(eq(sessions.deckId, deckId));
+    if (studentId !== null) conditions.push(eq(sessions.studentId, studentId));
+    if (spaceId !== null && spaceId !== '') conditions.push(eq(sessions.spaceId, spaceId));
     if (folderId === 'root' || folderId === '') {
-      where += ' AND (r.folder_id IS NULL OR r.folder_id = \'\')';
+      conditions.push(or(isNull(sessions.folderId), eq(sessions.folderId, ''))!);
     } else if (folderId !== null) {
-      where += ` AND r.folder_id = ?${n}`;
-      binds.push(folderId);
+      conditions.push(eq(sessions.folderId, folderId));
     }
-    const { results } = await env.DB.prepare(
-      `SELECT r.* FROM sessions r
-       WHERE EXISTS (SELECT 1 FROM space_members sm
-                      WHERE sm.space_id = r.space_id AND sm.user_id = ?1)
-         AND ${where}
-       ORDER BY r.updated_at DESC LIMIT 500`,
-    ).bind(...binds).all<SessionRow>();
-    return json({ sessions: (results ?? []).map(sessionJson) });
+    const results = await orm(env)
+      .select()
+      .from(sessions)
+      .where(and(...conditions))
+      .orderBy(desc(sessions.updatedAt))
+      .limit(500);
+    return json({ sessions: results.map(sessionJson) });
   }
 
   if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
@@ -111,16 +103,16 @@ export async function sessionsCollectionRoute(
     return json({ error: 'deck-id-required' }, 422);
   }
   const deck = await deckAccess(env, guard.user.id, body.deckId);
-  if (deck === null || deck.deleted_at !== null) return json({ error: 'deck-not-found' }, 404);
-  if (!(await mutationAllowed(env, guard.user, deck.space_id))) {
+  if (deck === null || deck.deletedAt !== null) return json({ error: 'deck-not-found' }, 404);
+  if (!(await mutationAllowed(env, guard.user, deck.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
 
-  let studentId = deck.student_id;
+  let studentId = deck.studentId;
   if (body.studentId === null) studentId = null;
   if (typeof body.studentId === 'string') {
     const ctx = await studentAccess(env, guard.user.id, body.studentId);
-    if (ctx === null || ctx.deleted_at !== null || ctx.space_id !== deck.space_id) {
+    if (ctx === null || ctx.deletedAt !== null || ctx.spaceId !== deck.spaceId) {
       return json({ error: 'student-not-found' }, 404);
     }
     studentId = ctx.id;
@@ -128,8 +120,8 @@ export async function sessionsCollectionRoute(
 
   const deckVersion = typeof body.deckVersion === 'number' && Number.isInteger(body.deckVersion)
     ? body.deckVersion
-    : deck.current_version;
-  if (deckVersion < 0 || deckVersion > deck.current_version) {
+    : deck.currentVersion;
+  if (deckVersion < 0 || deckVersion > deck.currentVersion) {
     return json({ error: 'invalid-deck-version' }, 422);
   }
 
@@ -141,21 +133,27 @@ export async function sessionsCollectionRoute(
   if (typeof body.status === 'string' && SESSION_STATUSES_SERVER_OWNED.has(body.status)) {
     return json({ error: 'status-server-owned' }, 422);
   }
-  const location = await resolveFolder(env, guard.user, deck.space_id, body, deck.folder_id);
+  const location = await resolveFolder(env, guard.user, deck.spaceId, body, deck.folderId);
   if (!location.ok) return location.response;
   const { folderId } = location;
   const id = randomId();
   const now = Date.now();
-  await env.DB.prepare(
-    `INSERT INTO sessions
-       (id, space_id, folder_id, deck_id, deck_version, student_id,
-        created_by, title, shape, status,
-        metadata_json, created_at, updated_at, deleted_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'draft', '{}', ?10, ?10, NULL)`,
-  ).bind(
-    id, deck.space_id, folderId, deck.id, deckVersion, studentId,
-    guard.user.id, title, shape, now,
-  ).run();
+  await orm(env).insert(sessions).values({
+    id,
+    spaceId: deck.spaceId,
+    folderId,
+    deckId: deck.id,
+    deckVersion,
+    studentId,
+    createdBy: guard.user.id,
+    title,
+    shape,
+    status: 'draft',
+    metadataJson: '{}',
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  }).run();
   return json({ session: sessionJson((await sessionAccess(env, guard.user.id, id))!) }, 201);
 }
 
@@ -171,29 +169,28 @@ export async function sessionItemRoute(
 
   if (request.method === 'GET') return json({
     session: sessionJson(row),
-    canEdit: row.deleted_at === null && await mutationAllowed(env, guard.user, row.space_id),
+    canEdit: row.deletedAt === null && await mutationAllowed(env, guard.user, row.spaceId),
   });
-  if (!(await mutationAllowed(env, guard.user, row.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, row.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
   if (request.method === 'DELETE') {
-    if (row.deleted_at === null) {
+    if (row.deletedAt === null) {
       const now = Date.now();
-      await env.DB.prepare('UPDATE sessions SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2')
-        .bind(now, sessionId).run();
+      await orm(env).update(sessions).set({ deletedAt: now, updatedAt: now }).where(eq(sessions.id, sessionId)).run();
     }
     return json({ ok: true, recoverable: true });
   }
   if (request.method !== 'PATCH') return json({ error: 'method-not-allowed' }, 405);
-  if (row.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
+  if (row.deletedAt !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
 
-  let studentId = row.student_id;
+  let studentId = row.studentId;
   if (body.studentId === null) studentId = null;
   if (typeof body.studentId === 'string') {
     const ctx = await studentAccess(env, guard.user.id, body.studentId);
-    if (ctx === null || ctx.deleted_at !== null || ctx.space_id !== row.space_id) {
+    if (ctx === null || ctx.deletedAt !== null || ctx.spaceId !== row.spaceId) {
       return json({ error: 'student-not-found' }, 404);
     }
     studentId = ctx.id;
@@ -208,20 +205,21 @@ export async function sessionItemRoute(
     const known = typeof body.status === 'string' && (SESSION_STATUSES as readonly string[]).includes(body.status);
     return json({ error: known ? 'status-server-owned' : 'invalid-status' }, 422);
   }
-  const location = await resolveFolder(env, guard.user, row.space_id, body, row.folder_id);
+  const location = await resolveFolder(env, guard.user, row.spaceId, body, row.folderId);
   if (!location.ok) return location.response;
   const now = Date.now();
-  await env.DB.prepare(
-    `UPDATE sessions SET student_id = ?1, title = ?2,
-       folder_id = ?3, updated_at = ?4 WHERE id = ?5`,
-  ).bind(studentId, title, location.folderId, now, sessionId).run();
+  await orm(env)
+    .update(sessions)
+    .set({ studentId, title, folderId: location.folderId, updatedAt: now })
+    .where(eq(sessions.id, sessionId))
+    .run();
   return json({
     session: sessionJson({
       ...row,
-      student_id: studentId,
+      studentId,
       title,
-      folder_id: location.folderId,
-      updated_at: now,
+      folderId: location.folderId,
+      updatedAt: now,
     }),
   });
 }
@@ -235,11 +233,10 @@ export async function restoreSessionRoute(
   if (!guard.ok) return guard.response;
   const row = await sessionAccess(env, guard.user.id, sessionId);
   if (row === null) return json({ error: 'not-found' }, 404);
-  if (!(await mutationAllowed(env, guard.user, row.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, row.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
-  await env.DB.prepare('UPDATE sessions SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2')
-    .bind(Date.now(), sessionId).run();
+  await orm(env).update(sessions).set({ deletedAt: null, updatedAt: Date.now() }).where(eq(sessions.id, sessionId)).run();
   return json({ ok: true });
 }
 
@@ -286,42 +283,55 @@ export async function sessionRecordRoute(
   // Notes are part of `continuity`, billed to the session's space owner. They are
   // retained while access is lapsed and removed with the session's own deletion.
   if (request.method === 'GET' || request.method === 'PUT') {
-    const blocked = await requireSpaceContinuity(env, session.space_id);
+    const blocked = await requireSpaceContinuity(env, session.spaceId);
     if (blocked) return blocked;
   }
   if (request.method === 'GET') {
-    const row = await env.DB.prepare('SELECT * FROM session_records WHERE session_id = ?1')
-      .bind(sessionId)
-      .first<Record<string, string | number | null>>();
-    if (row === null) return json({ record: null });
+    const row = await orm(env).select().from(sessionRecords).where(eq(sessionRecords.sessionId, sessionId)).get();
+    if (row === undefined) return json({ record: null });
     return json({
       record: {
-        id: row['id'],
+        id: row.id,
         sessionId,
-        studentId: row['student_id'],
-        sessionCode: row['session_code'],
-        deckVersion: row['deck_version'],
-        outcomes: parseJson(String(row['outcomes_json']), []),
-        notes: row['notes'],
-        nextNote: typeof row['next_note'] === 'string' ? row['next_note'] : '',
-        homework: parseJson(String(row['homework_json']), []),
-        homeworkAudience: parseJson(String(row['homework_audience_json']), {}),
-        homeworkRevision: row['homework_revision'],
-        artifacts: parseJson(String(row['artifacts_json']), []),
-        createdAt: row['created_at'],
-        updatedAt: row['updated_at'],
+        studentId: row.studentId,
+        sessionCode: row.sessionCode,
+        deckVersion: row.deckVersion,
+        outcomes: parseJson(row.outcomesJson, []),
+        notes: row.notes,
+        nextNote: row.nextNote,
+        homework: parseJson(row.homeworkJson, []),
+        homeworkAudience: parseJson(row.homeworkAudienceJson, {}),
+        homeworkRevision: row.homeworkRevision,
+        artifacts: parseJson(row.artifactsJson, []),
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
       },
     });
   }
   if (request.method !== 'PUT') return json({ error: 'method-not-allowed' }, 405);
-  if (!(await mutationAllowed(env, guard.user, session.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, session.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
-  if (session.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
+  if (session.deletedAt !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
-  const existing = await env.DB.prepare('SELECT id, created_at, session_code, deck_version, outcomes_json, notes, next_note, homework_json, homework_audience_json, homework_revision, artifacts_json FROM session_records WHERE session_id = ?1')
-    .bind(sessionId).first<{ id: string; created_at: number; session_code: string | null; deck_version: number; outcomes_json: string; notes: string | null; next_note: string | null; homework_json: string; homework_audience_json: string; homework_revision: number; artifacts_json: string }>();
+  const existing = await orm(env)
+    .select({
+      id: sessionRecords.id,
+      createdAt: sessionRecords.createdAt,
+      sessionCode: sessionRecords.sessionCode,
+      deckVersion: sessionRecords.deckVersion,
+      outcomesJson: sessionRecords.outcomesJson,
+      notes: sessionRecords.notes,
+      nextNote: sessionRecords.nextNote,
+      homeworkJson: sessionRecords.homeworkJson,
+      homeworkAudienceJson: sessionRecords.homeworkAudienceJson,
+      homeworkRevision: sessionRecords.homeworkRevision,
+      artifactsJson: sessionRecords.artifactsJson,
+    })
+    .from(sessionRecords)
+    .where(eq(sessionRecords.sessionId, sessionId))
+    .get();
   // A field the body leaves out keeps its stored value; an explicit '' or []
   // clears it. Several writers share one record (the tutor's Notes in the
   // browser, an agent adding homework later), so a partial body must never
@@ -331,13 +341,13 @@ export async function sessionRecordRoute(
     const value = parseJson(text ?? '[]', []);
     return Array.isArray(value) ? value : [];
   };
-  const outcomes = provided('outcomes') ? compactArray(body.outcomes ?? []) : stored(existing?.outcomes_json);
-  const artifacts = provided('artifacts') ? compactArray(body.artifacts ?? []) : stored(existing?.artifacts_json);
+  const outcomes = provided('outcomes') ? compactArray(body.outcomes ?? []) : stored(existing?.outcomesJson);
+  const artifacts = provided('artifacts') ? compactArray(body.artifacts ?? []) : stored(existing?.artifactsJson);
   // Omitted homework is the stored snapshot itself, byte for byte, so it never
   // counts as a homework change that would need homeworkRevision.
   const homework = provided('homework')
     ? compileRecordHomework(body.homework ?? [])
-    : stored(existing?.homework_json) as PublishedHomeworkTask[];
+    : stored(existing?.homeworkJson) as PublishedHomeworkTask[];
   const notes = provided('notes')
     ? typeof body.notes === 'string' ? body.notes.slice(0, 10_000) : ''
     : existing?.notes ?? '';
@@ -351,11 +361,13 @@ export async function sessionRecordRoute(
   }
   const deckVersion = typeof body.deckVersion === 'number' && Number.isInteger(body.deckVersion)
     ? body.deckVersion
-    : existing?.deck_version ?? session.deck_version;
-  const deck = await env.DB.prepare('SELECT current_version FROM decks WHERE id = ?1')
-    .bind(session.deck_id)
-    .first<{ current_version: number }>();
-  const currentVersion = deck?.current_version ?? session.deck_version;
+    : existing?.deckVersion ?? session.deckVersion;
+  const deck = await orm(env)
+    .select({ currentVersion: decks.currentVersion })
+    .from(decks)
+    .where(eq(decks.id, session.deckId))
+    .get();
+  const currentVersion = deck?.currentVersion ?? session.deckVersion;
   // Decks without content keep current_version = 0; allow recording against 0.
   if (
     deckVersion < 0 ||
@@ -366,48 +378,72 @@ export async function sessionRecordRoute(
   }
   const sessionCode = provided('sessionCode')
     ? typeof body.sessionCode === 'string' ? body.sessionCode.slice(0, 64) : null
-    : existing?.session_code ?? null;
+    : existing?.sessionCode ?? null;
   const now = Date.now();
   const taskIds = homework.map((task) => task.id);
-  const storedAudience = parseJson(existing?.homework_audience_json ?? '{}', null);
+  const storedAudience = parseJson(existing?.homeworkAudienceJson ?? '{}', null);
   if (body.homeworkAudience === undefined && !plainObject(storedAudience)) return json({ error: 'invalid-homework-audience' }, 422);
   // Omitting this field preserves restrictions on surviving tasks. Sharing is deliberate.
   const audienceInput = body.homeworkAudience === undefined
     ? Object.fromEntries(Object.entries(storedAudience as Record<string, unknown>).filter(([id]) => taskIds.includes(id))) : body.homeworkAudience;
-  const people = session.student_id === null ? [] : (await env.DB.prepare('SELECT id FROM student_learners WHERE student_id = ?1').bind(session.student_id).all<{ id: string }>()).results ?? [];
+  const people = session.studentId === null
+    ? []
+    : await orm(env).select({ id: studentLearners.id }).from(studentLearners).where(eq(studentLearners.studentId, session.studentId));
   const audience = parseHomeworkAudience(audienceInput, taskIds, people.map((person) => person.id));
   if (audience === null) return json({ error: 'invalid-homework-audience' }, 422);
-  const homeworkJson = provided('homework') || existing === null ? JSON.stringify(homework) : existing.homework_json;
+  const homeworkJson = provided('homework') || existing === undefined ? JSON.stringify(homework) : existing.homeworkJson;
   const audienceJson = JSON.stringify(audience);
-  const changedHomework = existing !== null && (homeworkJson !== existing.homework_json || audienceJson !== existing.homework_audience_json);
-  if (changedHomework && body.homeworkRevision !== existing.homework_revision) return json({ error: 'homework-revision-conflict' }, 409);
-  const homeworkRevision = existing === null ? 1 : existing.homework_revision + (changedHomework ? 1 : 0);
-  const storedNextNote = nextNote ?? existing?.next_note ?? '';
+  const changedHomework = existing !== undefined && (homeworkJson !== existing.homeworkJson || audienceJson !== existing.homeworkAudienceJson);
+  if (changedHomework && body.homeworkRevision !== existing.homeworkRevision) return json({ error: 'homework-revision-conflict' }, 409);
+  const homeworkRevision = existing === undefined ? 1 : existing.homeworkRevision + (changedHomework ? 1 : 0);
+  const storedNextNote = nextNote ?? existing?.nextNote ?? '';
   // An existing row takes only the columns this body names, so two writers
   // saving different fields at once never put back each other's old values.
   // Homework columns are always written, guarded by homework_revision.
-  const updated = [
-    ['sessionCode', 'session_code'], ['deckVersion', 'deck_version'], ['outcomes', 'outcomes_json'],
-    ['notes', 'notes'], ['nextNote', 'next_note'], ['artifacts', 'artifacts_json'],
-  ].filter(([key]) => provided(key as string)).map(([, column]) => `${column as string} = excluded.${column as string}`);
-  const saved = await env.DB.prepare(
-    `INSERT INTO session_records
-       (id, session_id, student_id, session_code, deck_version, outcomes_json, notes, next_note, homework_json, artifacts_json, created_at, updated_at, homework_revision, homework_audience_json)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?15)
-     ON CONFLICT(session_id) DO UPDATE SET
-       ${[...updated, 'student_id = excluded.student_id', 'homework_json = excluded.homework_json',
-         'updated_at = excluded.updated_at', 'homework_revision = excluded.homework_revision',
-         'homework_audience_json = excluded.homework_audience_json'].join(', ')}
-     WHERE session_records.homework_revision = ?14`,
-  ).bind(
-    existing?.id ?? randomId(), sessionId, session.student_id, sessionCode, deckVersion,
-    JSON.stringify(outcomes), notes, storedNextNote, homeworkJson, JSON.stringify(artifacts),
-    existing?.created_at ?? now, now, homeworkRevision, existing?.homework_revision ?? 0, audienceJson,
-  ).run();
+  const values = {
+    id: existing?.id ?? randomId(),
+    sessionId,
+    studentId: session.studentId,
+    sessionCode,
+    deckVersion,
+    outcomesJson: JSON.stringify(outcomes),
+    notes,
+    nextNote: storedNextNote,
+    homeworkJson,
+    artifactsJson: JSON.stringify(artifacts),
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    homeworkRevision,
+    homeworkAudienceJson: audienceJson,
+  };
+  const set: Partial<typeof values> = {
+    studentId: values.studentId,
+    homeworkJson: values.homeworkJson,
+    updatedAt: values.updatedAt,
+    homeworkRevision: values.homeworkRevision,
+    homeworkAudienceJson: values.homeworkAudienceJson,
+  };
+  if (provided('sessionCode')) set.sessionCode = values.sessionCode;
+  if (provided('deckVersion')) set.deckVersion = values.deckVersion;
+  if (provided('outcomes')) set.outcomesJson = values.outcomesJson;
+  if (provided('notes')) set.notes = values.notes;
+  if (provided('nextNote')) set.nextNote = values.nextNote;
+  if (provided('artifacts')) set.artifactsJson = values.artifactsJson;
+  const saved = await orm(env)
+    .insert(sessionRecords)
+    .values(values)
+    .onConflictDoUpdate({
+      target: sessionRecords.sessionId,
+      set,
+      setWhere: eq(sessionRecords.homeworkRevision, existing?.homeworkRevision ?? 0),
+    })
+    .run();
   if (!saved.meta.changes) return json({ error: 'homework-revision-conflict' }, 409);
-  if (nextNote !== null && session.student_id) {
-    await env.DB.prepare('UPDATE students SET next_note = ?1, updated_at = ?2 WHERE id = ?3')
-      .bind(nextNote, now, session.student_id)
+  if (nextNote !== null && session.studentId) {
+    await orm(env)
+      .update(students)
+      .set({ nextNote, updatedAt: now })
+      .where(eq(students.id, session.studentId))
       .run();
   }
   return json({ ok: true, sessionId, updatedAt: now, homeworkRevision });
@@ -422,15 +458,15 @@ export async function launchSessionRoute(
   const guard = await requireControlUser(request, env, true);
   if (!guard.ok) return guard.response;
   const session = await sessionAccess(env, guard.user.id, sessionId);
-  if (session === null || session.deleted_at !== null) return json({ error: 'not-found' }, 404);
+  if (session === null || session.deletedAt !== null) return json({ error: 'not-found' }, 404);
   const body = (await readJson(request)) ?? {};
   const requested = typeof body.version === 'number' && Number.isInteger(body.version)
     ? body.version
-    : session.deck_version > 0 ? session.deck_version : undefined;
-  if (session.source_outline_json && requested !== session.deck_version) return json({ error: 'session-version-conflict' }, 409);
-  const content = session.source_outline_json
-    ? { version: session.deck_version, outline: JSON.parse(session.source_outline_json) as import('@openroom/schema').Outline }
-    : await latestContent(env, session.deck_id, requested);
+    : session.deckVersion > 0 ? session.deckVersion : undefined;
+  if (session.sourceOutlineJson && requested !== session.deckVersion) return json({ error: 'session-version-conflict' }, 409);
+  const content = session.sourceOutlineJson
+    ? { version: session.deckVersion, outline: JSON.parse(session.sourceOutlineJson) as import('@openroom/schema').Outline }
+    : await latestContent(env, session.deckId, requested);
   if (content === null) return json({ error: 'deck-content-not-found' }, 409);
   if (body.cursor !== undefined) {
     if (!isPresentationPosition(content.outline, body.cursor)) {
@@ -441,8 +477,8 @@ export async function launchSessionRoute(
     ...(guard.connectionId ? { connectionId: guard.connectionId } : {}),
     origin: new URL(request.url).origin,
     sessionId: session.id,
-    deckId: session.deck_id,
-    studentId: session.student_id,
+    deckId: session.deckId,
+    studentId: session.studentId,
     title: session.title,
     version: content.version,
     outline: content.outline,
@@ -465,19 +501,24 @@ export async function createDeliveryDeletionIntentRoute(
     ? await deckAccess(env, guard.user.id, resourceId)
     : await sessionAccess(env, guard.user.id, resourceId);
   if (resource === null) return json({ error: 'not-found' }, 404);
-  if (!(await mutationAllowed(env, guard.user, resource.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, resource.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
-  if (resource.deleted_at === null) return json({ error: 'move-to-trash-first' }, 409);
+  if (resource.deletedAt === null) return json({ error: 'move-to-trash-first' }, 409);
   const name = resource.title;
   const token = randomToken();
   const tokenHash = await sha256Hex(token);
   const now = Date.now();
-  await env.DB.prepare(
-    `INSERT INTO deletion_intents
-       (token_hash, user_id, resource_type, resource_id, resource_name, created_at, expires_at, used_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)`,
-  ).bind(tokenHash, guard.user.id, resourceType, resourceId, name, now, now + DELETION_INTENT_TTL_MS).run();
+  await orm(env).insert(deletionIntents).values({
+    tokenHash,
+    userId: guard.user.id,
+    resourceType,
+    resourceId,
+    resourceName: name,
+    createdAt: now,
+    expiresAt: now + DELETION_INTENT_TTL_MS,
+    usedAt: null,
+  }).run();
   const origin = new URL(request.url).origin;
   return json({
     ok: true,
@@ -488,38 +529,45 @@ export async function createDeliveryDeletionIntentRoute(
 }
 
 export async function deleteDeckPermanently(env: ControlEnv, deckId: string): Promise<void> {
-  const { results: sessions } = await env.DB.prepare('SELECT id FROM sessions WHERE deck_id = ?1')
-    .bind(deckId).all<{ id: string }>();
-  for (const session of sessions ?? []) await deleteSessionPermanently(env, session.id);
-  await env.DB.batch([
+  const db = orm(env);
+  const deckSessions = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.deckId, deckId));
+  for (const session of deckSessions) await deleteSessionPermanently(env, session.id);
+  await db.batch([
     // Detach sessions that recorded this deck so no row points at a deleted deck.
-    env.DB.prepare('UPDATE live_sessions SET deck_id = NULL, deck_version = NULL WHERE deck_id = ?1').bind(deckId),
-    env.DB.prepare('DELETE FROM deck_versions WHERE deck_id = ?1').bind(deckId),
-    env.DB.prepare('DELETE FROM deck_drafts WHERE deck_id = ?1').bind(deckId),
+    db.update(liveSessions).set({ deckId: null, deckVersion: null }).where(eq(liveSessions.deckId, deckId)),
+    db.delete(deckVersions).where(eq(deckVersions.deckId, deckId)),
+    db.delete(deckDrafts).where(eq(deckDrafts.deckId, deckId)),
     // Tags have no life of their own: a deleted item takes its tags with it,
     // otherwise the space facet list keeps counting rows nothing can reach.
-    env.DB.prepare("DELETE FROM item_tags WHERE item_type = 'deck' AND item_id = ?1").bind(deckId),
-    env.DB.prepare('DELETE FROM decks WHERE id = ?1').bind(deckId),
+    db.delete(itemTags).where(and(eq(itemTags.itemType, 'deck'), eq(itemTags.itemId, deckId))),
+    db.delete(decks).where(eq(decks.id, deckId)),
   ]);
 }
 
 async function deleteSessionPermanently(env: ControlEnv, sessionId: string): Promise<void> {
   await deleteLearnerAudioPermanently(env, 'session_id', sessionId);
-  await env.DB.batch([
-    env.DB.prepare(
-      'UPDATE live_sessions SET session_id = NULL, deck_id = NULL, deck_version = NULL WHERE session_id = ?1',
-    ).bind(sessionId),
-    env.DB.prepare(
-      `DELETE FROM item_tags WHERE item_type = 'record'
-         AND item_id IN (SELECT id FROM session_records WHERE session_id = ?1)`,
-    ).bind(sessionId),
-    env.DB.prepare("DELETE FROM item_tags WHERE item_type = 'session' AND item_id = ?1").bind(sessionId),
-    env.DB.prepare('DELETE FROM learner_feedback WHERE submission_id IN (SELECT id FROM learner_submissions WHERE session_id = ?1)').bind(sessionId),
-    env.DB.prepare('DELETE FROM learner_submissions WHERE session_id = ?1').bind(sessionId),
-    env.DB.prepare('DELETE FROM learner_srs WHERE substr(item_id, 1, length(?1) + 1) = ?1 || \':\'').bind(sessionId),
-    env.DB.prepare('DELETE FROM learner_practice_attempts WHERE session_id = ?1').bind(sessionId),
-    env.DB.prepare('DELETE FROM session_records WHERE session_id = ?1').bind(sessionId),
-    env.DB.prepare('DELETE FROM sessions WHERE id = ?1').bind(sessionId),
+  const db = orm(env);
+  await db.batch([
+    db.update(liveSessions)
+      .set({ sessionId: null, deckId: null, deckVersion: null })
+      .where(eq(liveSessions.sessionId, sessionId)),
+    db.delete(itemTags).where(and(
+      eq(itemTags.itemType, 'record'),
+      inArray(
+        itemTags.itemId,
+        db.select({ id: sessionRecords.id }).from(sessionRecords).where(eq(sessionRecords.sessionId, sessionId)),
+      ),
+    )),
+    db.delete(itemTags).where(and(eq(itemTags.itemType, 'session'), eq(itemTags.itemId, sessionId))),
+    db.delete(learnerFeedback).where(inArray(
+      learnerFeedback.submissionId,
+      db.select({ id: learnerSubmissions.id }).from(learnerSubmissions).where(eq(learnerSubmissions.sessionId, sessionId)),
+    )),
+    db.delete(learnerSubmissions).where(eq(learnerSubmissions.sessionId, sessionId)),
+    db.delete(learnerSrs).where(sql`substr(${learnerSrs.itemId}, 1, length(${sessionId}) + 1) = ${sessionId} || ':'`),
+    db.delete(learnerPracticeAttempts).where(eq(learnerPracticeAttempts.sessionId, sessionId)),
+    db.delete(sessionRecords).where(eq(sessionRecords.sessionId, sessionId)),
+    db.delete(sessions).where(eq(sessions.id, sessionId)),
   ]);
 }
 
@@ -531,13 +579,13 @@ export async function confirmDeliveryDeletion(
 ): Promise<boolean> {
   if (resourceType === 'deck') {
     const resource = await deckAccess(env, userId, resourceId);
-    if (resource === null || resource.deleted_at === null) return false;
+    if (resource === null || resource.deletedAt === null) return false;
     await deleteDeckPermanently(env, resource.id);
     return true;
   }
   if (resourceType === 'session') {
     const resource = await sessionAccess(env, userId, resourceId);
-    if (resource === null || resource.deleted_at === null) return false;
+    if (resource === null || resource.deletedAt === null) return false;
     await deleteSessionPermanently(env, resource.id);
     return true;
   }

@@ -4,23 +4,30 @@
  */
 import {
   canonicalOutlineJson,
-  clipNextNote,
-  compileRecordHomework,
   validateOutline,
   parseOutline,
   DECK_DRAFT_MAX_CHARS,
-  DECK_SHAPES,
-  SESSION_STATUSES,
-  SESSION_STATUSES_CLIENT_WRITABLE,
-  type Outline,
   type OutlineValidateResult,
 } from '@openroom/schema';
+import { and, desc, eq, exists, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
 
 import { sha256Hex } from '../api-tokens.js';
 import { json, type ControlEnv, type SessionUser } from '../auth.js';
 import { requireControlUser } from '../control-auth.js';
-import { DELETION_INTENT_TTL_MS, compactArray, memberOfSpace, parseJson, plainObject, randomId, randomToken, readJson, resolveSpace } from '../control-utils.js';
-import { folderAccess, spaceRole, roleAtLeast } from '../members.js';
+import { parseJson, plainObject, randomId, readJson } from '../control-utils.js';
+import { orm } from '../db/client.js';
+import {
+  deckDrafts,
+  deckFileLinks,
+  deckFileLocations,
+  deckVersions,
+  decks,
+  folders,
+  sessions,
+  spaceMembers,
+  spaces,
+} from '../db/schema.js';
 import { ensureWorkspace } from '../workspace.js';
 
 import {
@@ -38,11 +45,6 @@ import {
   deckFileLocationJson,
   FILE_ID_PATTERN,
   CONTENT_HASH_PATTERN,
-  SESSION_STATUSES_SERVER_OWNED,
-  type DeckRow,
-  type SessionRow,
-  type DeckFileLinkRow,
-  type DeckFileLocationRow,
 } from './shared.js';
 
 export async function decksCollectionRoute(
@@ -59,32 +61,29 @@ export async function decksCollectionRoute(
     const folderId = url.searchParams.get('folderId');
     const spaceId = url.searchParams.get('spaceId');
     const studentId = url.searchParams.get('studentId');
-    const binds: string[] = [guard.user.id];
-    let where = trashed ? 'd.deleted_at IS NOT NULL' : 'd.deleted_at IS NULL';
-    let n = 2;
-    if (spaceId !== null && spaceId !== '') {
-      where += ` AND d.space_id = ?${n}`;
-      binds.push(spaceId);
-      n += 1;
-    }
+    const conditions: SQL[] = [
+      exists(
+        orm(env)
+          .select({ one: sql`1` })
+          .from(spaceMembers)
+          .where(and(eq(spaceMembers.spaceId, decks.spaceId), eq(spaceMembers.userId, guard.user.id))),
+      ),
+      trashed ? isNotNull(decks.deletedAt) : isNull(decks.deletedAt),
+    ];
+    if (spaceId !== null && spaceId !== '') conditions.push(eq(decks.spaceId, spaceId));
     if (folderId === 'root' || folderId === '') {
-      where += ' AND (d.folder_id IS NULL OR d.folder_id = \'\')';
+      conditions.push(or(isNull(decks.folderId), eq(decks.folderId, ''))!);
     } else if (folderId !== null) {
-      where += ` AND d.folder_id = ?${n}`;
-      binds.push(folderId);
-      n += 1;
+      conditions.push(eq(decks.folderId, folderId));
     }
-    if (studentId !== null && studentId !== '') {
-      where += ` AND d.student_id = ?${n}`;
-      binds.push(studentId);
-    }
-    const { results } = await env.DB.prepare(
-      `SELECT d.* FROM decks d
-       WHERE EXISTS (SELECT 1 FROM space_members sm
-                      WHERE sm.space_id = d.space_id AND sm.user_id = ?1)
-         AND ${where} ORDER BY d.updated_at DESC LIMIT 500`,
-    ).bind(...binds).all<DeckRow>();
-    return json({ decks: (results ?? []).map(deckJson) });
+    if (studentId !== null && studentId !== '') conditions.push(eq(decks.studentId, studentId));
+    const results = await orm(env)
+      .select()
+      .from(decks)
+      .where(and(...conditions))
+      .orderBy(desc(decks.updatedAt))
+      .limit(500);
+    return json({ decks: results.map(deckJson) });
   }
 
   if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
@@ -98,10 +97,10 @@ export async function decksCollectionRoute(
   // Filing and student association are independent. Standalone decks have no student.
   const spaceId = await targetSpace(env, guard.user, body);
   if (spaceId === null) return json({ error: 'not-found' }, 404);
-  let linkedStudent: { id: string; space_id: string; deleted_at: number | null } | null = null;
+  let linkedStudent: { id: string; spaceId: string; deletedAt: number | null } | null = null;
   if (typeof body.studentId === 'string' && body.studentId.trim() !== '') {
     linkedStudent = await studentAccess(env, guard.user.id, body.studentId);
-    if (linkedStudent === null || linkedStudent.deleted_at !== null || linkedStudent.space_id !== spaceId) {
+    if (linkedStudent === null || linkedStudent.deletedAt !== null || linkedStudent.spaceId !== spaceId) {
       return json({ error: 'student-not-found' }, 404);
     }
   } else if (body.studentId !== undefined && body.studentId !== null) {
@@ -131,10 +130,12 @@ export async function decksCollectionRoute(
     return json({ error: 'invalid-file-id' }, 422);
   }
   if (typeof fileId === 'string') {
-    const existingFile = await env.DB.prepare(
-      'SELECT deck_id FROM deck_file_links WHERE file_id = ?1',
-    ).bind(fileId).first<{ deck_id: string }>();
-    if (existingFile !== null) return json({ error: 'file-already-linked' }, 409);
+    const existingFile = await orm(env)
+      .select({ deckId: deckFileLinks.deckId })
+      .from(deckFileLinks)
+      .where(eq(deckFileLinks.fileId, fileId))
+      .get();
+    if (existingFile !== undefined) return json({ error: 'file-already-linked' }, 409);
   }
 
   const deckId = randomId();
@@ -143,37 +144,44 @@ export async function decksCollectionRoute(
   const initialHash = outlineValidation?.ok
     ? await sha256Hex(canonicalOutlineJson(outlineValidation.outline))
     : null;
-  const statements = [
-    env.DB.prepare(
-      `INSERT INTO decks
-         (id, space_id, folder_id, student_id, created_by, title, shape,
-          current_version, metadata_json, created_at, updated_at, deleted_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, NULL)`,
-    ).bind(
-      deckId, spaceId, folderId, linkedStudent?.id ?? null, guard.user.id,
-      title, shape, version, JSON.stringify(metadata), now,
-    ),
+  const db = orm(env);
+  const statements: [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]] = [
+    db.insert(decks).values({
+      id: deckId,
+      spaceId,
+      folderId,
+      studentId: linkedStudent?.id ?? null,
+      createdBy: guard.user.id,
+      title,
+      shape,
+      currentVersion: version,
+      metadataJson: JSON.stringify(metadata),
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    }),
   ];
   if (outlineValidation?.ok) {
-    statements.push(env.DB.prepare(
-      `INSERT INTO deck_versions
-         (id, deck_id, version, content_json, content_hash, source_kind,
-          source_file_id, source_local_revision, created_at, created_by)
-       VALUES (?1, ?2, 1, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-    ).bind(
-      randomId(), deckId, JSON.stringify(outlineValidation.outline), initialHash,
-      fileId === undefined ? (guard.authKind === 'session' ? 'browser' : 'api') : 'desktop',
-      fileId ?? null,
-      fileId === undefined ? null : 0,
-      now,
-      guard.user.id,
-    ));
+    statements.push(db.insert(deckVersions).values({
+      id: randomId(),
+      deckId,
+      version: 1,
+      contentJson: JSON.stringify(outlineValidation.outline),
+      contentHash: initialHash,
+      sourceKind: fileId === undefined ? (guard.authKind === 'session' ? 'browser' : 'api') : 'desktop',
+      sourceFileId: fileId ?? null,
+      sourceLocalRevision: fileId === undefined ? null : 0,
+      createdAt: now,
+      createdBy: guard.user.id,
+    }));
   }
   if (typeof fileId === 'string') {
-    statements.push(env.DB.prepare(
-      `INSERT INTO deck_file_links (file_id, deck_id, created_by, created_at)
-       VALUES (?1, ?2, ?3, ?4)`,
-    ).bind(fileId, deckId, guard.user.id, now));
+    statements.push(db.insert(deckFileLinks).values({
+      fileId,
+      deckId,
+      createdBy: guard.user.id,
+      createdAt: now,
+    }));
   }
 
   // Opt-in convenience: also create a draft session in the same folder. Off by
@@ -182,19 +190,25 @@ export async function decksCollectionRoute(
   let sessionId: string | null = null;
   if (createSession) {
     sessionId = randomId();
-    statements.push(env.DB.prepare(
-      `INSERT INTO sessions
-         (id, space_id, folder_id, deck_id, deck_version, student_id,
-          created_by, title, shape, status,
-          metadata_json, created_at, updated_at, deleted_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'draft', '{}', ?10, ?10, NULL)`,
-    ).bind(
-      sessionId, spaceId, folderId, deckId, version, linkedStudent?.id ?? null,
-      guard.user.id, title, shape, now,
-    ));
+    statements.push(db.insert(sessions).values({
+      id: sessionId,
+      spaceId,
+      folderId,
+      deckId,
+      deckVersion: version,
+      studentId: linkedStudent?.id ?? null,
+      createdBy: guard.user.id,
+      title,
+      shape,
+      status: 'draft',
+      metadataJson: '{}',
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    }));
   }
 
-  await env.DB.batch(statements);
+  await db.batch(statements);
   const deck = await deckAccess(env, guard.user.id, deckId);
   const session = sessionId === null ? null : await sessionAccess(env, guard.user.id, sessionId);
   return json({
@@ -223,39 +237,36 @@ export async function deckItemRoute(
     if (request.headers.get('if-none-match') === etag) {
       return new Response(null, { status: 304, headers: { etag, 'cache-control': 'no-store' } });
     }
-    const place = await (
+    const place = await orm(env)
       // The deck editor shows "{Folder} / {Title}" and links back to the shelf
       // the deck lives on, so the detail read carries the names of its place
       // rather than making the editor fetch the folder tree to print two words.
-      env.DB.prepare(
-        `SELECT s.name AS space_name, f.name AS folder_name
-           FROM spaces s
-           LEFT JOIN folders f ON f.id = ?2
-          WHERE s.id = ?1`,
-      ).bind(row.space_id, row.folder_id).first<{ space_name: string; folder_name: string | null }>()
-    );
+      .select({ spaceName: spaces.name, folderName: folders.name })
+      .from(spaces)
+      .leftJoin(folders, sql`${folders.id} = ${row.folderId}`)
+      .where(eq(spaces.id, row.spaceId))
+      .get();
     return json({
       deck: deckJson(row),
-      spaceName: place?.space_name ?? null,
-      folderName: place?.folder_name ?? null,
+      spaceName: place?.spaceName ?? null,
+      folderName: place?.folderName ?? null,
       contentVersion: content?.version ?? null,
       contentHash: content?.contentHash ?? null,
       content: content?.outline ?? null,
     }, 200, { etag });
   }
-  if (!(await mutationAllowed(env, guard.user, row.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, row.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
   if (request.method === 'DELETE') {
-    if (row.deleted_at === null) {
+    if (row.deletedAt === null) {
       const now = Date.now();
-      await env.DB.prepare('UPDATE decks SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2')
-        .bind(now, deckId).run();
+      await orm(env).update(decks).set({ deletedAt: now, updatedAt: now }).where(eq(decks.id, deckId)).run();
     }
     return json({ ok: true, recoverable: true });
   }
   if (request.method !== 'PATCH') return json({ error: 'method-not-allowed' }, 405);
-  if (row.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
+  if (row.deletedAt !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
   const title = body.title === undefined
@@ -263,32 +274,36 @@ export async function deckItemRoute(
     : typeof body.title === 'string' ? body.title.trim().slice(0, 200) : '';
   if (title === '') return json({ error: 'title-required' }, 422);
   const shape = body.shape === undefined ? row.shape : parseShape(body.shape, row.shape);
-  let studentId = row.student_id;
+  let studentId = row.studentId;
   if (body.studentId === null) {
     studentId = null;
   }
   if (typeof body.studentId === 'string') {
     const ctx = await studentAccess(env, guard.user.id, body.studentId);
-    if (ctx === null || ctx.deleted_at !== null || ctx.space_id !== row.space_id) {
+    if (ctx === null || ctx.deletedAt !== null || ctx.spaceId !== row.spaceId) {
       return json({ error: 'student-not-found' }, 404);
     }
     studentId = ctx.id;
   }
-  const location = await resolveFolder(env, guard.user, row.space_id, body, row.folder_id);
+  const location = await resolveFolder(env, guard.user, row.spaceId, body, row.folderId);
   if (!location.ok) return location.response;
   const metadata = body.metadata === undefined
-    ? parseJson(row.metadata_json, {})
+    ? parseJson(row.metadataJson, {})
     : plainObject(body.metadata);
   if (metadata === null) return json({ error: 'metadata-must-be-object' }, 422);
   const now = Date.now();
-  await env.DB.prepare(
-    `UPDATE decks SET title = ?1, shape = ?2, student_id = ?3, folder_id = ?4,
-       metadata_json = ?5, updated_at = ?6 WHERE id = ?7`,
-  ).bind(title, shape, studentId, location.folderId, JSON.stringify(metadata), now, deckId).run();
+  await orm(env).update(decks).set({
+    title,
+    shape,
+    studentId,
+    folderId: location.folderId,
+    metadataJson: JSON.stringify(metadata),
+    updatedAt: now,
+  }).where(eq(decks.id, deckId)).run();
   return json({
     deck: deckJson({
-      ...row, title, shape, student_id: studentId, folder_id: location.folderId,
-      metadata_json: JSON.stringify(metadata), updated_at: now,
+      ...row, title, shape, studentId, folderId: location.folderId,
+      metadataJson: JSON.stringify(metadata), updatedAt: now,
     }),
   });
 }
@@ -303,37 +318,29 @@ export async function deckVersionsRoute(
   const deck = await deckAccess(env, guard.user.id, deckId);
   if (deck === null) return json({ error: 'not-found' }, 404);
   if (request.method === 'GET') {
-    const { results } = await env.DB.prepare(
-      `SELECT version, created_at, created_by, content_hash, source_kind,
-              source_file_id, source_local_revision FROM deck_versions
-        WHERE deck_id = ?1 ORDER BY version DESC`,
-    ).bind(deckId).all<{
-      version: number;
-      created_at: number;
-      created_by: string;
-      content_hash: string | null;
-      source_kind: string;
-      source_file_id: string | null;
-      source_local_revision: number | null;
-    }>();
+    const results = await orm(env)
+      .select({
+        version: deckVersions.version,
+        createdAt: deckVersions.createdAt,
+        createdBy: deckVersions.createdBy,
+        contentHash: deckVersions.contentHash,
+        sourceKind: deckVersions.sourceKind,
+        sourceFileId: deckVersions.sourceFileId,
+        sourceLocalRevision: deckVersions.sourceLocalRevision,
+      })
+      .from(deckVersions)
+      .where(eq(deckVersions.deckId, deckId))
+      .orderBy(desc(deckVersions.version));
     return json({
       deckId,
-      versions: (results ?? []).map((row) => ({
-        version: row.version,
-        createdAt: row.created_at,
-        createdBy: row.created_by,
-        contentHash: row.content_hash,
-        sourceKind: row.source_kind,
-        sourceFileId: row.source_file_id,
-        sourceLocalRevision: row.source_local_revision,
-      })),
+      versions: results,
     });
   }
   if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
-  if (!(await mutationAllowed(env, guard.user, deck.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, deck.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
-  if (deck.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
+  if (deck.deletedAt !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
   const validation = validateOutline(body.content ?? body.outline);
@@ -342,8 +349,8 @@ export async function deckVersionsRoute(
   if (typeof baseVersion !== 'number' || !Number.isInteger(baseVersion) || baseVersion < 0) {
     return json({ error: 'base-version-required' }, 400);
   }
-  if (baseVersion !== deck.current_version) {
-    return json({ error: 'version-conflict', latestVersion: deck.current_version }, 409);
+  if (baseVersion !== deck.currentVersion) {
+    return json({ error: 'version-conflict', latestVersion: deck.currentVersion }, 409);
   }
   const version = baseVersion + 1;
   const serialized = JSON.stringify(validation.outline);
@@ -362,10 +369,12 @@ export async function deckVersionsRoute(
     ) {
       return json({ error: 'invalid-file-sync' }, 422);
     }
-    const link = await env.DB.prepare(
-      'SELECT file_id FROM deck_file_links WHERE file_id = ?1 AND deck_id = ?2',
-    ).bind(fileSync.fileId, deckId).first<{ file_id: string }>();
-    if (link === null) return json({ error: 'file-link-not-found' }, 409);
+    const link = await orm(env)
+      .select({ fileId: deckFileLinks.fileId })
+      .from(deckFileLinks)
+      .where(and(eq(deckFileLinks.fileId, fileSync.fileId), eq(deckFileLinks.deckId, deckId)))
+      .get();
+    if (link === undefined) return json({ error: 'file-link-not-found' }, 409);
     sourceFileId = fileSync.fileId;
     sourceLocalRevision = fileSync.localRevision as number;
   }
@@ -373,28 +382,31 @@ export async function deckVersionsRoute(
   if (previous !== null && previous.contentHash === contentHash) {
     // No new version, but the working text now matches what is already stamped,
     // so the draft has nothing left to recover: drop it as a real save would.
-    await env.DB.prepare('DELETE FROM deck_drafts WHERE deck_id = ?1').bind(deckId).run();
+    await orm(env).delete(deckDrafts).where(eq(deckDrafts.deckId, deckId)).run();
     return json({ deckId, version: previous.version, contentHash, unchanged: true });
   }
   const now = Date.now();
   try {
-    await env.DB.batch([
-      env.DB.prepare(
-        `INSERT INTO deck_versions
-           (id, deck_id, version, content_json, content_hash, source_kind,
-            source_file_id, source_local_revision, created_at, created_by)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
-      ).bind(
-        randomId(), deckId, version, serialized, contentHash,
-        sourceFileId === null ? (guard.authKind === 'session' ? 'browser' : guard.authKind === 'oauth' ? 'mcp' : 'api') : 'desktop',
-        sourceFileId, sourceLocalRevision, now, guard.user.id,
-      ),
-      env.DB.prepare(
-        'UPDATE decks SET current_version = ?1, title = ?2, updated_at = ?3 WHERE id = ?4',
-      ).bind(version, validation.outline.meta.title.slice(0, 200), now, deckId),
+    const db = orm(env);
+    await db.batch([
+      db.insert(deckVersions).values({
+        id: randomId(),
+        deckId,
+        version,
+        contentJson: serialized,
+        contentHash,
+        sourceKind: sourceFileId === null ? (guard.authKind === 'session' ? 'browser' : guard.authKind === 'oauth' ? 'mcp' : 'api') : 'desktop',
+        sourceFileId,
+        sourceLocalRevision,
+        createdAt: now,
+        createdBy: guard.user.id,
+      }),
+      db.update(decks)
+        .set({ currentVersion: version, title: validation.outline.meta.title.slice(0, 200), updatedAt: now })
+        .where(eq(decks.id, deckId)),
       // Stamping a version is what the draft was working towards; leaving it
       // behind would make the next open offer to restore work already saved.
-      env.DB.prepare('DELETE FROM deck_drafts WHERE deck_id = ?1').bind(deckId),
+      db.delete(deckDrafts).where(eq(deckDrafts.deckId, deckId)),
     ]);
   } catch (err) {
     // Only the (deck_id, version) uniqueness race is a conflict; anything
@@ -416,41 +428,42 @@ export async function deckFileLinkRoute(
   if (deck === null) return json({ error: 'not-found' }, 404);
 
   if (request.method === 'GET') {
-    const link = await env.DB.prepare(
-      'SELECT file_id, deck_id, created_by, created_at FROM deck_file_links WHERE deck_id = ?1',
-    ).bind(deckId).first<DeckFileLinkRow>();
-    if (link === null) return json({ linked: false, fileId: null, locations: [] });
-    const { results } = await env.DB.prepare(
-      `SELECT * FROM deck_file_locations
-        WHERE file_id = ?1 AND user_id = ?2 ORDER BY last_seen_at DESC`,
-    ).bind(link.file_id, guard.user.id).all<DeckFileLocationRow>();
+    const link = await orm(env).select().from(deckFileLinks).where(eq(deckFileLinks.deckId, deckId)).get();
+    if (link === undefined) return json({ linked: false, fileId: null, locations: [] });
+    const results = await orm(env)
+      .select()
+      .from(deckFileLocations)
+      .where(and(eq(deckFileLocations.fileId, link.fileId), eq(deckFileLocations.userId, guard.user.id)))
+      .orderBy(desc(deckFileLocations.lastSeenAt));
     return json({
       linked: true,
-      fileId: link.file_id,
-      locations: (results ?? []).map(deckFileLocationJson),
+      fileId: link.fileId,
+      locations: results.map(deckFileLocationJson),
     });
   }
   if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
-  if (!(await mutationAllowed(env, guard.user, deck.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, deck.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
   const body = await readJson(request);
   if (body === null || typeof body.fileId !== 'string' || !FILE_ID_PATTERN.test(body.fileId)) {
     return json({ error: 'invalid-file-id' }, 422);
   }
-  const existing = await env.DB.prepare(
-    'SELECT file_id, deck_id, created_by, created_at FROM deck_file_links WHERE file_id = ?1 OR deck_id = ?2',
-  ).bind(body.fileId, deckId).first<DeckFileLinkRow>();
-  if (existing !== null) {
-    if (existing.file_id === body.fileId && existing.deck_id === deckId) {
+  const existing = await orm(env)
+    .select()
+    .from(deckFileLinks)
+    .where(or(eq(deckFileLinks.fileId, body.fileId), eq(deckFileLinks.deckId, deckId)))
+    .get();
+  if (existing !== undefined) {
+    if (existing.fileId === body.fileId && existing.deckId === deckId) {
       return json({ linked: true, fileId: body.fileId, unchanged: true });
     }
-    return json({ error: existing.deck_id === deckId ? 'deck-already-linked' : 'file-already-linked' }, 409);
+    return json({ error: existing.deckId === deckId ? 'deck-already-linked' : 'file-already-linked' }, 409);
   }
-  await env.DB.prepare(
-    `INSERT INTO deck_file_links (file_id, deck_id, created_by, created_at)
-     VALUES (?1, ?2, ?3, ?4)`,
-  ).bind(body.fileId, deckId, guard.user.id, Date.now()).run();
+  await orm(env)
+    .insert(deckFileLinks)
+    .values({ fileId: body.fileId, deckId, createdBy: guard.user.id, createdAt: Date.now() })
+    .run();
   return json({ linked: true, fileId: body.fileId }, 201);
 }
 
@@ -466,29 +479,41 @@ export async function deckFileLocationRoute(
   if (deck === null) return json({ error: 'not-found' }, 404);
   if (deviceId === '' || deviceId.length > 200) return json({ error: 'invalid-device-id' }, 422);
 
-  const link = await env.DB.prepare(
-    'SELECT file_id FROM deck_file_links WHERE deck_id = ?1',
-  ).bind(deckId).first<{ file_id: string }>();
-  if (link === null) return json({ error: 'file-link-not-found' }, 404);
+  const link = await orm(env)
+    .select({ fileId: deckFileLinks.fileId })
+    .from(deckFileLinks)
+    .where(eq(deckFileLinks.deckId, deckId))
+    .get();
+  if (link === undefined) return json({ error: 'file-link-not-found' }, 404);
 
   if (request.method === 'GET') {
-    const row = await env.DB.prepare(
-      `SELECT * FROM deck_file_locations
-        WHERE file_id = ?1 AND user_id = ?2 AND device_id = ?3`,
-    ).bind(link.file_id, guard.user.id, deviceId).first<DeckFileLocationRow>();
-    return row === null ? json({ error: 'not-found' }, 404) : json({ location: deckFileLocationJson(row) });
+    const row = await orm(env)
+      .select()
+      .from(deckFileLocations)
+      .where(and(
+        eq(deckFileLocations.fileId, link.fileId),
+        eq(deckFileLocations.userId, guard.user.id),
+        eq(deckFileLocations.deviceId, deviceId),
+      ))
+      .get();
+    return row === undefined ? json({ error: 'not-found' }, 404) : json({ location: deckFileLocationJson(row) });
   }
   if (request.method === 'DELETE') {
-    await env.DB.prepare(
-      'DELETE FROM deck_file_locations WHERE file_id = ?1 AND user_id = ?2 AND device_id = ?3',
-    ).bind(link.file_id, guard.user.id, deviceId).run();
+    await orm(env)
+      .delete(deckFileLocations)
+      .where(and(
+        eq(deckFileLocations.fileId, link.fileId),
+        eq(deckFileLocations.userId, guard.user.id),
+        eq(deckFileLocations.deviceId, deviceId),
+      ))
+      .run();
     return json({ ok: true });
   }
   if (request.method !== 'PUT') return json({ error: 'method-not-allowed' }, 405);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
   if (
-    body.fileId !== link.file_id
+    body.fileId !== link.fileId
     || typeof body.deviceName !== 'string' || body.deviceName.trim() === '' || body.deviceName.length > 120
     || typeof body.path !== 'string' || body.path === '' || body.path.length > 4096
     || !Number.isInteger(body.localRevision) || (body.localRevision as number) < 0
@@ -499,23 +524,23 @@ export async function deckFileLocationRoute(
     return json({ error: 'invalid-file-location' }, 422);
   }
   const now = Date.now();
-  await env.DB.prepare(
-    `INSERT INTO deck_file_locations
-       (file_id, user_id, device_id, device_name, path, local_revision,
-        content_hash, synced_version, synced_hash, last_seen_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-     ON CONFLICT(file_id, user_id, device_id) DO UPDATE SET
-       device_name = excluded.device_name,
-       path = excluded.path,
-       local_revision = excluded.local_revision,
-       content_hash = excluded.content_hash,
-       synced_version = excluded.synced_version,
-       synced_hash = excluded.synced_hash,
-       last_seen_at = excluded.last_seen_at`,
-  ).bind(
-    link.file_id, guard.user.id, deviceId, body.deviceName.trim(), body.path,
-    body.localRevision, body.contentHash, body.syncedVersion, body.syncedHash, now,
-  ).run();
+  const location = {
+    deviceName: body.deviceName.trim(),
+    path: body.path,
+    localRevision: body.localRevision as number,
+    contentHash: body.contentHash,
+    syncedVersion: body.syncedVersion as number,
+    syncedHash: body.syncedHash,
+    lastSeenAt: now,
+  };
+  await orm(env)
+    .insert(deckFileLocations)
+    .values({ fileId: link.fileId, userId: guard.user.id, deviceId, ...location })
+    .onConflictDoUpdate({
+      target: [deckFileLocations.fileId, deckFileLocations.userId, deckFileLocations.deviceId],
+      set: location,
+    })
+    .run();
   return json({
     location: {
       deviceId,
@@ -553,35 +578,37 @@ export async function deckDraftRoute(
   if (deck === null) return json({ error: 'not-found' }, 404);
 
   if (request.method === 'GET') {
-    const row = await env.DB.prepare(
-      'SELECT base_version, content_yaml, updated_at, updated_by FROM deck_drafts WHERE deck_id = ?1',
-    ).bind(deckId).first<{
-      base_version: number;
-      content_yaml: string;
-      updated_at: number;
-      updated_by: string;
-    }>();
-    if (row === null) return json({ error: 'not-found' }, 404);
+    const row = await orm(env)
+      .select({
+        baseVersion: deckDrafts.baseVersion,
+        contentYaml: deckDrafts.contentYaml,
+        updatedAt: deckDrafts.updatedAt,
+        updatedBy: deckDrafts.updatedBy,
+      })
+      .from(deckDrafts)
+      .where(eq(deckDrafts.deckId, deckId))
+      .get();
+    if (row === undefined) return json({ error: 'not-found' }, 404);
     return json({
       deckId,
-      source: row.content_yaml,
-      baseVersion: row.base_version,
-      updatedAt: row.updated_at,
-      updatedBy: row.updated_by,
+      source: row.contentYaml,
+      baseVersion: row.baseVersion,
+      updatedAt: row.updatedAt,
+      updatedBy: row.updatedBy,
     });
   }
 
-  if (!(await mutationAllowed(env, guard.user, deck.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, deck.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
 
   if (request.method === 'DELETE') {
-    await env.DB.prepare('DELETE FROM deck_drafts WHERE deck_id = ?1').bind(deckId).run();
+    await orm(env).delete(deckDrafts).where(eq(deckDrafts.deckId, deckId)).run();
     return new Response(null, { status: 204 });
   }
 
   if (request.method !== 'PUT') return json({ error: 'method-not-allowed' }, 405);
-  if (deck.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
+  if (deck.deletedAt !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
   const source = body.source;
@@ -591,21 +618,21 @@ export async function deckDraftRoute(
   if (typeof baseVersion !== 'number' || !Number.isInteger(baseVersion) || baseVersion < 0) {
     return json({ error: 'base-version-required' }, 400);
   }
-  if (baseVersion !== deck.current_version) return json({ error: 'version-conflict', currentVersion: deck.current_version }, 409);
+  if (baseVersion !== deck.currentVersion) return json({ error: 'version-conflict', currentVersion: deck.currentVersion }, 409);
   const savedAt = Date.now();
-  await env.DB.prepare(
-    `INSERT INTO deck_drafts (deck_id, base_version, content_yaml, updated_at, updated_by)
-     VALUES (?1, ?2, ?3, ?4, ?5)
-     ON CONFLICT(deck_id) DO UPDATE SET
-       base_version = excluded.base_version,
-       content_yaml = excluded.content_yaml,
-       updated_at = excluded.updated_at,
-       updated_by = excluded.updated_by`,
-  ).bind(deckId, baseVersion, source, savedAt, guard.user.id).run();
+  const draft = { baseVersion, contentYaml: source, updatedAt: savedAt, updatedBy: guard.user.id };
+  await orm(env)
+    .insert(deckDrafts)
+    .values({ deckId, ...draft })
+    .onConflictDoUpdate({ target: deckDrafts.deckId, set: draft })
+    .run();
   const parsed = parseOutline(source, 'yaml');
   if (parsed.ok) {
-    await env.DB.prepare('UPDATE decks SET title = ?1 WHERE id = ?2 AND current_version = ?3')
-      .bind(parsed.outline.meta.title, deckId, baseVersion).run();
+    await orm(env)
+      .update(decks)
+      .set({ title: parsed.outline.meta.title })
+      .where(and(eq(decks.id, deckId), eq(decks.currentVersion, baseVersion)))
+      .run();
   }
   return json({ deckId, savedAt });
 }
@@ -619,10 +646,9 @@ export async function restoreDeckRoute(
   if (!guard.ok) return guard.response;
   const row = await deckAccess(env, guard.user.id, deckId);
   if (row === null) return json({ error: 'not-found' }, 404);
-  if (!(await mutationAllowed(env, guard.user, row.space_id))) {
+  if (!(await mutationAllowed(env, guard.user, row.spaceId))) {
     return json({ error: 'forbidden' }, 403);
   }
-  await env.DB.prepare('UPDATE decks SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2')
-    .bind(Date.now(), deckId).run();
+  await orm(env).update(decks).set({ deletedAt: null, updatedAt: Date.now() }).where(eq(decks.id, deckId)).run();
   return json({ ok: true });
 }
