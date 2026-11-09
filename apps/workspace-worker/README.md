@@ -20,6 +20,8 @@ wrangler applies (`migrations_dir` in `wrangler.jsonc`) and the same directory
 snapshot journal; it must be committed so the next `db:generate` produces a diff
 rather than a fresh init.
 
-Drizzle is used for schema definition and migration generation **only**. Request
-handlers keep issuing raw `env.DB.prepare()` statements; nothing in `src/db/` is
-imported by runtime code.
+Runtime queries go through the Drizzle query builder: `orm(env)` from
+`src/db/client.ts`, so every query is type-checked against the schema. Use the
+`sql` template only for SQLite fragments the builder cannot express (helpers in
+`src/db/sql.ts`). Raw `env.DB.prepare()` statements belong to tests and operator
+scripts only; `test/raw-sql-boundary.test.ts` enforces this.

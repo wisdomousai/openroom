@@ -8,9 +8,8 @@
  *   2. `bun run db:generate` (drizzle-kit generate)
  *   3. commit the emitted `migrations/*.sql` and `migrations/meta/`
  *
- * Drizzle is used for schema definition and migration generation ONLY. The
- * worker's runtime keeps using raw `env.DB.prepare()` statements; nothing here
- * is imported by request-handling code.
+ * Runtime queries are built against these tables through `orm(env)` in
+ * `./client.ts`; raw `env.DB.prepare()` statements belong to tests only.
  *
  * Deck/Session vocabulary throughout.
  */

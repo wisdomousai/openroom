@@ -2,7 +2,11 @@
  * Shared helpers for the control-plane modules (tutoring, delivery).
  * Nothing here touches the answer hot path.
  */
+import { and, eq, sql } from 'drizzle-orm';
+
 import type { ControlEnv, SessionUser } from './auth.js';
+import { orm } from './db/client.js';
+import { spaceMembers, spaceStudents } from './db/schema.js';
 import { ensureWorkspace } from './workspace.js';
 
 export const DELETION_INTENT_TTL_MS = 15 * 60 * 1000;
@@ -49,12 +53,12 @@ export function compactArray(value: unknown, max = 50): unknown[] | null {
 }
 
 export async function memberOfSpace(env: ControlEnv, userId: string, spaceId: string): Promise<boolean> {
-  const row = await env.DB.prepare(
-    'SELECT 1 AS ok FROM space_members WHERE space_id = ?1 AND user_id = ?2',
-  )
-    .bind(spaceId, userId)
-    .first();
-  return row !== null;
+  const row = await orm(env)
+    .select({ ok: sql`1` })
+    .from(spaceMembers)
+    .where(and(eq(spaceMembers.spaceId, spaceId), eq(spaceMembers.userId, userId)))
+    .get();
+  return row !== undefined;
 }
 
 /**
@@ -75,19 +79,17 @@ export async function linkStudent(
   studentId: string,
   now: number,
 ): Promise<void> {
-  await env.DB.prepare(
-    'INSERT INTO space_students (space_id, student_id, created_at) VALUES (?1, ?2, ?3)',
-  )
-    .bind(spaceId, studentId, now)
-    .run();
+  await orm(env).insert(spaceStudents).values({ spaceId, studentId, createdAt: now }).run();
 }
 
 /** The student a space holds, or null when it holds none. */
 export async function studentOfSpace(env: ControlEnv, spaceId: string): Promise<string | null> {
-  const row = await env.DB.prepare('SELECT student_id FROM space_students WHERE space_id = ?1')
-    .bind(spaceId)
-    .first<{ student_id: string }>();
-  return row?.student_id ?? null;
+  const row = await orm(env)
+    .select({ studentId: spaceStudents.studentId })
+    .from(spaceStudents)
+    .where(eq(spaceStudents.spaceId, spaceId))
+    .get();
+  return row?.studentId ?? null;
 }
 
 export async function resolveSpace(
