@@ -27,7 +27,7 @@ export function slidePreview(outline: Outline, binding: ActivityBinding): SlideP
 }
 
 /** The signed-in pane can preview a slide before a session exists. */
-export function useSlidePreview(connection: Connection | null, selection: SlideSelection | null) {
+export function useSlidePreview(connection: Connection | null, selection: SlideSelection | null, revision = 0) {
   useEffect(() => {
     const binding = parseBinding(selection?.rawBinding ?? null);
     if (!connection || !selection || !binding || !bindingMatches(selection, binding) || typeof BroadcastChannel === 'undefined') return;
@@ -52,5 +52,5 @@ export function useSlidePreview(connection: Connection | null, selection: SlideS
       channel.postMessage({ type: 'openroom.slide.closed', binding });
       channel.close();
     };
-  }, [connection, selection?.slideId, selection?.presentationId, selection?.rawBinding]);
+  }, [connection, selection?.slideId, selection?.presentationId, selection?.rawBinding, revision]);
 }

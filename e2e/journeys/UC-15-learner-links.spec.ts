@@ -62,7 +62,7 @@ test('group learners keep private work across link replacement and same-tab swit
   const practice = learner.locator('section').filter({ has: learner.getByRole('heading', { name: 'Practice', exact: true }) });
   await practice.getByRole('button', { name: 'Nous sommes partis.', exact: true }).click();
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
-  await practice.getByRole('button', { name: 'Good', exact: true }).click();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(practice).toHaveCount(0);
 
   // Hash navigation keeps the same JS app alive: this catches cross-link cache leaks.

@@ -39,7 +39,7 @@ test('phone homework handles every practice format, accents and self-reflection'
   await practice.getByRole('button', { name: 'Check', exact: true }).focus();
   await learner.keyboard.press('Enter');
   await expect(practice.getByText('Correct.', { exact: true })).toBeFocused();
-  await practice.getByRole('button', { name: 'Good', exact: true }).focus();
+  await practice.getByRole('button', { name: 'Next', exact: true }).focus();
   await learner.keyboard.press('Enter');
   await expect(practice.getByRole('heading', { name: 'Practice', exact: true })).toBeFocused();
   await expect(practice.getByText('La saison après le printemps ?', { exact: true })).toBeVisible();
@@ -47,17 +47,17 @@ test('phone homework handles every practice format, accents and self-reflection'
   await practice.getByRole('textbox', { name: 'Your answer', exact: true }).fill('ete');
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(practice.getByText('Compare your answer.', { exact: true })).toBeVisible();
-  await practice.getByRole('button', { name: 'Try again', exact: true }).click();
+  await practice.getByRole('button', { name: 'Change my answer', exact: true }).click();
   await practice.getByRole('textbox', { name: 'Your answer', exact: true }).fill('ÉTÉ');
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(practice.getByText('Correct.', { exact: true })).toBeVisible();
-  await practice.getByRole('button', { name: 'Good', exact: true }).click();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
 
   await practice.getByRole('textbox', { name: 'Gap 1', exact: true }).fill('komme');
   await practice.getByRole('textbox', { name: 'Gap 2', exact: true }).fill('Österreich');
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(practice.getByText('Correct.', { exact: true })).toBeVisible();
-  await practice.getByRole('button', { name: 'Good', exact: true }).click();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
 
   await practice.getByRole('combobox', { name: 'Match le train', exact: true }).click();
   await learner.getByRole('option', { name: 'der Zug', exact: true }).click();
@@ -65,12 +65,12 @@ test('phone homework handles every practice format, accents and self-reflection'
   await learner.getByRole('option', { name: 'der Bahnhof', exact: true }).click();
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(practice.getByText('Correct.', { exact: true })).toBeVisible();
-  await practice.getByRole('button', { name: 'Good', exact: true }).click();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
 
   await practice.getByRole('button', { name: 'Move Abfahren up', exact: true }).click();
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(practice.getByText('Correct.', { exact: true })).toBeVisible();
-  await practice.getByRole('button', { name: 'Good', exact: true }).click();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
 
   await practice.getByRole('textbox', { name: 'Your answer', exact: true }).fill('Je voudrais aller à Bâle.');
   await practice.getByRole('button', { name: 'Check', exact: true }).click();

@@ -21,6 +21,7 @@ test('rehearses locally and projects only the bound activity and released result
     await page.setViewportSize({ width: 340, height: 900 }); await page.goto('/office/taskpane.html');
     const popup = page.waitForEvent('popup'); await page.getByRole('button', { name: 'Sign in to OpenRoom', exact: true }).click();
     await (await popup).getByRole('button', { name: 'Approve connection', exact: true }).click();
+    await page.getByText('Use a slide from an OpenRoom deck', { exact: true }).click();
     await page.getByRole('button', { name: 'Display workshop', exact: false }).click();
     await page.getByRole('button', { name: 'A constructive conversation', exact: false }).click();
     await page.getByRole('button', { name: 'Use on selected slide', exact: true }).click();
@@ -123,9 +124,10 @@ test('copies a saved content slide into the embedded picker and activates a ques
 
     const display = await context.newPage(); display.on('pageerror', (error) => errors.push(error.message));
     await display.setViewportSize({ width: 960, height: 540 }); await display.goto('/office/content.html');
-    const chooser = display.frameLocator('iframe[title="Choose an OpenRoom slide"]');
+    const chooser = display.frameLocator('iframe[title="Add or edit the OpenRoom question"]');
     const popup = display.waitForEvent('popup'); await chooser.getByRole('button', { name: 'Sign in to OpenRoom', exact: true }).click();
     await (await popup).getByRole('button', { name: 'Approve connection', exact: true }).click();
+    await chooser.getByText('Use a slide from an OpenRoom deck', { exact: true }).click();
     const paste = chooser.getByRole('region', { name: 'Embed a slide by code' });
     await expect(paste.getByRole('button', { name: 'Embed slide', exact: true })).toBeDisabled();
     await paste.getByRole('textbox', { name: 'Slide embed code' }).fill(code);
@@ -140,6 +142,7 @@ test('copies a saved content slide into the embedded picker and activates a ques
     await pane.addInitScript((document) => sessionStorage.setItem('test-office-file', JSON.stringify({ ...document, selected: ['42'] })), document);
     await pane.goto('/office/taskpane.html');
     // The pane reuses the sign-in made in the embedded chooser.
+    await pane.getByText('Use a slide from an OpenRoom deck', { exact: true }).click();
     await expect(pane.getByRole('navigation', { name: 'Choose content' })).toBeVisible();
     await expect(pane.getByRole('button', { name: 'Sign in to OpenRoom', exact: true })).toHaveCount(0);
     await pane.evaluate(() => (window as any).__officeFile.select('88'));
@@ -158,7 +161,7 @@ test('copies a saved content slide into the embedded picker and activates a ques
     const questionDisplay = await context.newPage(); questionDisplay.on('pageerror', (error) => errors.push(error.message));
     await questionDisplay.addInitScript((document) => sessionStorage.setItem('test-office-file', JSON.stringify({ ...document, slides: { ...document.slides, '88': {} }, selected: ['88'] })), liveDocument);
     await questionDisplay.goto('/office/content.html');
-    await expect(questionDisplay.getByTitle('Choose an OpenRoom slide')).toBeVisible();
+    await expect(questionDisplay.getByTitle('Add or edit the OpenRoom question')).toBeVisible();
     // The native tag can arrive after the embedded shape was inserted.
     await questionDisplay.evaluate((document) => (window as any).__officeFile.replace(document), liveDocument);
     await pane.evaluate(() => (window as any).__officeFile.select('88'));
@@ -172,7 +175,7 @@ test('copies a saved content slide into the embedded picker and activates a ques
     await expect.poll(async () => (await state()).activeInteractionId).toBe('activity-2-question-1');
     await expect(questionDisplay.getByText('What happens next?', { exact: true })).toBeVisible();
     await expect.poll(async () => (await state()).interactionStatus).toBe('open');
-    await expect(questionDisplay.getByRole('button', { name: 'Choose slide' })).toHaveCount(0);
+    await expect(questionDisplay.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
     await pane.getByRole('button', { name: 'Close answers', exact: true }).click();
     await expect.poll(async () => (await state()).interactionStatus).toBe('closed');
     // Repeated visibility notifications must not reopen a question the host closed.

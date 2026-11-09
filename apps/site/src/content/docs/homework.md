@@ -31,7 +31,7 @@ A session requires a student to publish learner homework. Each assignment suppor
 
 ## Select recipients
 
-Every task initially uses **Everyone for this student**. For an individual assignment:
+A one-person student has no recipient choice: every task goes to them. For a group or class, every task initially goes to **Everyone in this group** (or **Everyone in this class**). For an individual assignment:
 
 1. Open **Who receives this task?** for that task.
 2. Choose **Selected learners**.

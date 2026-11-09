@@ -128,6 +128,16 @@ export function composedStep(presentation: PresentationComposition | null | unde
   return presentation.activities.find((item) => item.slideId === binding.slideId && item.spaceId === binding.spaceId && item.deckId === binding.deckId && item.stepId === binding.stepId)?.sessionStepId ?? null;
 }
 
+function connect(context: PowerPoint.RequestContext, slide: PowerPoint.Slide, selection: SlideSelection, activity: { spaceId: string; deckId: string; stepId: string }): Promise<SlideSelection> {
+  const presentationId = uuid(selection.presentationId) ? selection.presentationId : crypto.randomUUID();
+  const binding = parseBinding(JSON.stringify({ version: 1, presentationId, slideId: selection.slideId, spaceId: activity.spaceId, deckId: activity.deckId, stepId: activity.stepId }));
+  if (!binding) throw new Error('This activity cannot be connected to PowerPoint.');
+  const rawBinding = JSON.stringify(binding);
+  context.presentation.tags.add(PRESENTATION_TAG, presentationId);
+  slide.tags.add(ACTIVITY_TAG, rawBinding);
+  return context.sync().then(() => ({ slideId: selection.slideId, presentationId, rawBinding }));
+}
+
 /** Selection and existing tags are checked again inside the write, before any mutation. */
 export function writeBinding(expected: SlideSelection, activity: { spaceId: string; deckId: string; stepId: string } | null): Promise<SlideSelection> {
   return PowerPoint.run(async (context) => {
@@ -137,13 +147,20 @@ export function writeBinding(expected: SlideSelection, activity: { spaceId: stri
       slide.tags.delete(ACTIVITY_TAG); await context.sync();
       return { ...selection, rawBinding: null };
     }
-    const presentationId = uuid(selection.presentationId) ? selection.presentationId : crypto.randomUUID();
-    const binding = parseBinding(JSON.stringify({ version: 1, presentationId, slideId: selection.slideId, spaceId: activity.spaceId, deckId: activity.deckId, stepId: activity.stepId }));
-    if (!binding) throw new Error('This activity cannot be connected to PowerPoint.');
-    const rawBinding = JSON.stringify(binding);
-    context.presentation.tags.add(PRESENTATION_TAG, presentationId);
-    slide.tags.add(ACTIVITY_TAG, rawBinding);
-    await context.sync();
-    return { slideId: selection.slideId, presentationId, rawBinding };
+    return connect(context, slide, selection, activity);
+  });
+}
+
+/** Connect a slide by its ID, wherever the selection is now. The slide must be as it was when the question was written. */
+export function writeBindingToSlide(expected: SlideSelection, activity: { spaceId: string; deckId: string; stepId: string }): Promise<SlideSelection> {
+  return PowerPoint.run(async (context) => {
+    const slide = context.presentation.slides.getItemOrNullObject(expected.slideId);
+    const presentationTag = context.presentation.tags.getItemOrNullObject(PRESENTATION_TAG);
+    slide.load('id'); presentationTag.load('value'); await context.sync();
+    if (slide.isNullObject) throw new Error('The slide for this question was removed. The question is saved in the deck. Select a slide and add it again.');
+    const tag = slide.tags.getItemOrNullObject(ACTIVITY_TAG); tag.load('value'); await context.sync();
+    const selection: SlideSelection = { slideId: slide.id, presentationId: presentationTag.isNullObject ? null : presentationTag.value, rawBinding: tag.isNullObject ? null : tag.value };
+    if (selection.presentationId !== expected.presentationId || selection.rawBinding !== expected.rawBinding) throw new Error('The slide changed while the question was saved. Select it and try again.');
+    return connect(context, slide, selection, activity);
   });
 }

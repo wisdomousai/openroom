@@ -37,6 +37,7 @@ test('connects through real browser consent, binds and copies a slide, then revo
     await consent.getByRole('button', { name: 'Approve connection', exact: true }).click();
     const approved = await approvalReply;
     expect(approved.status(), `Consent POST Origin: ${approved.request().headers().origin}`).toBe(302);
+    await page.getByText('Use a slide from an OpenRoom deck', { exact: true }).click();
     await page.getByRole('button', { name: 'Northstar training', exact: false }).click();
     await page.getByRole('button', { name: 'A better customer conversation', exact: false }).click();
     await page.getByRole('button', { name: 'Use on selected slide', exact: true }).click();

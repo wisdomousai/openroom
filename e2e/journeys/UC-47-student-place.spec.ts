@@ -202,7 +202,7 @@ test('a student place at laptop sizes: open links, whole group name, page-length
   // At 1024 the header's buttons wrap instead of covering the name.
   await page.setViewportSize({ width: 1024, height: 768 });
   const title = await page.getByRole('heading', { name: studentName, exact: true, level: 1 }).boundingBox();
-  const share = await page.getByRole('main').getByRole('link', { name: 'Share', exact: true }).first().boundingBox();
+  const share = await page.getByRole('main').getByRole('link', { name: 'Members', exact: true }).first().boundingBox();
   expect(title && share).toBeTruthy();
   const overlaps = title!.x < share!.x + share!.width && share!.x < title!.x + title!.width
     && title!.y < share!.y + share!.height && share!.y < title!.y + title!.height;

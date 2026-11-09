@@ -8,12 +8,13 @@ import { useForm } from '@tanstack/react-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { NEXT_NOTE_MAX, snapshotHomework, publishedHomeworkOf, type HomeworkAudience, type PublishedHomeworkTask } from '@openroom/schema';
+import { NEXT_NOTE_MAX, snapshotHomework, publishedHomeworkOf, type HomeworkAudience, type PublishedHomeworkTask, type StudentKind } from '@openroom/schema';
 
 import {
   ApiError,
   getStudent,
   listStudentLearners,
+  listStudentLinks,
   type StudentLearner,
   getDeck,
   getSessionItem,
@@ -30,10 +31,12 @@ import { Textarea } from '@openroom/ui/components/textarea';
 import type { LibraryPlace } from '@openroom/editor';
 import { to } from '../../destinations';
 import { invalidateManagementData } from '../../query-client';
+import { liveLinkCount } from '../../lib/student-links';
 import { CONTINUITY_REQUIRED, ContinuityLock, isContinuityRequired } from '../../components/ContinuityLock';
 import {
   LoadState,
   PageHeading,
+  isMissing,
   messageOf,
 } from './shared';
 
@@ -68,7 +71,7 @@ export function SessionNotesPage({ sessionId }: { sessionId: string }) {
         studentId ? getStudent(studentId).catch(() => null) : Promise.resolve(null),
       ]);
       const published = existing !== null ? publishedHomeworkOf(existing.homework) : deck?.content ? snapshotHomework(deck.content) : [];
-      return { session: detail.session, canEdit: detail.canEdit, record: existing, published, learners, studentName: student?.displayName ?? null };
+      return { session: detail.session, canEdit: detail.canEdit, record: existing, published, learners, studentName: student?.displayName ?? null, studentKind: student?.kind ?? null };
     },
   });
   // Shared Notes are paid; notes kept on this device are not.
@@ -79,12 +82,15 @@ export function SessionNotesPage({ sessionId }: { sessionId: string }) {
       <LocalNotes sessionId={sessionId} />
     </div>;
   }
-  if (!user || query.isError || !query.data) return <LoadState error={query.isError ? messageOf(query.error, 'Could not load notes') : null} />;
+  if (user && query.isError && !isMissing(query.error)) {
+    return <LoadState heading="Session notes could not be loaded" error={messageOf(query.error, 'Could not load notes')}><LocalNotes sessionId={sessionId} /></LoadState>;
+  }
+  if (!user || query.isError || !query.data) return <LoadState error={query.isError ? query.error : null} />;
   const { data } = query;
   const place = { spaceId: data.session.spaceId, folderId: data.session.folderId, itemId: data.session.deckId, studentId: data.session.studentId };
   const title = notesTitle(data.session.title, data.studentName);
   if (!data.canEdit) return <ReadOnlySessionNotes key={`${user.id}:${sessionId}`} sessionId={sessionId} title={title} record={data.record} tasks={data.published} place={place} inTrash={data.session.deletedAt !== null} />;
-  return <SessionNotesForm key={`${user.id}:${sessionId}`} learners={data.learners} sessionId={sessionId} title={title} studentName={data.studentName} record={data.record} published={data.published} hasStudent={data.session.studentId !== null} place={place} />;
+  return <SessionNotesForm key={`${user.id}:${sessionId}`} learners={data.learners} sessionId={sessionId} title={title} studentName={data.studentName} studentKind={data.studentKind} record={data.record} published={data.published} hasStudent={data.session.studentId !== null} place={place} />;
 }
 
 /** The notes as plain text, one labelled block per filled field, for the download after a failed save. */
@@ -130,6 +136,7 @@ function SessionNotesForm({
   sessionId,
   title,
   studentName,
+  studentKind,
   record,
   published,
   learners,
@@ -139,6 +146,7 @@ function SessionNotesForm({
   sessionId: string;
   title: string;
   studentName: string | null;
+  studentKind: StudentKind | null;
   record: Awaited<ReturnType<typeof getSessionRecord>>;
   published: PublishedHomeworkTask[];
   learners: StudentLearner[];
@@ -151,6 +159,11 @@ function SessionNotesForm({
   const [tasks, setTasks] = useState(published);
   const [audience, setAudience] = useState<HomeworkAudience>(record?.homeworkAudience ?? {});
   const hasMissingRecipients = Object.values(audience).some((recipients) => recipients.length === 0);
+  // Without a live access link the student cannot open these notes. Editors can make one; the list is also what they use on the student's page.
+  const studentId = place.studentId ?? null;
+  const links = useQuery({ queryKey: ['students', studentId, 'links'], queryFn: () => listStudentLinks(studentId!), enabled: hasStudent && studentId !== null, retry: false, refetchOnWindowFocus: true });
+  const noAccessLink = links.data !== undefined && liveLinkCount(links.data) === 0;
+  const [nextCut, setNextCut] = useState(false);
   /*
    * After a session ends, the live console hands private notes from the
    * live-keyed scratchpad into a session-keyed slot (see packages/editor/src/live/scratchpad.ts). Prefer
@@ -218,13 +231,22 @@ function SessionNotesForm({
           <CardContent className="flex flex-col gap-5 p-6">
             <fieldset disabled={accessLost} className="contents">
             <form.Field name="outcomes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-outcomes">Outcomes (one per line)</Label><Textarea id="record-outcomes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
-            <form.Field name="nextNote">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-next">Next session</Label>{studentName ? <p id="record-next-help" className="text-secondary text-muted-foreground">Tutors only. Shown with {studentName} in the Library and at the top of their next deck.</p> : null}<Textarea id="record-next" maxLength={NEXT_NOTE_MAX} aria-describedby={studentName ? 'record-next-help' : undefined} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.currentTarget.value)} /></div>}</form.Field>
+            <form.Field name="nextNote">{(field) => {
+              const left = NEXT_NOTE_MAX - field.state.value.length;
+              const describedBy = [studentName ? 'record-next-help' : null, 'record-next-count', nextCut ? 'record-next-cut' : null].filter(Boolean).join(' ');
+              return <div className="flex flex-col gap-2"><Label htmlFor="record-next">Next session</Label>{studentName ? <p id="record-next-help" className="text-secondary text-muted-foreground">Tutors only. Shown with {studentName} in the Library and at the top of their next deck.</p> : null}<Textarea id="record-next" maxLength={NEXT_NOTE_MAX} aria-describedby={describedBy} value={field.state.value} onBlur={field.handleBlur}
+                onPaste={(event) => { const target = event.currentTarget; const kept = field.state.value.length - (target.selectionEnd - target.selectionStart); setNextCut(kept + event.clipboardData.getData('text').length > NEXT_NOTE_MAX); }}
+                onChange={(event) => { if ((event.nativeEvent as InputEvent).inputType !== 'insertFromPaste') setNextCut(false); field.handleChange(event.currentTarget.value); }} />
+                <p id="record-next-count" className="text-caption text-muted-foreground">{left === 1 ? '1 character left' : `${left} characters left`}</p>
+                {nextCut ? <p id="record-next-cut" role="status" className="text-secondary text-muted-foreground">The pasted text was cut to fit {NEXT_NOTE_MAX.toLocaleString('en-US')} characters.</p> : null}</div>;
+            }}</form.Field>
             <form.Field name="notes">{(field) => <div className="flex flex-col gap-2"><Label htmlFor="record-notes">{notesLabel}</Label><Textarea id="record-notes" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => { field.handleChange(event.currentTarget.value); writeSessionNotes(sessionId, event.currentTarget.value); }} /></div>}</form.Field>
-            {hasStudent ? <form.Subscribe selector={(state) => state.isSubmitting}>{(busy) => <HomeworkAssignments tasks={tasks} audience={audience} learners={learners} onTasks={setTasks} onAudience={setAudience} disabled={busy} />}</form.Subscribe> : null}
+            {hasStudent ? <form.Subscribe selector={(state) => state.isSubmitting}>{(busy) => <HomeworkAssignments tasks={tasks} audience={audience} learners={learners} studentKind={studentKind} onTasks={setTasks} onAudience={setAudience} disabled={busy} />}</form.Subscribe> : null}
             </fieldset>
             {accessLost ? <form.Subscribe selector={(state) => state.values}>{(values) => <Button type="button" variant="outline" className="w-fit" onClick={() => downloadPrivateNotes(notesText([['Outcomes', values.outcomes], ['Next session', values.nextNote], [notesLabel, values.notes]]))}>Download notes</Button>}</form.Subscribe> : null}
             {error === CONTINUITY_REQUIRED ? <><ContinuityLock /><p role="alert" className="text-secondary text-destructive">Shared notes not saved. {notesLabel} are kept on this device. Download notes to keep the outcomes, Next session and {notesLabel.toLowerCase()}.</p></> : error ? <p role="alert" className="text-secondary text-destructive">{error}</p> : null}
-            <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting] as const}>{([canSubmit, isSubmitting]) => <div className="flex gap-2"><Button type="submit" disabled={accessLost || !canSubmit || isSubmitting || hasMissingRecipients}>{isSubmitting ? 'Saving…' : record ? 'Update notes' : 'Save notes'}</Button><Button asChild type="button" variant="outline"><Link {...to.library(place)}>Cancel</Link></Button></div>}</form.Subscribe>
+            {noAccessLink && studentId ? <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4"><p className="min-w-0 flex-1 text-secondary">This student has no access link, so they won't see these outcomes or homework yet.</p><Button asChild variant="outline"><Link {...to.studentLinkNew(studentId)} target="_blank" rel="noreferrer">Create an access link<span className="sr-only"> (opens in a new tab)</span></Link></Button></div> : null}
+            <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting] as const}>{([canSubmit, isSubmitting]) => <div className="grid gap-2"><div className="flex gap-2"><Button type="submit" aria-describedby={hasMissingRecipients ? 'save-reason' : undefined} disabled={accessLost || !canSubmit || isSubmitting || hasMissingRecipients}>{isSubmitting ? 'Saving…' : record ? 'Update notes' : 'Save notes'}</Button><Button asChild type="button" variant="outline"><Link {...to.library(place)}>Cancel</Link></Button></div>{hasMissingRecipients && !accessLost ? <p id="save-reason" className="text-secondary text-muted-foreground">Choose at least one learner for each task that goes to selected learners.</p> : null}</div>}</form.Subscribe>
           </CardContent>
         </Card>
       </form>

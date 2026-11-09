@@ -149,9 +149,9 @@ records.
 - Sessions and Notes get **no collection route** and no nav item: there is no “all sessions” shelf.
 - **Create path: a session is started, not scheduled.** It comes into existence from the deck editor's **Start session** or a library row’s **Start session** — there is no create form and no free-floating “New session” anywhere. Notes are written from the session (`#/sessions/:id/record`).
 - **There is no scheduling and no approvals.** Sessions carry no `startsAt`/`endsAt` and no `scheduled` status — not in the workspace, not in the API. Nothing is booked and nothing waits on an approver.
-- Cross-cutting history (recent, recover live) belongs on **Home**; a session’s own history belongs on **its deck’s page**. The folder row is a way to find a session in the place it was filed, not a second history.
+- Cross-cutting history (recent, recover live) belongs on **the Library**; a session’s own history belongs on **its deck’s page**. The folder row is a way to find a session in the place it was filed, not a second history.
 - Keep dedicated **instance** routes (detail / record) for deep links and agents.
-- `updateSession({folderId})` stays in the API for agents — and a session it files is reachable by place navigation as well as from its deck, Home, its student, or Trash.
+- `updateSession({folderId})` stays in the API for agents — and a session it files is reachable by place navigation as well as from its deck, the Library, its student, or Trash.
 
 **No ledger.** Teacher UI never shows timestamps, taught-counts, status or
 version stamps outside the History tab, admin tables, and live counts.
@@ -288,7 +288,7 @@ Errors: `deck-content-not-found`, `invalid-deck-content`, `session-not-found`.
 | Surface | String |
 | --- | --- |
 | End dialog title | End this session? |
-| End dialog body | Participants are disconnected and results are final. |
+| End dialog body | The session closes for everyone who joined, and results are final. |
 | End dialog confirm | End session |
 | Ended banner | Session ended |
 | Ended banner (participant) | Session ended · You can close this page. |

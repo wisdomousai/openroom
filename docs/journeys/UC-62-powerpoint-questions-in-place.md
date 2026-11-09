@@ -7,14 +7,15 @@ were inspected at 340 pixels for the pane and 960 × 540 for the slide.
 
 1. Sign in to the task pane in a presentation with no OpenRoom slides. The pane
    opens on **Add a question** with the owner's space under **Save questions in**.
-2. Add a multiple-choice question to the selected slide. The empty third answer is
+2. Add a multiple-choice question to the selected slide. The empty third option is
    dropped. The file gets an `OPENROOM_DECK` tag and the slide an
    `OPENROOM_ACTIVITY` tag for the new deck, named "PowerPoint questions".
 3. Select another slide and add a word cloud. The form first reports
    "Write the question." The second question goes to the same deck.
 4. Select the first slide again. The pane shows **Edit question** with the saved
-   text. A duplicate answer is reported; the corrected edit keeps the question and
-   answer IDs.
+   text. A duplicate option is reported. While the deck has an unsaved draft from the
+   OpenRoom editor, **Save changes** refuses and leaves the deck unchanged; once the
+   draft is gone, the corrected edit keeps the question and option IDs.
 5. Start session. Both slides start, in presentation order, from the same deck.
 6. Open an empty **OpenRoom Slide** on a third slide. It reuses the pane's
    sign-in, shows the same form, and after **Add to this slide** shows the scale
