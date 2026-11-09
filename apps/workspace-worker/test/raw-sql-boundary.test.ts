@@ -16,22 +16,6 @@ declare global {
 
 const sources = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'default', eager: true });
 
-// Files still on raw statements while the move to the query builder is under way.
-// Remove a file when it is converted; the list ends empty.
-const NOT_YET_CONVERTED = new Set([
-  'a2a.ts',
-  'billing/access.ts',
-  'billing/checkout.ts',
-  'billing/reconcile.ts',
-  'billing/routes.ts',
-  'billing/state.ts',
-  'entitlements.ts',
-  'index.ts',
-  'mcp-oauth.ts',
-  'mcp.ts',
-  'oauth-connections.ts',
-]);
-
 const RAW = /\bDB\.(prepare|batch|exec)\(|\bD1PreparedStatement\b/;
 
 describe('raw SQL boundary', () => {
@@ -43,16 +27,8 @@ describe('raw SQL boundary', () => {
 
   it('keeps raw D1 statements out of runtime code', () => {
     const offenders = files
-      .filter(([path, text]) => !path.startsWith('db/') && !NOT_YET_CONVERTED.has(path) && RAW.test(text))
+      .filter(([path, text]) => !path.startsWith('db/') && RAW.test(text))
       .map(([path]) => path);
     expect(offenders).toEqual([]);
-  });
-
-  it('lists only files that still need converting', () => {
-    const stale = [...NOT_YET_CONVERTED].filter((path) => {
-      const text = files.find(([p]) => p === path)?.[1];
-      return text === undefined || !RAW.test(text);
-    });
-    expect(stale).toEqual([]);
   });
 });

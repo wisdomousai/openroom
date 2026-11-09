@@ -29,7 +29,10 @@ import {
 import { normalizeSessionCode } from '@openroom/domain';
 import { compileToOutline } from '@openroom/schema';
 
+import { eq } from 'drizzle-orm';
 import { verifyApiToken } from './api-tokens.js';
+import { orm } from './db/client.js';
+import { users } from './db/schema.js';
 import { createFailureCode, createSessionFromOutline, launchSessionForUser, finishEndedSession, type Env } from './index.js';
 import { recordSessionTransition } from './delivery/session-status.js';
 import { recordLiveSession, sessionQuotaExceeded } from './control.js';
@@ -144,7 +147,7 @@ function makeDeps(env: Env, identity: McpIdentity, bearer: string, origin: strin
         if (await sessionQuotaExceeded(env, identity.userId, now)) {
           throw new ToolError('session-quota');
         }
-        const user = await env.DB.prepare('SELECT id, name, email FROM users WHERE id = ?1').bind(identity.userId).first<{ id: string; name: string | null; email: string }>();
+        const user = await orm(env).select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.id, identity.userId)).get();
         if (!user) throw new ToolError('unauthorized');
         const created = await createSessionFromOutline(env, validation.outline, { user, ...(identity.connectionId ? { connectionId: identity.connectionId } : {}) });
         if (!created.ok) throw new ToolError(await createFailureCode(created));

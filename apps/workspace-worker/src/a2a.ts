@@ -15,7 +15,10 @@ import { handleMcpMessage, ToolError, type ToolDeps } from '@openroom/mcp';
 import { normalizeSessionCode } from '@openroom/domain';
 import { compileToOutline } from '@openroom/schema';
 
+import { and, DrizzleQueryError, eq } from 'drizzle-orm';
 import { verifyApiToken } from './api-tokens.js';
+import { orm } from './db/client.js';
+import { liveSessions, users } from './db/schema.js';
 import { buildAgentCard } from './agent-card.js';
 import { createFailureCode, createSessionFromOutline, type Env } from './index.js';
 import { recordLiveSession, sessionQuotaExceeded } from './control.js';
@@ -68,7 +71,7 @@ function makeDeps(env: Env, identity: A2aIdentity): ToolDeps {
         if (await sessionQuotaExceeded(env, identity.userId, now)) {
           throw new ToolError('session-quota');
         }
-        const user = await env.DB.prepare('SELECT id, name, email FROM users WHERE id = ?1').bind(identity.userId).first<{ id: string; name: string | null; email: string }>();
+        const user = await orm(env).select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.id, identity.userId)).get();
         if (!user) throw new ToolError('unauthorized');
         // Bind the host token to the account and connection, as MCP does, so
         // revoking the connection or the host seat ends host control.
@@ -84,12 +87,12 @@ function makeDeps(env: Env, identity: A2aIdentity): ToolDeps {
     async getExport(code) {
       const sessionCode = normalizeSessionCode(code);
       if (identity.kind === 'user') {
-        const owned = await env.DB.prepare(
-          'SELECT code FROM live_sessions WHERE code = ?1 AND user_id = ?2',
-        )
-          .bind(sessionCode, identity.userId)
-          .first<{ code: string }>();
-        if (owned === null) return null;
+        const owned = await orm(env)
+          .select({ code: liveSessions.code })
+          .from(liveSessions)
+          .where(and(eq(liveSessions.code, sessionCode), eq(liveSessions.userId, identity.userId)))
+          .get();
+        if (owned === undefined) return null;
       }
       if (identity.kind === 'anon') return null;
       const id = env.SESSIONS.idFromName(sessionCode);
@@ -215,8 +218,10 @@ async function handleSendMessage(
         const out = await callTool(deps, toolName, args);
         return agentMessage(out, contextId);
       } catch (err) {
+        // A failed query's own message carries its SQL and bound values; report only the database's error.
+        const reported = err instanceof DrizzleQueryError ? err.cause : err;
         return agentMessage(
-          JSON.stringify({ ok: false, error: err instanceof Error ? err.message : 'error' }),
+          JSON.stringify({ ok: false, error: reported instanceof Error ? reported.message : 'error' }),
           contextId,
         );
       }
