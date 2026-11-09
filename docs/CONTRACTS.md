@@ -395,12 +395,15 @@ POST /api/decks/:id/permanent-deletion
                                          create browser confirmation URL; MCP/CLI cannot confirm it
 GET|POST /api/sessions              list or create sessions (one delivery of a deck); POST requires deckId;
                                          student defaults to the deck link for legacy compatibility;
-                                         live/completed statuses are server-owned (422 status-server-owned)
+                                         live/ended statuses are server-owned (422 status-server-owned)
 GET|PATCH|DELETE /api/sessions/:id
-                                         detail, metadata edit, or recoverable trash
+                                         detail, metadata edit, or recoverable trash; PATCH accepts status
+                                         only as draft on a draft (422 status-server-owned otherwise)
 GET|PUT /api/sessions/:id/record    curated outcomes, notes, nextNote (the Next session note), homework (string[] or typed tasks), selected artifacts; never transcript/answers
 POST /api/sessions/:id/launch       create an outline-aware session from the selected version;
-                                         409 session-already-live when the session is already live
+                                         409 session-already-live when the session DO is running,
+                                         409 session-already-ended when it has ended (also after the 12 h idle end),
+                                         410 session-expired when the DO was deleted after retention
 POST /api/sessions/:id/restore      restore from trash
 POST /api/sessions/:id/resume       recover live capabilities using current account/space access;
                                          joining does not take presenter control; document references grant nothing;
@@ -795,7 +798,7 @@ GET /api/my/sessions   → { sessions: [{ code, sessionCode, title, deckId, stud
 
 Session-auth'd. The list holds the caller's own sessions and those of spaces they are a member of. `deckId`, `studentId` and `studentName` say which deck and which student a session is for (null when it has none); the Library and the editor use them for **Live now** and **Rejoin**. Live sessions of the caller's own **younger than 12h and not marked ended** are `recoverable: true` and come back with a **freshly minted host + stage token**; a member's session comes back with `shared: true` and no tokens — this completes LIVE-11 cross-device recovery: sign in on the second device, click reconnect, keep running the session.
 
-Tokens are minted **optimistically**. The listing does not ask the SessionDO whether each session is still alive: that would be one cross-DO round trip per session on every page load, and cross-DO chatter is exactly what this design avoids. `sessions.ended` is therefore **advisory only** — nothing writes it back from the DO. A session that has ended, auto-expired or been wiped simply 404s the moment the console uses its token, which is the same path an uninitialised session already takes. The DO remains the single authority on liveness.
+Tokens are minted **optimistically**. The listing does not ask the SessionDO whether each session is still alive: that would be one cross-DO round trip per session on every page load, and cross-DO chatter is exactly what this design avoids. `live_sessions.ended` and `sessions.status` are therefore **advisory**. The session transition function in `apps/workspace-worker/src/delivery/session-status.ts` writes them on Worker paths (launch, an accepted `session.start` or `session.end` through the command route or MCP) and reconciles them from the DO when a launch, resume or co-host request finds the session ended or wiped. Moves are `draft → live`, `draft → ended` and `live → ended`; nothing moves back. A session that has ended, auto-expired or been wiped simply 404s the moment the console uses its token, which is the same path an uninitialised session already takes. The DO remains the single authority on liveness.
 
 ### Workspace (spaces and folders)
 
@@ -858,12 +861,12 @@ covers the same four.
 
 ### Space collaboration
 
-Three roles, enforced in the control plane only (the session plane stays capability-token-only): **owner** manages the space and its members, **editor** creates and edits material, **presenter** may read decks and create sessions (`POST /api/sessions` with a `spaceId` requires any role on that space) but gets **403 `forbidden`** on every mutation. No school hierarchy, guest lists, or org admin.
+Three roles, enforced in the control plane only (the session plane stays capability-token-only): **owner** manages the space and its members, **editor** creates and edits material, **presenter** may read decks and create sessions (`POST /api/sessions` with a `spaceId` requires any role on that space) but gets **403 `forbidden`** on every mutation. A space has one owner, `spaces.owner_user_id`; invites and role changes give colleagues `editor` or `presenter` only, and migration `0006_single_space_owner` moved any other `owner` row to `editor`. No school hierarchy, guest lists, or org admin.
 
 ```
 GET    /api/my/spaces/:id/members          → { role, members:[{userId,email,name,role,invitedBy}], invites?:[…] }  invites only for owners
 POST   /api/my/spaces/:id/invites          body { email, role: editor|presenter } → 201   owner; 409 already-member|already-invited
-PATCH  /api/my/spaces/:id/members/:userId  body { role }                                  owner; 400 space-owner for the space's own owner
+PATCH  /api/my/spaces/:id/members/:userId  body { role: editor|presenter }               owner; 400 invalid-role for any other role, 400 space-owner for the space's own owner
 DELETE /api/my/spaces/:id/members/:userId                                                 owner
 GET    /api/my/invites                     → { invites:[{id,role,spaceId,spaceName,inviterName,createdAt}] }  pending, for my email
 POST   /api/my/invites/:id/accept          → { ok, spaceId, role }   403 when the session email does not match

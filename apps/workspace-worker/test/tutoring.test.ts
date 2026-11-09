@@ -586,11 +586,59 @@ describe('control plane hardening', () => {
       body: JSON.stringify({ start: true }),
     });
     expect(launch.status).toBe(201);
+    const backToDraft = await asBrowser(cookie, `/api/sessions/${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'draft' }),
+    });
+    expect(backToDraft.status).toBe(422);
     const relaunch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
       method: 'POST',
       body: JSON.stringify({ start: true }),
     });
     expect(relaunch.status).toBe(409);
+    expect(await relaunch.json()).toMatchObject({ error: 'session-already-live' });
+  });
+
+  it('records a start outside the launch, and an end the Worker did not see, in the session status', async () => {
+    const { cookie, userId } = await seedSession();
+    const { sessionId } = await createDeckWithSession(cookie, await createStudent(cookie));
+    const status = async () => (await env.DB.prepare('SELECT status FROM sessions WHERE id = ?1')
+      .bind(sessionId).first<{ status: string }>())!.status;
+
+    const launch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
+      method: 'POST',
+      body: JSON.stringify({ start: false }),
+    });
+    expect(launch.status).toBe(201);
+    const { sessionCode, hostToken } = await launch.json() as { sessionCode: string; hostToken: string };
+    expect(await status()).toBe('draft');
+
+    const start = await worker.fetch(new Request(`${BASE}/api/sessions/${sessionCode}/commands`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${hostToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ command: { command: 'session.start' } }),
+    }), env as never);
+    expect(start.status).toBe(200);
+    expect(await status()).toBe('live');
+
+    // The idle end happens inside the DO, with no Worker request.
+    const stub = (env as unknown as { SESSIONS: DurableObjectNamespace }).SESSIONS;
+    const ended = await stub.get(stub.idFromName(sessionCode)).fetch('https://session.internal/__command', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ idempotencyKey: 'idle', actor: { role: 'host', hostId: userId }, command: { command: 'session.end' } }),
+    });
+    expect(ended.ok).toBe(true);
+    expect(await status()).toBe('live');
+
+    const resume = await asBrowser(cookie, `/api/sessions/${sessionId}/resume`, { method: 'POST', body: '{}' });
+    expect(resume.ok).toBe(false);
+    expect(await status()).toBe('ended');
+    const relaunch = await asBrowser(cookie, `/api/sessions/${sessionId}/launch`, {
+      method: 'POST',
+      body: JSON.stringify({ start: true }),
+    });
+    expect(await relaunch.json()).toMatchObject({ error: 'session-already-ended' });
   });
 
   it('permanent deletion of a deck detaches sessions that recorded it', async () => {

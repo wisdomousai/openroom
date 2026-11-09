@@ -75,8 +75,9 @@ export async function recordLiveSession(
  * is still alive, because that would mean one cross-DO round trip per listed
  * session on every page load. A session that has ended, been auto-expired or been
  * wiped simply 404s the moment the console tries to use its token — the same
- * path an uninitialised session takes. `ended` in D1 is therefore advisory (we
- * never write it back from the DO); the DO stays the single authority.
+ * path an uninitialised session takes. `ended` in D1 is therefore advisory: the
+ * Worker writes it on the paths it sees and reconciles it from the DO on launch,
+ * resume and co-host (delivery/session-status.ts); the DO stays the single authority.
  */
 export async function mySessionsRoute(request: Request, env: ControlEnv): Promise<Response> {
   const guard = await requireControlUser(request, env);

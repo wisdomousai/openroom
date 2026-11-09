@@ -91,7 +91,7 @@ pending space invitations. It removes browser sessions, temporary auth codes and
 permanent-deletion confirmations. Collaborator memberships are removed because a
 member might have been removed after the backup; owners sign in afresh and share
 again. Learner identity, work and feedback remain, so replacement links reconnect
-to the same learner. Old live-directory entries become ended; saved results keep
+to the same learner. Old live-directory entries and sessions that were live become ended; saved results keep
 their ownership and space association. Decks can start new sessions.
 
 ## Retention and changes after the backup

@@ -30,7 +30,8 @@ import { normalizeSessionCode } from '@openroom/domain';
 import { compileToOutline } from '@openroom/schema';
 
 import { verifyApiToken } from './api-tokens.js';
-import { createSessionFromOutline, launchSessionForUser, finishEndedSession, type Env } from './index.js';
+import { createFailureCode, createSessionFromOutline, launchSessionForUser, finishEndedSession, type Env } from './index.js';
+import { recordSessionTransition } from './delivery/session-status.js';
 import { recordLiveSession, sessionQuotaExceeded } from './control.js';
 import { timingSafeEqualStr, verifyMcpAccessToken } from './mcp-oauth.js';
 import { handleTutoringApi } from './tutoring.js';
@@ -146,13 +147,13 @@ function makeDeps(env: Env, identity: McpIdentity, bearer: string, origin: strin
         const user = await env.DB.prepare('SELECT id, name, email FROM users WHERE id = ?1').bind(identity.userId).first<{ id: string; name: string | null; email: string }>();
         if (!user) throw new ToolError('unauthorized');
         const created = await createSessionFromOutline(env, validation.outline, { user, ...(identity.connectionId ? { connectionId: identity.connectionId } : {}) });
-        if (!created.ok) throw new ToolError('session-init-failed');
+        if (!created.ok) throw new ToolError(await createFailureCode(created));
         await recordLiveSession(env, created.session.code, identity.userId, validation.outline.meta.title, now);
         return created.session;
       }
 
       const created = await createSessionFromOutline(env, validation.outline);
-      if (!created.ok) throw new ToolError('session-init-failed');
+      if (!created.ok) throw new ToolError(await createFailureCode(created));
       return created.session;
     },
     async getExport(code) {
@@ -200,6 +201,7 @@ function makeDeps(env: Env, identity: McpIdentity, bearer: string, origin: strin
         },
       );
       if (response.ok && command.command === 'session.end') await finishEndedSession(env, sessionCode);
+      if (response.ok && command.command === 'session.start') await recordSessionTransition(env, sessionCode, 'live');
       const body = await responseBody(response);
       return { ok: response.ok, status: response.status, body };
     },

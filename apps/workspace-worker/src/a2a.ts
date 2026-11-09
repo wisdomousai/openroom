@@ -11,13 +11,13 @@
  * help text; mutating skills require a bearer.
  */
 
-import { handleMcpMessage, type ToolDeps } from '@openroom/mcp';
+import { handleMcpMessage, ToolError, type ToolDeps } from '@openroom/mcp';
 import { normalizeSessionCode } from '@openroom/domain';
 import { compileToOutline } from '@openroom/schema';
 
 import { verifyApiToken } from './api-tokens.js';
 import { buildAgentCard } from './agent-card.js';
-import { createSessionFromOutline, type Env } from './index.js';
+import { createFailureCode, createSessionFromOutline, type Env } from './index.js';
 import { recordLiveSession, sessionQuotaExceeded } from './control.js';
 import { timingSafeEqualStr, verifyMcpAccessToken } from './mcp-oauth.js';
 
@@ -60,25 +60,25 @@ async function resolveIdentity(env: Env, bearer: string): Promise<A2aIdentity> {
 function makeDeps(env: Env, identity: A2aIdentity): ToolDeps {
   return {
     async createSession(document) {
-      if (identity.kind === 'anon') throw new Error('unauthorized');
+      if (identity.kind === 'anon') throw new ToolError('unauthorized');
       const validation = compileToOutline(document);
-      if (!validation.ok) throw new Error('invalid-outline');
+      if (!validation.ok) throw new ToolError('invalid-outline');
       if (identity.kind === 'user') {
         const now = Date.now();
         if (await sessionQuotaExceeded(env, identity.userId, now)) {
-          throw new Error('session-quota');
+          throw new ToolError('session-quota');
         }
         const user = await env.DB.prepare('SELECT id, name, email FROM users WHERE id = ?1').bind(identity.userId).first<{ id: string; name: string | null; email: string }>();
-        if (!user) throw new Error('unauthorized');
+        if (!user) throw new ToolError('unauthorized');
         // Bind the host token to the account and connection, as MCP does, so
         // revoking the connection or the host seat ends host control.
         const created = await createSessionFromOutline(env, validation.outline, { user, ...(identity.connectionId ? { connectionId: identity.connectionId } : {}) });
-        if (!created.ok) throw new Error('session-init-failed');
+        if (!created.ok) throw new ToolError(await createFailureCode(created));
         await recordLiveSession(env, created.session.code, identity.userId, validation.outline.meta.title, now);
         return created.session;
       }
       const created = await createSessionFromOutline(env, validation.outline);
-      if (!created.ok) throw new Error('session-init-failed');
+      if (!created.ok) throw new ToolError(await createFailureCode(created));
       return created.session;
     },
     async getExport(code) {
@@ -100,10 +100,10 @@ function makeDeps(env: Env, identity: A2aIdentity): ToolDeps {
       return (await response.json()) as Record<string, unknown>;
     },
     async controlRequest() {
-      throw new Error('use MCP for tutoring business operations');
+      throw new ToolError('use MCP for tutoring business operations');
     },
     async sessionCommand() {
-      throw new Error('use MCP for live session control');
+      throw new ToolError('use MCP for live session control');
     },
   };
 }

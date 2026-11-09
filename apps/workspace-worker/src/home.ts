@@ -15,9 +15,9 @@
  *
  * The durable fact that a session *happened* is the existence of a `live_sessions`
  * row pointing at it, which is written by the launch path in D1. (`sessions.status`
- * does reach `ended` on a clean `session.end` — see `endSessionForCode` in
- * `delivery.ts` — but the DO's idle auto-end never passes through the Worker,
- * so status alone under-counts.) That is what this query keys on.
+ * follows the DO through `delivery/session-status.ts`, but the DO's idle auto-end
+ * reaches D1 only when someone next touches the session, so status alone can lag.)
+ * That is what this query keys on.
  *
  * ## What is deliberately not counted
  *

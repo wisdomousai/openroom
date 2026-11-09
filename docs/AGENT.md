@@ -204,7 +204,7 @@ Fourteen focused tools:
 | Tool | Args | Returns |
 | --- | --- | --- |
 | `outline_validate` | `{ outline }` (YAML/JSON text or object) | typed step and interaction summary, or stable errors |
-| `session_create` | `{ outline }` (text or object) | `{ code, joinUrl, stageUrl, hostToken, stageToken }`; an identified outline is refused with `identified-session-needs-student` |
+| `session_create` | `{ outline }` (text or object) | `{ code, joinUrl, stageUrl, hostToken, stageToken }`; a guest-list outline is refused with `guest-list-required` when the account lacks the guest list capability, and an identified outline with `identified-session-needs-student`. MCP and A2A return the same refusal code as `POST /api/sessions`; `session-init-failed` means the session runtime did not start |
 | `session_status` | `{ code }` | session status + per-question lifecycle (no results) |
 | `session_results` | `{ code, interactionId? }` | aggregates only — never answers, never pre-reveal answer keys |
 | `deck_get` | `{ deckId, version? }` | the deck row, its place, `contentVersion`, and the content as Outline v1 |

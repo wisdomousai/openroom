@@ -111,7 +111,8 @@ import { handleTagApi } from './tags.js';
 import { handleAssetApi } from './assets.js';
 import { homeRoute } from './home.js';
 import { prefsRoute } from './prefs.js';
-import { endSessionForCode, type SessionLaunchInput } from './delivery/index.js';
+import type { SessionLaunchInput } from './delivery/index.js';
+import { recordMissingSession, recordSessionTransition, SESSION_INIT_WINDOW_MS, type LiveStatus } from './delivery/session-status.js';
 import { identifiedNeedsStudent } from './delivery/shared.js';
 import {
   archivedAnswersCsv,
@@ -153,7 +154,8 @@ export interface Env extends ControlEnv {
 /**
  * The control plane's authority over the shared live routes. Account-bound
  * host tokens are rechecked against D1 on every call (revoked connection,
- * removed host); `session.end` archives; answers exports follow the
+ * removed host); an accepted `session.start` or `session.end` updates the
+ * session's D1 status, and `session.end` archives; answers exports follow the
  * owner's paid access and fall back to the archive.
  */
 function controlAuthority(env: Env): LiveAuthority<HostAccess> {
@@ -168,7 +170,9 @@ function controlAuthority(env: Env): LiveAuthority<HostAccess> {
       return { ok: true, grant: host, canRecover: host.canRecover };
     },
     commandAllowed: (grant, sessionCode, command) => hostCommandAllowed(env, sessionCode, grant, command),
-    sessionEnded: (sessionCode) => finishEndedSession(env, sessionCode),
+    sessionChanged: (sessionCode, command) => command === 'session.end'
+      ? finishEndedSession(env, sessionCode)
+      : recordSessionTransition(env, sessionCode, 'live'),
     mayExportAnswers: (sessionCode) => ownerMayExportAnswers(env, sessionCode),
     archivedAnswers: (sessionCode) => archivedAnswersCsv(env, sessionCode),
   };
@@ -222,6 +226,23 @@ function sessionShareUrls(
 }
 
 /**
+ * A creation that did not happen. `refused` marks the control plane's own
+ * refusal (a missing paid capability, an identified outline without a
+ * student); without it the session runtime failed to initialise.
+ */
+export interface CreateSessionFailure { ok: false; response: Response; refused?: true }
+
+/**
+ * The code MCP and A2A report for a failed creation: the refusal code REST
+ * returns, or session-init-failed when the session runtime failed.
+ */
+export async function createFailureCode(failure: CreateSessionFailure): Promise<string> {
+  if (!failure.refused) return 'session-init-failed';
+  const body = await failure.response.clone().json().catch(() => null) as { error?: unknown } | null;
+  return typeof body?.error === 'string' ? body.error : 'session-init-failed';
+}
+
+/**
  * The auth-free core of session creation: init the DO, sign the token pair.
  * Callers own authentication, quota, and D1 ownership records. Direct creation
  * checks paid identity features here; durable launches check before reservation.
@@ -231,19 +252,19 @@ export async function createSessionFromOutline(
   env: Env,
   outline: Outline,
   options: { outlineVersion?: number; user?: SessionUser; entitlementOwnerId?: string; connectionId?: string; reservedCode?: string; initialHost?: { id: string; name: string } } = {},
-): Promise<{ ok: true; session: CreatedSession } | { ok: false; response: Response }> {
+): Promise<{ ok: true; session: CreatedSession } | CreateSessionFailure> {
   // Durable launches check before reservation. Every direct creation, including MCP,
   // comes through this check before a live audience can be allocated.
   if (!options.reservedCode && outline.defaults?.identityMode === 'guest-list') {
     const blocked = await requireNamedSessionAccess(env, options.entitlementOwnerId ?? options.user?.id ?? null);
-    if (blocked) return { ok: false, response: blocked };
+    if (blocked) return { ok: false, response: blocked, refused: true };
   }
   if (!options.reservedCode && outline.defaults?.identityMode === 'identified') {
     const blocked = await requireIdentifiedSessionAccess(env, options.entitlementOwnerId ?? options.user?.id ?? null);
-    if (blocked) return { ok: false, response: blocked };
+    if (blocked) return { ok: false, response: blocked, refused: true };
     // A session created straight from an outline has no durable session, so no
     // student, so no access link can ever admit anyone to it.
-    return { ok: false, response: identifiedNeedsStudent() };
+    return { ok: false, response: identifiedNeedsStudent(), refused: true };
   }
   const sessionCode = options.reservedCode ?? generateSessionCode();
   // Read once here and carried into the DO, so joins never touch D1. A retried
@@ -330,12 +351,28 @@ export async function launchSessionForUser(
     }
   }
   if (!reserved) return json({ error: 'session-allocation-failed' }, 503);
-  if (reserved.ended) return json({ error: 'session-already-ended' }, 409);
+  if (reserved.ended) {
+    await recordSessionTransition(env, reserved.code, 'ended');
+    return json({ error: 'session-already-ended' }, 409);
+  }
   if (reserved.deck_version !== input.version) return json({ error: 'session-version-conflict' }, 409);
+  // The DO decides whether this session can launch. What it reports is
+  // recorded first, so a session that ended on its own reads as ended.
   const before = await stub(env, reserved.code).fetch(doUrl('/__state', { role: 'stage' }));
-  if (before.status === 404 && now - reserved.created_at > 10 * 60_000) return json({ error: 'session-expired' }, 410);
-  if (before.ok && (await before.json() as { status: string }).status === 'ended') return json({ error: 'session-already-ended' }, 409);
+  if (before.status === 404 && now - reserved.created_at > SESSION_INIT_WINDOW_MS) {
+    await recordMissingSession(env, reserved.code, now);
+    return json({ error: 'session-expired' }, 410);
+  }
   if (!before.ok && before.status !== 404) return withApiHeaders(before);
+  const beforeStatus = before.ok ? (await before.json() as { status: LiveStatus }).status : null;
+  if (beforeStatus === 'ended') {
+    await recordSessionTransition(env, reserved.code, 'ended');
+    return json({ error: 'session-already-ended' }, 409);
+  }
+  if (beforeStatus === 'live' && input.refuseLive) {
+    await recordSessionTransition(env, reserved.code, 'live');
+    return json({ error: 'session-already-live' }, 409);
+  }
   const created = await createSessionFromOutline(env, validation.outline, {
     outlineVersion: input.version,
     user,
@@ -373,12 +410,11 @@ export async function launchSessionForUser(
     }
   }
   if (!current) return json({ error: 'session-unavailable' }, 503);
+  await recordSessionTransition(env, reserved.code, current.status);
   if (current.status === 'ended') return json({ error: 'session-already-ended' }, 409);
   const sessionStatus = current.status === 'live' ? 'live' : 'draft';
-  await env.DB.prepare(
-    "UPDATE sessions SET status = CASE WHEN status = 'ended' THEN status WHEN status = 'live' AND ?1 = 'draft' THEN status ELSE ?1 END, deck_version = ?2, updated_at = ?3 WHERE id = ?4 AND deleted_at IS NULL",
-  )
-    .bind(sessionStatus, input.version, now, input.sessionId)
+  await env.DB.prepare('UPDATE sessions SET deck_version = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL')
+    .bind(input.version, now, input.sessionId)
     .run();
 
   return json({
@@ -610,7 +646,7 @@ async function sessionStudentRoute(
 
 /** Called only after the DO accepts an end command, from REST and MCP alike. */
 export async function finishEndedSession(env: Env, sessionCode: string): Promise<void> {
-  await endSessionForCode(env, sessionCode);
+  await recordSessionTransition(env, sessionCode, 'ended');
   await maybeArchiveEndedSession(env, sessionCode, (format, allowAnswers) =>
     stub(env, sessionCode).fetch(doUrl('/__export', { format, ...(allowAnswers ? { allowAnswers: '1' } : {}) })),
   );

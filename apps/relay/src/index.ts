@@ -70,7 +70,7 @@ const relayAuthority: LiveAuthority<never> = {
   async commandAllowed() {
     return true;
   },
-  async sessionEnded() {},
+  async sessionChanged() {},
   async mayExportAnswers() {
     return true;
   },

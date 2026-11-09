@@ -135,7 +135,8 @@ approval step. Such affordances are **removed, not reshaped**.
   session**. There is no “Schedule a session” screen, route, menu item, or empty-state
   prompt — and no scheduling fields anywhere, API included. Sessions carry no
   `startsAt`/`endsAt` and no `scheduled` status.
-- Factual status words (`draft`, `live`, `completed`) may exist in storage. They
+- Factual status words may exist in storage. Their values and moves are
+  defined once in `apps/workspace-worker/src/delivery/session-status.ts`. They
   are not row, tile, or inspector data. The banned thing is the **verb** and
   the **ledger**.
 
