@@ -18,7 +18,11 @@
  * for when access returns. Self-hosted deployments (no billing configured)
  * resolve every owner to entitled in `readEntitlements`.
  */
+import { eq } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
+import { orm } from './db/client.js';
+import { spaces, students } from './db/schema.js';
 import { readEntitlements } from './entitlements.js';
 
 export const CONTINUITY_REQUIRED = 'continuity-required';
@@ -34,19 +38,22 @@ export async function ownerHasContinuity(env: ControlEnv, userId: string | null)
 
 export async function spaceOwnerId(env: ControlEnv, spaceId: string | null): Promise<string | null> {
   if (spaceId === null) return null;
-  const row = await env.DB.prepare('SELECT owner_user_id FROM spaces WHERE id = ?1')
-    .bind(spaceId)
-    .first<{ owner_user_id: string }>();
-  return row?.owner_user_id ?? null;
+  const row = await orm(env)
+    .select({ ownerUserId: spaces.ownerUserId })
+    .from(spaces)
+    .where(eq(spaces.id, spaceId))
+    .get();
+  return row?.ownerUserId ?? null;
 }
 
 /** A student bills the owner of the space it was created in. */
 export async function studentOwnerId(env: ControlEnv, studentId: string): Promise<string | null> {
-  const row = await env.DB.prepare(
-    'SELECT s.owner_user_id AS owner FROM students c JOIN spaces s ON s.id = c.space_id WHERE c.id = ?1',
-  )
-    .bind(studentId)
-    .first<{ owner: string }>();
+  const row = await orm(env)
+    .select({ owner: spaces.ownerUserId })
+    .from(students)
+    .innerJoin(spaces, eq(spaces.id, students.spaceId))
+    .where(eq(students.id, studentId))
+    .get();
   return row?.owner ?? null;
 }
 

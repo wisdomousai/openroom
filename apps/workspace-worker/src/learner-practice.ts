@@ -20,50 +20,51 @@ import {
   type PublishedHomeworkTask,
 } from '@openroom/schema';
 import { gradeSrs, newSrsState, type SrsGrade, type SrsState } from '@openroom/domain';
+import { and, desc, eq, exists, isNotNull, isNull, ne, notExists, sql, type AnyColumn } from 'drizzle-orm';
+import { alias, type SQLiteTable } from 'drizzle-orm/sqlite-core';
 
 import { json, type ControlEnv, type SessionUser } from './auth.js';
 import { sha256Hex } from './api-tokens.js';
 import { requireControlUser } from './control-auth.js';
 import { parseJson, readJson } from './control-utils.js';
+import { orm } from './db/client.js';
+import {
+  learnerAudio,
+  learnerFeedback,
+  learnerPracticeAttempts,
+  learnerSrs,
+  learnerSubmissions,
+  sessionRecords,
+  sessions,
+  spaceMembers,
+  studentLearners,
+  students,
+} from './db/schema.js';
 import { requireStudentLink } from './student-links.js';
 import { roleAtLeast, spaceRole } from './members.js';
 import { requireStudentContinuity } from './continuity-access.js';
 
-interface HomeworkRow {
-  session_id: string;
-  homework_json: string;
-  homework_revision: number;
-  homework_audience_json: string;
-}
+type SrsRow = Pick<
+  typeof learnerSrs.$inferSelect,
+  'taskHash' | 'version' | 'ease' | 'intervalDays' | 'reps' | 'lapses' | 'dueAt' | 'lastGrade' | 'lastAnswer'
+>;
 
-interface SrsRow {
-  task_hash: string;
-  version: number;
-  ease: number;
-  interval_days: number;
-  reps: number;
-  lapses: number;
-  due_at: number;
-  last_grade: string | null;
-  last_answer: string | null;
-}
+/** A bound value as a named select column, for `insert … select`. */
+const bound = <T>(name: string, value: T) => sql<T>`${value}`.as(name);
 
-interface WritingRow {
-  learner_id?: string;
-  display_name?: string;
-  session_id: string;
-  task_id: string;
-  body: string;
-  task_json?: string;
-}
+/** The value an upsert would have inserted, for `ON CONFLICT … DO UPDATE SET`. */
+const excluded = (column: AnyColumn) => sql.raw(`excluded.${column.name}`);
+
+/** SQLite's insertion-order key; it orders resubmissions of one task. */
+const rowid = (table: SQLiteTable) => sql<number>`${table}.rowid`;
 
 function asSrsState(row: SrsRow): SrsState {
   return {
     ease: row.ease,
-    intervalDays: row.interval_days,
+    intervalDays: row.intervalDays,
     reps: row.reps,
     lapses: row.lapses,
-    dueAt: row.due_at,
+    dueAt: row.dueAt,
   };
 }
 
@@ -72,21 +73,21 @@ export async function publishedForStudent(
   studentId: string,
   learnerId?: string,
 ): Promise<{ sessionId: string; revision: number; tasks: PublishedHomeworkTask[] }[]> {
-  const { results } = await env.DB.prepare(
-    `SELECT r.id AS session_id, rec.homework_json AS homework_json, rec.homework_revision, rec.homework_audience_json
-       FROM sessions r
-       JOIN session_records rec ON rec.session_id = r.id
-      WHERE r.student_id = ?1
-        AND r.deleted_at IS NULL
-        AND r.status <> 'draft'`,
-  )
-    .bind(studentId)
-    .all<HomeworkRow>();
-  return (results ?? []).map((row) => ({
-    sessionId: row.session_id,
-    revision: row.homework_revision,
-    tasks: learnerId === undefined ? publishedHomeworkOf(parseJson(row.homework_json, []))
-      : homeworkForLearner(publishedHomeworkOf(parseJson(row.homework_json, [])), parseJson(row.homework_audience_json, null), learnerId),
+  const results = await orm(env)
+    .select({
+      sessionId: sessions.id,
+      homeworkJson: sessionRecords.homeworkJson,
+      homeworkRevision: sessionRecords.homeworkRevision,
+      homeworkAudienceJson: sessionRecords.homeworkAudienceJson,
+    })
+    .from(sessions)
+    .innerJoin(sessionRecords, eq(sessionRecords.sessionId, sessions.id))
+    .where(and(eq(sessions.studentId, studentId), isNull(sessions.deletedAt), ne(sessions.status, 'draft')));
+  return results.map((row) => ({
+    sessionId: row.sessionId,
+    revision: row.homeworkRevision,
+    tasks: learnerId === undefined ? publishedHomeworkOf(parseJson(row.homeworkJson, []))
+      : homeworkForLearner(publishedHomeworkOf(parseJson(row.homeworkJson, [])), parseJson(row.homeworkAudienceJson, null), learnerId),
   }));
 }
 
@@ -103,9 +104,11 @@ function quizCard(sessionId: string, revision: number, task: Extract<PublishedHo
 /** Current assigned exercises, without exposing scheduling state. A selected item may be revisited. */
 async function practiceItems(env: ControlEnv, studentId: string, learnerId: string, selected?: string) {
   const published = await publishedForStudent(env, studentId, learnerId);
-  const { results } = await env.DB.prepare('SELECT item_id, due_at, task_hash FROM learner_srs WHERE learner_id = ?1')
-    .bind(learnerId).all<{ item_id: string; due_at: number; task_hash: string }>();
-  const scheduled = new Map((results ?? []).map((row) => [row.item_id, row]));
+  const results = await orm(env)
+    .select({ itemId: learnerSrs.itemId, dueAt: learnerSrs.dueAt, taskHash: learnerSrs.taskHash })
+    .from(learnerSrs)
+    .where(eq(learnerSrs.learnerId, learnerId));
+  const scheduled = new Map(results.map((row) => [row.itemId, row]));
   const items = [];
   for (const row of published) for (const task of row.tasks) {
     if (task.kind !== 'quiz') continue;
@@ -113,7 +116,7 @@ async function practiceItems(env: ControlEnv, studentId: string, learnerId: stri
     if (selected !== undefined && selected !== itemId) continue;
     const state = scheduled.get(itemId);
     // A new question/key is fresh practice. Editing unrelated homework preserves progress.
-    if (selected === undefined && state && state.due_at > Date.now() && state.task_hash === await sha256Hex(canonicalJson(task))) continue;
+    if (selected === undefined && state && state.dueAt > Date.now() && state.taskHash === await sha256Hex(canonicalJson(task))) continue;
     items.push(quizCard(row.sessionId, row.revision, task));
   }
   return items;
@@ -124,11 +127,6 @@ export async function learnerPracticeGet(request: Request, env: ControlEnv): Pro
   if (!guard.ok) return guard.response;
   const selected = new URL(request.url).searchParams.get('itemId') ?? undefined;
   return json({ items: await practiceItems(env, guard.link.studentId, guard.link.learnerId, selected) });
-}
-
-interface PracticeAttemptRow {
-  id: string; learner_id: string; student_id: string; item_id: string; task_json: string;
-  answer_json: string; grade: string; assignment_revision: number;
 }
 
 export async function learnerPracticePost(request: Request, env: ControlEnv): Promise<Response> {
@@ -148,14 +146,35 @@ export async function learnerPracticePost(request: Request, env: ControlEnv): Pr
     const remaining = (await practiceItems(env, guard.link.studentId, guard.link.learnerId)).filter((item) => item.itemId !== itemId);
     return json({ attemptId, ...(remaining.length ? { item: remaining[0] } : { done: true }) });
   };
-  const prior = await env.DB.prepare(`SELECT a.id, a.learner_id, a.student_id, a.item_id, a.task_json, a.answer_json, a.grade, a.assignment_revision
-    FROM learner_practice_attempts a JOIN sessions s ON s.id = a.session_id AND s.student_id = a.student_id AND s.deleted_at IS NULL WHERE a.id = ?1`).bind(attemptId).first<PracticeAttemptRow>();
+  const db = orm(env);
+  const prior = await db
+    .select({
+      id: learnerPracticeAttempts.id,
+      learnerId: learnerPracticeAttempts.learnerId,
+      studentId: learnerPracticeAttempts.studentId,
+      itemId: learnerPracticeAttempts.itemId,
+      taskJson: learnerPracticeAttempts.taskJson,
+      answerJson: learnerPracticeAttempts.answerJson,
+      grade: learnerPracticeAttempts.grade,
+      assignmentRevision: learnerPracticeAttempts.assignmentRevision,
+    })
+    .from(learnerPracticeAttempts)
+    .innerJoin(
+      sessions,
+      and(
+        eq(sessions.id, learnerPracticeAttempts.sessionId),
+        eq(sessions.studentId, learnerPracticeAttempts.studentId),
+        isNull(sessions.deletedAt),
+      ),
+    )
+    .where(eq(learnerPracticeAttempts.id, attemptId))
+    .get();
   if (prior) {
     // A lost response can be retried even after the assignment changes. It never grades twice.
-    if (prior.learner_id !== guard.link.learnerId || prior.student_id !== guard.link.studentId || prior.item_id !== itemId || prior.assignment_revision !== body.assignmentRevision || prior.grade !== grade) return json({ error: 'attempt-conflict' }, 409);
-    const original = publishedHomeworkOf([parseJson(prior.task_json, null)])[0];
+    if (prior.learnerId !== guard.link.learnerId || prior.studentId !== guard.link.studentId || prior.itemId !== itemId || prior.assignmentRevision !== body.assignmentRevision || prior.grade !== grade) return json({ error: 'attempt-conflict' }, 409);
+    const original = publishedHomeworkOf([parseJson(prior.taskJson, null)])[0];
     const answer = original?.kind === 'quiz' ? parseHomeworkPracticeAnswer(original.interaction, body.answer) : null;
-    return answer && canonicalJson(answer) === prior.answer_json ? receipt() : json({ error: 'attempt-conflict' }, 409);
+    return answer && canonicalJson(answer) === prior.answerJson ? receipt() : json({ error: 'attempt-conflict' }, 409);
   }
   const published = await publishedForStudent(env, guard.link.studentId, guard.link.learnerId);
   const session = published.find((row) => row.sessionId === parsed.sessionId);
@@ -168,34 +187,75 @@ export async function learnerPracticePost(request: Request, env: ControlEnv): Pr
   if (assessment === 'incorrect' && grade === 'good') return json({ error: 'incorrect-answer' }, 422);
   const taskJson = canonicalJson(task); const taskHash = await sha256Hex(taskJson); const answerJson = canonicalJson(answer);
   const now = Date.now();
-  const existing = await env.DB.prepare(`SELECT task_hash, version, ease, interval_days, reps, lapses, due_at, last_grade, last_answer
-    FROM learner_srs WHERE learner_id = ?1 AND item_id = ?2`).bind(guard.link.learnerId, itemId).first<SrsRow>();
+  const existing = await db
+    .select({
+      taskHash: learnerSrs.taskHash,
+      version: learnerSrs.version,
+      ease: learnerSrs.ease,
+      intervalDays: learnerSrs.intervalDays,
+      reps: learnerSrs.reps,
+      lapses: learnerSrs.lapses,
+      dueAt: learnerSrs.dueAt,
+      lastGrade: learnerSrs.lastGrade,
+      lastAnswer: learnerSrs.lastAnswer,
+    })
+    .from(learnerSrs)
+    .where(and(eq(learnerSrs.learnerId, guard.link.learnerId), eq(learnerSrs.itemId, itemId)))
+    .get();
   const previousVersion = existing?.version ?? 0;
-  const next = gradeSrs(existing?.task_hash === taskHash ? asSrsState(existing) : newSrsState(now), grade as SrsGrade, now);
+  const next = gradeSrs(existing?.taskHash === taskHash ? asSrsState(existing) : newSrsState(now), grade as SrsGrade, now);
   // The record revision covers content and recipients. Compare it at the actual write,
   // together with the SRS version, then commit the immutable attempt and scheduling state atomically.
-  await env.DB.batch([
-    env.DB.prepare(`INSERT INTO learner_practice_attempts
-      (id, learner_id, student_id, session_id, item_id, task_json, task_hash, answer_json, grade, assessment, assignment_revision, srs_version, created_at)
-      SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12 + 1, ?13
-      FROM session_records rec JOIN sessions s ON s.id = rec.session_id
-      WHERE rec.session_id = ?4 AND rec.homework_revision = ?11 AND s.student_id = ?3 AND s.deleted_at IS NULL AND s.status <> 'draft'
-        AND COALESCE((SELECT version FROM learner_srs WHERE learner_id = ?2 AND item_id = ?5), 0) = ?12
-      ON CONFLICT(id) DO NOTHING`).bind(attemptId, guard.link.learnerId, guard.link.studentId, parsed.sessionId, itemId, taskJson, taskHash, answerJson, grade, assessment, session.revision, previousVersion, now),
-    env.DB.prepare(`INSERT INTO learner_srs
-      (learner_id, student_id, item_id, task_hash, version, last_attempt_id, ease, interval_days, reps, lapses, due_at, last_grade, last_answer, updated_at)
-      SELECT learner_id, student_id, item_id, task_hash, srs_version, id, ?2, ?3, ?4, ?5, ?6, grade, answer_json, created_at
-      FROM learner_practice_attempts WHERE id = ?1 AND learner_id = ?8 AND answer_json = ?9 AND grade = ?10
-        AND assignment_revision = ?11 AND srs_version = ?7 + 1 AND item_id = ?12 AND task_hash = ?13 AND student_id = ?14
-      ON CONFLICT(learner_id, item_id) DO UPDATE SET task_hash = excluded.task_hash, version = excluded.version,
-        last_attempt_id = excluded.last_attempt_id, ease = excluded.ease, interval_days = excluded.interval_days,
-        reps = excluded.reps, lapses = excluded.lapses, due_at = excluded.due_at, last_grade = excluded.last_grade,
-        last_answer = excluded.last_answer, updated_at = excluded.updated_at
-      WHERE learner_srs.version = ?7`).bind(attemptId, next.ease, next.intervalDays, next.reps, next.lapses, next.dueAt, previousVersion, guard.link.learnerId, answerJson, grade, session.revision, itemId, taskHash, guard.link.studentId),
+  await db.batch([
+    db.insert(learnerPracticeAttempts).select((qb) => qb.select({
+      id: bound('id', attemptId), learnerId: bound('learnerId', guard.link.learnerId), studentId: bound('studentId', guard.link.studentId),
+      sessionId: bound('sessionId', parsed.sessionId), itemId: bound('itemId', itemId), taskJson: bound('taskJson', taskJson),
+      taskHash: bound('taskHash', taskHash), answerJson: bound('answerJson', answerJson), grade: bound('grade', grade),
+      assessment: bound('assessment', assessment), assignmentRevision: bound('assignmentRevision', session.revision),
+      srsVersion: sql<number>`${previousVersion} + 1`.as('srsVersion'), createdAt: bound('createdAt', now),
+    }).from(sessionRecords).innerJoin(sessions, eq(sessions.id, sessionRecords.sessionId))
+      .where(and(
+        eq(sessionRecords.sessionId, parsed.sessionId), eq(sessionRecords.homeworkRevision, session.revision),
+        eq(sessions.studentId, guard.link.studentId), isNull(sessions.deletedAt), ne(sessions.status, 'draft'),
+        sql`COALESCE(${db.select({ version: learnerSrs.version }).from(learnerSrs)
+          .where(and(eq(learnerSrs.learnerId, guard.link.learnerId), eq(learnerSrs.itemId, itemId)))}, 0) = ${previousVersion}`,
+      )))
+      .onConflictDoNothing({ target: learnerPracticeAttempts.id }),
+    db.insert(learnerSrs).select((qb) => qb.select({
+      learnerId: learnerPracticeAttempts.learnerId, studentId: learnerPracticeAttempts.studentId, itemId: learnerPracticeAttempts.itemId,
+      taskHash: learnerPracticeAttempts.taskHash, version: learnerPracticeAttempts.srsVersion, lastAttemptId: learnerPracticeAttempts.id,
+      ease: bound('ease', next.ease), intervalDays: bound('intervalDays', next.intervalDays), reps: bound('reps', next.reps),
+      lapses: bound('lapses', next.lapses), dueAt: bound('dueAt', next.dueAt), lastGrade: learnerPracticeAttempts.grade,
+      lastAnswer: learnerPracticeAttempts.answerJson, updatedAt: learnerPracticeAttempts.createdAt,
+    }).from(learnerPracticeAttempts)
+      .where(and(
+        eq(learnerPracticeAttempts.id, attemptId), eq(learnerPracticeAttempts.learnerId, guard.link.learnerId),
+        eq(learnerPracticeAttempts.answerJson, answerJson), eq(learnerPracticeAttempts.grade, grade),
+        eq(learnerPracticeAttempts.assignmentRevision, session.revision), sql`${learnerPracticeAttempts.srsVersion} = ${previousVersion} + 1`,
+        eq(learnerPracticeAttempts.itemId, itemId), eq(learnerPracticeAttempts.taskHash, taskHash),
+        eq(learnerPracticeAttempts.studentId, guard.link.studentId),
+      )))
+      .onConflictDoUpdate({
+        target: [learnerSrs.learnerId, learnerSrs.itemId],
+        set: {
+          taskHash: excluded(learnerSrs.taskHash), version: excluded(learnerSrs.version), lastAttemptId: excluded(learnerSrs.lastAttemptId),
+          ease: excluded(learnerSrs.ease), intervalDays: excluded(learnerSrs.intervalDays), reps: excluded(learnerSrs.reps),
+          lapses: excluded(learnerSrs.lapses), dueAt: excluded(learnerSrs.dueAt), lastGrade: excluded(learnerSrs.lastGrade),
+          lastAnswer: excluded(learnerSrs.lastAnswer), updatedAt: excluded(learnerSrs.updatedAt),
+        },
+        setWhere: eq(learnerSrs.version, previousVersion),
+      }),
   ]);
-  const saved = await env.DB.prepare(`SELECT id FROM learner_practice_attempts WHERE id = ?1 AND learner_id = ?2
-    AND student_id = ?3 AND item_id = ?4 AND answer_json = ?5 AND grade = ?6 AND assignment_revision = ?7`)
-    .bind(attemptId, guard.link.learnerId, guard.link.studentId, itemId, answerJson, grade, session.revision).first();
+  const saved = await db
+    .select({ id: learnerPracticeAttempts.id })
+    .from(learnerPracticeAttempts)
+    .where(and(
+      eq(learnerPracticeAttempts.id, attemptId), eq(learnerPracticeAttempts.learnerId, guard.link.learnerId),
+      eq(learnerPracticeAttempts.studentId, guard.link.studentId), eq(learnerPracticeAttempts.itemId, itemId),
+      eq(learnerPracticeAttempts.answerJson, answerJson), eq(learnerPracticeAttempts.grade, grade),
+      eq(learnerPracticeAttempts.assignmentRevision, session.revision),
+    ))
+    .get();
   return saved ? receipt() : json({ error: 'practice-conflict' }, 409);
 }
 
@@ -221,18 +281,29 @@ export async function learnerWritingPut(request: Request, env: ControlEnv): Prom
   const submissionId = typeof body.submissionId === 'string' ? body.submissionId : crypto.randomUUID();
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(submissionId)) return json({ error: 'invalid-submission-id' }, 422);
   const now = Date.now();
-  await env.DB.prepare(
-    `INSERT INTO learner_submissions (id, learner_id, student_id, session_id, task_id, body, task_json, assignment_revision, created_at)
-     SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9
-       FROM session_records rec JOIN sessions s ON s.id = rec.session_id
-      WHERE rec.session_id = ?4 AND rec.homework_revision = ?8
-        AND s.student_id = ?3 AND s.deleted_at IS NULL AND s.status <> 'draft'
-     ON CONFLICT(id) DO NOTHING`,
-  )
-    .bind(submissionId, guard.link.learnerId, guard.link.studentId, sessionId, taskId, text, JSON.stringify(task), session.revision, now)
+  const db = orm(env);
+  await db
+    .insert(learnerSubmissions)
+    .select((qb) => qb.select({
+      id: bound('id', submissionId), learnerId: bound('learnerId', guard.link.learnerId), studentId: bound('studentId', guard.link.studentId),
+      sessionId: bound('sessionId', sessionId), taskId: bound('taskId', taskId), taskJson: bound('taskJson', JSON.stringify(task)),
+      assignmentRevision: bound('assignmentRevision', session.revision), body: bound('body', text), createdAt: bound('createdAt', now),
+    }).from(sessionRecords).innerJoin(sessions, eq(sessions.id, sessionRecords.sessionId))
+      .where(and(
+        eq(sessionRecords.sessionId, sessionId), eq(sessionRecords.homeworkRevision, session.revision),
+        eq(sessions.studentId, guard.link.studentId), isNull(sessions.deletedAt), ne(sessions.status, 'draft'),
+      )))
+    .onConflictDoNothing({ target: learnerSubmissions.id })
     .run();
-  const saved = await env.DB.prepare('SELECT id FROM learner_submissions WHERE id = ?1 AND learner_id = ?2 AND session_id = ?3 AND task_id = ?4 AND body = ?5 AND assignment_revision = ?6')
-    .bind(submissionId, guard.link.learnerId, sessionId, taskId, text, session.revision).first();
+  const saved = await db
+    .select({ id: learnerSubmissions.id })
+    .from(learnerSubmissions)
+    .where(and(
+      eq(learnerSubmissions.id, submissionId), eq(learnerSubmissions.learnerId, guard.link.learnerId),
+      eq(learnerSubmissions.sessionId, sessionId), eq(learnerSubmissions.taskId, taskId),
+      eq(learnerSubmissions.body, text), eq(learnerSubmissions.assignmentRevision, session.revision),
+    ))
+    .get();
   if (!saved) return json({ error: 'submission-conflict' }, 409);
   return json({ ok: true, submissionId });
 }
@@ -241,17 +312,25 @@ export async function submissionsForLearner(
   env: ControlEnv,
   learnerId: string,
 ): Promise<Map<string, { body: string; audio?: { submissionId: string; durationMs: number; available: boolean; recoverable: boolean } }>> {
-  const { results } = await env.DB.prepare(
-    `SELECT w.id, w.session_id, w.task_id, w.body, a.duration_ms, a.object_key, a.expires_at, a.removed_at
-     FROM learner_submissions w LEFT JOIN learner_audio a ON a.submission_id = w.id
-     WHERE w.learner_id = ?1 ORDER BY w.rowid DESC`,
-  )
-    .bind(learnerId)
-    .all<WritingRow & { id: string; duration_ms: number | null; object_key: string | null; expires_at: number | null; removed_at: number | null }>();
+  const results = await orm(env)
+    .select({
+      id: learnerSubmissions.id,
+      sessionId: learnerSubmissions.sessionId,
+      taskId: learnerSubmissions.taskId,
+      body: learnerSubmissions.body,
+      durationMs: learnerAudio.durationMs,
+      objectKey: learnerAudio.objectKey,
+      expiresAt: learnerAudio.expiresAt,
+      removedAt: learnerAudio.removedAt,
+    })
+    .from(learnerSubmissions)
+    .leftJoin(learnerAudio, eq(learnerAudio.submissionId, learnerSubmissions.id))
+    .where(eq(learnerSubmissions.learnerId, learnerId))
+    .orderBy(desc(rowid(learnerSubmissions)));
   const map = new Map<string, { body: string; audio?: { submissionId: string; durationMs: number; available: boolean; recoverable: boolean } }>();
-  for (const row of results ?? []) if (!map.has(`${row.session_id}:${row.task_id}`)) map.set(`${row.session_id}:${row.task_id}`, {
+  for (const row of results) if (!map.has(`${row.sessionId}:${row.taskId}`)) map.set(`${row.sessionId}:${row.taskId}`, {
     body: row.body,
-    ...(row.duration_ms === null ? {} : { audio: { submissionId: row.id, durationMs: row.duration_ms, available: Boolean(row.object_key && row.expires_at && row.expires_at > Date.now() && row.removed_at === null), recoverable: Boolean(row.object_key && row.expires_at && row.expires_at > Date.now() && row.removed_at !== null && row.removed_at > Date.now() - VOICE_TRASH_DAYS * 86_400_000) } }),
+    ...(row.durationMs === null ? {} : { audio: { submissionId: row.id, durationMs: row.durationMs, available: Boolean(row.objectKey && row.expiresAt && row.expiresAt > Date.now() && row.removedAt === null), recoverable: Boolean(row.objectKey && row.expiresAt && row.expiresAt > Date.now() && row.removedAt !== null && row.removedAt > Date.now() - VOICE_TRASH_DAYS * 86_400_000) } }),
   });
   return map;
 }
@@ -263,36 +342,48 @@ export async function studentReturnedRoute(
 ): Promise<Response> {
   const guard = await requireControlUser(request, env, false);
   if (!guard.ok) return guard.response;
-  const row = await env.DB.prepare(
-    `SELECT c.space_id AS space_id, c.next_note AS next_note
-       FROM students c
-       JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?2
-      WHERE c.id = ?1`,
-  )
-    .bind(studentId, guard.user.id)
-    .first<{ space_id: string; next_note: string }>();
-  if (row === null) return json({ error: 'not-found' }, 404);
-  const access = await spaceRole(env, guard.user as SessionUser, row.space_id);
+  const db = orm(env);
+  const row = await db
+    .select({ spaceId: students.spaceId, nextNote: students.nextNote })
+    .from(students)
+    .innerJoin(spaceMembers, and(eq(spaceMembers.spaceId, students.spaceId), eq(spaceMembers.userId, guard.user.id)))
+    .where(eq(students.id, studentId))
+    .get();
+  if (row === undefined) return json({ error: 'not-found' }, 404);
+  const access = await spaceRole(env, guard.user as SessionUser, row.spaceId);
   if (access === null || !roleAtLeast(access.role, 'editor')) {
     return json({ error: 'forbidden' }, 403);
   }
   const blocked = await requireStudentContinuity(env, studentId);
   if (blocked) return blocked;
 
-  const { results: writings } = await env.DB.prepare(
-    `SELECT w.session_id AS session_id, w.task_id AS task_id, w.body AS body, w.task_json, w.learner_id, person.display_name
-       FROM learner_submissions w
-       JOIN student_learners person ON person.id = w.learner_id AND person.student_id = w.student_id
-      WHERE w.student_id = ?1 AND json_extract(w.task_json, '$.kind') = 'writing' AND NOT EXISTS (
-        SELECT 1 FROM learner_submissions newer WHERE newer.learner_id = w.learner_id
-          AND newer.session_id = w.session_id AND newer.task_id = w.task_id AND newer.rowid > w.rowid)
-        AND EXISTS (SELECT 1 FROM sessions s WHERE s.id = w.session_id AND s.student_id = w.student_id AND s.deleted_at IS NULL)`,
-  )
-    .bind(studentId)
-    .all<WritingRow>();
+  const newer = alias(learnerSubmissions, 'newer');
+  const writings = await db
+    .select({
+      sessionId: learnerSubmissions.sessionId,
+      taskId: learnerSubmissions.taskId,
+      body: learnerSubmissions.body,
+      taskJson: learnerSubmissions.taskJson,
+      learnerId: learnerSubmissions.learnerId,
+      displayName: studentLearners.displayName,
+    })
+    .from(learnerSubmissions)
+    .innerJoin(
+      studentLearners,
+      and(eq(studentLearners.id, learnerSubmissions.learnerId), eq(studentLearners.studentId, learnerSubmissions.studentId)),
+    )
+    .where(and(
+      eq(learnerSubmissions.studentId, studentId),
+      sql`json_extract(${learnerSubmissions.taskJson}, '$.kind') = 'writing'`,
+      notExists(db.select({ one: sql`1` }).from(newer).where(and(
+        eq(newer.learnerId, learnerSubmissions.learnerId), eq(newer.sessionId, learnerSubmissions.sessionId),
+        eq(newer.taskId, learnerSubmissions.taskId), sql`${rowid(newer)} > ${rowid(learnerSubmissions)}`))),
+      exists(db.select({ one: sql`1` }).from(sessions).where(and(
+        eq(sessions.id, learnerSubmissions.sessionId), eq(sessions.studentId, learnerSubmissions.studentId), isNull(sessions.deletedAt)))),
+    ));
 
-  const writing = (writings ?? []).map((item) => {
-    const task = publishedHomeworkOf([parseJson(item.task_json ?? 'null', null)])[0];
+  const writing = writings.map((item) => {
+    const task = publishedHomeworkOf([parseJson(item.taskJson, null)])[0];
     const title =
       task?.kind === 'writing'
         ? (task.title ?? task.prompt)
@@ -300,53 +391,85 @@ export async function studentReturnedRoute(
           ? (task.title ?? task.body)
           : task?.title;
     return {
-      learnerId: item.learner_id,
-      displayName: item.display_name,
-      sessionId: item.session_id,
-      taskId: item.task_id,
+      learnerId: item.learnerId,
+      displayName: item.displayName,
+      sessionId: item.sessionId,
+      taskId: item.taskId,
       ...(title !== undefined ? { title } : {}),
       body: item.body,
     };
   });
 
-  const { results: missedRows } = await env.DB.prepare(
-    `SELECT s.item_id, s.last_answer, s.learner_id, a.task_json, person.display_name FROM learner_srs s
-       JOIN learner_practice_attempts a ON a.id = s.last_attempt_id
-       JOIN sessions lesson ON lesson.id = a.session_id AND lesson.student_id = a.student_id AND lesson.deleted_at IS NULL
-       JOIN student_learners person ON person.id = s.learner_id AND person.student_id = s.student_id
-      WHERE s.student_id = ?1 AND s.last_grade = 'again'`,
-  )
-    .bind(studentId)
-    .all<{ item_id: string; last_answer: string | null; learner_id: string; display_name: string; task_json: string }>();
+  const missedRows = await db
+    .select({
+      itemId: learnerSrs.itemId,
+      lastAnswer: learnerSrs.lastAnswer,
+      learnerId: learnerSrs.learnerId,
+      taskJson: learnerPracticeAttempts.taskJson,
+      displayName: studentLearners.displayName,
+    })
+    .from(learnerSrs)
+    .innerJoin(learnerPracticeAttempts, eq(learnerPracticeAttempts.id, learnerSrs.lastAttemptId))
+    .innerJoin(
+      sessions,
+      and(
+        eq(sessions.id, learnerPracticeAttempts.sessionId),
+        eq(sessions.studentId, learnerPracticeAttempts.studentId),
+        isNull(sessions.deletedAt),
+      ),
+    )
+    .innerJoin(
+      studentLearners,
+      and(eq(studentLearners.id, learnerSrs.learnerId), eq(studentLearners.studentId, learnerSrs.studentId)),
+    )
+    .where(and(eq(learnerSrs.studentId, studentId), eq(learnerSrs.lastGrade, 'again')));
 
-  const missed = (missedRows ?? []).flatMap((item) => {
-    const task = publishedHomeworkOf([parseJson(item.task_json, null)])[0];
+  const missed = missedRows.flatMap((item) => {
+    const task = publishedHomeworkOf([parseJson(item.taskJson, null)])[0];
     if (task === undefined || task.kind !== 'quiz') return [];
-    const lastAnswer = parseHomeworkPracticeAnswer(task.interaction, parseJson(item.last_answer ?? 'null', null));
+    const lastAnswer = parseHomeworkPracticeAnswer(task.interaction, parseJson(item.lastAnswer ?? 'null', null));
     if (!lastAnswer) return [];
     return [
       {
-        learnerId: item.learner_id,
-        displayName: item.display_name,
-        itemId: item.item_id,
+        learnerId: item.learnerId,
+        displayName: item.displayName,
+        itemId: item.itemId,
         exercise: { ...(task.title === undefined ? {} : { title: task.title }), interaction: task.interaction },
         lastAnswer,
       },
     ];
   });
 
-  const { results: feedbackRows } = await env.DB.prepare(`SELECT w.id, w.learner_id, person.display_name, f.published_json
-    FROM learner_submissions w JOIN learner_feedback f ON f.submission_id = w.id AND f.published_json IS NOT NULL
-    JOIN student_learners person ON person.id = w.learner_id AND person.student_id = w.student_id
-    JOIN sessions s ON s.id = w.session_id AND s.student_id = w.student_id AND s.deleted_at IS NULL
-    WHERE w.student_id = ?1 ORDER BY w.rowid DESC LIMIT 50`).bind(studentId)
-    .all<{ id: string; learner_id: string; display_name: string; published_json: string }>();
-  const corrections = (feedbackRows ?? []).flatMap((item) => {
-    const feedback = parseLearnerFeedback(parseJson(item.published_json, null));
-    return (feedback?.corrections ?? []).map((correction, index) => ({ id: `${item.id}:${index}`, learnerId: item.learner_id, displayName: item.display_name, ...correction }));
+  const feedbackRows = await db
+    .select({
+      id: learnerSubmissions.id,
+      learnerId: learnerSubmissions.learnerId,
+      displayName: studentLearners.displayName,
+      publishedJson: learnerFeedback.publishedJson,
+    })
+    .from(learnerSubmissions)
+    .innerJoin(learnerFeedback, and(eq(learnerFeedback.submissionId, learnerSubmissions.id), isNotNull(learnerFeedback.publishedJson)))
+    .innerJoin(
+      studentLearners,
+      and(eq(studentLearners.id, learnerSubmissions.learnerId), eq(studentLearners.studentId, learnerSubmissions.studentId)),
+    )
+    .innerJoin(
+      sessions,
+      and(
+        eq(sessions.id, learnerSubmissions.sessionId),
+        eq(sessions.studentId, learnerSubmissions.studentId),
+        isNull(sessions.deletedAt),
+      ),
+    )
+    .where(eq(learnerSubmissions.studentId, studentId))
+    .orderBy(desc(rowid(learnerSubmissions)))
+    .limit(50);
+  const corrections = feedbackRows.flatMap((item) => {
+    const feedback = parseLearnerFeedback(parseJson(item.publishedJson ?? 'null', null));
+    return (feedback?.corrections ?? []).map((correction, index) => ({ id: `${item.id}:${index}`, learnerId: item.learnerId, displayName: item.displayName, ...correction }));
   });
   return json({
-    nextNote: row.next_note ?? '',
+    nextNote: row.nextNote ?? '',
     writing,
     missed,
     corrections,
