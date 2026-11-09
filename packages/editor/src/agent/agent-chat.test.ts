@@ -125,6 +125,30 @@ describe('agent chat transitions', () => {
     });
   });
 
+  it('a pane remounted mid-run keeps the run, its pending message and Stop, from main’s snapshot', () => {
+    const snapshot = {
+      id: 'conv-live',
+      hostId: 'claude' as const,
+      modelId: null,
+      messages: [
+        { role: 'tutor' as const, text: 'Add a warm-up', attachments: [], folders: [] },
+        { role: 'agent' as const, parts: [{ kind: 'text' as const, text: 'Draft' }], pending: true },
+      ],
+    };
+    let state = restoreChat(snapshot, { hostId: 'claude', modelId: null, deckId: 'a' }, {
+      state: 'running',
+      conversationId: 'conv-live',
+    });
+    expect(state).toMatchObject({ running: true, conversationId: 'conv-live', busyDeck: null });
+    state = applyAgentEvent(state, { kind: 'text', text: 'ing.', conversationId: 'conv-live' });
+    state = applyAgentEvent(state, { kind: 'text', text: ' other deck', conversationId: 'conv-other' });
+    expect(state.messages.at(-1)).toEqual({ role: 'agent', parts: [{ kind: 'text', text: 'Drafting.' }], pending: true });
+
+    // Another deck in the same window: busy, nothing pending, Send waits.
+    expect(restoreChat(snapshot, { hostId: 'claude', modelId: null, deckId: 'b' }, { state: 'busy', deckTitle: 'Fractions' }))
+      .toMatchObject({ running: false, busyDeck: { title: 'Fractions' }, messages: [{}, { pending: false }] });
+  });
+
   it('defaults a fresh ChatGPT chat to the Luna tier, other hosts to their own default', () => {
     // No localStorage in this workspace: the stored-pick branch is inert, so
     // this pins exactly the fallback rule.

@@ -250,8 +250,8 @@ describe('agent IPC', () => {
     expect(result).toEqual({ ok: true, conversationId: session.id });
     expect(session.resumeId).toBe('sess-1');
     expect(sent.map((item) => item.channel)).toEqual([AGENT_CHANNELS.event, AGENT_CHANNELS.event]);
-    expect(sent.at(0)?.payload).toEqual({ kind: 'status', text: 'Preparing…' });
-    expect(sent.at(-1)?.payload).toEqual({ kind: 'text', text: 'Drafting.' });
+    expect(sent.at(0)?.payload).toEqual({ kind: 'status', text: 'Preparing…', conversationId: session.id });
+    expect(sent.at(-1)?.payload).toEqual({ kind: 'text', text: 'Drafting.', conversationId: session.id });
   });
 
   it('feeds the recorded resume id into the next turn of the same conversation', async () => {
@@ -276,9 +276,11 @@ describe('agent IPC', () => {
     const { handlers } = register({ runner });
     const { event } = fakeSenderEvent();
     const first = handlers.get(AGENT_CHANNELS.run)?.(event, runRequest()) as Promise<unknown>;
-    await expect(handlers.get(AGENT_CHANNELS.run)?.(event, runRequest())).rejects.toThrow(
-      'A preparation is already running.',
-    );
+    await expect(handlers.get(AGENT_CHANNELS.run)?.(event, runRequest())).resolves.toEqual({
+      ok: false,
+      error: 'A preparation is already running for this deck.',
+      conversationId: null,
+    });
     release({ ok: true, sessionId: null });
     await first;
   });
@@ -384,6 +386,36 @@ describe('agent IPC', () => {
     });
     handlers.get(AGENT_CHANNELS.cancel)?.(event);
     await expect(second).rejects.toThrow('Cancelled.');
+  });
+
+  it('a New chat on another deck leaves the running preparation alone and names it', async () => {
+    const cancel = vi.fn();
+    let started: () => void = () => undefined;
+    const didStart = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const runner: AgentHostRunner = {
+      runTurn: () => {
+        started();
+        return { cancel, done: new Promise(() => undefined) };
+      },
+    };
+    const { handlers, session } = register({ runner });
+    const { event } = fakeSenderEvent();
+    void handlers.get(AGENT_CHANNELS.run)?.(event, runRequest({ deckId: 'a', deckTitle: 'Fractions' }));
+    await didStart;
+
+    await expect(handlers.get(AGENT_CHANNELS.reset)?.(event, 'b')).resolves.toMatchObject({
+      run: { state: 'busy', deckTitle: 'Fractions' },
+    });
+    expect(cancel).not.toHaveBeenCalled();
+    await expect(handlers.get(AGENT_CHANNELS.load)?.(event, 'a')).resolves.toMatchObject({
+      run: { state: 'running', conversationId: session.id },
+    });
+    await expect(handlers.get(AGENT_CHANNELS.run)?.(event, runRequest({ deckId: 'b' }))).resolves.toMatchObject({
+      ok: false,
+      error: 'A preparation is running on “Fractions”. Stop it to prepare this deck.',
+    });
   });
 
   it('reset archives the active deck chat without deleting its workspace', async () => {

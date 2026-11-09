@@ -12,6 +12,7 @@ import {
   seedAgentWithReading,
   useDraftSave,
   type DeckEditorFocus,
+  type DraftStopReason,
   type LiveNowCue,
   type PresentationPosition,
   type StoredSession,
@@ -32,13 +33,50 @@ import {
   getDeckFileLink,
   listMySessions,
   putDeckDraft,
+  restoreDeck,
   type MySession,
 } from '../api';
+import { authQueryOptions } from '../useAuth';
 import { startSessionFromDeck } from '../lib/library-actions';
 import { liveSessionOf } from '../lib/live-sessions';
 import { downloadCloudDocument } from '../lib/cloud-document';
 import { sessionStartMessage } from '../components/ContinuityLock';
 import { isMissing, NotAvailable } from './tutor/shared';
+
+type DraftStopAction = 'restore' | 'retry' | 'sign-in';
+
+/**
+ * The notice for an autosave the server refused for a cause a retry cannot
+ * fix. The text stays in the editor, so every notice offers Copy text besides
+ * the action that clears the cause.
+ */
+function draftStopNotice(reason: DraftStopReason): { text: string; action: DraftStopAction } {
+  if (reason.code === 'resource-in-trash') {
+    return { text: 'This deck is in Trash, so your latest edits are not saved. Restore it to keep saving.', action: 'restore' };
+  }
+  if (reason.status === 401) {
+    return {
+      text: 'Your sign-in ended, so your latest edits are not saved. Copy the text first: signing in reopens the deck from its last save.',
+      action: 'sign-in',
+    };
+  }
+  if (reason.status === 403 && reason.code !== 'csrf-required') {
+    return {
+      text: 'You can no longer edit this deck, so your latest edits are not saved. Copy the text to keep it, or ask the space owner for editor access and choose Try again.',
+      action: 'retry',
+    };
+  }
+  if (reason.status === 404) {
+    return {
+      text: 'This deck no longer exists or is not shared with you, so your latest edits are not saved. Copy the text to keep it.',
+      action: 'retry',
+    };
+  }
+  if (reason.code === 'draft-too-large') {
+    return { text: 'This deck is too large to save. Shorten it, then choose Try again.', action: 'retry' };
+  }
+  return { text: `Your latest edits are not saved. ${reason.message}`, action: 'retry' };
+}
 
 
 /**
@@ -83,6 +121,8 @@ export function DeckEditorPage({
   const [focus, setFocus] = useState<DeckEditorFocus>();
   const [confirmStart, setConfirmStart] = useState(false);
   const [rejoining, setRejoining] = useState(false);
+  const [stopBusy, setStopBusy] = useState(false);
+  const [copied, setCopied] = useState<'copied' | 'failed' | null>(null);
   const validation = useMemo(
     () => (source === '' ? null : parseOutline(source, 'yaml')),
     [source],
@@ -143,7 +183,8 @@ export function DeckEditorPage({
     baseVersion,
     enabled: documentLoaded && !draftConflict,
     // Another tab, a co-teacher or an agent stamped a version: this draft's
-    // base is stale, and every retry would be refused the same way.
+    // base is stale, and every retry would be refused the same way. Other
+    // refusals stop the saver with a reason, shown in the notice below.
     onConflict: () => {
       void designQuery.refetch();
       setDraftConflict(true);
@@ -309,6 +350,39 @@ export function DeckEditorPage({
     } catch (cause) { setLoadError(cause instanceof Error ? cause.message : 'Could not resolve the draft.'); }
   };
 
+  const stopReason = draftSave.status.reason?.code === 'version-conflict' ? undefined : draftSave.status.reason;
+  const stopNotice = stopReason === undefined ? null : draftStopNotice(stopReason);
+
+  const copyText = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(source);
+      setCopied('copied');
+    } catch {
+      setCopied('failed');
+    }
+  };
+
+  // "Copied" describes the text as it was; a new edit or a new reason clears it.
+  useEffect(() => { setCopied(null); }, [source, stopReason?.code]);
+
+  const restoreAndSave = async () => {
+    setStopBusy(true);
+    setLoadError(null);
+    try {
+      await restoreDeck(deckId);
+      await invalidateManagementData();
+      draftSave.retry();
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : 'Could not restore this deck.');
+    } finally { setStopBusy(false); }
+  };
+
+  // Shows the sign-in page in place of the editor; the copied text is pasted back after.
+  const signInAgain = () => {
+    void queryClient.invalidateQueries({ queryKey: authQueryOptions.queryKey });
+  };
+
   const rejoin = async (session: MySession) => {
     setRejoining(true);
     setLoadError(null);
@@ -390,6 +464,34 @@ export function DeckEditorPage({
         <Button type="button" size="sm" variant="outline" onClick={() => void resolveDraft(true)}>Keep this draft</Button>
         <Button type="button" size="sm" variant="outline" onClick={() => void resolveDraft(false)}>Use saved version</Button>
       </div> : null}
+      {stopNotice === null ? null : <div role="alert" data-or-draft-stop={stopReason?.code} className="flex flex-wrap items-center gap-3 border-b border-border px-3 py-2 text-secondary">
+        <p>{stopNotice.text}</p>
+        {stopNotice.action === 'restore' ? (
+          <Button type="button" size="sm" variant="outline" disabled={stopBusy} onClick={() => void restoreAndSave()}>
+            {stopBusy ? 'Restoring…' : 'Restore'}
+          </Button>
+        ) : stopNotice.action === 'sign-in' ? (
+          <Button type="button" size="sm" variant="outline" onClick={signInAgain}>Sign in</Button>
+        ) : (
+          <Button type="button" size="sm" variant="outline" onClick={draftSave.retry}>Try again</Button>
+        )}
+        <Button type="button" size="sm" variant="outline" onClick={() => void copyText()}>
+          {copied === 'copied' ? 'Copied' : 'Copy text'}
+        </Button>
+        {copied === 'failed' ? (
+          <div className="flex w-full flex-col gap-1">
+            <p>Copying did not work. Select the text below and copy it.</p>
+            <textarea
+              readOnly
+              aria-label="Deck text"
+              value={source}
+              rows={6}
+              className="w-full rounded-md border border-border bg-background p-2 font-mono text-caption"
+              onFocus={(event) => event.currentTarget.select()}
+            />
+          </div>
+        ) : null}
+      </div>}
       <LiveStartDialog live={liveNow} open={confirmStart} onOpenChange={setConfirmStart} onStartAnother={openStart} />
       {!documentLoaded ? (
         designQuery.isError ? (
@@ -435,7 +537,12 @@ export function DeckEditorPage({
             />
           </div>
           {/* Renders only inside OpenRoom Desktop (needs the bridge); browsers get nothing. */}
-          <AgentPane deckId={deckId} onBeforeRun={flushForAgent} onAfterRun={() => void adoptAgentEdits()} />
+          <AgentPane
+            deckId={deckId}
+            deckTitle={validation?.ok ? validation.outline.meta.title : title}
+            onBeforeRun={flushForAgent}
+            onAfterRun={() => void adoptAgentEdits()}
+          />
         </div>
       )}
       {/* Present shows the draft as the audience would see it. It is bound to the

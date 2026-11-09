@@ -89,6 +89,12 @@ export type DesktopAgentEvent =
       cancelled?: boolean;
     };
 
+/**
+ * An agent event as the main process sends it. `conversationId` names the
+ * conversation the event belongs to; an older Desktop leaves it out.
+ */
+export type DesktopAgentStreamEvent = DesktopAgentEvent & { conversationId?: string };
+
 export interface DesktopAgentQuestionOption {
   id: string;
   label: string;
@@ -126,9 +132,19 @@ export interface DesktopAgentConversationSummary {
   updatedAt: string;
 }
 
+/**
+ * The preparation the window's main process is running, as this deck's pane
+ * sees it: running for this deck, or busy with another deck.
+ */
+export type DesktopAgentRunState =
+  | { state: 'running'; conversationId: string | null }
+  | { state: 'busy'; deckTitle: string | null };
+
 export interface DesktopAgentWorkspaceSnapshot {
   active: DesktopAgentConversationSnapshot | null;
   history: DesktopAgentConversationSummary[];
+  /** Absent (an older Desktop) or null: nothing runs in this window. */
+  run?: DesktopAgentRunState | null;
 }
 
 /** Kept in step with AgentTaskProfileId in the desktop app; the bridge imports nothing from it. */
@@ -142,6 +158,8 @@ export interface DesktopAgentRunRequest {
   conversationId: string | null;
   /** Hosted deck to prepare (deck editor runs); null targets the open local file. */
   deckId?: string | null;
+  /** The deck's title, so a pane on another deck can say which deck is busy. */
+  deckTitle?: string | null;
   /** Vendor model id from the picker; absent/null uses the host's default. */
   model?: string | null;
   /**
@@ -275,13 +293,14 @@ export interface OpenRoomDesktopBridge {
   openAgentInCodex(deckId?: string | null): Promise<{ ok: true } | { ok: false; error: string }>;
   /** API-key host only: pre-writes the prompt cache for one model. Fire and forget. */
   warmAgentCache(model: string | null): Promise<{ ok: true }>;
+  /** Stops the window's running preparation, whichever deck it is on; resolves once it has stopped. */
   cancelAgent(): Promise<{ ok: true }>;
   resetAgentChat(deckId?: string | null): Promise<DesktopAgentWorkspaceSnapshot>;
   answerAgentQuestion(payload: {
     id: string;
     answers: DesktopAgentQuestionAnswer[];
   }): Promise<{ ok: true } | { ok: false; error: string }>;
-  onAgentEvent(listener: (event: DesktopAgentEvent) => void): () => void;
+  onAgentEvent(listener: (event: DesktopAgentStreamEvent) => void): () => void;
   onAgentLoginOutput(listener: (event: { host: DesktopAgentHostId; line: string }) => void): () => void;
 }
 

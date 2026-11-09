@@ -23,7 +23,15 @@ import { routeAgentProfile, type AgentRouterDeps } from './router.js';
 import { createAgentSessionStore, isConversationId, type AgentSessionStore } from './session-store.js';
 import type { AgentRunnerMap } from './runner.js';
 import { AGENT_HOST_ORDER } from './types.js';
-import type { AgentEvent, AgentChatMessage, AgentHostId, AgentRunRequest, AgentRunResult, McpStdioCommand } from './types.js';
+import type {
+  AgentEvent,
+  AgentChatMessage,
+  AgentHostId,
+  AgentRunRequest,
+  AgentRunResult,
+  AgentWorkspaceSnapshot,
+  McpStdioCommand,
+} from './types.js';
 
 export interface AgentIpcDeps {
   userData(): string;
@@ -114,6 +122,7 @@ export function checkedRunRequest(raw: unknown, picked: PickedPaths): AgentRunRe
   const conversationId = request['conversationId'] ?? null;
   if (conversationId !== null && !isConversationId(conversationId)) throw new Error('Chat not found for this deck.');
   const deckId = optionalString(request['deckId'], 'deck');
+  const deckTitle = optionalString(request['deckTitle'], 'deck title');
   const model = optionalString(request['model'], 'model');
   const profile = optionalString(request['profile'], 'profile');
   return {
@@ -123,6 +132,7 @@ export function checkedRunRequest(raw: unknown, picked: PickedPaths): AgentRunRe
     folders,
     conversationId,
     ...(deckId === undefined ? {} : { deckId }),
+    ...(deckTitle === undefined || deckTitle === null ? {} : { deckTitle: deckTitle.slice(0, 200) }),
     ...(model === undefined ? {} : { model }),
     ...(profile === undefined ? {} : { profile: profile as AgentRunRequest['profile'] }),
   };
@@ -150,6 +160,57 @@ export function mcpStdioCommand(deps: AgentIpcDeps, denyTools: readonly string[]
 
 export interface AgentIpcHandle {
   store: AgentSessionStore;
+}
+
+/**
+ * The one preparation a window runs. Main owns it: the pane reads it back
+ * through the workspace snapshot, so a pane that remounts mid-run, or opens
+ * on another deck, shows the run instead of guessing.
+ */
+interface RunSlot {
+  deckKey: string;
+  deckTitle: string | null;
+  /** Null until the store has acquired the conversation. */
+  conversationId: string | null;
+  /** The live transcript, ahead of what has been written to disk. */
+  messages: AgentChatMessage[] | null;
+  cancel: () => void;
+  /** Resolves when the run handler has settled the turn and freed the slot. */
+  settled: Promise<void>;
+}
+
+function busyDeckMessage(slot: RunSlot, deckKey: string): string {
+  if (slot.deckKey === deckKey) return 'A preparation is already running for this deck.';
+  return slot.deckTitle === null
+    ? 'A preparation is running on another deck. Stop it to prepare this deck.'
+    : `A preparation is running on “${slot.deckTitle}”. Stop it to prepare this deck.`;
+}
+
+/**
+ * Add the window's run state to a deck's snapshot. The in-flight conversation
+ * keeps its last agent message pending, so a remounted pane resumes streaming.
+ */
+export function withRunState(
+  workspace: AgentWorkspaceSnapshot,
+  deckKey: string,
+  slot: RunSlot | undefined,
+): AgentWorkspaceSnapshot {
+  if (slot === undefined) return { ...workspace, run: null };
+  if (slot.deckKey !== deckKey) return { ...workspace, run: { state: 'busy', deckTitle: slot.deckTitle } };
+  const active = workspace.active;
+  const live = active !== null && active.id === slot.conversationId && slot.messages !== null;
+  return {
+    ...workspace,
+    active: live
+      ? {
+          ...active,
+          messages: slot.messages!.map((message) =>
+            message.role === 'agent' ? { ...message, parts: [...message.parts] } : { ...message },
+          ),
+        }
+      : active,
+    run: { state: 'running', conversationId: slot.conversationId },
+  };
 }
 
 export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHandle {
@@ -204,7 +265,7 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     deps.pasted ?? createPastedImageStore({ dir: () => join(deps.userData(), 'agent-pastes') });
   const askBroker = deps.askBroker ?? createAskQuestionBroker();
   const logins = new Map<number, () => void>();
-  const runs = new Map<number, { cancel: () => void }>();
+  const runs = new Map<number, RunSlot>();
   // Keyed by the window's WebContents, so a closed window's picks go with it.
   const picks = new WeakMap<WebContents, PickedPaths>();
   const pickedBy = (sender: WebContents): PickedPaths => {
@@ -322,26 +383,43 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     return paths;
   });
 
-  ipc.handle(AGENT_CHANNELS.load, (event, deckId?: string | null) =>
-    store.load(deps.deckKey(event.sender, deckId ?? null)),
-  );
+  // Run state is read after the store's awaits, right before the reply, so a
+  // snapshot never reports a run that already settled.
+  ipc.handle(AGENT_CHANNELS.load, async (event, deckId?: string | null) => {
+    const deckKey = deps.deckKey(event.sender, deckId ?? null);
+    const workspace = await store.load(deckKey);
+    return withRunState(workspace, deckKey, runs.get(event.sender.id));
+  });
 
-  ipc.handle(AGENT_CHANNELS.select, (event, conversationId: unknown, deckId?: string | null) => {
+  ipc.handle(AGENT_CHANNELS.select, async (event, conversationId: unknown, deckId?: string | null) => {
     if (!isConversationId(conversationId)) throw new Error('Chat not found for this deck.');
-    return store.select(deps.deckKey(event.sender, deckId ?? null), conversationId);
+    const deckKey = deps.deckKey(event.sender, deckId ?? null);
+    const workspace = await store.select(deckKey, conversationId);
+    return withRunState(workspace, deckKey, runs.get(event.sender.id));
   });
 
   ipc.handle(AGENT_CHANNELS.run, async (event, raw: unknown): Promise<AgentRunResult> => {
     const request = checkedRunRequest(raw, pickedBy(event.sender));
+    const deckKey = deps.deckKey(event.sender, request.deckId ?? null);
     const existing = runs.get(event.sender.id);
-    if (existing !== undefined) throw new Error('A preparation is already running.');
+    // Returned rather than thrown: Electron wraps a thrown message in its own text.
+    if (existing !== undefined) return { ok: false, error: busyDeckMessage(existing, deckKey), conversationId: null };
     // Claim the slot before any await so a rapid second send cannot slip past the guard.
     let cancelled = false;
-    runs.set(event.sender.id, {
+    let settle: () => void = () => undefined;
+    const slot: RunSlot = {
+      deckKey,
+      deckTitle: request.deckTitle ?? null,
+      conversationId: null,
+      messages: null,
       cancel: () => {
         cancelled = true;
       },
-    });
+      settled: new Promise<void>((resolve) => {
+        settle = resolve;
+      }),
+    };
+    runs.set(event.sender.id, slot);
     let session: Awaited<ReturnType<AgentSessionStore['acquire']>> | null = null;
     let beganTurn = false;
     try {
@@ -354,17 +432,23 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
         );
       }
 
-      const deckKey = deps.deckKey(event.sender, request.deckId ?? null);
       session = await store.acquire(event.sender.id, deckKey, request);
+      slot.conversationId = session.id;
       await store.beginTurn(session, request);
+      slot.messages = session.messages;
       beganTurn = true;
       if (cancelled) return { ok: false, error: 'Cancelled.', conversationId: session.id };
+      const conversationId = session.id;
+      // Events name their conversation, so a pane showing another chat ignores them.
+      const send = (item: AgentEvent) => {
+        if (!event.sender.isDestroyed()) event.sender.send(AGENT_CHANNELS.event, { ...item, conversationId });
+      };
       const prompt = session.firstTurn
         ? agentUserPrompt(request.prompt, session.newAttachmentPaths, session.folders, request.deckId ?? null)
         : agentFollowUpPrompt(request.prompt, session.newAttachmentPaths, session.newFolders);
       const preparing = { kind: 'status' as const, text: 'Preparing…' };
       store.recordEvent(session, preparing);
-      event.sender.send(AGENT_CHANNELS.event, preparing);
+      send(preparing);
 
       /**
        * An explicit profile is honoured; otherwise the router picks one. Only
@@ -389,12 +473,12 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
       if (profile.id !== FULL_TASK_PROFILE.id) {
         const running = { kind: 'status' as const, text: profile.title };
         store.recordEvent(session, running);
-        event.sender.send(AGENT_CHANNELS.event, running);
+        send(running);
       }
 
       const onEvent = (item: AgentEvent) => {
         if (session !== null) store.recordEvent(session, item);
-        if (!event.sender.isDestroyed()) event.sender.send(AGENT_CHANNELS.event, item);
+        send(item);
       };
       askBroker.beginRun(event.sender, onEvent);
       const turn = runners[request.host].runTurn({
@@ -412,12 +496,10 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
         profile,
         onEvent,
       });
-      runs.set(event.sender.id, {
-        cancel: () => {
-          askBroker.cancelRun(event.sender.id);
-          turn.cancel();
-        },
-      });
+      slot.cancel = () => {
+        askBroker.cancelRun(event.sender.id);
+        turn.cancel();
+      };
       const result = await turn.done;
       // Failures are returned, not also broadcast as an event — one error surface in the UI.
       if (!result.ok) return { ok: false, error: result.error, conversationId: session.id };
@@ -428,7 +510,8 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
       // cancelled question lands in the transcript, then settle the turn.
       askBroker.endRun(event.sender.id);
       if (session !== null && beganTurn) await store.finishTurn(session);
-      runs.delete(event.sender.id);
+      if (runs.get(event.sender.id) === slot) runs.delete(event.sender.id);
+      settle();
     }
   });
 
@@ -484,19 +567,40 @@ export function registerAgentIpc(ipc: IpcMain, deps: AgentIpcDeps): AgentIpcHand
     return { ok: true };
   });
 
-  ipc.handle(AGENT_CHANNELS.cancel, (event) => {
+  /**
+   * Stop is per window: it stops the one run the window holds, on whichever
+   * deck. It resolves once that run has settled (or after a few seconds), so a
+   * pane that offered Stop for another deck can read the freed slot right after.
+   */
+  ipc.handle(AGENT_CHANNELS.cancel, async (event) => {
     logins.get(event.sender.id)?.();
     logins.delete(event.sender.id);
-    runs.get(event.sender.id)?.cancel();
+    const slot = runs.get(event.sender.id);
+    if (slot !== undefined) {
+      slot.cancel();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        slot.settled,
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, 5000);
+        }),
+      ]);
+      clearTimeout(timer);
+    }
     return { ok: true };
   });
 
+  /** New chat for one deck. It stops a run only when that run belongs to the same deck. */
   ipc.handle(AGENT_CHANNELS.reset, async (event, deckId?: string | null) => {
-    askBroker.endRun(event.sender.id);
-    runs.get(event.sender.id)?.cancel();
-    runs.delete(event.sender.id);
+    const deckKey = deps.deckKey(event.sender, deckId ?? null);
+    const slot = runs.get(event.sender.id);
+    if (slot !== undefined && slot.deckKey === deckKey) {
+      askBroker.endRun(event.sender.id);
+      slot.cancel();
+    }
     await pasted.clear();
-    return store.reset(event.sender.id, deps.deckKey(event.sender, deckId ?? null));
+    const workspace = await store.reset(event.sender.id, deckKey);
+    return withRunState(workspace, deckKey, runs.get(event.sender.id));
   });
 
   ipc.handle(AGENT_CHANNELS.answer, (_event, payload: { id?: unknown; answers?: unknown }) => {

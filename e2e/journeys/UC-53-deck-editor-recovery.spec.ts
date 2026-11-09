@@ -2,7 +2,8 @@
  * UC-53 — the deck editor recovers instead of dead-ending.
  *
  * History opens any version again, the latest included. A tab whose deck was
- * stamped elsewhere offers the conflict choice instead of retrying forever. A
+ * stamped elsewhere offers the conflict choice instead of retrying forever; a
+ * deck moved to Trash while open offers Restore and saves after it. A
  * reload during a lesson shows Live now · Rejoin, and a second Start asks
  * first. A missing deck says so. The picture dialog checks a link and an
  * upload before Insert. The dictionary offers the language pair and a retry.
@@ -109,6 +110,25 @@ test('a tab whose deck was stamped elsewhere offers the conflict choice and re-b
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect(page.locator('.slide-canvas__frame')).toContainText('Third version');
   await expect(banner).toHaveCount(0);
+});
+
+test('a deck moved to Trash while open stops autosave with Restore instead of the conflict choice', async ({ page }, testInfo) => {
+  await signIn(page);
+  const deck = await createDeck(page, titled('Trashed while open'));
+  await open(page, deck.id);
+  const trashed = await page.request.delete(`/api/decks/${deck.id}`, { headers: CSRF });
+  expect(trashed.ok(), await trashed.text()).toBe(true);
+  await page.getByRole('tab', { name: 'Notes', exact: true }).click();
+  await page.getByRole('textbox', { name: /^Notes for / }).fill('Typed after the deck went to Trash.');
+  const notice = page.getByRole('alert').filter({ hasText: 'This deck is in Trash' });
+  await expect(notice).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: 'changed somewhere else' })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('trashed-while-open.png') });
+  await notice.getByRole('button', { name: 'Restore', exact: true }).click();
+  await expect(notice).toHaveCount(0);
+  await expect(page.locator('[data-or-draft-status]')).toHaveAttribute('data-or-draft-status', 'saved');
+  const draft = await (await page.request.get(`/api/decks/${deck.id}/draft`)).json();
+  expect(draft.source).toContain('Typed after the deck went to Trash.');
 });
 
 test('after a reload the editor shows the live session and asks before a second start', async ({ page }, testInfo) => {

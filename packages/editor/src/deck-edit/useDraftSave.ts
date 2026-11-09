@@ -22,6 +22,18 @@ import { isServiceError, useEditorServices } from '../services';
 
 export type DraftSaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
+/**
+ * Why the saver stopped: the server refused the write for a cause a retry
+ * cannot fix (deck in Trash, sign-in ended, role changed, deck too large).
+ */
+export interface DraftStopReason {
+  /** The server's code, such as `resource-in-trash`; the HTTP status as text when it named none. */
+  code: string;
+  status: number;
+  /** The sentence the transport built for this refusal. */
+  message: string;
+}
+
 export interface DraftStatus {
   state: DraftSaveState;
   /** Server ack time of the last successful draft write, if any. */
@@ -30,6 +42,11 @@ export interface DraftStatus {
   retrying: boolean;
   /** Ready-to-render sentence; '' when there is nothing to say. */
   label: string;
+  /**
+   * Set with state `error` when the saver stopped on a refusal. Saving waits
+   * for `retry()` or a stamped version. Absent means no reason to show.
+   */
+  reason?: DraftStopReason;
 }
 
 export const DRAFT_DEBOUNCE_MS = 1_500;
@@ -64,6 +81,8 @@ export interface DraftSaver {
    */
   versionSaved(source: string, baseVersion: number): void;
   status(): DraftStatus;
+  /** Send the current text now, after a stopped refusal (Try again, or after Restore). */
+  retry(): void;
   /** Cancel timers. A pending edit is flushed best-effort so a navigation
    *  away does not silently drop the last second of typing. */
   dispose(): void;
@@ -78,16 +97,41 @@ export interface DraftSaverOptions {
   debounceMs?: number;
   retryDelaysMs?: readonly number[];
   /**
-   * The server refused the write because the deck moved on elsewhere (409).
-   * Retrying the same base cannot succeed, so the saver stops and hands the
-   * conflict to the host instead of counting down retries.
+   * The server refused the write because the deck moved on elsewhere
+   * (409 version-conflict). Retrying the same base cannot succeed, so the
+   * saver stops and hands the conflict to the host instead of counting down
+   * retries.
    */
   onConflict?: (error: unknown) => void;
 }
 
 /** True when a draft write was refused because the deck changed elsewhere. */
 export function isDraftConflict(error: unknown): boolean {
-  return isServiceError(error) && error.status === 409;
+  return (
+    isServiceError(error) &&
+    error.status === 409 &&
+    (error.code === undefined || error.code === 'version-conflict')
+  );
+}
+
+export type DraftFailure =
+  | { kind: 'retry' }
+  | { kind: 'conflict' }
+  | { kind: 'stop'; reason: DraftStopReason };
+
+/**
+ * What a failed draft write means for the saver. Only a failure that can pass
+ * on its own retries: no answer (status 0), rate limiting (429) or a server
+ * fault (5xx). A version conflict goes to the host's conflict choice. Every
+ * other refusal stops with the server's reason, because sending the same
+ * write again gets the same answer.
+ */
+export function classifyDraftFailure(error: unknown): DraftFailure {
+  if (!isServiceError(error)) return { kind: 'retry' };
+  const { status } = error;
+  if (status === 0 || status === 429 || status >= 500) return { kind: 'retry' };
+  if (isDraftConflict(error)) return { kind: 'conflict' };
+  return { kind: 'stop', reason: { code: error.code ?? String(status), status, message: error.message } };
 }
 
 export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
@@ -103,13 +147,33 @@ export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
   let disposed = false;
   /** Set by a 409: the same base can only be refused again. */
   let conflicted = false;
+  /** Set by a refusal a retry cannot fix; cleared by retry() or a stamped version. */
+  let stopped: DraftStopReason | null = null;
   let status: DraftStatus = IDLE_STATUS;
 
-  const emit = (state: DraftSaveState, savedAt: number | null, retrying: boolean): void => {
+  const emit = (
+    state: DraftSaveState,
+    savedAt: number | null,
+    retrying: boolean,
+    reason: DraftStopReason | null = null,
+  ): void => {
     // Every keystroke re-enters 'dirty'; re-announcing it would re-render the
     // console for a status that has not changed.
-    if (status.state === state && status.savedAt === savedAt && status.retrying === retrying) return;
-    status = { state, savedAt, retrying, label: draftStatusLabel(state, savedAt, retrying) };
+    if (
+      status.state === state &&
+      status.savedAt === savedAt &&
+      status.retrying === retrying &&
+      (status.reason?.code ?? null) === (reason?.code ?? null)
+    ) {
+      return;
+    }
+    status = {
+      state,
+      savedAt,
+      retrying,
+      label: draftStatusLabel(state, savedAt, retrying),
+      ...(reason === null ? {} : { reason }),
+    };
     options.onStatus(status);
   };
 
@@ -127,7 +191,7 @@ export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
   };
 
   const flush = async (): Promise<void> => {
-    if (disposed || inFlight) return;
+    if (disposed || inFlight || stopped !== null) return;
     // Nothing to send: the text came back to what the server already holds.
     if (current === acked) return;
     const sending = current;
@@ -149,11 +213,26 @@ export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
     } catch (error) {
       inFlight = false;
       if (disposed) return;
-      if (options.onConflict !== undefined && isDraftConflict(error)) {
+      const failure = classifyDraftFailure(error);
+      if (failure.kind === 'conflict' && options.onConflict !== undefined) {
         attempt = 0;
         conflicted = true;
-        emit('error', status.savedAt, false);
+        emit('error', status.savedAt, false, {
+          code: 'version-conflict',
+          status: 409,
+          message: error instanceof Error ? error.message : 'This deck was saved somewhere else.',
+        });
         options.onConflict(error);
+        return;
+      }
+      if (failure.kind !== 'retry') {
+        cancelTimer();
+        attempt = 0;
+        stopped =
+          failure.kind === 'stop'
+            ? failure.reason
+            : { code: 'version-conflict', status: 409, message: error instanceof Error ? error.message : '' };
+        emit('error', status.savedAt, false, stopped);
         return;
       }
       const delay = retryDelays[attempt];
@@ -174,6 +253,8 @@ export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
       if (disposed) return;
       current = source;
       baseVersion = nextBaseVersion;
+      // Stopped on a refusal: keep the text and the reason, send nothing until retry().
+      if (stopped !== null) return;
       if (source === acked) {
         // An edit undone. Cancel the pending write instead of sending a no-op.
         cancelTimer();
@@ -194,14 +275,26 @@ export function createDraftSaver(options: DraftSaverOptions): DraftSaver {
       current = source;
       baseVersion = nextBaseVersion;
       attempt = 0;
+      stopped = null;
       emit('idle', null, false);
     },
     status(): DraftStatus {
       return status;
     },
+    retry(): void {
+      if (disposed || stopped === null) return;
+      stopped = null;
+      attempt = 0;
+      cancelTimer();
+      if (current === acked) {
+        emit(status.savedAt === null ? 'idle' : 'saved', status.savedAt, false);
+        return;
+      }
+      void flush();
+    },
     dispose(): void {
       cancelTimer();
-      if (!disposed && !inFlight && !conflicted && current !== acked) {
+      if (!disposed && !inFlight && !conflicted && stopped === null && current !== acked) {
         void options.put(current, baseVersion).catch(() => undefined);
       }
       disposed = true;
@@ -213,6 +306,8 @@ export interface DraftSaveHandle {
   status: DraftStatus;
   /** Call after a successful `addDeckVersion`: the server cleared the draft. */
   versionSaved: (source: string, baseVersion: number) => void;
+  /** Send the current text again after a stopped refusal. */
+  retry: () => void;
 }
 
 /**
@@ -225,7 +320,7 @@ export function useDraftSave(options: {
   source: string;
   baseVersion: number;
   enabled: boolean;
-  /** A write was refused with 409: the host shows its conflict choice. */
+  /** A write was refused with 409 version-conflict: the host shows its conflict choice. */
   onConflict?: () => void;
 }): DraftSaveHandle {
   const { deckId, source, baseVersion, enabled } = options;
@@ -269,11 +364,15 @@ export function useDraftSave(options: {
   return {
     // New text can render before the effect advances the saver. Never show the
     // previous text's Saved acknowledgement on that intervening render.
-    status: enabled && source !== observedSource
+    // A stopped save keeps its reason while the tutor types on.
+    status: enabled && source !== observedSource && status.reason === undefined
       ? { ...status, state: 'dirty' as const, label: draftStatusLabel('dirty', null, false), retrying: false }
       : status,
     versionSaved: (text: string, version: number) => {
       saverRef.current?.versionSaved(text, version);
+    },
+    retry: () => {
+      saverRef.current?.retry();
     },
   };
 }

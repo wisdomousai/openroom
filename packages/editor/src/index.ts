@@ -15,7 +15,7 @@ export { DeckEditor, type DeckEditorFocus } from './deck-edit/DeckEditor';
 export { DeckEditorTopBar } from './deck-edit/DeckEditorTopBar';
 export { SlideThumbnail } from './deck-edit/SlideThumbnail';
 export { DeckDesignPanel } from './deck-edit/properties/deck-design';
-export { useDraftSave, type DraftStatus } from './deck-edit/useDraftSave';
+export { useDraftSave, type DraftStatus, type DraftStopReason } from './deck-edit/useDraftSave';
 
 export { Presenter, type PresentationPosition } from './presenter/Presenter';
 export { PresentStage, presentableSteps } from './presenter/PresentationStage';

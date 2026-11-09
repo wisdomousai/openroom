@@ -118,6 +118,9 @@ export function DeckEditorTopBar({
                 : 'inline-flex h-6 shrink-0 items-center rounded-full bg-background px-2.5 text-caption text-muted-foreground'
             }
             data-or-draft-status={status.state}
+            // A stopped save: the host shows the reason with its action below the bar.
+            data-or-draft-reason={status.reason?.code}
+            title={status.reason?.message}
             role="status"
           >
             {savedPill}
