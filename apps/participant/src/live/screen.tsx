@@ -7,7 +7,7 @@ import {
   type SessionClient,
 } from '@openroom/sdk';
 import { useSessionTheme } from '../theme';
-import { clearSession, forgetSessionInUrl, type StoredSession } from '../session';
+import { clearSession, forgetSessionInUrl, saveSession, type StoredSession } from '../session';
 import { comeBackLine } from '../join-error';
 import { Body } from './body';
 import { LearnerLookup } from './learner-lookup';
@@ -18,8 +18,17 @@ interface Props {
   baseUrl: string;
   session: StoredSession;
   onLeave: () => void;
-  /** The server no longer accepts this seat: the token expired or the session is gone. */
-  onGone: (identityMode: string | undefined) => void;
+  /** The server no longer accepts this seat and could not renew it. */
+  onGone: (gone: SeatGone) => void;
+}
+
+/** Why the stored seat was given up, for the screen that says so. */
+export interface SeatGone {
+  identityMode?: string;
+  /** The session ended or was wiped. Otherwise the seat was refused while the session may still run. */
+  ended: boolean;
+  /** The nickname this seat had, so the person can rejoin with it. */
+  name?: string;
 }
 
 export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
@@ -47,6 +56,10 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
   identityRef.current = snapshot?.identityMode ?? session.identityMode;
   const endedRef = useRef(false);
   endedRef.current = snapshot?.status === 'ended';
+  const nameRef = useRef(session.name);
+  nameRef.current = session.name ?? snapshot?.yourName;
+  /** The current seat token: renewed in place when the old one expires. */
+  const [token, setToken] = useState(session.token);
 
   useEffect(() => {
     const client = createSessionClient<ParticipantSnapshot>({
@@ -56,13 +69,25 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
       role: 'participant',
       onChange: setSnapshot,
       onStatus: setStatus,
-      onGone: () => {
+      // Same seat, new token: store it so a reload keeps the seat too.
+      onTokenRenewed: (renewed) => {
+        saveSession({ ...session, token: renewed });
+        setToken(renewed);
+      },
+      onGone: (status, detail) => {
         // An ended session that has since been wiped: the "Session ended" view
         // already says everything. Forget the seat and keep showing it.
         if (endedRef.current) {
           clearSession(session);
           forgetSessionInUrl();
-        } else goneRef.current(identityRef.current);
+          return;
+        }
+        const ended = status === 404 || status === 410 || detail.renewalError === 'session-not-found';
+        goneRef.current({
+          ended,
+          ...(identityRef.current === undefined ? {} : { identityMode: identityRef.current }),
+          ...(nameRef.current === undefined ? {} : { name: nameRef.current }),
+        });
       },
     });
     clientRef.current = client;
@@ -352,7 +377,7 @@ export function LiveScreen({ baseUrl, session, onLeave, onGone }: Props) {
         <LearnerLookup
           baseUrl={baseUrl}
           sessionCode={session.sessionCode}
-          token={session.token}
+          token={token}
           word={lookUp.word}
           returnFocus={lookUp.token}
           onClose={() => setLookUp(null)}
@@ -445,6 +470,8 @@ function friendlyError(code: string, message: string): string {
       return 'The session has ended.';
     case 'E_NETWORK':
       return 'No connection to the session.';
+    case 'invalid-token':
+      return 'Not sent. This device no longer has a seat in the session. Reload the page.';
     case 'E_INVALID_ANSWER':
       return 'Answer not accepted.';
     case 'E_FORBIDDEN':

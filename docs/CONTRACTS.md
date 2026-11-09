@@ -292,7 +292,7 @@ stays hidden during discussion in multi-slide decks as well as poll-only decks.
 Base: same origin. JSON everywhere. Static apps: participant at `/`, stage at `/stage/`, host at `/host/`.
 The control plane serves every route below. `/join/`, `/stage/` and the `join.` host are
 forwarded to the relay over the `RELAY` service binding; the live routes
-(`/api/sessions/:code/{state,commands,export,ws,stage-token,assets/*}` and `/api/join`)
+(`/api/sessions/:code/{state,commands,export,ws,stage-token,participant-token,assets/*}` and `/api/join`)
 run on the control plane with the relay's `openroom-relay/live` module against the
 cross-script `SESSIONS` namespace. A relay deployed alone serves the subset in
 [Relay API](#relay-api).
@@ -460,6 +460,13 @@ POST /api/sessions/:sessionCode/commands         Bearer token; body CommandEnvel
                                          → 200 { ok:true, revision } | 409 { ok:false, error }  (409 for E_REVISION_CONFLICT, 422 others)
 GET  /api/sessions/:sessionCode/export?format=csv|json|answers   host token → final results; formats, entitlement
                                          and deletion rules in §Export split
+POST /api/sessions/:sessionCode/participant-token  Bearer <expired participant token>, no body
+                                         → 200 { sessionCode, participantToken, participantId } for the same participantId
+                                         renews only a participant token this deployment signed whose one failure is expiry,
+                                         and only while the session has not ended and still holds that participant
+                                         401 invalid-token { reason } (bad signature, malformed) · 409 token-not-expired
+                                         403 session-mismatch | role-mismatch · 404 session-not-found (ended or wiped)
+                                         404 seat-not-found. Every identity mode renews the same way; no join check reruns
 GET  /api/sessions/:sessionCode/ws?token=...     WebSocket upgrade (hibernation API). Server → client: {"v":1,"type":"session.changed","revision":N}.
                                          Fan-out is role-selective (sockets tagged with the token role): host commands (open/close/
                                          reveal/next/freeze/theme/end) → ALL sockets, coalesced ≥250ms; answers (answer.submit,
@@ -475,7 +482,7 @@ GET  /api/sessions/:sessionCode/ws?token=...     WebSocket upgrade (hibernation 
                                          the latest stored revision, including newer coalesced answers. Client sends nothing except pings.
 ```
 
-Tokens: HMAC-SHA256 signed via WebCrypto, format `base64url(payload).base64url(sig)`, payload `{ sessionCode, role, participantId?, exp }` (exp: participant 6h, host/stage 12h). Secret from env `TOKEN_SECRET`, the same value on the control plane and the relay. Sign/verify in `apps/relay/src/tokens.ts`.
+Tokens: HMAC-SHA256 signed via WebCrypto, format `base64url(payload).base64url(sig)`, payload `{ sessionCode, role, participantId?, exp }` (exp: participant 6h, host/stage 12h). Secret from env `TOKEN_SECRET`, the same value on the control plane and the relay. Sign/verify in `apps/relay/src/tokens.ts`. A participant seat lasts as long as the session holds it, so an expired participant token is renewable: `POST /api/sessions/:code/participant-token` swaps a correctly signed token that has only expired for a fresh 6h token with the same `participantId`, while the session has not ended and still holds that participant. There is no limit on how many times a seat renews. The SDK session client renews on a `401 invalid-token` with reason `expired` before it treats the session as gone and reports the new token through `onTokenRenewed`; the participant app stores it in place of the old one. Host and stage tokens do not renew.
 
 SessionDO: SQLite-backed Durable Object named `SessionDO`, id = `idFromName(sessionCode)`. Session code mapping in KV-less MVP: sessionCode IS derived — `sessionCode = code` (the code is the session id), `idFromName(code)`. Persists `state` as JSON in one SQLite row (MVP simplification; measured normalization later), `idempotency` table (key, resultJson, ts), and optional live-only embedded resources in `session_assets` plus 1 MiB `session_asset_chunks`. Start refuses a session whose referenced resources are missing. Single-range GET/HEAD serves those bytes inline; the existing 24-hour session `deleteAll()` removes them with all other session state. The alarm prunes idempotency rows older than 1h. Uses `ctx.acceptWebSocket()` hibernation API + `setWebSocketAutoResponse` for pings. Coalesced notify runs on two channels (broadcast immediately if that channel's last broadcast is older than its interval, else `ctx.storage.setAlarm` — no `setTimeout`): lifecycle (host commands → all sockets, 250ms) and results (answers/joins → `getWebSockets('host'|'stage')`, 1s, plus `'participant'` sockets only when `resultsVisible(state, activeInteractionId)`; audience computed at send time). A lifecycle broadcast clears any pending results tick — everyone just refetched. This keeps per-round work linear in participants: without it every answer notified every participant and each notified participant refetched a snapshot (quadratic). Session auto-expiry: alarm ends sessions idle 12h. Optional countdown: when an open interaction has `closesAt` (from the session's `timerSec`), the same multiplexed alarm applies host `interaction.close` at that deadline — no speed scoring.
 
@@ -509,6 +516,7 @@ POST /api/sessions/:code/commands         as above; the host may run every host 
 GET  /api/sessions/:code/export           as above; format=answers allowed for the host; no archive (ended sessions follow DO retention)
 GET  /api/sessions/:code/ws               as above
 GET  /api/sessions/:code/stage-token      host token → { stageToken }
+POST /api/sessions/:code/participant-token  as above
 PUT|GET|HEAD /api/sessions/:code/assets/:resourceId  as above
 GET  /                                    302 → /join/ (query kept) · /join/, /stage/ → participant and stage apps
 ```

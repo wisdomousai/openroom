@@ -5,7 +5,7 @@
  * field focused; typed gaps sit in the sentence with numbered labels and
  * practice hints; a ranking never starts in the authored order; Leave asks
  * first; the ended view drops Leave and the name notice; a refused seat says
- * the session is no longer open; join failures read as plain sentences; a
+ * this device lost its seat; join failures read as plain sentences; a
  * personal link opened before the start waits and enters on its own, and
  * says once per browser that the tutor sees the learner's name.
  *
@@ -294,6 +294,8 @@ test.describe('UC-44 participant phone states', () => {
     await expect(phone.getByText(/Use it to rejoin/)).toHaveCount(0);
 
     // A refused seat is not "offline": the page says so and forgets the seat.
+    // A token the relay did not sign is never renewed, and the refusal alone
+    // cannot tell whether the session still runs, so the page names the seat.
     await phone.evaluate(() => {
       for (const store of [localStorage, sessionStorage]) {
         for (let i = 0; i < store.length; i++) {
@@ -305,7 +307,7 @@ test.describe('UC-44 participant phone states', () => {
       }
     });
     await phone.reload();
-    await expect(phone.getByText('This session is no longer open', { exact: true })).toBeVisible();
+    await expect(phone.getByText('This device lost its seat in the session', { exact: true })).toBeVisible();
     await expect(phone.getByText(/Offline/)).toHaveCount(0);
 
     // Join failures are sentences with a next step, never a bare status.

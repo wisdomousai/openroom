@@ -53,13 +53,25 @@ export interface SessionClientOptions<S extends Snapshot = Snapshot> {
   onStatus?: (status: ConnectionStatus) => void;
   /**
    * The server refused this token for this session for good: 401, 403, 404 or
-   * 410 on consecutive snapshot reads at least 1.5 s apart. The token expired, the session was
-   * wiped, or it never existed, so retrying cannot help. When this listener is
-   * set the client stops polling and closes the socket before calling it with
-   * the HTTP status. Without it such a response reads as `offline` and polling
-   * goes on.
+   * 410 on consecutive snapshot reads at least 1.5 s apart. The token expired, the
+   * seat's access was removed, the session was wiped, or it never existed, so
+   * retrying cannot help. When this listener is set the client stops polling and
+   * closes the socket before calling it with the HTTP status and the server's
+   * reason. Without it such a response reads as `offline` and polling goes on.
+   *
+   * A participant token that only expired is renewed first (see
+   * `onTokenRenewed`), so for a participant this fires only when the session
+   * ended or was wiped, or the renewal was refused.
    */
-  onGone?: (httpStatus: number) => void;
+  onGone?: (httpStatus: number, detail: GoneDetail) => void;
+  /**
+   * Participant role only. When a snapshot read or a command meets
+   * `401 invalid-token` with reason `expired`, the client asks
+   * `POST /api/sessions/:code/participant-token` for a fresh token for the same
+   * participant, carries on with it, and reports it here so the caller can
+   * store it. A refused renewal is reported through `onGone`.
+   */
+  onTokenRenewed?: (token: string) => void;
   /** Testing seams — all default to the browser globals. */
   fetch?: FetchLike;
   WebSocket?: WebSocketCtor | null;
@@ -75,6 +87,19 @@ export interface SessionClientOptions<S extends Snapshot = Snapshot> {
   subscribeWake?: (wake: (reason: WakeReason) => void) => () => void;
   /** Poll intervals in ms (active / idle / hidden). */
   pollIntervals?: { active?: number; idle?: number; hidden?: number };
+}
+
+/** What the server said when it refused a token for good. */
+export interface GoneDetail {
+  /** The server's error code on the refused read, e.g. `invalid-token`, `session-access-revoked`, `session-not-found`. */
+  error?: string;
+  /** For `invalid-token`, why: `expired`, `bad-signature` or `malformed`. */
+  reason?: string;
+  /**
+   * An expired participant token whose renewal was refused: the renewal route's
+   * error code. `session-not-found` means the session ended or was wiped.
+   */
+  renewalError?: string;
 }
 
 export interface SessionClient<S extends Snapshot = Snapshot> {
@@ -205,7 +230,10 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
 
   const statePath = `/api/sessions/${encodeURIComponent(options.sessionCode)}/state`;
   const commandsPath = `/api/sessions/${encodeURIComponent(options.sessionCode)}/commands`;
-  const wsPath = `/api/sessions/${encodeURIComponent(options.sessionCode)}/ws?token=${encodeURIComponent(options.token)}`;
+  /** Replaced when an expired participant token is renewed. */
+  let token = options.token;
+  const wsPath = (): string =>
+    `/api/sessions/${encodeURIComponent(options.sessionCode)}/ws?token=${encodeURIComponent(token)}`;
 
   let closed = false;
   let snapshot: S | null = null;
@@ -225,6 +253,10 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
   let goneTimer: ReturnType<typeof setTimeout> | null = null;
   /** While offline over an open socket nothing else would ask again. */
   let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** One renewal at a time; the snapshot read and a command may both meet expiry. */
+  let renewing: Promise<RenewOutcome> | null = null;
+  /** The renewal route refused this token; ask no more and let the gone check run. */
+  let renewalError: string | undefined;
 
   function setStatus(next: ConnectionStatus): void {
     if (status === next) return;
@@ -265,7 +297,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
         (knownRevision >= 0 ? `&afterRevision=${knownRevision}` : '');
       const res = await doFetch(`${base}${statePath}${q}`, {
         method: 'GET',
-        headers: { authorization: `Bearer ${options.token}`, accept: 'application/json' },
+        headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
         ...(abort ? { signal: abort.signal } : {}),
       });
       if (closed) return;
@@ -275,6 +307,22 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
         return;
       }
       if (!res.ok) {
+        const refusal = GONE_STATUSES.has(res.status) ? await readRefusal(res) : {};
+        if (closed) return;
+        if (isExpiredToken(res.status, refusal) && renewalError === undefined) {
+          const renewed = await renewToken();
+          if (closed) return;
+          if (renewed === 'renewed') {
+            goneSince = null;
+            refetchQueued = true;
+            return;
+          }
+          if (renewed === 'network') {
+            goneSince = null;
+            setStatus('offline');
+            return;
+          }
+        }
         if (GONE_STATUSES.has(res.status) && options.onGone) {
           const now = Date.now();
           goneSince ??= now;
@@ -289,7 +337,10 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
           }
           shutdown();
           try {
-            options.onGone(res.status);
+            options.onGone(res.status, {
+              ...refusal,
+              ...(renewalError === undefined ? {} : { renewalError }),
+            });
           } catch {
             /* listener errors must not break the client */
           }
@@ -320,6 +371,45 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       schedulePoll();
       scheduleRecovery();
     }
+  }
+
+  /* ----------------------------------------------------------- renewal */
+
+  /**
+   * Swap an expired participant token for a fresh one on the same seat.
+   * 'refused' records the server's reason, so the gone check runs next.
+   */
+  function renewToken(): Promise<RenewOutcome> {
+    if (options.role !== 'participant') return Promise.resolve('refused');
+    renewing ??= (async (): Promise<RenewOutcome> => {
+      const expired = token;
+      try {
+        const renewed = await renewParticipantToken(base, options.sessionCode, expired, doFetch);
+        if (closed) return 'refused';
+        if (!renewed.ok) {
+          renewalError = renewed.error;
+          return 'refused';
+        }
+        token = renewed.participantToken;
+        try {
+          options.onTokenRenewed?.(token);
+        } catch {
+          /* listener errors must not break the client */
+        }
+        // A socket that failed at upgrade on the old token may try again now.
+        if (WSCtor && ws === null && wsRetryTimer !== null) {
+          clearTimeout(wsRetryTimer);
+          wsRetryTimer = null;
+          connectWs();
+        }
+        return 'renewed';
+      } catch {
+        return 'network';
+      } finally {
+        renewing = null;
+      }
+    })();
+    return renewing;
   }
 
   /* ---------------------------------------------------------- recovery */
@@ -429,7 +519,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
     }
     let sock: WebSocketLike;
     try {
-      sock = new WSCtor(wsUrlFrom(base, wsPath));
+      sock = new WSCtor(wsUrlFrom(base, wsPath()));
     } catch {
       handleWsDown();
       return;
@@ -503,7 +593,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       const res = await doFetch(`${base}${commandsPath}`, {
         method: 'POST',
         headers: {
-          authorization: `Bearer ${options.token}`,
+          authorization: `Bearer ${token}`,
           'content-type': 'application/json',
         },
         body: JSON.stringify({ idempotencyKey: key, command }),
@@ -526,12 +616,27 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       scheduleRecovery();
       return { ok: false, error: { code: 'E_NETWORK', message: 'Network error' } };
     }
-    const { res } = attempt;
+    let { res } = attempt;
     let body: unknown = null;
     try {
       body = await res.json();
     } catch {
       body = null;
+    }
+    if (isExpiredToken(res.status, refusalOf(body)) && renewalError === undefined && (await renewToken()) === 'renewed') {
+      // Same idempotency key: the expired attempt never reached the session.
+      const retried = await postCommand(key, command);
+      if ('networkError' in retried) {
+        setStatus('offline');
+        scheduleRecovery();
+        return { ok: false, error: { code: 'E_NETWORK', message: 'Network error' } };
+      }
+      res = retried.res;
+      try {
+        body = await res.json();
+      } catch {
+        body = null;
+      }
     }
     if (res.ok) {
       const revision =
@@ -543,11 +648,7 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
       void fetchSnapshot();
       return { ok: true, revision };
     }
-    const err =
-      body && typeof body === 'object' && (body as { error?: unknown }).error
-        ? ((body as { error: { code: string; message: string } }).error)
-        : { code: 'E_HTTP_' + res.status, message: `Request failed (${res.status})` };
-    return { ok: false, error: err };
+    return { ok: false, error: commandError(res.status, body) };
   }
 
   /* ------------------------------------------------------------ close */
@@ -603,6 +704,81 @@ export function createSessionClient<S extends Snapshot = Snapshot>(
     close: shutdown,
   };
 
+}
+
+type RenewOutcome = 'renewed' | 'refused' | 'network';
+
+function refusalOf(body: unknown): { error?: string; reason?: string } {
+  if (typeof body !== 'object' || body === null) return {};
+  const { error, reason } = body as { error?: unknown; reason?: unknown };
+  return {
+    ...(typeof error === 'string' ? { error } : {}),
+    ...(typeof reason === 'string' ? { reason } : {}),
+  };
+}
+
+async function readRefusal(res: { json(): Promise<unknown> }): Promise<{ error?: string; reason?: string }> {
+  try {
+    return refusalOf(await res.json());
+  } catch {
+    return {};
+  }
+}
+
+function isExpiredToken(status: number, refusal: { error?: string; reason?: string }): boolean {
+  return status === 401 && refusal.error === 'invalid-token' && refusal.reason === 'expired';
+}
+
+/**
+ * A refused command names its cause. The session answers `{ error: { code, message } }`;
+ * the token check before it answers `{ error: 'invalid-token' }`, a bare code.
+ */
+function commandError(status: number, body: unknown): { code: string; message: string } {
+  const error = body && typeof body === 'object' ? (body as { error?: unknown }).error : undefined;
+  if (typeof error === 'string' && error !== '') {
+    const message = (body as { message?: unknown }).message;
+    return { code: error, message: typeof message === 'string' ? message : '' };
+  }
+  if (error && typeof error === 'object') return error as { code: string; message: string };
+  return { code: 'E_HTTP_' + status, message: `Request failed (${status})` };
+}
+
+/* ------------------------------------------------------------- renewal */
+
+export type RenewParticipantTokenResult =
+  | { ok: true; participantToken: string; participantId: string }
+  | { ok: false; status: number; error: string };
+
+/**
+ * `POST /api/sessions/:code/participant-token`: swap an expired participant
+ * token for a fresh one on the same seat. The relay renews only a token it
+ * signed whose one failure is expiry, and only while the session has not ended
+ * and still holds that participant. Throws when the request never arrives.
+ */
+export async function renewParticipantToken(
+  baseUrl: string,
+  sessionCode: string,
+  expiredToken: string,
+  injectedFetch?: FetchLike,
+): Promise<RenewParticipantTokenResult> {
+  const f: FetchLike =
+    injectedFetch ?? ((globalThis as unknown as { fetch: FetchLike }).fetch as FetchLike);
+  const res = await f(
+    `${normalizeBase(baseUrl)}/api/sessions/${encodeURIComponent(sessionCode)}/participant-token`,
+    { method: 'POST', headers: { authorization: `Bearer ${expiredToken}`, accept: 'application/json' } },
+  );
+  let body: unknown = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+  const renewed = body as { participantToken?: unknown; participantId?: unknown } | null;
+  if (res.ok && typeof renewed?.participantToken === 'string' && typeof renewed.participantId === 'string') {
+    return { ok: true, participantToken: renewed.participantToken, participantId: renewed.participantId };
+  }
+  if (res.status >= 500 || res.status === 429) throw new Error(`Token renewal failed (${res.status})`);
+  return { ok: false, status: res.status, error: refusalOf(body).error ?? `http-${res.status}` };
 }
 
 /* ---------------------------------------------------------------- join */

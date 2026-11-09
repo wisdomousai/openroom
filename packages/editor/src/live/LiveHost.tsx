@@ -54,6 +54,7 @@ import { useSessionExit } from './useSessionExit';
 import { useMeaningLookup } from './useMeaningLookup';
 import { ListeningControls } from './ListeningControls';
 import { useStageMirror } from './useStageMirror';
+import { SessionGone } from './SessionGone';
 import { NextSessionBanner } from './NextSessionBanner';
 import {
   answeredKey,
@@ -85,13 +86,14 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
    * host session asks it to refetch after each command: the tutor's own slide
    * change shows in the preview at once, not on the next poll.
    */
-  const { stageToken, stageSnapshot, stageStatus, retryStageToken, refreshStage } = useStageMirror(live);
+  const { stageToken, stageSnapshot, stageStatus, stageGone, retryStageToken, refreshStage } = useStageMirror(live);
   const host = useHostSession(live, refreshStage);
   const {
     snapshot,
     canPresent,
     status,
     fatal,
+    gone,
     toasts,
     push,
     run,
@@ -599,6 +601,24 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   }
 
   /*
+   * The server refused this console's host credential for good. Nothing here
+   * can send a command any more, so the console makes way for the reason and
+   * the way out. The private notes stay on this device and are shown to copy.
+   */
+  if (gone !== null) {
+    return (
+      <SessionGone
+        gone={gone}
+        notes={scratchpadSlot ? scratchpad : undefined}
+        leaveLabel={onReturnToDeck ? 'Back to deck' : 'Library'}
+        onLeave={
+          onReturnToDeck ? backToDeck : () => navigate({ kind: 'library', place: exit.deckPlace }, { replace: true })
+        }
+      />
+    );
+  }
+
+  /*
    * Ended, and on its way out. The console never shows its dead self: it says
    * what happened and opens the Notes. A probe that failed keeps the notes and
    * the credentials where they are and offers the two ways forward.
@@ -952,7 +972,9 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
           {!snapshot ? (
             <p className="p-6 text-secondary text-muted-foreground">Loading session…</p>
           ) : !stageToken ? (
-            <p className="p-6 text-secondary text-muted-foreground">Loading…</p>
+            <p className="p-6 text-secondary text-muted-foreground">
+              {stageGone ? 'The stage preview stopped working. Choose Stage in the Session menu to try again.' : 'Loading…'}
+            </p>
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-5" style={{ containerType: 'size' }}>
               <div

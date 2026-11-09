@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createSessionClient, type SessionClient } from '@openroom/sdk';
 import { useEditorServices } from '../services';
 import { deriveHostFlow, type HostFlowKind } from './hostFlow';
+import { hostGoneFromStatus, type HostGone } from './SessionGone';
 import { newIdempotencyKey, submitCommand } from './sdk';
 import {
   activeId as activeIdOf,
@@ -51,12 +52,14 @@ function summaryOf(
  * uses it to refetch its stage mirror, which has its own client.
  */
 export function useHostSession(live: StoredSession, onCommitted?: () => void) {
-  const { fetchHostSnapshot } = useEditorServices().live;
+  const { fetchHostSnapshot, sessions } = useEditorServices().live;
   const committedRef = useRef(onCommitted);
   committedRef.current = onCommitted;
   const [snapshot, setSnapshot] = useState<HostSnapshot | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [fatal, setFatal] = useState<string | null>(null);
+  /** The server refused this device's host credential for good. */
+  const [gone, setGone] = useState<HostGone | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const clientRef = useRef<SessionClient | null>(null);
   const snapshotRef = useRef<HostSnapshot | null>(null);
@@ -78,6 +81,16 @@ export function useHostSession(live: StoredSession, onCommitted?: () => void) {
         },
         onStatus: (s) => {
           if (!disposed) setStatus(s);
+        },
+        /*
+         * Removed (403), expired (401) or ended and wiped (404/410): the client
+         * has stopped. The spent credential is forgotten so a reload says the
+         * session is not open on this device; the private notes stay.
+         */
+        onGone: (httpStatus) => {
+          if (disposed) return;
+          sessions.clear(live.sessionCode);
+          setGone(hostGoneFromStatus(httpStatus));
         },
       });
     } catch (err) {
@@ -289,6 +302,7 @@ export function useHostSession(live: StoredSession, onCommitted?: () => void) {
     setSnapshot,
     status,
     fatal,
+    gone,
     toasts,
     push,
     run,

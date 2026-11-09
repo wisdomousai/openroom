@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { joinSession } from '@openroom/sdk';
 import { GoneScreen, JoinScreen, WaitingToStartScreen } from './join';
 import { isNotStarted, isTransient, joinErrorMessage } from './join-error';
-import { LiveScreen } from './live/screen';
+import { LiveScreen, type SeatGone } from './live/screen';
 import {
   clearSession,
   forgetLinkInUrl,
@@ -34,7 +34,7 @@ export function App() {
   /** A link arrival the session turned away because the tutor has not started yet. */
   const [waitingForStart, setWaitingForStart] = useState(false);
   /** The stored seat was refused; `identityMode` says how to come back. */
-  const [gone, setGone] = useState<{ identityMode?: string } | null>(null);
+  const [gone, setGone] = useState<(SeatGone & { code: string }) | null>(null);
   const autoJoined = useRef(false);
   const joiningRef = useRef(false);
   const waitingRef = useRef(false);
@@ -156,19 +156,38 @@ export function App() {
     setSession(null);
   }, [session]);
 
-  // The server refused the stored seat for good. Forget it, so a reload does
-  // not loop on a dead token, and say how to come back.
-  const seatGone = useCallback((identityMode: string | undefined) => {
+  // The server refused the stored seat for good and would not renew it. Forget
+  // it, so a reload does not loop on a dead token, and say how to come back.
+  const seatGone = useCallback((reason: SeatGone) => {
     if (session) clearSession(session);
     forgetSessionInUrl();
-    setGone(identityMode === undefined ? {} : { identityMode });
+    setGone(session ? { ...reason, code: session.code ?? session.sessionCode } : null);
     setSession(null);
+  }, [session]);
+
+  // A rejoin from the gone screen succeeded: that screen is done.
+  useEffect(() => {
+    if (session) setGone(null);
   }, [session]);
 
   if (!session && waitingForStart) return <WaitingToStartScreen />;
 
   if (!session && gone) {
-    return <GoneScreen identityMode={gone.identityMode} onJoinWithCode={() => setGone(null)} />;
+    return (
+      <GoneScreen
+        identityMode={gone.identityMode}
+        ended={gone.ended}
+        name={gone.name}
+        busy={joining}
+        error={error}
+        onJoinWithCode={() => {
+          setError(null);
+          if (!gone.ended) setPrefill(gone.code);
+          setGone(null);
+        }}
+        onRejoinWithName={(name) => void doJoin(gone.code, name)}
+      />
+    );
   }
 
   if (!session) {

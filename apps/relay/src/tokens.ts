@@ -97,6 +97,36 @@ export async function verifyToken(
   token: string,
   nowMs: number = Date.now(),
 ): Promise<VerifyResult> {
+  const signed = await verifySigned(secret, token);
+  if (!signed.ok) return signed;
+  if (signed.payload.exp * 1000 <= nowMs) return { ok: false, reason: 'expired' };
+  return signed;
+}
+
+/**
+ * For the participant renewal route only: a token this secret signed, with a
+ * well-formed payload, whose one failure is that it expired. A token that is
+ * still valid answers `not-expired`; any other failure is reported as
+ * `verifyToken` reports it.
+ */
+export async function verifyExpiredToken(
+  secret: string,
+  token: string,
+  nowMs: number = Date.now(),
+): Promise<
+  { ok: true; payload: TokenPayload } | { ok: false; reason: 'malformed' | 'bad-signature' | 'not-expired' }
+> {
+  const signed = await verifySigned(secret, token);
+  if (!signed.ok) return signed;
+  if (signed.payload.exp * 1000 > nowMs) return { ok: false, reason: 'not-expired' };
+  return signed;
+}
+
+/** Signature and payload shape, without the expiry check. */
+async function verifySigned(
+  secret: string,
+  token: string,
+): Promise<{ ok: true; payload: TokenPayload } | { ok: false; reason: 'malformed' | 'bad-signature' }> {
   const dot = token.indexOf('.');
   if (dot <= 0 || dot === token.length - 1 || token.indexOf('.', dot + 1) !== -1) {
     return { ok: false, reason: 'malformed' };
@@ -130,8 +160,6 @@ export async function verifyToken(
   ) {
     return { ok: false, reason: 'malformed' };
   }
-  if (exp * 1000 <= nowMs) return { ok: false, reason: 'expired' };
-
   return {
     ok: true,
     payload: {

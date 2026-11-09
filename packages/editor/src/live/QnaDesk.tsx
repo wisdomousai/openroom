@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '@openroom/ui/components/alert';
 import { Button } from '@openroom/ui/components/button';
 import { ToastRegion } from '@openroom/ui/toasts';
 import { useHostSession } from './useHostSession';
+import { SessionGone } from './SessionGone';
 import { cn } from '@openroom/ui/utils';
 import type { ConnectionStatus, HostQnaView, StoredSession } from '../types';
 
@@ -28,7 +29,7 @@ const STATUS_LABEL: Record<ConnectionStatus, string> = {
 export function QnaDesk({ live, onLeave }: { live: StoredSession; onLeave: () => void }) {
   const host = useHostSession(live);
   const { navigate } = useEditorServices().navigation;
-  const { snapshot, status, fatal, toasts, ended, qna, toggleQnaHidden, setQnaStage } = host;
+  const { snapshot, status, fatal, gone, toasts, ended, qna, toggleQnaHidden, setQnaStage } = host;
   const exit = useSessionExit(live, ended);
 
   if (fatal) {
@@ -41,6 +42,16 @@ export function QnaDesk({ live, onLeave }: { live: StoredSession; onLeave: () =>
           <Button onClick={onLeave}>Back to library</Button>
         </div>
       </div>
+    );
+  }
+
+  if (gone !== null) {
+    return (
+      <SessionGone
+        gone={gone}
+        leaveLabel="Library"
+        onLeave={() => navigate({ kind: 'library', place: exit.deckPlace }, { replace: true })}
+      />
     );
   }
 

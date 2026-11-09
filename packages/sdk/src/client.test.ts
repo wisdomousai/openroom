@@ -440,6 +440,62 @@ describe('createSessionClient', () => {
     client.close();
   });
 
+  it('renews an expired participant token on the same seat and keeps going with it', async () => {
+    const calls: Call[] = [];
+    let renewal: 'ok' | 'ended' = 'ok';
+    const fetchFake: FetchLike = async (url, init) => {
+      calls.push({ url, init: init as Call['init'] });
+      if (url.endsWith('/participant-token')) {
+        return renewal === 'ok'
+          ? jsonRes(200, { sessionCode: 'r', participantToken: 'fresh', participantId: 'p1' })
+          : jsonRes(404, { error: 'session-not-found' });
+      }
+      const bearer = init?.headers?.authorization;
+      if (bearer === 'Bearer fresh' && renewal === 'ok') return jsonRes(200, snap(4));
+      return jsonRes(401, { error: 'invalid-token', reason: 'expired' });
+    };
+    const renewed: string[] = [];
+    const gone: Array<[number, unknown]> = [];
+    const changes: number[] = [];
+    const client = createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 'old',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: null,
+      onChange: (s) => changes.push(s.revision),
+      onTokenRenewed: (token) => renewed.push(token),
+      onGone: (status, detail) => gone.push([status, detail]),
+    });
+    await flush();
+    expect(renewed).toEqual(['fresh']);
+    expect(changes).toEqual([4]);
+    expect(calls.find((c) => c.url.endsWith('/participant-token'))?.init?.headers?.authorization).toBe('Bearer old');
+    const res = await client.submit({ command: 'answer.submit', interactionId: 'q1', answer: { kind: 'text', text: 'a' } } as never);
+    expect(res.ok).toBe(true);
+    expect(calls.find((c) => c.url.endsWith('/commands'))?.init?.headers?.authorization).toBe('Bearer fresh');
+    client.close();
+
+    // Once the session has ended the renewal is refused and the seat is gone.
+    renewal = 'ended';
+    const ended: Array<[number, unknown]> = [];
+    createSessionClient<ParticipantSnapshot>({
+      baseUrl: 'https://api.test',
+      sessionCode: 'r',
+      token: 'old',
+      role: 'participant',
+      fetch: fetchFake,
+      WebSocket: null,
+      onGone: (status, detail) => ended.push([status, detail]),
+    });
+    await flush();
+    await vi.advanceTimersByTimeAsync(2000);
+    await flush();
+    expect(ended).toEqual([[401, { error: 'invalid-token', reason: 'expired', renewalError: 'session-not-found' }]]);
+    expect(gone).toEqual([]);
+  });
+
   it('keeps a 5xx as offline and polls on, with or without onGone', async () => {
     let fetches = 0;
     const fetchFake: FetchLike = async () => {

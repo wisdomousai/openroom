@@ -14,6 +14,7 @@ import { Button } from '@openroom/ui/components/button';
 import { formatClock, formatQuestionLeft, useClosesAt, useSessionClock } from './liveClock';
 import { ToastRegion } from '@openroom/ui/toasts';
 import { useHostSession } from './useHostSession';
+import { SessionGone } from './SessionGone';
 import { useQuestionRail } from './useQuestionRail';
 import { cn } from '@openroom/ui/utils';
 import { EndSessionDialog } from './EndSessionDialog';
@@ -123,6 +124,17 @@ export function PresenterRemote({
           Leave
         </Button>
       </div>
+    );
+  }
+
+  if (host.gone !== null) {
+    return (
+      <SessionGone
+        gone={host.gone}
+        compact
+        leaveLabel="Library"
+        onLeave={() => navigate({ kind: 'library', place: exit.deckPlace }, { replace: true })}
+      />
     );
   }
 

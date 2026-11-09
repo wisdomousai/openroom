@@ -19,7 +19,7 @@ import type { Outline } from '@openroom/schema';
 import { parseExportFormat } from './export.js';
 import { ANSWERS_DELETED_HEADER } from './session-do/export-response.js';
 import { joinUrlForCode, type JoinOriginEnv } from './join-url.js';
-import { extractToken, signToken, verifyToken, type Role, type TokenPayload } from './tokens.js';
+import { extractToken, signToken, verifyExpiredToken, verifyToken, type Role, type TokenPayload } from './tokens.js';
 
 export interface LiveEnv extends JoinOriginEnv {
   SESSIONS: DurableObjectNamespace;
@@ -257,6 +257,42 @@ export async function joinRoute(
     ...(result.identityMode === undefined ? {} : { identityMode: result.identityMode }),
     ...(result.name === undefined ? {} : { name: result.name }),
   });
+}
+
+/**
+ * POST /api/sessions/:code/participant-token: renew a participant token.
+ *
+ * A seat lasts as long as the session holds it; the token that proves it lasts
+ * 6 hours. This route closes that gap: it accepts only a participant token that
+ * this deployment signed, whose one failure is expiry, and only while the
+ * session has not ended and still holds that participant. It answers a fresh
+ * token for the same participant id, so the seat, name and answers stay.
+ * Nothing else is renewable: a bad signature stays `401 invalid-token`, an
+ * ended or wiped session `404 session-not-found`.
+ */
+export async function participantTokenRoute(env: LiveEnv, request: Request, url: URL, sessionCode: string): Promise<Response> {
+  const token = extractToken(request, url);
+  if (token === null) return json({ error: 'missing-token' }, 401);
+  const verified = await verifyExpiredToken(env.TOKEN_SECRET, token);
+  if (!verified.ok) {
+    if (verified.reason === 'not-expired') return json({ error: 'token-not-expired' }, 409);
+    return json({ error: 'invalid-token', reason: verified.reason }, 401);
+  }
+  const { payload } = verified;
+  if (payload.sessionCode !== sessionCode) return json({ error: 'session-mismatch' }, 403);
+  if (payload.role !== 'participant' || payload.participantId === undefined) {
+    return json({ error: 'role-mismatch' }, 403);
+  }
+  const seat = await sessionStub(env, sessionCode).fetch(
+    sessionDoUrl('/__seat', { participantId: payload.participantId }),
+  );
+  if (!seat.ok) return withApiHeaders(seat);
+  const participantToken = await signToken(env.TOKEN_SECRET, {
+    sessionCode,
+    role: 'participant',
+    participantId: payload.participantId,
+  });
+  return json({ sessionCode, participantToken, participantId: payload.participantId });
 }
 
 /* ----------------------------------------------------------------- session */

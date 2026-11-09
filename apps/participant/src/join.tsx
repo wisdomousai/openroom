@@ -162,34 +162,77 @@ export function WaitingToStartScreen() {
   );
 }
 
-/** The stored seat was refused for good: its token expired or the session is gone. */
+/**
+ * The stored seat was refused for good and could not be renewed. `ended` says
+ * the session ended or was wiped; otherwise the session may still be running
+ * and only this device's seat was refused, so a nickname seat is offered its
+ * name back before the app forgets it.
+ */
 export function GoneScreen({
   identityMode,
+  ended,
+  name,
+  busy,
+  error,
   onJoinWithCode,
+  onRejoinWithName,
 }: {
   identityMode?: string;
+  ended: boolean;
+  name?: string;
+  busy: boolean;
+  error: string | null;
   onJoinWithCode: () => void;
+  onRejoinWithName: (name: string) => void;
 }) {
   useSessionTheme(null);
   const comeBack = comeBackLine(identityMode);
+  const rejoinName = !ended && comeBack === null && name !== undefined ? name : null;
   return (
     <main className="page">
       <div className="topbar">
         <span className="brand">OpenRoom</span>
       </div>
       <section className="waiting" role="status" aria-live="polite">
-        <p className="waiting__title">This session is no longer open</p>
-        <p className="hint">
-          {comeBack ??
-            (identityMode === undefined
-              ? 'Open the personal link or guest link you were sent, or ask your tutor for the join code.'
-              : 'Ask your tutor for the join code.')}
+        <p className="waiting__title">
+          {ended ? 'This session is no longer open' : 'This device lost its seat in the session'}
         </p>
+        {ended ? null : (
+          <p className="hint">The session did not accept this device's saved seat and could not renew it.</p>
+        )}
+        {rejoinName !== null ? (
+          <>
+            <p className="hint">
+              Your name in this session was <strong>{rejoinName}</strong>. Rejoin with it to keep your seat
+              and answers. This page does not keep the name after you leave it.
+            </p>
+            <button
+              type="button"
+              className="btn btn--primary btn--wide"
+              disabled={busy}
+              onClick={() => onRejoinWithName(rejoinName)}
+            >
+              {busy ? 'Rejoining…' : `Rejoin as ${rejoinName}`}
+            </button>
+          </>
+        ) : (
+          <p className="hint">
+            {comeBack ??
+              (identityMode === undefined
+                ? 'Open the personal link or guest link you were sent, or ask your tutor for the join code.'
+                : 'Ask your tutor for the join code.')}
+          </p>
+        )}
         {comeBack !== null ? null : (
-          <button type="button" className="btn btn--primary btn--wide" onClick={onJoinWithCode}>
+          <button
+            type="button"
+            className={rejoinName !== null ? 'btn btn--text btn--wide' : 'btn btn--primary btn--wide'}
+            onClick={onJoinWithCode}
+          >
             Join with a code
           </button>
         )}
+        {error ? <p className="error-text">{error}</p> : null}
       </section>
     </main>
   );

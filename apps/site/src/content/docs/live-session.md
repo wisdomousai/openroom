@@ -80,6 +80,16 @@ The remote link carries host authority. Send participant links to the audience a
 | Connected | Commands and answers get through by periodic requests. Continue; updates can arrive a little later. |
 | Offline | Restore network access. Check the latest slide and question state after reconnecting before sending another action. |
 
+When the server refuses this device's host access for good, the console, the phone remote and the Q&A desk stop and show the reason in place of the controls. The connection label does not say Offline in these cases.
+
+| Message | Meaning and action |
+| --- | --- |
+| Your access to this session was removed. | A space owner removed you from the space, or the connection that opened the session was revoked. Select **Library**. |
+| This device's access to the session expired. | Host access on a device lasts 12 hours. If the session is still running, sign in and use **Rejoin** under **Live now** in the Library. |
+| This session has ended. | The session is over and its live data is gone. Select **Library**. |
+
+The console also shows your private notes for the session, which stay on this device. The device forgets the session, so a reload says **This session is not open on this device.** The audience display shows **This stage link no longer works.** when its link is refused; open the stage again from the Session menu.
+
 Use the same browser to retain its session connection. After a reload, or on another device, sign in and use **Rejoin** under **Live now** in the Library or in the deck editor. A colleague in a shared space sees **Join session** there instead. If a device opens the session address without its credentials, it says **This session is not open on this device.**
 
 If an operation fails, read the error and wait for reconnection before retrying. Check whether the intended slide or response state has already changed. Starting again deliberately creates another audience session; use recovery to return to the existing one.
