@@ -301,7 +301,9 @@ cross-script `SESSIONS` namespace. A relay deployed alone serves the subset in
 POST /api/sessions                          host-auth'd (session cookie + CSRF header, or `x-openroom-admin: <ADMIN_KEY secret>`)
                                          body { outline: Outline } → starts a LIVE session right here
                                          (400 missing-outline when the body carries no outline)
-                                         → { sessionCode, code, hostToken, stageToken, joinUrl }
+                                         → { sessionCode, code, hostToken, stageToken, joinUrl? }
+                                         joinUrl only when the code opens the session (`joinCodeOpens`:
+                                         anonymous, nickname); identified and guest-list omit it
                                          a body naming a `deckId` instead falls through to the delivery
                                          plane's filed-session create (see GET|POST /api/sessions below)
 PUT  /api/sessions/:sessionCode/assets/:resourceId  host token; raw image/audio/PDF bytes + SHA-256 before session.start
@@ -407,6 +409,8 @@ GET|PATCH|DELETE /api/sessions/:id
                                          only as draft on a draft (422 status-server-owned otherwise)
 GET|PUT /api/sessions/:id/record    curated outcomes, notes, nextNote (the Next session note), homework (string[] or typed tasks), selected artifacts; never transcript/answers
 POST /api/sessions/:id/launch       create an outline-aware session from the selected version;
+                                         the response carries joinUrl only when the code opens the session
+                                         (identified and guest-list omit it);
                                          409 session-already-live when the session DO is running,
                                          409 session-already-ended when it has ended (also after the 12 h idle end),
                                          410 session-expired when the DO was deleted after retention
@@ -454,9 +458,8 @@ GET  /api/sessions/:sessionCode/state            ?role=participant|stage|host  (
                                          supports `?afterRevision=N` → 304 if unchanged
 POST /api/sessions/:sessionCode/commands         Bearer token; body CommandEnvelope minus actor (server derives actor from token)
                                          → 200 { ok:true, revision } | 409 { ok:false, error }  (409 for E_REVISION_CONFLICT, 422 others)
-GET  /api/sessions/:sessionCode/export?format=csv|json   host token → final results
-                                         csv = per-answer; after the answer deletion → 410 { ok:false, error:"answers-deleted" }
-                                         json = aggregates; keeps working until the session is deleted
+GET  /api/sessions/:sessionCode/export?format=csv|json|answers   host token → final results; formats, entitlement
+                                         and deletion rules in §Export split
 GET  /api/sessions/:sessionCode/ws?token=...     WebSocket upgrade (hibernation API). Server → client: {"v":1,"type":"session.changed","revision":N}.
                                          Fan-out is role-selective (sockets tagged with the token role): host commands (open/close/
                                          reveal/next/freeze/theme/end) → ALL sockets, coalesced ≥250ms; answers (answer.submit,
@@ -668,7 +671,11 @@ self-hosted: every account sees every flag `true` except `connectors`
 - `format=json` — aggregates only. Free until the DO is wiped.
 - `format=csv` — **aggregate** CSV (one row per interaction, counts). Free until the DO is wiped.
 - Any `format` other than `csv` (the default), `json` or `answers` is `400 invalid-format`.
-- `format=answers` — today's per-answer CSV (including `name` when the session is not anonymous). Requires `rawExport` or `identityMode === 'guest-list'`. `410 answers-deleted` after DATA-04 unless a `keep` archive exists.
+- `format=answers` — today's per-answer CSV (including `name` when the session is not anonymous). Requires `rawExport` or `identityMode === 'guest-list'` (else `403 raw-export-required`). `410 answers-deleted` after DATA-04 unless a `keep` archive exists.
+
+`exportAvailability` (`apps/relay/src/session-do/export-response.ts`) is the one definition of these rules; the export response and the host snapshot both read it. The host snapshot carries `exports: { json: 'available', csv: 'available', answers: 'available' | 'needs-plan' | 'deleted' }`: the Worker passes the owner's `rawExport` on every host state read, and reports `answers: 'available'` for deleted answers a `keep` archive still holds. The session menu offers **Download responses (CSV)** only when `answers` is `available`; otherwise it names the plan feature (with Plans for the space's owner and editors) or says the responses were deleted.
+
+The JSON export carries `answersDeletedAt` once DATA-04 has run and then omits `participantCount`, because the participant records are gone. MCP `session_status` passes both through as they are.
 
 `session_results` (MCP) stays the JSON aggregate shape. Do not add an answer tool on the free MCP path.
 

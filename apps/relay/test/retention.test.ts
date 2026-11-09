@@ -130,6 +130,8 @@ describe('answer deletion 30 minutes after a session ends', () => {
     expect(host.answers.reflect).toEqual({});
     expect(host.participantCount).toBe(0);
     expect(host.hosting).toEqual({ presenterId: '', hosts: [], yourId: '', canPresent: false, canRecover: false });
+    // The session menu says the responses were deleted instead of offering the download.
+    expect(host.exports).toEqual({ json: 'available', csv: 'available', answers: 'deleted' });
     expect((await command(session.sessionCode, session.hostToken, { command: 'session.start' })).status).toBe(403);
 
     // the aggregate of the still-active interaction survives, anonymized
@@ -148,8 +150,13 @@ describe('answer deletion 30 minutes after a session ends', () => {
     });
     expect(exported.status).toBe(200);
     const body = (await exported.json()) as {
+      answersDeletedAt?: number;
+      participantCount?: number;
       interactions: { id: string; aggregate: { counts?: Record<string, number>; total: number } }[];
     };
+    // Agents read when the responses were deleted, not a participant count of 0.
+    expect(body.answersDeletedAt).toBe(host.answersDeletedAt);
+    expect(body.participantCount).toBeUndefined();
     const warmup = body.interactions.find((item) => item.id === 'warmup');
     expect(warmup?.aggregate.counts).toEqual({ a: 2, b: 0 });
     expect(warmup?.aggregate.total).toBe(2);

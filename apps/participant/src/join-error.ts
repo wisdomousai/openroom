@@ -1,3 +1,4 @@
+import { joinCodeOpens } from '@openroom/schema';
 import { JoinError } from '@openroom/sdk';
 
 const LINK_BACK = 'Open the personal link your tutor sent you to come back to the lesson.';
@@ -26,9 +27,8 @@ const MESSAGES: Record<string, string> = {
  * the join code opens.
  */
 export function comeBackLine(identityMode: string | undefined): string | null {
-  if (identityMode === 'identified') return LINK_BACK;
-  if (identityMode === 'guest-list') return GUEST_LINK_BACK;
-  return null;
+  if (joinCodeOpens(identityMode)) return null;
+  return identityMode === 'guest-list' ? GUEST_LINK_BACK : LINK_BACK;
 }
 
 /** The line the join screen shows for a failed join. */

@@ -21,7 +21,7 @@
  */
 
 import { generateSessionCode, normalizeSessionCode } from '@openroom/domain';
-import { compileToOutline, parseStartOutline } from '@openroom/schema';
+import { compileToOutline, joinCodeOpens, parseStartOutline } from '@openroom/schema';
 
 import { isJoinHost } from './join-url.js';
 import {
@@ -119,7 +119,7 @@ async function createSessionRoute(request: Request, env: Env): Promise<Response>
 
   // Identified and guest-list sessions verify guest links against workspace records.
   const identityMode = outline.defaults?.identityMode;
-  if (identityMode === 'identified' || identityMode === 'guest-list') {
+  if (!joinCodeOpens(identityMode)) {
     return json({ ok: false, error: 'identity-mode-unavailable', identityMode }, 422);
   }
 

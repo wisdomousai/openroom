@@ -8,6 +8,7 @@ import {
   type WireJson as Json,
 } from '@openroom/domain';
 import type { Role } from '../tokens.js';
+import { ANSWERS_DELETED_HEADER, exportAvailability } from './export-response.js';
 import { json } from './http.js';
 
 interface SnapshotDeps {
@@ -43,8 +44,12 @@ export function snapshotResponse(deps: SnapshotDeps, url: URL): Response {
 
   const participantId = url.searchParams.get('participantId') ?? '';
   let body: Json;
+  let answersDeletedHeader: Record<string, string> = {};
   if (role === 'host') {
     body = hostWireSnapshot(state);
+    const exports = exportAvailability(state, url.searchParams.get('mayExportAnswers') === '1');
+    body.exports = { ...exports };
+    if (exports.answers === 'deleted') answersDeletedHeader = { [ANSWERS_DELETED_HEADER]: '1' };
     body.hosting = { presenterId: state.hosting.presenterId, hosts: Object.values(state.hosting.hosts).map(({ id, name }) => ({ id, name })), yourId: answersDeleted ? '' : hostId, canPresent: !answersDeleted && state.hosting.presenterId === hostId, canRecover: !answersDeleted && url.searchParams.get('canRecover') === 'true' };
   } else if (role === 'stage') {
     body = stageWireSnapshot(state);
@@ -54,5 +59,5 @@ export function snapshotResponse(deps: SnapshotDeps, url: URL): Response {
   if (typeof body.joinUrl === 'string') {
     body.joinUrl = absolutizeJoinUrl(joinEnv, body.joinUrl);
   }
-  return json(body, 200, { etag: `"${state.revision}"` });
+  return json(body, 200, { etag: `"${state.revision}"`, ...answersDeletedHeader });
 }

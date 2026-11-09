@@ -25,7 +25,7 @@ Select **Start session** from a deck in the Library, the deck editor, or the pre
 
 While a session of the deck is running, **Live now** and **Rejoin** appear beside **Start session**. Pressing **Start session** then asks once, in **This deck is live now**: select **Rejoin** to return to the running session, **Start another** to start a second one, or **Cancel**.
 
-For code-based participation, select the join code chip to copy its link, or open **Session menu → Copy join link** or **Join page**. Share the code or QR code with the audience. In an identified session the header shows the student's name instead of the code, and the audience display shows no code or QR; the student joins with the address the agent returned, which carries their [access link](/docs/learner-links/). A guest-list session gives each named guest an individual guest link.
+For code-based participation, select the join code chip to copy its link, or open **Session menu → Copy join link** or **Join page**. Share the code or QR code with the audience. In an identified session the header shows the student's name instead of the code, and the audience display shows no code or QR; the student joins with the address the agent returned, which carries their [access link](/docs/learner-links/). A guest-list session also shows no code or QR on the header or the audience display, which reads **Waiting for invited people** until someone joins. Each named guest joins with the address that carries their own [guest link](/docs/cli/#issue-guest-links).
 
 Select **Stage** in the session menu to open the audience display. If its link has not loaded, select **Stage — retry**.
 
