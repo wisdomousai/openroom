@@ -100,7 +100,7 @@ export function SpacePage({
   const [confirmLive, setConfirmLive] = useState<PanelItem | null>(null);
   const [rejoining, setRejoining] = useState(false);
 
-  const signedIn = session.user !== null && session.user !== undefined;
+  const signedIn = session.state.status === 'signed-in';
   const currentFolderId = folderIdProp ?? null;
   const currentStudentId = studentIdProp ?? null;
   const navigate = useNavigate();

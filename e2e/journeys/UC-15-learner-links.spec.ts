@@ -114,6 +114,15 @@ test('group learners keep private work across link replacement and same-tab swit
   await learner.getByRole('tab', { name: 'Feedback', exact: true }).click();
   await expect(learner.getByRole('tabpanel', { name: 'Feedback' }).getByRole('alert')).toHaveText('Too many attempts from your connection. Wait a minute, then reload this page.');
   await learner.unroute('**/api/learner/feedback');
+  // A save refused with 401 says the link no longer works and keeps the typed text on screen, with Save off.
+  await learner.getByRole('tab', { name: 'Lesson', exact: true }).click();
+  await learner.route('**/api/learner/writing', (route) => route.fulfill({ status: 401, json: { error: 'unauthorized' } }));
+  await writing.fill('Un texte pas encore enregistré.');
+  await learner.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(learner.getByRole('heading', { name: 'This link no longer works', exact: true })).toBeVisible();
+  await expect(writing).toHaveValue('Un texte pas encore enregistré.');
+  await expect(learner.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+  await learner.unroute('**/api/learner/writing');
   // A link revoked while the page is open turns the page into the dead-link page on its next request.
   await learner.route('**/api/learner/sessions', (route) => route.fulfill({ status: 401, json: { error: 'unauthorized' } }));
   await learner.reload();

@@ -890,7 +890,7 @@ GET    /api/assets/:id                                     public read, immutabl
 
 ### Host app
 
-On load: one `/api/me`. Signed out, it probes `/api/auth/status` and shows Google and/or the demo-account form depending on what the deployment offers. Signed in, the sidebar shows the account, a **My decks** panel (load into the editor, save as a new deck or a new version, with server validation errors rendered inline) and a **My sessions** panel (reconnect straight into the console with the minted tokens). Browser session creation requires the signed-in session; there is no deployment-key fallback in the host UI.
+On load: one `/api/me`. Signed out, it probes `/api/auth/status` and shows Google and/or the demo-account form depending on what the deployment offers. The gate has four states (`useAuth`): checking, signed in, signed out and unreachable. A failed `/api/me` or status probe (5xx or no answer) is unreachable and shows "OpenRoom could not be reached" with Try again, never the sign-in page; "sign-in is not configured" appears only when the probe answered with no method. A 401 from any workspace request invalidates `['auth','me']`, so an expired sign-in reaches the sign-in page from every screen. Signed in, the sidebar shows the account, a **My decks** panel (load into the editor, save as a new deck or a new version, with server validation errors rendered inline) and a **My sessions** panel (reconnect straight into the console with the minted tokens). Browser session creation requires the signed-in session; there is no deployment-key fallback in the host UI.
 
 ### Worker env additions
 

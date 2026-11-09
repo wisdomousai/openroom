@@ -6,6 +6,7 @@ import { PrivateAudio, audioTime } from '../../components/PrivateAudio';
 import { Button } from '@openroom/ui/components/button';
 import { useLearnerLanguage } from '../../lib/learner-language';
 import type { LearnerMessage, RecordingStopReason } from '../../lib/learner-copy';
+import { useLearnerLink } from '../../lib/learner-link';
 
 class AudioPreparationError extends Error {
   constructor(readonly messageKey: LearnerMessage) { super(messageKey); }
@@ -38,6 +39,7 @@ async function prepareAudio(blob: Blob, recorded: boolean): Promise<{ wav: Blob;
 
 export function VoiceTask({ token, sessionId, task, active }: { token: string; sessionId: string; task: LearnerHomeworkTask; active: boolean }) {
   const { copy, locale } = useLearnerLanguage();
+  const link = useLearnerLink();
   const queryClient = useQueryClient();
   const [audio, setAudio] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -159,6 +161,7 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
       setSent({ ...saved, available: true }); setAudio(null); setCutShort(null);
       void queryClient.invalidateQueries({ queryKey: ['learner', 'sessions'] });
     } catch (cause) {
+      if (!timedOut && link.report(cause)) return;
       if (mounted.current) setError(timedOut ? 'voiceSendTimeout' : cause instanceof ApiError && cause.code === 'recording-limit' ? 'recordingLimit' : cause instanceof ApiError && cause.status === 409 ? 'voiceChanged' : 'voiceSendError');
     } finally { window.clearTimeout(timeout); if (mounted.current) setUploading(false); }
   };
@@ -177,7 +180,7 @@ export function VoiceTask({ token, sessionId, task, active }: { token: string; s
     </div>
     {preparing ? <p role="status" className="text-sm">{copy.preparing}</p> : null}
     {preview && cutShort ? <p role="status" className="text-sm">{copy.recordingCutShort(audioTime(cutShort.durationMs), cutShort.reason)}</p> : null}
-    {preview ? <div className="grid min-w-0 gap-3"><audio src={preview} controls aria-label={copy.preview} className="h-12 w-full min-w-0" /><div className="flex flex-wrap items-center gap-3"><Button ref={sendButton} type="button" className="min-h-11" disabled={busy} onClick={() => void send()}>{copy.sendResponse}</Button><a href={preview} download="my-response.wav" className="inline-flex min-h-11 items-center text-sm underline">{copy.download}</a></div></div> : null}
+    {preview ? <div className="grid min-w-0 gap-3"><audio src={preview} controls aria-label={copy.preview} className="h-12 w-full min-w-0" /><div className="flex flex-wrap items-center gap-3"><Button ref={sendButton} type="button" className="min-h-11" disabled={busy || link.refused} onClick={() => void send()}>{copy.sendResponse}</Button><a href={preview} download="my-response.wav" className="inline-flex min-h-11 items-center text-sm underline">{copy.download}</a></div></div> : null}
     {uploading ? <div className="grid gap-1"><div className="flex items-baseline justify-between gap-3"><span role="status"><label htmlFor={`voice-progress-${task.id}`} className="text-sm">{copy.sending}</label></span><span className="flex gap-3 font-mono text-sm tabular-nums"><span aria-hidden="true">{new Intl.NumberFormat(locale, { style: 'percent' }).format(sendProgress)}</span><span role="timer" aria-label={copy.sendingTime}>{audioTime(sendSeconds * 1000)}</span></span></div><progress id={`voice-progress-${task.id}`} className="w-full" max={100} value={Math.round(sendProgress * 100)} /></div> : null}
     {error ? <p role="alert" className="text-sm text-destructive">{copy[error]}</p> : null}
     <p className="text-xs leading-relaxed text-muted-foreground">{copy.voicePrivacy}</p>

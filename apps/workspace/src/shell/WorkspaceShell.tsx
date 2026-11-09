@@ -53,7 +53,7 @@ export function WorkspaceShell({ children, signedIn, actions }: Props) {
 
   const navigate = useNavigate();
   const session = useAuth();
-  const user = session.user ?? null;
+  const { user } = session;
   const [query, setQuery] = useState('');
 
   const spacesQuery = useQuery({

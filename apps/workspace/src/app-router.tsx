@@ -25,6 +25,7 @@ import { SpacePage } from './pages/SpacePage';
 import { BillingPage } from './pages/BillingPage';
 import { ApiTokenNewPage, SettingsPage } from './pages/SettingsPage';
 import { SignInPage } from './pages/SignInPage';
+import { AccountUnreachable } from './AccountPanel';
 import {
   StudentDetailPage,
   StudentEditPage,
@@ -99,15 +100,24 @@ function RootLayout() {
  */
 function SignedInGate({ children }: { children: ReactNode }) {
   const { session } = useAppServices();
-  if (session.user === undefined) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
-        <p className="text-secondary text-muted-foreground">Checking your account…</p>
-      </div>
-    );
+  switch (session.state.status) {
+    case 'checking':
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+          <p className="text-secondary text-muted-foreground">Checking your account…</p>
+        </div>
+      );
+    case 'unreachable':
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+          <AccountUnreachable session={session} />
+        </div>
+      );
+    case 'signed-out':
+      return <SignInPage session={session} />;
+    case 'signed-in':
+      return <>{children}</>;
   }
-  if (session.user === null) return <SignInPage session={session} />;
-  return <>{children}</>;
 }
 
 function WorkspaceLayout() {

@@ -1,4 +1,4 @@
-import { baseUrl, request } from './client';
+import { apiFetch, baseUrl, request, responseError } from './client';
 
 /* ------------------------------------------------------------ control plane */
 
@@ -20,17 +20,22 @@ export interface MeUser {
   entitlements?: Entitlements;
 }
 
-/** null = signed out. Never throws for the 401 case. */
+/**
+ * null = signed out: the worker answered 200 with `user: null` (or 401).
+ * A failed answer or an unreachable worker throws an ApiError, so the sign-in
+ * gate can tell "signed out" from "could not check".
+ */
 export async function fetchMe(): Promise<MeUser | null> {
+  const res = await apiFetch(`${baseUrl}/api/me`, { credentials: 'same-origin' });
+  if (res.status === 401) return null;
+  let body: unknown = null;
   try {
-    const res = await fetch(`${baseUrl}/api/me`, { credentials: 'same-origin' });
-    if (res.status === 401) return null;
-    if (!res.ok) return null;
-    const body = (await res.json()) as { user: MeUser };
-    return body.user ?? null;
+    body = await res.json();
   } catch {
-    return null;
+    body = null;
   }
+  if (!res.ok) throw responseError(res.status, body);
+  return (body as { user?: MeUser | null } | null)?.user ?? null;
 }
 
 export interface DemoAccountPublic {
@@ -48,21 +53,24 @@ export interface AuthStatus {
 /**
  * What sign-in methods this deployment offers.
  * Google and/or static demo accounts (dev). Either is enough to show the
- * account card as interactive.
+ * account card as interactive. A failed probe throws an ApiError rather than
+ * reporting that no method exists.
  */
 export async function fetchAuthStatus(): Promise<AuthStatus> {
+  const res = await apiFetch(`${baseUrl}/api/auth/status`, { credentials: 'same-origin' });
+  let body: unknown = null;
   try {
-    const res = await fetch(`${baseUrl}/api/auth/status`, { credentials: 'same-origin' });
-    if (!res.ok) return { google: false, demo: false, accounts: [] };
-    const body = (await res.json()) as Partial<AuthStatus>;
-    return {
-      google: body.google === true,
-      demo: body.demo === true,
-      accounts: Array.isArray(body.accounts) ? body.accounts : [],
-    };
+    body = await res.json();
   } catch {
-    return { google: false, demo: false, accounts: [] };
+    body = null;
   }
+  if (!res.ok) throw responseError(res.status, body);
+  const status = (body ?? {}) as Partial<AuthStatus>;
+  return {
+    google: status.google === true,
+    demo: status.demo === true,
+    accounts: Array.isArray(status.accounts) ? status.accounts : [],
+  };
 }
 
 export function signInUrl(): string {

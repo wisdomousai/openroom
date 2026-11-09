@@ -7,18 +7,43 @@ import {
   type MeUser,
 } from './api';
 
+/**
+ * Every state the sign-in gate can show. `unreachable` means the account check
+ * failed (a 5xx answer or no answer at all); it is never shown as signed out.
+ */
+export type AuthState =
+  | { status: 'checking' }
+  | { status: 'signed-in'; user: MeUser }
+  | { status: 'signed-out'; methods: AuthStatus }
+  | { status: 'unreachable' };
+
 export interface AuthSession {
-  /** undefined while the first /api/me is in flight, null when signed out. */
-  user: MeUser | null | undefined;
-  /**
-   * true when any sign-in method is available (Google OAuth and/or demo
-   * accounts).
-   */
-  canSignIn: boolean;
-  /** Full status once probed; null while the first probe is in flight. */
-  authStatus: AuthStatus | null;
+  state: AuthState;
+  /** The signed-in user; null in every other state. */
+  user: MeUser | null;
+  /** Ask again after a failed account check. */
+  retry: () => void;
+  /** true while a check is in flight, so Try again is not pressed twice. */
+  retrying: boolean;
+  /** Re-read /api/me after a sign-in or a billing change; rethrows a failed check. */
   refresh: () => Promise<void>;
   clear: () => void;
+}
+
+/**
+ * The last answer wins. A failed check shows `unreachable` only when there is
+ * no earlier answer: a background recheck that fails keeps the person where
+ * they were, and a 401 from a request reaches signed out through the
+ * invalidated /api/me.
+ */
+export function authState(
+  me: { data: MeUser | null | undefined; isError: boolean },
+  methods: { data: AuthStatus | undefined; isError: boolean },
+): AuthState {
+  if (me.data === undefined) return me.isError ? { status: 'unreachable' } : { status: 'checking' };
+  if (me.data !== null) return { status: 'signed-in', user: me.data };
+  if (methods.data !== undefined) return { status: 'signed-out', methods: methods.data };
+  return methods.isError ? { status: 'unreachable' } : { status: 'checking' };
 }
 
 export const authQueryOptions = queryOptions({
@@ -47,40 +72,48 @@ function clearUserScopedQueries(queryClient: ReturnType<typeof useQueryClient>):
 
 /**
  * One `/api/me` on load. When signed out, probe `/api/auth/status` so the UI
- * can offer Google and/or the demo account picker.
+ * can offer Google and/or the demo account picker. A request refused with 401
+ * invalidates `/api/me` (query-client.ts), and the gate follows its answer.
  */
 export function useAuth(): AuthSession {
   const queryClient = useQueryClient();
   const meQuery = useQuery(authQueryOptions);
-  const user: MeUser | null | undefined = meQuery.data;
+  const me: MeUser | null | undefined = meQuery.data;
   const previousIdentity = useRef<string | null | undefined>(undefined);
-  const authQuery = useQuery({
+  const methodsQuery = useQuery({
     ...authStatusQueryOptions,
-    enabled: user === null,
+    enabled: me === null,
   });
-  const authStatus: AuthStatus | null = authQuery.data ?? null;
+  const state = authState(meQuery, methodsQuery);
 
   useEffect(() => {
-    if (user === undefined) return;
+    if (me === undefined) return;
 
-    const identity = user?.id ?? null;
+    const identity = me?.id ?? null;
     if (previousIdentity.current !== undefined && previousIdentity.current !== identity) {
       clearUserScopedQueries(queryClient);
     }
     previousIdentity.current = identity;
-  }, [queryClient, user]);
+  }, [queryClient, me]);
+
+  const { refetch: refetchMe } = meQuery;
+  const { refetch: refetchMethods } = methodsQuery;
+  const retry = useCallback(() => {
+    void (me === undefined ? refetchMe() : refetchMethods());
+  }, [me, refetchMe, refetchMethods]);
 
   const refresh = useCallback(async () => {
     // Fetch outside the cache so an account switch can clear user-scoped data
     // before React observes the new identity with old space query results.
+    // A failed check throws here and leaves the gate as it was.
     const previous = queryClient.getQueryData<MeUser | null>(authQueryOptions.queryKey);
-    const me = await fetchMe();
-    if ((previous?.id ?? null) !== (me?.id ?? null)) {
+    const next = await fetchMe();
+    if ((previous?.id ?? null) !== (next?.id ?? null)) {
       clearUserScopedQueries(queryClient);
     }
-    previousIdentity.current = me?.id ?? null;
-    queryClient.setQueryData(authQueryOptions.queryKey, me);
-    if (me === null) {
+    previousIdentity.current = next?.id ?? null;
+    queryClient.setQueryData(authQueryOptions.queryKey, next);
+    if (next === null) {
       await queryClient.fetchQuery({
         ...authStatusQueryOptions,
         staleTime: 0,
@@ -95,7 +128,12 @@ export function useAuth(): AuthSession {
     void queryClient.invalidateQueries({ queryKey: authStatusQueryOptions.queryKey });
   }, [queryClient]);
 
-  const canSignIn = authStatus !== null && (authStatus.google || authStatus.demo);
-
-  return { user, canSignIn, authStatus, refresh, clear };
+  return {
+    state,
+    user: state.status === 'signed-in' ? state.user : null,
+    retry,
+    retrying: meQuery.isFetching || methodsQuery.isFetching,
+    refresh,
+    clear,
+  };
 }

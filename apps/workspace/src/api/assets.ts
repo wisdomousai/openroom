@@ -3,8 +3,8 @@ import {
   apiFetch,
   baseUrl,
   CSRF_HEADERS,
+  failedResponse,
   request,
-  responseError,
 } from './client';
 import { listAllSpaces } from './spaces';
 
@@ -51,7 +51,7 @@ export async function uploadAsset(
   } catch {
     body = null;
   }
-  if (!res.ok) throw responseError(res.status, body);
+  if (!res.ok) throw failedResponse(res.status, body);
   return (body as { asset: MediaAssetSummary }).asset;
 }
 

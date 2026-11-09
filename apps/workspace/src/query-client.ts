@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import { ApiError } from './api/client';
+import { ApiError, onUnauthorized } from './api/client';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,6 +15,15 @@ export const queryClient = new QueryClient({
       retry: false,
     },
   },
+});
+
+/*
+ * A 401 from any workspace call means the cookie may be gone. Ask /api/me
+ * again; the sign-in gate follows that answer, so an expired sign-in reaches
+ * the sign-in page from every screen, the Library included.
+ */
+onUnauthorized(() => {
+  void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
 });
 
 const MANAGEMENT_QUERY_ROOTS = new Set([

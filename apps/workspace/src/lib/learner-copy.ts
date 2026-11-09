@@ -8,6 +8,7 @@ export const learnerLanguageNames: Record<LearnerLocale, string> = { en: 'Englis
 const en = {
   interfaceLanguage: 'Interface language', close: 'Close',
   deadLink: 'This link no longer works', newLink: 'A new link comes from the tutor.',
+  deadLinkKeepWork: 'Copy any text you have not saved and download any recording you have not sent before you close this page.',
   tooManyAttempts: 'Too many attempts',
   rateLimit: 'Too many tries from this connection in a short time. Reload after one minute — the link itself stays valid.',
   rateLimitShort: 'Too many attempts from your connection. Wait a minute, then reload this page.',
@@ -71,6 +72,7 @@ export type LearnerMessage = { [K in keyof LearnerCopy]: LearnerCopy[K] extends 
 const fr: LearnerCopy = {
   interfaceLanguage: 'Langue de l’interface', close: 'Fermer',
   deadLink: 'Ce lien ne fonctionne plus', newLink: 'Demandez un nouveau lien à votre professeur.',
+  deadLinkKeepWork: 'Copiez le texte que vous n’avez pas enregistré et téléchargez l’enregistrement que vous n’avez pas envoyé avant de fermer cette page.',
   tooManyAttempts: 'Trop de tentatives',
   rateLimit: 'Trop de tentatives ont été faites depuis cette connexion. Rechargez la page dans une minute. Votre lien reste valable.',
   rateLimitShort: 'Trop de tentatives depuis votre connexion. Attendez une minute, puis rechargez la page.',
@@ -131,6 +133,7 @@ const fr: LearnerCopy = {
 const de: LearnerCopy = {
   interfaceLanguage: 'Sprache der Oberfläche', close: 'Schliessen',
   deadLink: 'Dieser Link funktioniert nicht mehr', newLink: 'Bitte deine Lehrperson um einen neuen Link.',
+  deadLinkKeepWork: 'Kopiere Text, den du nicht gespeichert hast, und lade Aufnahmen herunter, die du nicht gesendet hast, bevor du diese Seite schliesst.',
   tooManyAttempts: 'Zu viele Versuche',
   rateLimit: 'Über diese Verbindung gab es zu viele Versuche. Lade die Seite in einer Minute neu. Dein Link bleibt gültig.',
   rateLimitShort: 'Zu viele Versuche über deine Verbindung. Warte eine Minute und lade die Seite neu.',

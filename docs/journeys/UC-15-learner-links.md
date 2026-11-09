@@ -25,6 +25,10 @@ Acceptance:
   error on first load shows "Your page could not be loaded" with Try again; a
   failed Lesson or Feedback tab shows its own sentence with Try again; a rate
   limit on a tab says to wait a minute.
+- A refusal after the page has loaded, from a tab or from a save, practice
+  answer, recording send or recording removal, shows the dead-link sentence
+  above the tasks. The tasks stay on screen with saving and sending off, so
+  unsaved text can still be copied and an unsent recording downloaded.
 - Worker tests separately prove stable live-seat identity, student isolation,
   cookie/PAT separation and current credential denial.
 

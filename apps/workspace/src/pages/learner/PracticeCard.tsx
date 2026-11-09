@@ -8,6 +8,7 @@ import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
 import { accentKeysFor, insertCharacter } from './accent-keys';
+import { useLearnerLink } from '../../lib/learner-link';
 
 export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
   item: LearnerPracticeItem;
@@ -16,6 +17,7 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
   onSkip?: () => void;
 }) {
   const { copy } = useLearnerLanguage();
+  const link = useLearnerLink();
   // Preserve the question the learner actually answered until they request its update.
   const [snapshot, setSnapshot] = useState(item);
   const interaction = snapshot.interaction;
@@ -40,7 +42,7 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
   const record = async (grade: 'again' | 'good') => {
     focusResult.current = true; setBusy(true); setError(null); setAttemptGrade(grade);
     try { await onGrade(grade, answer, snapshot.assignmentRevision, attemptId); setSaved(true); }
-    catch (cause) { setError(cause instanceof ApiError && (cause.status === 409 || cause.status === 404) ? 'changed' : 'save'); }
+    catch (cause) { if (!link.report(cause)) setError(cause instanceof ApiError && (cause.status === 409 || cause.status === 404) ? 'changed' : 'save'); }
     finally { setBusy(false); }
   };
   const refresh = async () => {
@@ -50,7 +52,7 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
       if (!current) { setUnavailable(true); return; }
       setSnapshot(current); setAnswer(initialHomeworkAnswer(current.interaction)); setRevealed(false); setSaved(false);
       setAttemptId(crypto.randomUUID()); setAttemptGrade(null); setError(null);
-    } catch { setError('refresh'); } finally { setBusy(false); }
+    } catch (cause) { if (!link.report(cause)) setError('refresh'); } finally { setBusy(false); }
   };
   const check = () => { focusResult.current = true; setRevealed(true); };
   // Return on a phone keyboard checks a typed answer, as the Check button does.
@@ -135,11 +137,11 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
       <p ref={result} tabIndex={-1} className="text-base font-semibold outline-none">{assessment.result === 'correct' ? copy.correct : assessment.result === 'incorrect' ? copy.compare : copy.selfCheck}</p>
       {assessment.answers.length > 0 ? <div className="rounded-lg bg-muted/60 p-3"><p className="mb-1 text-sm font-semibold">{assessment.result === 'incorrect' ? copy.acceptedAnswers : copy.answer}</p><ul className="grid gap-1 text-base">{assessment.answers.map((line, index) => <li key={index}>{line}</li>)}</ul></div> : <p className="text-sm text-muted-foreground">{copy.noSingleAnswer}</p>}
       <div className="flex flex-wrap gap-2">
-        {assessment.result !== 'incorrect' ? <Button className="min-h-11" disabled={busy || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'again'} onClick={() => void record('good')}>{saved ? copy.saved : assessment.result === 'self-check' ? copy.confident : copy.good}</Button> : null}
-        <Button variant={assessment.result === 'incorrect' ? 'default' : 'outline'} className="min-h-11" disabled={busy || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'good'} onClick={() => void record('again')}>{saved && assessment.result === 'incorrect' ? copy.saved : copy.again}</Button>
+        {assessment.result !== 'incorrect' ? <Button className="min-h-11" disabled={busy || link.refused || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'again'} onClick={() => void record('good')}>{saved ? copy.saved : assessment.result === 'self-check' ? copy.confident : copy.good}</Button> : null}
+        <Button variant={assessment.result === 'incorrect' ? 'default' : 'outline'} className="min-h-11" disabled={busy || link.refused || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'good'} onClick={() => void record('again')}>{saved && assessment.result === 'incorrect' ? copy.saved : copy.again}</Button>
         <Button variant="ghost" className="min-h-11" disabled={busy || error !== null} onClick={() => { setRevealed(false); setSaved(false); setAttemptId(crypto.randomUUID()); setAttemptGrade(null); }}><RotateCcw className="size-4" /> {copy.tryAgain}</Button>
       </div>
-      {error ? <div className="grid gap-2"><p role="alert" className="text-sm text-destructive">{error === 'changed' ? copy.practiceChanged : error === 'refresh' ? copy.practiceRefreshError : copy.practiceSaveError}</p>{error === 'changed' || error === 'refresh' ? <Button variant="outline" className="min-h-11 w-fit" disabled={busy} onClick={() => void refresh()}>{copy.refreshPractice}</Button> : null}</div> : null}
+      {error ? <div className="grid gap-2"><p role="alert" className="text-sm text-destructive">{error === 'changed' ? copy.practiceChanged : error === 'refresh' ? copy.practiceRefreshError : copy.practiceSaveError}</p>{error === 'changed' || error === 'refresh' ? <Button variant="outline" className="min-h-11 w-fit" disabled={busy || link.refused} onClick={() => void refresh()}>{copy.refreshPractice}</Button> : null}</div> : null}
     </div>}
   </div>;
 }
