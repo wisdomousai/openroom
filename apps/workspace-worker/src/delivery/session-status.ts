@@ -20,8 +20,12 @@
  * read after a start never moves a row back.
  */
 import type { SessionStatus } from '@openroom/schema';
+import { and, eq, inArray } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
 
 import type { ControlEnv } from '../auth.js';
+import { orm } from '../db/client.js';
+import { liveSessions, sessions } from '../db/schema.js';
 
 /** The Durable Object's lifecycle as a snapshot or an accepted command reports it. */
 export type LiveStatus = 'lobby' | 'live' | 'ended';
@@ -52,21 +56,23 @@ export async function recordSessionTransition(env: ControlEnv, sessionCode: stri
   const target = storedSessionStatus(live);
   const from = (Object.keys(SESSION_STATUS_MOVES) as SessionStatus[])
     .filter((status) => SESSION_STATUS_MOVES[status].includes(target));
-  const statements: D1PreparedStatement[] = [];
+  const db = orm(env);
+  const statements: BatchItem<'sqlite'>[] = [];
   if (target === 'ended') {
-    statements.push(env.DB.prepare('UPDATE live_sessions SET ended = 1 WHERE code = ?1').bind(sessionCode));
+    statements.push(db.update(liveSessions).set({ ended: 1 }).where(eq(liveSessions.code, sessionCode)));
   }
   if (from.length > 0) {
-    const fromList = from.map((_, index) => `?${String(index + 4)}`).join(', ');
-    statements.push(env.DB.prepare(
-      `UPDATE sessions SET status = ?1, updated_at = ?2
-        WHERE id = (SELECT session_id FROM live_sessions WHERE code = ?3)
-          AND status IN (${fromList})`,
-    ).bind(target, Date.now(), sessionCode, ...from));
+    statements.push(db.update(sessions)
+      .set({ status: target, updatedAt: Date.now() })
+      .where(and(
+        eq(sessions.id, db.select({ sessionId: liveSessions.sessionId }).from(liveSessions).where(eq(liveSessions.code, sessionCode))),
+        inArray(sessions.status, from),
+      )));
   }
-  if (statements.length === 0) return;
+  const [first, ...rest] = statements;
+  if (first === undefined) return;
   try {
-    await env.DB.batch(statements);
+    await db.batch([first, ...rest]);
   } catch {
     // The DO stays the authority; see above.
   }
@@ -77,10 +83,12 @@ export async function recordSessionTransition(env: ControlEnv, sessionCode: stri
  * it was wiped after its retention period, so the session is recorded as ended.
  */
 export async function recordMissingSession(env: ControlEnv, sessionCode: string, now = Date.now()): Promise<void> {
-  const row = await env.DB.prepare('SELECT created_at FROM live_sessions WHERE code = ?1')
-    .bind(sessionCode)
-    .first<{ created_at: number }>();
-  if (row && now - row.created_at > SESSION_INIT_WINDOW_MS) {
+  const row = await orm(env)
+    .select({ createdAt: liveSessions.createdAt })
+    .from(liveSessions)
+    .where(eq(liveSessions.code, sessionCode))
+    .get();
+  if (row && now - row.createdAt > SESSION_INIT_WINDOW_MS) {
     await recordSessionTransition(env, sessionCode, 'ended');
   }
 }

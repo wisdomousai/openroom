@@ -1,7 +1,10 @@
 import { resolveRevealOrder } from '@openroom/schema';
+import { and, eq } from 'drizzle-orm';
 import { json, type ControlEnv } from './auth';
 import { requireControlUser } from './control-auth';
 import { readJson } from './control-utils';
+import { orm } from './db/client';
+import { liveSessions, sessions } from './db/schema';
 import { deckAccess, identifiedNeedsStudent, latestContent, sessionAccess, type SessionLauncher } from './delivery/shared';
 import { requireIdentifiedSessionAccess } from './continuity-access';
 import { coHostSessionRoute } from './hosting';
@@ -17,37 +20,46 @@ export async function startDeckRoute(request: Request, env: ControlEnv, deckId: 
   const body = await readJson(request);
   if (!body || typeof body.requestId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(body.requestId)) return json({ error: 'request-id-required' }, 422);
   const deck = await deckAccess(env, guard.user.id, deckId);
-  if (!deck || deck.deleted_at !== null) return json({ error: 'deck-not-found' }, 404);
-  const access = await spaceRole(env, guard.user, deck.space_id);
+  if (!deck || deck.deletedAt !== null) return json({ error: 'deck-not-found' }, 404);
+  const access = await spaceRole(env, guard.user, deck.spaceId);
   if (!access) return json({ error: 'deck-not-found' }, 404);
-  const existing = await env.DB.prepare('SELECT created_by, deck_id, deck_version, source_outline_json FROM sessions WHERE id = ?1').bind(body.requestId).first<{ created_by: string; deck_id: string; deck_version: number; source_outline_json: string | null }>();
-  if (existing && (existing.source_outline_json || existing.created_by !== guard.user.id || existing.deck_id !== deckId)) return json({ error: 'request-id-conflict' }, 409);
+  const existing = await orm(env)
+    .select({ createdBy: sessions.createdBy, deckId: sessions.deckId, deckVersion: sessions.deckVersion, sourceOutlineJson: sessions.sourceOutlineJson })
+    .from(sessions)
+    .where(eq(sessions.id, body.requestId))
+    .get();
+  if (existing && (existing.sourceOutlineJson || existing.createdBy !== guard.user.id || existing.deckId !== deckId)) return json({ error: 'request-id-conflict' }, 409);
   if (access.space.owner_user_id !== guard.user.id && !(await readEntitlements(env, access.space.owner_user_id)).team) {
-    const retained = existing && await env.DB.prepare('SELECT code FROM live_sessions WHERE session_id = ?1 AND space_id = ?2 AND collaboration_enabled = 1').bind(body.requestId, deck.space_id).first();
+    const retained = existing && await orm(env)
+      .select({ code: liveSessions.code })
+      .from(liveSessions)
+      .where(and(eq(liveSessions.sessionId, body.requestId), eq(liveSessions.spaceId, deck.spaceId), eq(liveSessions.collaborationEnabled, 1)))
+      .get();
     if (!retained) return json({ error: 'team-required' }, 403);
   }
-  const available = await latestContent(env, deckId, existing?.deck_version ?? deck.current_version);
+  const available = await latestContent(env, deckId, existing?.deckVersion ?? deck.currentVersion);
   if (!available) return json({ error: 'deck-content-not-found' }, 409);
   if (body.stepId !== undefined && !available.outline.steps.some((item) => item.id === body.stepId && !item.breakoutOf)) return json({ error: 'activity-not-found' }, 422);
   // Refuse before the durable row exists: a row filed without a student would
   // keep refusing this requestId after the deck is filed under the student.
-  if (!existing && deck.student_id === null && available.outline.defaults?.identityMode === 'identified') {
+  if (!existing && deck.studentId === null && available.outline.defaults?.identityMode === 'identified') {
     return (await requireIdentifiedSessionAccess(env, access.space.owner_user_id)) ?? identifiedNeedsStudent();
   }
   const now = Date.now();
-  await env.DB.prepare(`INSERT OR IGNORE INTO sessions
-    (id,space_id,folder_id,deck_id,deck_version,student_id,created_by,title,shape,status,metadata_json,created_at,updated_at)
-    VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,'draft','{}',?10,?10)`)
-    .bind(body.requestId, deck.space_id, deck.folder_id, deck.id, deck.current_version, deck.student_id, guard.user.id, deck.title, deck.shape, now).run();
+  await orm(env).insert(sessions).values({
+    id: body.requestId, spaceId: deck.spaceId, folderId: deck.folderId, deckId: deck.id, deckVersion: deck.currentVersion,
+    studentId: deck.studentId, createdBy: guard.user.id, title: deck.title, shape: deck.shape, status: 'draft',
+    metadataJson: '{}', createdAt: now, updatedAt: now,
+  }).onConflictDoNothing().run();
   const session = await sessionAccess(env, guard.user.id, body.requestId);
-  if (!session || session.deleted_at !== null) return json({ error: 'session-not-found' }, 404);
+  if (!session || session.deletedAt !== null) return json({ error: 'session-not-found' }, 404);
   // A racing request may have won INSERT after the initial read.
-  if (session.source_outline_json || session.created_by !== guard.user.id || session.deck_id !== deckId) return json({ error: 'request-id-conflict' }, 409);
-  const content = await latestContent(env, deckId, session.deck_version);
+  if (session.sourceOutlineJson || session.createdBy !== guard.user.id || session.deckId !== deckId) return json({ error: 'request-id-conflict' }, 409);
+  const content = await latestContent(env, deckId, session.deckVersion);
   if (!content) return json({ error: 'deck-content-not-found' }, 409);
   const step = body.stepId === undefined ? undefined : content.outline.steps.find((item) => item.id === body.stepId && !item.breakoutOf);
   if (body.stepId !== undefined && !step) return json({ error: 'activity-not-found' }, 422);
-  return launch({ sessionId: session.id, deckId, studentId: session.student_id, title: session.title, version: content.version,
+  return launch({ sessionId: session.id, deckId, studentId: session.studentId, title: session.title, version: content.version,
     outline: content.outline, start: true,
     ...(step ? { cursor: { stepId: step.id, shown: resolveRevealOrder(step, content.outline.interactions).length } } : {}),
     ...(guard.connectionId ? { connectionId: guard.connectionId } : {}),
@@ -61,10 +73,10 @@ export async function resumeSessionRoute(request: Request, env: ControlEnv & { S
   const guard = await requireControlUser(request, env, true);
   if (!guard.ok) return guard.response;
   const session = await sessionAccess(env, guard.user.id, id);
-  if (!session || session.deleted_at !== null) return json({ error: 'session-not-found' }, 404);
-  const live = await env.DB.prepare('SELECT code FROM live_sessions WHERE session_id = ?1').bind(id).first<{ code: string }>();
+  if (!session || session.deletedAt !== null) return json({ error: 'session-not-found' }, 404);
+  const live = await orm(env).select({ code: liveSessions.code }).from(liveSessions).where(eq(liveSessions.sessionId, id)).get();
   if (!live) return json({ error: 'session-not-started' }, 409);
   const result = await coHostSessionRoute(request, env, live.code);
   if (!result.ok) return result;
-  return json({ ...await result.json() as object, sessionId: session.id, deckId: session.deck_id, deckVersion: session.deck_version, presentation: presentationComposition(session) });
+  return json({ ...await result.json() as object, sessionId: session.id, deckId: session.deckId, deckVersion: session.deckVersion, presentation: presentationComposition(session) });
 }

@@ -31,25 +31,20 @@ import {
   type MediaAssetSummary,
 } from '@openroom/schema';
 
+import { and, desc, eq, or, sql, type SQL } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
+import { orm } from './db/client.js';
+import { mediaAssets } from './db/schema.js';
+import { containsNeedle, likeEscaped } from './db/sql.js';
 import { roleAtLeast, spaceRole } from './members.js';
 
 export interface MediaEnv extends ControlEnv {
   MEDIA: R2Bucket;
 }
 
-interface AssetRow {
-  id: string;
-  space_id: string;
-  owner_id: string;
-  key: string;
-  content_type: string;
-  size: number;
-  name: string;
-  alt: string | null;
-  created_at: number;
-}
+type AssetRow = typeof mediaAssets.$inferSelect;
 
 /**
  * Types whose first bytes are checked against the declared type. The header is
@@ -82,15 +77,15 @@ function assetKind(contentType: string): 'image' | 'video' | 'audio' | 'pdf' {
 function assetJson(row: AssetRow): MediaAssetSummary {
   return {
     id: row.id,
-    spaceId: row.space_id,
+    spaceId: row.spaceId,
     url: mediaAssetPath(row.id),
     name: row.name,
-    contentType: row.content_type,
+    contentType: row.contentType,
     size: row.size,
     alt: row.alt,
-    kind: assetKind(row.content_type),
-    createdAt: row.created_at,
-    createdBy: row.owner_id,
+    kind: assetKind(row.contentType),
+    createdAt: row.createdAt,
+    createdBy: row.ownerId,
   };
 }
 
@@ -148,12 +143,9 @@ async function uploadAssetRoute(
 
   await env.MEDIA.put(key, bytes, { httpMetadata: { contentType } });
   try {
-    await env.DB.prepare(
-      `INSERT INTO media_assets
-         (id, space_id, owner_id, key, content_type, size, name, alt, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-    )
-      .bind(id, spaceId, guard.user.id, key, contentType, bytes.byteLength, name, alt, now)
+    await orm(env)
+      .insert(mediaAssets)
+      .values({ id, spaceId, ownerId: guard.user.id, key, contentType, size: bytes.byteLength, name, alt, createdAt: now })
       .run();
   } catch (error) {
     // An object with no row is invisible and unreclaimable; drop it rather than
@@ -166,14 +158,14 @@ async function uploadAssetRoute(
     {
       asset: assetJson({
         id,
-        space_id: spaceId,
-        owner_id: guard.user.id,
+        spaceId,
+        ownerId: guard.user.id,
         key,
-        content_type: contentType,
+        contentType,
         size: bytes.byteLength,
         name,
         alt,
-        created_at: now,
+        createdAt: now,
       }),
     },
     201,
@@ -194,20 +186,21 @@ async function listAssetsRoute(
   if (access === null) return json({ error: 'not-found' }, 404);
 
   const query = (url.searchParams.get('query') ?? '').trim();
-  const binds: (string | number)[] = [spaceId];
-  let where = 'space_id = ?1';
+  const conditions: SQL[] = [eq(mediaAssets.spaceId, spaceId)];
   if (query !== '') {
-    // LIKE wildcards in the caller's text would silently widen the filter.
-    const needle = `%${query.replace(/[%_\\]/g, (ch) => `\\${ch}`).toLowerCase()}%`;
-    where += " AND (lower(name) LIKE ?2 ESCAPE '\\' OR lower(coalesce(alt, '')) LIKE ?2 ESCAPE '\\')";
-    binds.push(needle);
+    const needle = containsNeedle(query);
+    conditions.push(or(
+      likeEscaped(mediaAssets.name, needle),
+      likeEscaped(sql`coalesce(${mediaAssets.alt}, '')`, needle),
+    )!);
   }
-  const { results } = await env.DB.prepare(
-    `SELECT * FROM media_assets WHERE ${where} ORDER BY created_at DESC LIMIT 200`,
-  )
-    .bind(...binds)
-    .all<AssetRow>();
-  return json({ assets: (results ?? []).map(assetJson) });
+  const results = await orm(env)
+    .select()
+    .from(mediaAssets)
+    .where(and(...conditions))
+    .orderBy(desc(mediaAssets.createdAt))
+    .limit(200);
+  return json({ assets: results.map(assetJson) });
 }
 
 /* --------------------------------------------------------------- delete */
@@ -219,19 +212,17 @@ async function deleteAssetRoute(
 ): Promise<Response> {
   const guard = await requireControlUser(request, env, true);
   if (!guard.ok) return guard.response;
-  const row = await env.DB.prepare('SELECT * FROM media_assets WHERE id = ?1')
-    .bind(assetId)
-    .first<AssetRow>();
-  if (row === null) return json({ error: 'not-found' }, 404);
-  const access = await spaceRole(env, guard.user, row.space_id);
+  const row = await orm(env).select().from(mediaAssets).where(eq(mediaAssets.id, assetId)).get();
+  if (row === undefined) return json({ error: 'not-found' }, 404);
+  const access = await spaceRole(env, guard.user, row.spaceId);
   // A non-member must not learn that the id exists.
   if (access === null) return json({ error: 'not-found' }, 404);
-  if (row.owner_id !== guard.user.id && !roleAtLeast(access.role, 'editor')) {
+  if (row.ownerId !== guard.user.id && !roleAtLeast(access.role, 'editor')) {
     return json({ error: 'forbidden' }, 403);
   }
 
   await env.MEDIA.delete(row.key);
-  await env.DB.prepare('DELETE FROM media_assets WHERE id = ?1').bind(assetId).run();
+  await orm(env).delete(mediaAssets).where(eq(mediaAssets.id, assetId)).run();
   // Steps that still point at the deleted asset keep their URL and render the
   // media placeholder with their alt text — the honest outcome of a missing
   // picture, and better than rewriting someone's deck content behind them.
@@ -254,12 +245,12 @@ export async function readAssetRoute(
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     return json({ error: 'method-not-allowed' }, 405);
   }
-  const row = await env.DB.prepare(
-    'SELECT key, content_type, size FROM media_assets WHERE id = ?1',
-  )
-    .bind(assetId)
-    .first<{ key: string; content_type: string; size: number }>();
-  if (row === null) return new Response('Not found', { status: 404 });
+  const row = await orm(env)
+    .select({ key: mediaAssets.key, contentType: mediaAssets.contentType, size: mediaAssets.size })
+    .from(mediaAssets)
+    .where(eq(mediaAssets.id, assetId))
+    .get();
+  if (row === undefined) return new Response('Not found', { status: 404 });
 
   const object = await env.MEDIA.get(row.key, {
     onlyIf: request.headers,
@@ -269,7 +260,7 @@ export async function readAssetRoute(
 
   const headers = new Headers();
   object.writeHttpMetadata(headers);
-  headers.set('content-type', row.content_type);
+  headers.set('content-type', row.contentType);
   headers.set('etag', object.httpEtag);
   headers.set('cache-control', IMMUTABLE_CACHE);
   headers.set('x-content-type-options', 'nosniff');

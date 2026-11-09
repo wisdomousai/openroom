@@ -4,8 +4,12 @@
  * Written from the Worker command path after a successful `session.end` — the DO
  * has no D1 or R2 binding, and this must never execute on the answer hot path.
  */
+import { and, asc, desc, eq, exists, isNotNull, isNull, lt, lte, gt, or, sql, type SQL } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
+import { orm } from './db/client.js';
+import { decks, liveSessions, sessionArchives, spaceMembers } from './db/schema.js';
 import { readEntitlements, sessionEntitlementOwner } from './entitlements.js';
 import { parseExportFormat } from 'openroom-relay/export';
 import type { SavedResults, SavedResultsFile } from '@openroom/schema';
@@ -19,12 +23,18 @@ const KEEP_MS = 90 * 24 * 60 * 60 * 1000;
 
 /** Physical expiry, outside the live command path. Keep the pointer until R2 confirms deletion. */
 export async function expireSessionArchives(env: Pick<ArchiveEnv, 'DB' | 'MEDIA'>, now = Date.now()): Promise<number> {
-  const { results } = await env.DB.prepare('SELECT id,r2_key FROM session_archives WHERE expires_at<=?1 ORDER BY expires_at,id LIMIT 100')
-    .bind(now).all<{ id: string; r2_key: string }>();
+  const results = await orm(env)
+    .select({ id: sessionArchives.id, r2Key: sessionArchives.r2Key })
+    .from(sessionArchives)
+    .where(lte(sessionArchives.expiresAt, now))
+    .orderBy(asc(sessionArchives.expiresAt), asc(sessionArchives.id))
+    .limit(100);
   let removed = 0;
   for (const row of results) {
-    await env.MEDIA.delete(row.r2_key);
-    const result = await env.DB.prepare('DELETE FROM session_archives WHERE id=?1 AND r2_key=?2 AND expires_at<=?3').bind(row.id, row.r2_key, now).run();
+    await env.MEDIA.delete(row.r2Key);
+    const result = await orm(env).delete(sessionArchives)
+      .where(and(eq(sessionArchives.id, row.id), eq(sessionArchives.r2Key, row.r2Key), lte(sessionArchives.expiresAt, now)))
+      .run();
     removed += result.meta.changes;
   }
   return removed;
@@ -42,7 +52,7 @@ export async function maybeArchiveEndedSession(
 ): Promise<void> {
   // One immutable archive per session, including retried end commands from any client.
   const id = sessionCode;
-  if (await env.DB.prepare('SELECT id FROM session_archives WHERE id = ?1').bind(id).first()) return;
+  if (await orm(env).select({ id: sessionArchives.id }).from(sessionArchives).where(eq(sessionArchives.id, id)).get()) return;
   const owner = await sessionEntitlementOwner(env, sessionCode);
   if (!owner?.userId) return;
   const key = `archives/${id}.json`;
@@ -71,19 +81,18 @@ export async function maybeArchiveEndedSession(
   }
   if (!object || !['aggregates', 'full'].includes(object.customMetadata?.kind ?? '')) throw new Error('archive-capture-unavailable');
   const now = object.uploaded.getTime();
-  await env.DB.prepare(
-    `INSERT OR IGNORE INTO session_archives (id, user_id, session_code, r2_key, kind, created_at, expires_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
-  )
-    .bind(
+  await orm(env)
+    .insert(sessionArchives)
+    .values({
       id,
-      owner.userId,
+      userId: owner.userId,
       sessionCode,
-      key,
-      object.customMetadata!.kind!,
-      now,
-      now + KEEP_MS,
-    )
+      r2Key: key,
+      kind: object.customMetadata!.kind!,
+      createdAt: now,
+      expiresAt: now + KEEP_MS,
+    })
+    .onConflictDoNothing()
     .run();
 }
 
@@ -91,15 +100,15 @@ export async function archivedAnswersCsv(
   env: ArchiveEnv,
   sessionCode: string,
 ): Promise<string | null> {
-  const row = await env.DB.prepare(
-    `SELECT r2_key FROM session_archives
-      WHERE session_code = ?1 AND expires_at > ?2
-      ORDER BY created_at DESC LIMIT 1`,
-  )
-    .bind(sessionCode, Date.now())
-    .first<{ r2_key: string }>();
-  if (row === null) return null;
-  const object = await env.MEDIA.get(row.r2_key);
+  const row = await orm(env)
+    .select({ r2Key: sessionArchives.r2Key })
+    .from(sessionArchives)
+    .where(and(eq(sessionArchives.sessionCode, sessionCode), gt(sessionArchives.expiresAt, Date.now())))
+    .orderBy(desc(sessionArchives.createdAt))
+    .limit(1)
+    .get();
+  if (row === undefined) return null;
+  const object = await env.MEDIA.get(row.r2Key);
   if (object === null) return null;
   const record = (await object.json()) as SessionArchiveRecord;
   return record.answersCsv ?? null;
@@ -109,13 +118,13 @@ export async function listArchivesRoute(request: Request, env: ArchiveEnv): Prom
   const guard = await requireControlUser(request, env);
   if (!guard.ok) return guard.response;
   const now = Date.now();
-  const url = new URL(request.url), binds: (string | number)[] = [guard.user.id, now];
-  let filter = '';
-  for (const [parameter, column] of [['deckId', 'l.deck_id'], ['sessionId', 'l.session_id'], ['sessionCode', 'a.session_code']] as const) {
+  const url = new URL(request.url);
+  const conditions: SQL[] = [archiveAccess(env, guard.user.id), gt(sessionArchives.expiresAt, now)];
+  for (const [parameter, column] of [['deckId', liveSessions.deckId], ['sessionId', liveSessions.sessionId], ['sessionCode', sessionArchives.sessionCode]] as const) {
     const value = url.searchParams.get(parameter);
     if (value !== null) {
       if (!value || value.length > 128) return json({ error: 'invalid-filter' }, 422);
-      binds.push(value); filter += ` AND ${column} = ?${binds.length}`;
+      conditions.push(eq(column, value));
     }
   }
   const cursor = url.searchParams.get('cursor');
@@ -124,28 +133,29 @@ export async function listArchivesRoute(request: Request, env: ArchiveEnv): Prom
     let decoded: unknown;
     try { decoded = JSON.parse(atob(cursor)); } catch { return json({ error: 'invalid-cursor' }, 422); }
     if (!Array.isArray(decoded) || decoded.length !== 2 || !Number.isSafeInteger(decoded[0]) || typeof decoded[1] !== 'string' || decoded[1].length > 128) return json({ error: 'invalid-cursor' }, 422);
-    binds.push(decoded[0], decoded[1]);
-    filter += ` AND (a.created_at < ?${binds.length - 1} OR (a.created_at = ?${binds.length - 1} AND a.id < ?${binds.length}))`;
+    const [createdAt, id] = decoded as [number, string];
+    conditions.push(or(
+      lt(sessionArchives.createdAt, createdAt),
+      and(eq(sessionArchives.createdAt, createdAt), lt(sessionArchives.id, id)),
+    )!);
   }
-  const { results } = await env.DB.prepare(
-    `SELECT a.id, a.session_code, a.kind, a.created_at, a.expires_at,
-            l.title, l.deck_id, l.space_id, d.folder_id
-       FROM session_archives a LEFT JOIN live_sessions l ON l.code = a.session_code
-       LEFT JOIN decks d ON d.id = l.deck_id
-      WHERE ${ARCHIVE_ACCESS} AND a.expires_at > ?2${filter}
-      ORDER BY a.created_at DESC, a.id DESC LIMIT 51`,
-  )
-    .bind(...binds)
-    .all<ArchiveRow>();
+  const results = await orm(env)
+    .select(archiveFields)
+    .from(sessionArchives)
+    .leftJoin(liveSessions, eq(liveSessions.code, sessionArchives.sessionCode))
+    .leftJoin(decks, eq(decks.id, liveSessions.deckId))
+    .where(and(...conditions))
+    .orderBy(desc(sessionArchives.createdAt), desc(sessionArchives.id))
+    .limit(51);
   const page = results.slice(0, 50), last = page.at(-1);
   return json({
-    ...(results.length > 50 && last ? { nextCursor: btoa(JSON.stringify([last.created_at, last.id])) } : {}),
+    ...(results.length > 50 && last ? { nextCursor: btoa(JSON.stringify([last.createdAt, last.id])) } : {}),
     archives: page.map((item) => ({
       ...fileView(item),
-      sessionCode: item.session_code,
+      sessionCode: item.sessionCode,
       kind: item.kind,
-      createdAt: item.created_at,
-      expiresAt: item.expires_at,
+      createdAt: item.createdAt,
+      expiresAt: item.expiresAt,
     })),
   });
 }
@@ -158,17 +168,15 @@ export async function downloadArchiveRoute(
 ): Promise<Response> {
   const guard = await requireControlUser(request, env);
   if (!guard.ok) return guard.response;
-  const row = await env.DB.prepare(
-    `SELECT a.id, a.r2_key, a.kind, a.session_code, a.expires_at, a.created_at,
-            l.title, l.deck_id, l.space_id, d.folder_id FROM session_archives a
-      LEFT JOIN live_sessions l ON l.code = a.session_code
-      LEFT JOIN decks d ON d.id = l.deck_id
-      WHERE a.id = ?2 AND ${ARCHIVE_ACCESS}`,
-  )
-    .bind(guard.user.id, archiveId)
-    .first<ArchiveRow & { r2_key: string }>();
-  if (row === null || row.expires_at <= Date.now()) return json({ error: 'not-found' }, 404);
-  const object = await env.MEDIA.get(row.r2_key);
+  const row = await orm(env)
+    .select({ ...archiveFields, r2Key: sessionArchives.r2Key })
+    .from(sessionArchives)
+    .leftJoin(liveSessions, eq(liveSessions.code, sessionArchives.sessionCode))
+    .leftJoin(decks, eq(decks.id, liveSessions.deckId))
+    .where(and(eq(sessionArchives.id, archiveId), archiveAccess(env, guard.user.id)))
+    .get();
+  if (row === undefined || row.expiresAt <= Date.now()) return json({ error: 'not-found' }, 404);
+  const object = await env.MEDIA.get(row.r2Key);
   if (object === null) return json({ error: 'not-found' }, 404);
   const record = (await object.json()) as SessionArchiveRecord;
   if (url.pathname.endsWith('/document')) {
@@ -185,24 +193,44 @@ export async function downloadArchiveRoute(
       headers: {
         'content-type': 'text/csv; charset=utf-8',
         'cache-control': 'no-store',
-        'content-disposition': `attachment; filename="openroom-${row.session_code}-answers.csv"`,
+        'content-disposition': `attachment; filename="openroom-${row.sessionCode}-answers.csv"`,
       },
     });
   }
   return json(record.aggregates, 200, {
-    'content-disposition': `attachment; filename="openroom-${row.session_code}.json"`,
+    'content-disposition': `attachment; filename="openroom-${row.sessionCode}.json"`,
   });
 }
 
-// Existing work stays accessible after downgrade; removal from its space still revokes it.
-const ARCHIVE_ACCESS = `((l.space_id IS NULL AND a.user_id = ?1) OR
-  (l.space_id IS NOT NULL AND EXISTS (SELECT 1 FROM space_members m WHERE m.space_id = l.space_id AND m.user_id = ?1)))`;
+const archiveFields = {
+  id: sessionArchives.id,
+  sessionCode: sessionArchives.sessionCode,
+  kind: sessionArchives.kind,
+  createdAt: sessionArchives.createdAt,
+  expiresAt: sessionArchives.expiresAt,
+  title: liveSessions.title,
+  deckId: liveSessions.deckId,
+  spaceId: liveSessions.spaceId,
+  folderId: decks.folderId,
+};
 
-interface ArchiveRow {
-  id: string; session_code: string; kind: string; created_at: number; expires_at: number;
-  title: string | null; deck_id: string | null; space_id: string | null; folder_id: string | null;
+// Existing work stays accessible after downgrade; removal from its space still revokes it.
+function archiveAccess(env: ControlEnv, userId: string): SQL {
+  return or(
+    and(isNull(liveSessions.spaceId), eq(sessionArchives.userId, userId)),
+    and(
+      isNotNull(liveSessions.spaceId),
+      exists(
+        orm(env)
+          .select({ one: sql`1` })
+          .from(spaceMembers)
+          .where(and(eq(spaceMembers.spaceId, liveSessions.spaceId), eq(spaceMembers.userId, userId))),
+      ),
+    ),
+  )!;
 }
-function fileView(row: ArchiveRow): SavedResultsFile {
-  return { id: row.id, title: row.title || 'Saved results', deckId: row.deck_id, spaceId: row.space_id,
-    folderId: row.folder_id, hasIndividualResponses: row.kind === 'full' };
+
+function fileView(row: { id: string; kind: string; title: string | null; deckId: string | null; spaceId: string | null; folderId: string | null }): SavedResultsFile {
+  return { id: row.id, title: row.title || 'Saved results', deckId: row.deckId, spaceId: row.spaceId,
+    folderId: row.folderId, hasIndividualResponses: row.kind === 'full' };
 }
