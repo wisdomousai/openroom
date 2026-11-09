@@ -12,15 +12,16 @@
  *    document title, and never used as part of a query key.
  *  - a link that is invalid, expired, or revoked all look the same from here —
  *    401 — and all get the same calm sentence. No status codes, no stack.
- *    A 401 on any later request (a link revoked while the page is open) shows
- *    the same page.
+ *    A 401 on any later request, read or write (a link revoked while the page
+ *    is open), shows the same sentence above the tasks, which stay mounted with
+ *    saving and sending off, so unsaved text and recordings can still be kept.
  *  - 429 and every other failure (network, 5xx) are *not* that sentence,
  *    because the reader can fix them by waiting or retrying. Saying "this link
  *    no longer works" to someone whose link is fine would send them to their
  *    tutor for nothing.
  */
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { practiceLocale } from '@openroom/schema';
 
 import {
@@ -32,6 +33,7 @@ import {
   gradeLearnerPractice,
   saveLearnerWriting,
   type LearnerHomeworkTask,
+  type LearnerIdentity,
   type LearnerPracticeItem,
   type LearnerSession,
 } from '../api';
@@ -45,6 +47,7 @@ import { PracticeCard } from './learner/PracticeCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
 import { LearnerLanguageProvider, useLearnerLanguage } from '../lib/learner-language';
 import { learnerLanguageNames, type LearnerLocale } from '../lib/learner-copy';
+import { isDeadLink, LearnerLinkProvider, useLearnerLink, type LearnerLink } from '../lib/learner-link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@openroom/ui/components/select';
 
 function Frame({ children }: { children: ReactNode }) {
@@ -101,13 +104,55 @@ function isRateLimited(error: unknown): boolean {
   return error instanceof ApiError && error.status === 429;
 }
 
-function isDeadLink(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 401;
+/**
+ * The learner page's one state. `dead-link` with no identity is the full page
+ * (nothing rendered yet, nothing to keep); with an identity the tasks stay
+ * mounted under the dead-link notice.
+ */
+export type LearnerPageState =
+  | { status: 'loading' }
+  | { status: 'ready'; identity: LearnerIdentity }
+  | { status: 'dead-link'; identity: LearnerIdentity | null }
+  | { status: 'rate-limited' }
+  | { status: 'load-failed' };
+
+export function learnerPageState(input: {
+  token: string | null;
+  identity: { data: LearnerIdentity | undefined; error: unknown };
+  /** Errors of the queries that load after the identity. */
+  queryErrors: readonly unknown[];
+  /** A write or refresh with this link was refused. */
+  writeRefused: boolean;
+}): LearnerPageState {
+  if (input.token === null) return { status: 'dead-link', identity: null };
+  const refused = input.writeRefused || isDeadLink(input.identity.error) || input.queryErrors.some(isDeadLink);
+  const identity = input.identity.data;
+  if (identity === undefined) {
+    if (refused) return { status: 'dead-link', identity: null };
+    if (isRateLimited(input.identity.error)) return { status: 'rate-limited' };
+    if (input.identity.error) return { status: 'load-failed' };
+    return { status: 'loading' };
+  }
+  return refused ? { status: 'dead-link', identity } : { status: 'ready', identity };
+}
+
+/** The dead-link sentence above tasks that stay on screen, so their work can still be copied or downloaded. */
+function DeadLinkNotice() {
+  const { copy } = useLearnerLanguage();
+  return (
+    <section role="alert" className="flex flex-col gap-1 rounded-lg border border-destructive/40 p-4">
+      <h2 className="text-section font-semibold">{copy.deadLink}</h2>
+      <p className="text-base">{copy.newLink}</p>
+      <p className="text-base">{copy.deadLinkKeepWork}</p>
+    </section>
+  );
 }
 
 /** A tab that could not load: the rate-limit sentence for 429, otherwise its own sentence and Try again. */
 function QueryError({ error, message, onRetry }: { error: unknown; message: string; onRetry: () => void }) {
   const { copy } = useLearnerLanguage();
+  // A refused link is said once, above the tasks; retrying cannot help.
+  if (isDeadLink(error)) return null;
   if (isRateLimited(error)) return <p role="alert" className="text-base">{copy.rateLimitShort}</p>;
   return (
     <div className="grid gap-3">
@@ -161,17 +206,31 @@ function LearnerContent({ token }: { token: string | null }) {
   });
   const [activeTab, setActiveTab] = useState('lesson');
   const feedbackQuery = useQuery({ queryKey: ['learner', 'feedback'], queryFn: () => fetchLearnerFeedback(token!), enabled: token !== null && identityQuery.isSuccess, retry: false });
+  // Writes report here; the link stays refused for the life of this page.
+  const [writeRefused, setWriteRefused] = useState(false);
+  const report = useCallback((error: unknown) => {
+    if (!isDeadLink(error)) return false;
+    setWriteRefused(true);
+    return true;
+  }, []);
+  const state = learnerPageState({
+    token,
+    identity: identityQuery,
+    queryErrors: [sessionsQuery.error, practiceQuery.error, feedbackQuery.error],
+    writeRefused,
+  });
+  const link = useMemo<LearnerLink>(() => ({ refused: state.status === 'dead-link', report }), [state.status, report]);
 
-  if (isRateLimited(identityQuery.error)) return <TooManyAttempts />;
-  if (token === null || isDeadLink(identityQuery.error) || [sessionsQuery, practiceQuery, feedbackQuery].some((query) => isDeadLink(query.error))) return <DeadLink />;
-  if (identityQuery.isError) return <LoadFailed onRetry={() => void identityQuery.refetch()} />;
-  if (identityQuery.data === undefined) {
+  if (state.status === 'rate-limited') return <TooManyAttempts />;
+  if (state.status === 'load-failed') return <LoadFailed onRetry={() => void identityQuery.refetch()} />;
+  if (state.status === 'loading') {
     return (
       <Frame>
         <p className="text-secondary text-muted-foreground" role="status">{copy.loading}</p>
       </Frame>
     );
   }
+  if (state.identity === null) return <DeadLink />;
 
   const sessions = sessionsQuery.data ?? null;
   const latest = sessions?.[0] ?? null;
@@ -179,10 +238,12 @@ function LearnerContent({ token }: { token: string | null }) {
   const pile = practiceQuery.data ?? [];
 
   return (
+    <LearnerLinkProvider value={link}>
     <Frame>
+      {state.status === 'dead-link' ? <DeadLinkNotice /> : null}
       <header className="flex flex-col gap-1">
         <h1 className="font-display text-screen-title font-semibold tracking-tight">
-          {identityQuery.data.displayName}
+          {state.identity.displayName}
         </h1>
       </header>
       <Tabs value={activeTab} onValueChange={(value) => {
@@ -192,10 +253,12 @@ function LearnerContent({ token }: { token: string | null }) {
       }}>
         <TabsList className="grid h-12 w-full grid-cols-3" aria-label={copy.learning}><TabsTrigger className="h-10 text-base" value="lesson">{copy.lesson}</TabsTrigger><TabsTrigger className="h-10 text-base" value="practice">{copy.practice}</TabsTrigger><TabsTrigger className="h-10 text-base" value="feedback">{copy.feedback}</TabsTrigger></TabsList>
         <TabsContent forceMount value="lesson" className="mt-5 data-[state=inactive]:hidden">
+      {/* A failed refetch keeps the tasks on screen under its message, so typed work is never unmounted. */}
       {sessionsQuery.isError ? (
         <QueryError error={sessionsQuery.error} message={copy.lessonsError} onRetry={() => void sessionsQuery.refetch()} />
-      ) : sessions === null ? (
-        <p className="text-secondary text-muted-foreground" role="status">{copy.loading}</p>
+      ) : null}
+      {sessions === null ? (
+        sessionsQuery.isError ? null : <p className="text-secondary text-muted-foreground" role="status">{copy.loading}</p>
       ) : sessions.length === 0 ? (
         <p className="text-base">{copy.lessonEmpty}</p>
       ) : (
@@ -218,11 +281,12 @@ function LearnerContent({ token }: { token: string | null }) {
         </TabsContent>
         <TabsContent forceMount value="practice" className="mt-5 grid gap-5 data-[state=inactive]:hidden">
           {practiceQuery.isError ? <QueryError error={practiceQuery.error} message={copy.practiceLoadError} onRetry={() => void practiceQuery.refetch()} /> : null}
-          {practiceQuery.isPending ? <p role="status">{copy.loadingPractice}</p> : practiceQuery.isSuccess && token ? <PracticePile token={token} items={pile} onDone={() => { void queryClient.invalidateQueries({ queryKey: ['learner', 'practice'] }); }} /> : null}
+          {practiceQuery.isPending ? <p role="status">{copy.loadingPractice}</p> : practiceQuery.data !== undefined && token ? <PracticePile token={token} items={pile} onDone={() => { void queryClient.invalidateQueries({ queryKey: ['learner', 'practice'] }); }} /> : null}
           {sessions?.some((session) => asHomework(session.record?.homework).some((task) => task.kind === 'quiz')) ? <details><summary className="cursor-pointer font-semibold">{copy.revisit}</summary><div className="mt-4 grid gap-4">{sessions.map((session) => asHomework(session.record?.homework).filter((task) => task.kind === 'quiz').map((task) => <HomeworkTaskView key={`${session.id}:${task.id}`} token={token} sessionId={session.id} task={task} />))}</div></details> : null}
         </TabsContent>
         <TabsContent forceMount value="feedback" className="mt-5 grid gap-5 data-[state=inactive]:hidden">
-          {feedbackQuery.isPending ? <p role="status">{copy.loadingFeedback}</p> : feedbackQuery.isError ? <QueryError error={feedbackQuery.error} message={copy.feedbackLoadError} onRetry={() => void feedbackQuery.refetch()} /> : feedbackQuery.data?.length === 0 ? <p className="text-muted-foreground">{copy.feedbackEmpty}</p> : feedbackQuery.data?.map((item) => <Card key={item.submissionId}>
+          {feedbackQuery.isPending ? <p role="status">{copy.loadingFeedback}</p> : feedbackQuery.isError ? <QueryError error={feedbackQuery.error} message={copy.feedbackLoadError} onRetry={() => void feedbackQuery.refetch()} /> : null}
+          {feedbackQuery.data?.length === 0 ? <p className="text-muted-foreground">{copy.feedbackEmpty}</p> : feedbackQuery.data?.map((item) => <Card key={item.submissionId}>
             <CardHeader><CardTitle className="text-section">{item.task.title ?? (item.task.kind === 'writing' || item.task.kind === 'voice' ? item.task.prompt : copy.feedback)}</CardTitle></CardHeader>
             <CardContent className="grid gap-5">
               <p className="whitespace-pre-wrap text-base leading-relaxed">{item.feedback.message}</p>
@@ -237,6 +301,7 @@ function LearnerContent({ token }: { token: string | null }) {
         {copy.personalLink}
       </p>
     </Frame>
+    </LearnerLinkProvider>
   );
 }
 
@@ -380,10 +445,12 @@ function WritingTask({
   task: LearnerHomeworkTask;
 }) {
   const { copy } = useLearnerLanguage();
+  const link = useLearnerLink();
   const [body, setBody] = useState(task.submitted ?? '');
   const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
   const save = useMutation({
     mutationFn: () => saveLearnerWriting(token!, { sessionId, taskId: task.id, body, assignmentRevision: task.assignmentRevision!, submissionId }),
+    onError: link.report,
   });
   return (
     <div className="flex flex-col gap-2">
@@ -402,14 +469,14 @@ function WritingTask({
       <Button
         type="button"
         className="min-h-11 w-fit aria-disabled:pointer-events-none aria-disabled:opacity-50"
-        disabled={token === null || !body.trim()}
+        disabled={token === null || link.refused || !body.trim()}
         aria-disabled={save.isPending || save.isSuccess || undefined}
         onClick={() => { if (!save.isPending && !save.isSuccess) save.mutate(); }}
       >
         {save.isSuccess ? copy.saved : save.isPending ? copy.saving : copy.save}
       </Button>
       <span role="status" className="sr-only">{save.isSuccess ? copy.saved : ''}</span>
-      {save.isError ? <p role="alert" className="text-secondary text-destructive">{save.error instanceof ApiError && save.error.status === 409 ? copy.writingChanged : copy.writingError}</p> : null}
+      {save.isError && !isDeadLink(save.error) ? <p role="alert" className="text-secondary text-destructive">{save.error instanceof ApiError && save.error.status === 409 ? copy.writingChanged : copy.writingError}</p> : null}
     </div>
   );
 }

@@ -180,6 +180,23 @@ export async function apiFetch(input: string, init: RequestInit): Promise<Respon
  */
 export const CSRF_HEADERS = { 'x-openroom-csrf': '1' } as const;
 
+let unauthorizedHandler: (() => void) | null = null;
+
+/**
+ * The one place a refused cookie reaches the sign-in gate. The host registers
+ * a handler that asks `/api/me` again, so a 401 from any workspace call moves
+ * the gate to signed out when the sign-in has expired.
+ */
+export function onUnauthorized(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
+
+/** The ApiError for a failed workspace response; a 401 also tells the gate. */
+export function failedResponse(status: number, body: unknown): ApiError {
+  if (status === 401) unauthorizedHandler?.();
+  return responseError(status, body);
+}
+
 export async function request<T>(
   path: string,
   init: RequestInit & { mutating?: boolean } = {},
@@ -199,6 +216,6 @@ export async function request<T>(
   } catch {
     body = null;
   }
-  if (!res.ok) throw responseError(res.status, body);
+  if (!res.ok) throw failedResponse(res.status, body);
   return body as T;
 }

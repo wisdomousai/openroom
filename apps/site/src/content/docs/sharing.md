@@ -25,6 +25,8 @@ Sign in with the email address used for the invitation. Open the Library and fin
 
 If acceptance fails, check the signed-in email and ask the owner to confirm the invitation and shared-workspace access. A revoked invitation requires a new invitation from the owner.
 
+While the owner's shared-workspace plan is not active, acceptance is refused and the Library says so. The invitation stays in the Library. Ask the owner to renew the plan, then select **Accept invitation** again. You do not need a licence of your own.
+
 ## Choose a role
 
 | Role | Main permissions |

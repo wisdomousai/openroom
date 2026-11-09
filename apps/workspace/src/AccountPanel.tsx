@@ -1,6 +1,6 @@
 import { useForm } from '@tanstack/react-form';
 import { useCallback, useState } from 'react';
-import { demoLogin, logout, signInUrl } from './api';
+import { demoLogin, logout, OFFLINE_MESSAGE, signInUrl, type AuthStatus } from './api';
 import { desktopBridge } from '@openroom/editor';
 import { useDevLoginOnly } from './lib/local-auth';
 import type { AuthSession } from './useAuth';
@@ -23,7 +23,7 @@ function DemoSignInForm({
   accounts,
   session,
 }: {
-  accounts: NonNullable<AuthSession['authStatus']>['accounts'];
+  accounts: AuthStatus['accounts'];
   session: AuthSession;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -72,11 +72,22 @@ function DemoSignInForm({
   );
 }
 
+/** The account check failed: say so and offer the check again, never the sign-in methods. */
+export function AccountUnreachable({ session }: { session: AuthSession }) {
+  return (
+    <div className="flex flex-col items-start gap-3" role="alert">
+      <p className="text-secondary">{OFFLINE_MESSAGE}</p>
+      <Button variant="outline" size="sm" disabled={session.retrying} onClick={session.retry}>
+        {session.retrying ? 'Trying again…' : 'Try again'}
+      </Button>
+    </div>
+  );
+}
+
 /** Sign-in / signed-in identity card. */
 export function AccountPanel({ session }: { session: AuthSession }) {
   const [busy, setBusy] = useState(false);
-
-  const accounts = session.authStatus?.accounts ?? [];
+  const { state } = session;
 
   const signOut = useCallback(async () => {
     setBusy(true);
@@ -90,7 +101,7 @@ export function AccountPanel({ session }: { session: AuthSession }) {
     }
   }, [session]);
 
-  if (session.user === undefined) {
+  if (state.status === 'checking') {
     return (
       <Card>
         <CardContent className="p-4">
@@ -100,20 +111,22 @@ export function AccountPanel({ session }: { session: AuthSession }) {
     );
   }
 
-  if (session.user === null) {
-    const status = session.authStatus;
-    if (status === null) {
-      return (
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-caption text-muted-foreground">Checking your account…</p>
-          </CardContent>
-        </Card>
-      );
-    }
+  if (state.status === 'unreachable') {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <AccountUnreachable session={session} />
+        </CardContent>
+      </Card>
+    );
+  }
 
+  if (state.status === 'signed-out') {
+    const status = state.methods;
+    const accounts = status.accounts;
     const devLoginOnly = useDevLoginOnly(window.location.hostname, desktopBridge() !== null);
-    if (!session.canSignIn && !devLoginOnly) {
+    // The probe answered and lists no method; a failed probe is `unreachable` above.
+    if (!status.google && !status.demo && !devLoginOnly) {
       return (
         <Card>
           <CardHeader>
@@ -185,8 +198,8 @@ export function AccountPanel({ session }: { session: AuthSession }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <div>
-          <div className="text-row-title">{session.user.name ?? session.user.email}</div>
-          <div className="text-caption text-muted-foreground">{session.user.email}</div>
+          <div className="text-row-title">{state.user.name ?? state.user.email}</div>
+          <div className="text-caption text-muted-foreground">{state.user.email}</div>
         </div>
         <Button variant="outline" size="sm" className="w-fit" onClick={() => void signOut()} disabled={busy}>
           {busy ? 'Signing out…' : 'Sign out'}

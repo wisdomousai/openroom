@@ -214,7 +214,7 @@ interface Props {
 }
 
 export function SettingsPage({ session }: Props) {
-  const signedIn = session.user !== null && session.user !== undefined;
+  const signedIn = session.state.status === 'signed-in';
   const relayBridge = liveServerBridge(desktopBridge());
 
   return (

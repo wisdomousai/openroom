@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { acceptInvite, getHomeSummary, myInvites, type HomeNeedsRecord } from '../api';
+import { acceptInvite, ApiError, getHomeSummary, myInvites, type HomeNeedsRecord } from '../api';
 import { invalidateManagementData } from '../query-client';
 import { to } from '../destinations';
 import { Button } from '@openroom/ui/components/button';
@@ -24,6 +24,17 @@ export function numberedLabels<Row extends Pick<HomeNeedsRecord, 'studentName' |
   });
 }
 
+/**
+ * The invitee's sentence for `team-required`: acceptance waits on the space
+ * owner's plan, never on a licence of the invitee's own. The owner's Share page
+ * keeps the buyer sentence from the shared error table.
+ */
+export const OWNER_PLAN_INACTIVE = 'The space owner’s shared-workspace plan is not active. Ask them to renew it, then accept again. The invitation stays here.';
+
+export function acceptErrorSentence(error: Error): string {
+  return error instanceof ApiError && error.code === 'team-required' ? OWNER_PLAN_INACTIVE : error.message;
+}
+
 /** Invitations and unfinished Notes remain reachable from the Library. */
 export function WorkspaceUpdates({ studentId }: { studentId: string | null }) {
   const navigate = useNavigate();
@@ -41,7 +52,7 @@ export function WorkspaceUpdates({ studentId }: { studentId: string | null }) {
       <span>{invite.inviterName ?? 'A workspace owner'} invited you to {invite.spaceName}</span>
       <Button size="sm" variant="outline" disabled={accept.isPending} onClick={() => accept.mutate(invite.id)}>Accept invitation</Button>
     </div>)}
-    {accept.error ? <p role="alert" className="text-destructive">{accept.error.message}</p> : null}
+    {accept.error ? <p role="alert" className="text-destructive">{acceptErrorSentence(accept.error)}</p> : null}
     {numberedLabels(notes).map(({ row, label }) => <Link key={row.sessionId} {...to.sessionNotes(row.sessionId)} className="w-fit underline underline-offset-4">{label}</Link>)}
   </section>;
 }

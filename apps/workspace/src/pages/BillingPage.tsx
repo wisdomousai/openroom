@@ -11,7 +11,8 @@ export function BillingPage({ session }: { session: AuthSession }) {
   const client = useQueryClient();
   const status = useQuery({ queryKey: billingKey, queryFn: getBilling, enabled: Boolean(session.user) });
   const plans = useQuery({ queryKey: [...billingKey, 'plans'], queryFn: getPlans, enabled: Boolean(session.user && status.data?.available) });
-  const refresh = async () => { await Promise.all([client.invalidateQueries({ queryKey: billingKey }), session.refresh()]); };
+  // A failed account recheck keeps the last answer; the billing status shows its own error.
+  const refresh = async () => { await Promise.all([client.invalidateQueries({ queryKey: billingKey }), session.refresh().catch(() => undefined)]); };
   const checkout = useMutation({ gcTime: 0, mutationFn: startCheckout, onSettled: refresh });
   const cancel = useMutation({ mutationFn: cancelCheckout, onSuccess: () => checkout.reset(), onSettled: refresh });
   const portal = useMutation({ gcTime: 0, mutationFn: openPortal });
@@ -22,7 +23,7 @@ export function BillingPage({ session }: { session: AuthSession }) {
   const error = checkout.error ?? cancel.error ?? portal.error ?? sync.error;
   return <div className="mx-auto flex max-w-4xl flex-col gap-6">
     <PageHeading title="Billing" description="Your plan, payment details and invoices." action={<Button asChild variant="outline"><Link {...to.settings()}>Settings</Link></Button>} />
-    {session.user === undefined ? <p role="status">Loading account…</p> : !session.user ? <p>Sign in from <Link className="underline" {...to.settings()}>Settings</Link> to manage billing.</p> : <>
+    {session.state.status === 'checking' ? <p role="status">Loading account…</p> : !session.user ? <p>Sign in from <Link className="underline" {...to.settings()}>Settings</Link> to manage billing.</p> : <>
       {status.isPending ? <p role="status">Loading billing…</p> : null}
       {status.error ? <div role="alert"><p>{billingMessage(status.error)}</p><Button variant="outline" onClick={() => void status.refetch()}>Retry billing</Button></div> : null}
       {data && !data.available ? <p className="text-muted-foreground">{data.selfHosted ? 'Billing is off on this deployment. Every capability is included.' : 'Paid plans are not available yet.'}</p> : null}

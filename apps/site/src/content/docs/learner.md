@@ -30,6 +30,8 @@ You can return to the task, revise the text, and save another response. The teac
 
 If saving fails, keep the page open and retain a copy of your text. Check the error, restore connectivity, and retry. If the assignment changed, load its current instructions before submitting a new answer.
 
+If the page says **This link no longer works**, saving and sending stop and retrying will not help. Your text and any unsent recording stay on the page: copy the text, download the recording, then ask your teacher for a replacement link.
+
 ## Practise
 
 Open **Practice** and complete the current exercise. Select options, fill blanks, match pairs, reorder items, or type your answer. Select **Check** to reveal the assessment or self-check information.
