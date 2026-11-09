@@ -3,7 +3,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { brandPaletteIssues, defaultDeckDesign, type BrandKit, type DeckDesign } from '@openroom/schema';
 import { getSpaceTree } from '../api';
-import { getBrandKit, listBrandKits, restoreBrandKit, saveBrandKit, trashBrandKit } from '../api/brand-kits';
+import { getBrandKit, listBrandKits, requestBrandKitPermanentDeletion, restoreBrandKit, saveBrandKit, trashBrandKit } from '../api/brand-kits';
 import { Button } from '@openroom/ui/components/button';
 import { Input } from '@openroom/ui/components/input';
 import { BrandKitPreview } from '../components/BrandKitPreview';
@@ -60,6 +60,11 @@ function BrandKitEditor({ spaceId, spaceName, kit, editing, canManage, canEdit }
     catch (cause) { setError(messageOf(cause, 'Could not update brand kit')); }
     finally { setBusy(false); }
   };
+  const deletePermanently = async () => {
+    if (!kit) return; setBusy(true); setError(null);
+    try { const intent = await requestBrandKitPermanentDeletion(kit.id); location.href = intent.confirmationUrl; }
+    catch (cause) { setError(messageOf(cause, 'Could not request deletion confirmation')); setBusy(false); }
+  };
   return <div className="mx-auto grid w-full max-w-6xl gap-6">
     <PageHeading title={editing ? kit ? 'Edit brand kit' : 'New brand kit' : name || 'Brand kit'} description={`Saving in: ${spaceName}`} action={<div className="flex gap-2">
       <Button asChild variant="outline"><Link {...to.brandKits(spaceId, kit?.trashed)}>{editing ? 'Cancel' : 'Brand kits'}</Link></Button>
@@ -73,7 +78,10 @@ function BrandKitEditor({ spaceId, spaceName, kit, editing, canManage, canEdit }
         <div aria-label="Chart palette preview" className="grid grid-cols-3 gap-3 rounded-lg p-4 sm:grid-cols-6" style={{ backgroundColor: design.theme.colors.surface, color: design.theme.colors.foreground }}>{design.theme.colors.charts.map((color, index) => <div key={index} className="grid gap-2 text-center text-xs"><span className="h-12 rounded" style={{ backgroundColor: color }} /><span>Series {index + 1}</span></div>)}</div>
         <p className="text-sm text-muted-foreground">Applying this kit copies its design into the deck. Changes to the kit never change existing decks.</p>
         {issues.length ? <div role="status" className="rounded-lg border border-destructive/40 p-4 text-sm"><p className="font-semibold">Improve contrast before saving</p><ul className="mt-2 list-inside list-disc">{issues.map((issue) => <li key={issue.label}>{issue.label}: {(Math.floor(issue.ratio * 100) / 100).toFixed(2)}:1 · needs {issue.minimum}:1</li>)}</ul></div> : <p className="text-sm text-muted-foreground">Text and chart colors meet the palette contrast checks. Check readability separately on photographic and custom master backgrounds.</p>}
-        {!editing && kit && canManage ? <Button className="justify-self-start" variant="outline" disabled={busy} onClick={() => void changeTrash()}>{kit.trashed ? 'Restore brand kit' : 'Move to trash'}</Button> : null}
+        {!editing && kit && canManage ? <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={busy} onClick={() => void changeTrash()}>{kit.trashed ? 'Restore brand kit' : 'Move to trash'}</Button>
+          {kit.trashed ? <Button variant="outline" className="text-destructive" disabled={busy} onClick={() => void deletePermanently()}>Permanently delete</Button> : null}
+        </div> : null}
       </div>
       {editing ? <fieldset disabled={busy} className="min-w-0 overflow-hidden rounded-lg border border-border bg-card"><DeckDesignPanel
         outline={{ version: 1, meta: { title: name || 'Brand kit' }, steps: [], interactions: [], design }} step={null}

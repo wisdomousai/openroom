@@ -1,5 +1,5 @@
 import type { BrandKit, BrandKitDocument } from '@openroom/schema';
-import { request } from './client';
+import { request, type DeletionIntent } from './client';
 
 export interface BrandPermissions { canEdit: boolean; brandingEnabled: boolean }
 export const listBrandKits = (spaceId: string, trashed = false) => request<BrandPermissions & { brandKits: BrandKit[] }>(`/api/tutoring/spaces/${encodeURIComponent(spaceId)}/brand-kits${trashed ? '?trashed=1' : ''}`);
@@ -9,3 +9,4 @@ export const saveBrandKit = (spaceId: string, document: BrandKitDocument, previo
 });
 export const trashBrandKit = (id: string) => request(`/api/tutoring/brand-kits/${encodeURIComponent(id)}`, { method: 'DELETE', mutating: true });
 export const restoreBrandKit = (id: string) => request(`/api/tutoring/brand-kits/${encodeURIComponent(id)}/restore`, { method: 'POST', mutating: true });
+export const requestBrandKitPermanentDeletion = (id: string) => request<DeletionIntent>(`/api/tutoring/brand-kits/${encodeURIComponent(id)}/permanent-deletion`, { method: 'POST', mutating: true });

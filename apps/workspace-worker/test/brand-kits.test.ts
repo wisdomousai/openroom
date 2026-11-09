@@ -43,6 +43,22 @@ describe('shared brand kits', () => {
     expect(await (await owner.call(item)).json()).toMatchObject({ brandKit: { name: 'Updated', trashed: false, revision: 4 } });
   });
 
+  it('permanently deletes a kit only from trash, after browser confirmation', async () => {
+    const owner = await account(true);
+    const created = await owner.call(`/api/tutoring/spaces/${owner.spaceId}/brand-kits`, 'POST', { name: 'Old kit', design: defaultDeckDesign() });
+    const { brandKit } = await created.json() as { brandKit: BrandKit };
+    const item = `/api/tutoring/brand-kits/${brandKit.id}`;
+    const live = await owner.call(`${item}/permanent-deletion`, 'POST');
+    expect(live.status).toBe(409);
+    expect(await live.json()).toMatchObject({ error: 'move-to-trash-first' });
+    expect((await owner.call(item, 'DELETE')).status).toBe(200);
+    const intent = await owner.call(`${item}/permanent-deletion`, 'POST');
+    expect(intent.status).toBe(202);
+    const { confirmationUrl } = await intent.json() as { confirmationUrl: string };
+    expect((await owner.call(new URL(confirmationUrl).pathname, 'POST')).status).toBe(200);
+    expect((await owner.call(item)).status).toBe(404);
+  });
+
   it('rejects unreadable palettes, file-local images and assets outside the saving space', async () => {
     const owner = await account(true), other = await account(true);
     const path = `/api/tutoring/spaces/${owner.spaceId}/brand-kits`;

@@ -50,7 +50,9 @@ Under **This slide**, choose **Customize this background** to override the maste
 4. Review the chart palette preview and any contrast warnings.
 5. Select **Save brand kit**.
 
-Open an existing kit and select **Edit brand kit** to revise it. Its detail page provides **Move to trash**; the brand-kit Trash provides **Restore brand kit** according to your management permissions.
+Open an existing kit and select **Edit brand kit** to revise it. Its detail page provides **Move to trash**. In the brand-kit Trash, open a kit to find **Restore brand kit** and **Permanently delete**. Permanent deletion asks for a final confirmation in the signed-in browser, and decks that used the kit keep their design. Both actions need editor access to the space.
+
+A space holds up to 100 brand kits. Kits in Trash do not count toward that limit.
 
 ## Apply a brand kit
 

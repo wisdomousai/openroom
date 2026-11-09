@@ -57,6 +57,7 @@ const ERROR_SENTENCES: Record<string, string> = {
   'invalid-credentials': 'Username or password is incorrect.',
   'resource-in-trash': 'This item is in Trash. Restore it first.',
   'brand-kit-in-trash': 'This brand kit is in Trash. Restore it first.',
+  'brand-kit-limit': 'This space already has 100 brand kits. Delete a kit permanently from Trash, or move one to Trash, to make room.',
   'move-to-trash-first': 'Move this item to Trash before deleting it permanently.',
   'confirmation-expired': 'This confirmation link no longer works. Ask for a new one.',
   'version-conflict': 'This deck was saved somewhere else. Reload to see the latest version.',

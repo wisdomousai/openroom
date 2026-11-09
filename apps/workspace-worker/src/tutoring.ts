@@ -1,4 +1,4 @@
-import { handleBrandKits } from './brand-kits.js';
+import { brandKitSpaceId, confirmBrandKitDeletion, handleBrandKits } from './brand-kits.js';
 import { startDeckRoute } from './deck-start.js';
 /**
  * Students control plane plus the shared tutoring router and the
@@ -61,7 +61,7 @@ import {
 
 export { DELETION_INTENT_TTL_MS };
 
-type ResourceType = 'student' | 'deck' | 'session' | 'folder';
+type ResourceType = 'student' | 'deck' | 'session' | 'folder' | 'brand_kit';
 
 const STUDENT_KIND_SET: ReadonlySet<string> = new Set(STUDENT_KINDS);
 
@@ -378,7 +378,10 @@ export async function deletionConfirmationPage(
     .map((line) => `<li>${line}</li>`).join('');
   const kept = intent.resource_type === 'folder' && await folderKeepsLiveDecks(env, intent.resource_id)
     ? '<p>Decks in it that are not in Trash are kept and move to the top of the space.</p>'
-    : '';
+    : intent.resource_type === 'brand_kit'
+      ? '<p>Decks that used this kit keep their design. Pictures the kit uses stay in the space.</p>'
+      : '';
+  const trashHref = await trashHrefFor(env, intent);
   return deletionPage(
     'Confirm permanent deletion',
     `<h1>Permanently delete this ${noun}?</h1>
@@ -386,11 +389,18 @@ export async function deletionConfirmationPage(
 <p>This deletes:</p>
 <ul>${contents}</ul>
 ${kept}<p>This cannot be undone. Items in Trash can be restored; items deleted here cannot.</p>
-<form class="actions" method="post" action="/confirm-deletion/${encodeURIComponent(token)}"><button class="destructive" type="submit">Permanently delete</button><a class="button" href="${TRASH_HREF}">Cancel</a></form>`,
+<form class="actions" method="post" action="/confirm-deletion/${encodeURIComponent(token)}"><button class="destructive" type="submit">Permanently delete</button><a class="button" href="${escapeHtml(trashHref)}">Cancel</a></form>`,
   );
 }
 
 const TRASH_HREF = '/host/#/tutor/trash';
+
+/** Brand kits have their own Trash under the space's brand kits; everything else uses the workspace Trash. */
+async function trashHrefFor(env: ControlEnv, intent: IntentRow): Promise<string> {
+  if (intent.resource_type !== 'brand_kit') return TRASH_HREF;
+  const spaceId = await brandKitSpaceId(env, intent.resource_id);
+  return spaceId === null ? TRASH_HREF : `/host/#/space/${encodeURIComponent(spaceId)}/brand-kits?trashed=true`;
+}
 
 function linkNoLongerWorks(): Response {
   return deletionPage(
@@ -403,12 +413,12 @@ function linkNoLongerWorks(): Response {
 }
 
 /** The item was restored or deleted elsewhere after the link was made. */
-function notInTrash(): Response {
+function notInTrash(trashHref = TRASH_HREF): Response {
   return deletionPage(
     'Nothing was deleted',
     `<h1>Nothing was deleted.</h1>
 <p>This item is no longer in Trash, or this account can no longer change it.</p>
-<p class="actions"><a class="button" href="${TRASH_HREF}">Open Trash</a></p>`,
+<p class="actions"><a class="button" href="${escapeHtml(trashHref)}">Open Trash</a></p>`,
     404,
   );
 }
@@ -423,6 +433,7 @@ const STUDENT_NOUNS: Record<string, string> = {
 };
 
 async function deletionNoun(env: ControlEnv, intent: IntentRow): Promise<string> {
+  if (intent.resource_type === 'brand_kit') return 'brand kit';
   if (intent.resource_type !== 'student') return intent.resource_type;
   const row = await env.DB.prepare('SELECT kind FROM students WHERE id = ?1')
     .bind(intent.resource_id).first<{ kind: string }>();
@@ -449,6 +460,7 @@ function deletionContents(type: ResourceType, noun: string): string[] {
     ];
   }
   if (type === 'session') return ['The session, its Notes and the learner work handed in for it'];
+  if (type === 'brand_kit') return ['The brand kit with its colors, typography and slide masters'];
   return ['The deck and its saved versions', 'Its sessions, with their Notes and learner work'];
 }
 
@@ -540,6 +552,8 @@ export async function confirmPermanentDeletionRoute(
     return linkNoLongerWorks();
   }
 
+  // Read before the deletion: the kit row is what names the space.
+  const trashHref = await trashHrefFor(env, intent);
   if (intent.resource_type === 'student') {
     const resource = await studentAccess(env, user.id, intent.resource_id);
     if (resource === null || resource.deleted_at === null) return notInTrash();
@@ -571,6 +585,8 @@ export async function confirmPermanentDeletionRoute(
   } else if (intent.resource_type === 'folder') {
     const ok = await confirmFolderDeletion(env, user, intent.resource_id, deleteDeckPermanently);
     if (!ok) return notInTrash();
+  } else if (intent.resource_type === 'brand_kit') {
+    if (!(await confirmBrandKitDeletion(env, user, intent.resource_id))) return notInTrash(trashHref);
   } else {
     const ok = await confirmDeliveryDeletion(env, user.id, intent.resource_type, intent.resource_id);
     if (!ok) return notInTrash();
@@ -583,7 +599,7 @@ export async function confirmPermanentDeletionRoute(
     `<h1>Permanently deleted.</h1>
 <p class="name">${escapeHtml(intent.resource_name)}</p>
 <p>This cannot be restored.</p>
-<p class="actions"><a class="button" href="${TRASH_HREF}">Return to Trash</a></p>`,
+<p class="actions"><a class="button" href="${escapeHtml(trashHref)}">Return to Trash</a></p>`,
   );
 }
 

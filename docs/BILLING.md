@@ -297,7 +297,7 @@ cookies, PATs, connected-client OAuth and MCP requests. The access policy is:
 | --- | --- | --- |
 | Invite or admit a new space member | Space owner, `team` | Denied; pending invitation remains recoverable |
 | Start a new shared session | Space owner, `team` | Denied for collaborators; the same running session can be resumed or retried |
-| Create/edit a brand kit | Space owner, `branding` | Denied; existing kits remain readable, trashable and restorable |
+| Create/edit a brand kit | Space owner, `branding` | Denied; existing kits remain readable, trashable, restorable and permanently deletable |
 | List a student's people; mint or list access links; read returned work, learner work and audio; publish feedback | Space owner of the student, `continuity` | Denied with `continuity-required`. Trash, restore, permanent deletion, link revocation and recording trash/restore remain available. Nothing is deleted |
 | Read or write a session's Notes (`/api/sessions/{id}/record`), including the next-time sticky and homework | Space owner of the session, `continuity` | Denied; the record is retained and removed only with the session. Students omit `nextNote` until access returns, and the Library stops offering unwritten Notes |
 | Create an identified session | Space owner, or personal creator outside a space, `continuity` | Denied for new sessions; a session already running continues to admit its learners |

@@ -175,6 +175,10 @@ export function openapiDocument(origin: string): unknown {
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         post: { operationId: 'restoreBrandKit', summary: 'Restore a trashed brand kit', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], responses: { '200': { description: 'Brand kit restored' }, '403': { description: 'Editor access required' } } },
       },
+      '/api/tutoring/brand-kits/{id}/permanent-deletion': {
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        post: { operationId: 'requestBrandKitPermanentDeletion', summary: 'Browser confirmation URL for permanent delete of a kit in trash', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], responses: { '202': { description: 'Confirmation required' }, '403': { description: 'Editor access required' }, '409': { description: 'move-to-trash-first: the kit is not in trash' } } },
+      },
       '/api/my/sessions/{code}/co-host': {
         post: {
           operationId: 'coHostSession',
