@@ -16,7 +16,12 @@ gaps → match pairs → reorder → self-reflect → reload.
 Acceptance:
 
 - Multiple choice requires the complete correct set.
-- Accent-sensitive text distinguishes `ete` from `été`; retry works.
+- Accent-sensitive text distinguishes `ete` from `été`. A wrong answer offers
+  Change my answer (primary) and Show the answer; the accepted answers stay hidden
+  until Show the answer, which then offers Next.
+- A correct answer offers Next and Show this again later. Next records a good
+  grade and Show this again later (or Next after a wrong answer) records an again
+  grade; no label names the review schedule.
 - Gaps accept authored alternatives; matching and ranking are operable by touch.
 - Questions with no answer key invite self-reflection rather than marking an
   opinion incorrect.

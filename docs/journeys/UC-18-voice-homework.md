@@ -10,6 +10,9 @@ and deliberately shares comments tied to positions in that response.
 
 - Five-minute responses; source files at most 20 MiB. The browser converts locally
   to mono PCM WAV. The server derives duration from the verified bytes.
+- Where MediaRecorder is missing, the page says "Recording isn't available in this
+  browser. Choose an audio file instead." beside the file choice. The recording
+  clock is live orange.
 - Microphone denial leaves the file choice available. Switching away from the
   Lesson tab, hiding the page, or leaving it releases microphone tracks.
 - Learner requests carry the personal link in an authorization header and omit cookies.

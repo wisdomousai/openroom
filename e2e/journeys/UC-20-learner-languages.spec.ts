@@ -33,11 +33,14 @@ test('French and German controls preserve writing, practice and audio while less
   await expect(writing).toHaveValue('Je vais à Paris.');
   await learner.route('**/api/learner/writing', (route) => route.fulfill({ status: 409, json: { error: 'assignment-changed' } }));
   await learner.getByRole('button', { name: 'Speichern', exact: true }).click();
-  await expect(learner.getByRole('alert')).toContainText('Kopiere deinen Text');
+  await expect(learner.getByRole('alert')).toContainText('Deine Lehrperson hat diese Aufgabe geändert.');
   await chooseLanguage(learner, 'Français');
-  await expect(learner.getByRole('alert')).toContainText('Copiez votre texte');
+  await expect(learner.getByRole('alert')).toContainText('Votre professeur a modifié cette consigne.');
   await expect(writing).toHaveValue('Je vais à Paris.');
   await learner.unroute('**/api/learner/writing');
+  await learner.getByRole('button', { name: 'Afficher la nouvelle consigne', exact: true }).click();
+  await expect(learner.getByRole('alert')).toHaveCount(0);
+  await expect(writing).toHaveValue('Je vais à Paris.');
   await learner.getByRole('button', { name: 'Enregistrer', exact: true }).click();
   await expect(learner.getByRole('button', { name: 'Enregistré', exact: true })).toBeVisible();
 
@@ -48,7 +51,7 @@ test('French and German controls preserve writing, practice and audio while less
   await learner.getByRole('button', { name: 'Prüfen', exact: true }).click();
   await expect(learner.getByText('Richtig.', { exact: true })).toBeVisible();
   await learner.screenshot({ path: testInfo.outputPath('german-practice-phone.png'), fullPage: true });
-  await learner.getByRole('button', { name: 'Verstanden', exact: true }).click();
+  await learner.getByRole('button', { name: 'Weiter', exact: true }).click();
   await learner.getByRole('tab', { name: 'Lektion', exact: true }).click();
   await learner.getByRole('button', { name: 'Antwort aufnehmen', exact: true }).click();
   await expect(learner.getByRole('alert')).toContainText('Mikrofon ist nicht verfügbar');

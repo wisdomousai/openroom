@@ -177,7 +177,7 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await learner.getByRole('textbox', { name: 'Gap 2', exact: true }).fill('a');
   await learner.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(learner.getByText('Correct.', { exact: true })).toBeVisible();
-  await learner.getByRole('button', { name: 'Good', exact: true }).click();
+  await learner.getByRole('button', { name: 'Next', exact: true }).click();
   await audit(learner, testInfo, '11-practice');
   await page.getByRole('link', { name: 'Review learner work', exact: true }).click();
   await page.getByRole('link', { name: /Camille First Lesson.*Review response/s }).click();
