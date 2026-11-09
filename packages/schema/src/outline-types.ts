@@ -600,7 +600,7 @@ export interface Outline {
  *   W_TEXT_FIT            a step's words are estimated taller than its slide
  *   W_MEDIA_PLACE         a picture place the slide redraws (left or right on a
  *                         stacked layout, top or bottom on split)
- *   W_ELEMENT_BOUNDS      a box that runs past the slide edge (x+w or y+h above 100)
+ *   W_ELEMENT_BOUNDS      a box that runs past the slide edge (x+w or y+h above 100); it is drawn clamped inside the slide
  *   W_ELEMENT_OVERLAP     a box over a blank step's title, the master logo or footer
  *   W_SPAN_SIZE           a styled span too small to read
  *   W_INTERACTION_FIELDS  step fields the live wall does not draw on a question

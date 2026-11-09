@@ -50,7 +50,7 @@ const LAYOUTS_BY_KIND =
 const FIT_WARNINGS =
   'A valid result also carries "warnings": advice, never a refusal, so read it before you start a session. Each warning has code, path, message and the layout the step is drawn with. ' +
   'W_TEXT_FIT: the words are taller than the slide and will be cut, or run into the bottom margin. W_MEDIA_PLACE: the layout draws the picture somewhere other than media.place says. ' +
-  'W_ELEMENT_BOUNDS: an element box runs past the slide edge. W_ELEMENT_OVERLAP: a box covers the step title, the master logo or the footer. W_SPAN_SIZE: a styled span is under 60 percent, too small to read. ' +
+  'W_ELEMENT_BOUNDS: an element box runs past the slide edge; it is drawn clamped, shrunk to fit inside the slide. W_ELEMENT_OVERLAP: a box covers the step title, the master logo or the footer; it is not moved, so move it yourself. W_SPAN_SIZE: a styled span is under 60 percent, too small to read. ' +
   'W_INTERACTION_FIELDS: an interaction step carries fields the live wall does not draw. ' +
   'Each step in the result gives "layout", the layout it is drawn with, which can differ from the one authored. ' +
   'Text budgets at 16:9 with the default margin of 8: a title slide heading of about 100 characters; a statement body of about 300 characters under a short heading; ' +
@@ -70,7 +70,7 @@ const PLACE_BY_LAYOUT =
 
 /** How freeform element boxes and html elements scale with the slide. */
 const ELEMENT_BOXES =
-  'Element boxes {x, y, w, h} are percent of the slide width and height at the deck’s own aspect ratio; keep x+w and y+h at 100 or less. ' +
+  'Element boxes {x, y, w, h} are percent of the slide width and height at the deck’s own aspect ratio; keep x+w and y+h at 100 or less. A box past the edge is drawn clamped on every surface: x and y inside 0 to 100, w and h shrunk to fit, at least 8. ' +
   'Text in a box is cut at the box edge, mid-line, so size the box for its text. A blank step draws its title at the top of the slide and elements draw over it. ' +
   'In html element css, px, vw and vh do not scale with the slide, so the element looks different on the editor, the wall and a phone; use em, percent or an svg viewBox. ' +
   'position:fixed and position:absolute in an html element are confined to its own box: nothing it draws reaches outside the box. ';
