@@ -27,10 +27,14 @@
  * a session ends (`PRODUCT.md` §Operating Context), so per-learner numbers are
  * not derivable either — and the correct response is to not show them.
  */
+import { and, desc, eq, exists, isNull, max, notExists, sql } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { RECOVERY_WINDOW_MS } from './control.js';
 import { ownerHasContinuity } from './continuity-access.js';
+import { orm } from './db/client.js';
+import { liveSessions, sessionRecords, sessions, spaceMembers, spaces, students } from './db/schema.js';
 
 /** Most rows the nudge list carries. A nudge is a short list or it is a backlog. */
 const NEEDS_RECORD_LIMIT = 6;
@@ -47,53 +51,53 @@ export async function homeRoute(request: Request, env: ControlEnv): Promise<Resp
   // still teaching would be the one moment the nudge is wrong.
   const settledBefore = now - RECOVERY_WINDOW_MS;
 
-  const needsRecord = await env.DB.prepare(
-    `SELECT r.id            AS id,
-            r.title         AS title,
-            r.student_id    AS student_id,
-            c.display_name  AS student_name,
-            r.space_id      AS space_id,
-            sp.owner_user_id AS owner_user_id,
-            MAX(ro.created_at) AS delivered_at
-       FROM sessions r
-       JOIN live_sessions ro ON ro.session_id = r.id
-       JOIN spaces sp ON sp.id = r.space_id
-       LEFT JOIN students c ON c.id = r.student_id AND c.deleted_at IS NULL
-      WHERE r.deleted_at IS NULL
-        AND NOT EXISTS (SELECT 1 FROM session_records rr WHERE rr.session_id = r.id)
-        AND EXISTS (SELECT 1 FROM space_members sm
-                     WHERE sm.space_id = r.space_id AND sm.user_id = ?1)
-      GROUP BY r.id
-     HAVING (MAX(ro.created_at) < ?2 OR MAX(ro.ended) = 1)
-      ORDER BY delivered_at DESC
-      LIMIT ?3`,
-  )
-    .bind(guard.user.id, settledBefore, NEEDS_RECORD_LIMIT)
-    .all<{
-      id: string;
-      title: string;
-      student_id: string | null;
-      student_name: string | null;
-      space_id: string;
-      owner_user_id: string;
-      delivered_at: number;
-    }>();
+  const db = orm(env);
+  const deliveredAt = max(liveSessions.createdAt);
+  const rows = await db
+    .select({
+      id: sessions.id,
+      title: sessions.title,
+      studentId: sessions.studentId,
+      studentName: students.displayName,
+      spaceId: sessions.spaceId,
+      ownerUserId: spaces.ownerUserId,
+      deliveredAt,
+    })
+    .from(sessions)
+    .innerJoin(liveSessions, eq(liveSessions.sessionId, sessions.id))
+    .innerJoin(spaces, eq(spaces.id, sessions.spaceId))
+    .leftJoin(students, and(eq(students.id, sessions.studentId), isNull(students.deletedAt)))
+    .where(
+      and(
+        isNull(sessions.deletedAt),
+        notExists(db.select({ one: sql`1` }).from(sessionRecords).where(eq(sessionRecords.sessionId, sessions.id))),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(spaceMembers)
+            .where(and(eq(spaceMembers.spaceId, sessions.spaceId), eq(spaceMembers.userId, guard.user.id))),
+        ),
+      ),
+    )
+    .groupBy(sessions.id)
+    .having(sql`(${deliveredAt} < ${settledBefore} OR max(${liveSessions.ended}) = 1)`)
+    .orderBy(desc(deliveredAt))
+    .limit(NEEDS_RECORD_LIMIT);
 
   // Notes are the space owner's paid `continuity`: never nudge toward a locked page.
-  const rows = needsRecord.results ?? [];
   const continuity = new Map<string, boolean>();
-  for (const owner of new Set(rows.map((row) => row.owner_user_id))) {
+  for (const owner of new Set(rows.map((row) => row.ownerUserId))) {
     continuity.set(owner, await ownerHasContinuity(env, owner));
   }
 
   return json({
-    needsRecord: rows.filter((row) => continuity.get(row.owner_user_id) === true).map((row) => ({
+    needsRecord: rows.filter((row) => continuity.get(row.ownerUserId) === true).map((row) => ({
       sessionId: row.id,
       title: row.title,
-      studentId: row.student_id,
-      studentName: row.student_name,
-      spaceId: row.space_id,
-      deliveredAt: row.delivered_at,
+      studentId: row.studentId,
+      studentName: row.studentName,
+      spaceId: row.spaceId,
+      deliveredAt: row.deliveredAt,
     })),
   });
 }

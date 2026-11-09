@@ -20,10 +20,8 @@ const sources = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'def
 // Remove a file when it is converted; the list ends empty.
 const NOT_YET_CONVERTED = new Set([
   'a2a.ts',
-  'api-tokens.ts',
   'archives.ts',
   'assets.ts',
-  'auth.ts',
   'billing/access.ts',
   'billing/checkout.ts',
   'billing/reconcile.ts',
@@ -31,8 +29,6 @@ const NOT_YET_CONVERTED = new Set([
   'billing/state.ts',
   'brand-kits.ts',
   'continuity-access.ts',
-  'control-auth.ts',
-  'control.ts',
   'deck-start.ts',
   'delivery/decks.ts',
   'delivery/session-status.ts',
@@ -42,8 +38,6 @@ const NOT_YET_CONVERTED = new Set([
   'embed-route.ts',
   'entitlements.ts',
   'guest-links.ts',
-  'home.ts',
-  'hosting.ts',
   'index.ts',
   'learner-audio.ts',
   'learner-practice.ts',
@@ -52,14 +46,10 @@ const NOT_YET_CONVERTED = new Set([
   'learner.ts',
   'mcp-oauth.ts',
   'mcp.ts',
-  'members.ts',
   'oauth-connections.ts',
-  'prefs.ts',
   'presentation-start.ts',
   'student-links.ts',
-  'tags.ts',
   'tutoring.ts',
-  'workspace.ts',
 ]);
 
 const RAW = /\bDB\.(prepare|batch|exec)\(|\bD1PreparedStatement\b/;

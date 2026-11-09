@@ -1,3 +1,5 @@
+import { eq } from 'drizzle-orm';
+
 import { verifyApiToken } from './api-tokens.js';
 import {
   CSRF_HEADER,
@@ -6,6 +8,8 @@ import {
   type ControlEnv,
   type SessionUser,
 } from './auth.js';
+import { orm } from './db/client.js';
+import { users } from './db/schema.js';
 import { verifyMcpAccessToken } from './mcp-oauth.js';
 
 export type ControlAuthKind = 'session' | 'pat' | 'oauth';
@@ -15,10 +19,12 @@ export type ControlUserGuard =
   | { ok: false; response: Response };
 
 async function userById(env: ControlEnv, userId: string): Promise<SessionUser | null> {
-  const row = await env.DB.prepare('SELECT id, email, name FROM users WHERE id = ?1')
-    .bind(userId)
-    .first<{ id: string; email: string; name: string | null }>();
-  return row === null ? null : { id: row.id, email: row.email, name: row.name };
+  const row = await orm(env)
+    .select({ id: users.id, email: users.email, name: users.name })
+    .from(users)
+    .where(eq(users.id, userId))
+    .get();
+  return row === undefined ? null : { id: row.id, email: row.email, name: row.name };
 }
 
 /**
