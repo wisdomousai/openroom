@@ -21,7 +21,7 @@ test.beforeAll(async () => { await waitForWorker(); });
 
 test('notes after a lesson: Library prompt, student name, device notes and the Next session note', async ({ page }, testInfo) => {
   test.setTimeout(150_000);
-  await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
+  await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'cara', password: 'demo' } });
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
