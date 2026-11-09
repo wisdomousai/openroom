@@ -34,6 +34,9 @@ test('tutor publishes shared and individual tasks without exposing other learner
     await task.getByRole('combobox', { name: 'Who receives this task?', exact: true }).click();
     await page.getByRole('option', { name: 'Selected learners', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Save notes', exact: true })).toBeDisabled();
+    // No error before the tutor has picked; the reason Save is off sits next to it.
+    await expect(task.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByText('Choose at least one learner for each task that goes to selected learners.', { exact: true })).toBeVisible();
     await task.getByRole('checkbox', { name: learner, exact: true }).check();
   }
   await page.getByRole('group', { name: 'Parler assignment', exact: true }).scrollIntoViewIfNeeded();
@@ -80,7 +83,7 @@ test('tutor publishes shared and individual tasks without exposing other learner
   await expect(writing.getByRole('checkbox', { name: 'Léa', exact: true })).toBeChecked();
   await expect(writing.getByRole('checkbox', { name: 'Noor', exact: true })).not.toBeChecked();
   await writing.getByRole('combobox').click();
-  await page.getByRole('option', { name: 'Everyone for this student', exact: true }).click();
+  await page.getByRole('option', { name: 'Everyone in this group', exact: true }).click();
   await writing.getByLabel('Instructions', { exact: true }).fill('Décrivez votre prochain voyage en train.');
   await page.getByRole('button', { name: 'Update notes', exact: true }).click();
   await expect(page).toHaveURL(/#\/space\//);

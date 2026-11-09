@@ -123,7 +123,7 @@ function ReviewForm({ studentId, detail }: { studentId: string; detail: LearnerW
       const saved = await saveLearnerFeedback(studentId, work.id, { feedback, version, action });
       setVersion(saved.version); setPublished(saved.published); setStored(feedback);
       queryClient.setQueryData(['students', studentId, 'work', work.id], { ...detail, feedback: { draft: feedback, published: saved.published, version: saved.version } });
-      setNotice(action === 'publish' ? `Feedback shared with ${work.displayName}.` : 'Draft saved. Only tutors in this space can see it.');
+      setNotice(action === 'publish' ? `Feedback shared with ${work.displayName}.` : `Draft saved. ${work.displayName} does not see it until you share it.`);
     } catch (cause) {
       setError(cause instanceof ApiError && cause.status === 409 ? 'Another tutor edited this feedback. Copy your changes before reloading.' : cause instanceof ApiError && cause.message === 'correction-not-in-submission' ? 'Each correction must quote words from this response.' : cause instanceof ApiError && cause.status === 422 ? 'Complete each correction before saving.' : messageOf(cause, 'Could not save feedback.'));
     } finally { setBusy(false); }

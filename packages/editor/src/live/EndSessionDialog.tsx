@@ -27,7 +27,7 @@ export function EndSessionDialog({
         <DialogHeader>
           <DialogTitle>End this session?</DialogTitle>
           <DialogDescription>
-            Participants are disconnected and results are final.
+            The session closes for everyone who joined, and results are final.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

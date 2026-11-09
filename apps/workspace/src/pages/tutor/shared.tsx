@@ -103,17 +103,39 @@ export function EmptyCollection({ children }: { children: ReactNode }) {
  * failure; a raw 404 shows `NotAvailable` instead of a Retry that cannot help.
  */
 /** `what` names the missing thing on a 404 (“This student is not available”). */
-export function LoadState({ error, what }: { error: unknown; what?: string }) {
+/**
+ * A page that sets `heading` gets the full failure screen: that heading, the
+ * message, Retry and a Back to library link, with `children` (for example
+ * notes kept on this device) below.
+ */
+export function LoadState({ error, what, heading, children }: { error: unknown; what?: string; heading?: string; children?: ReactNode }) {
   const queryClient = useQueryClient();
   if (error === CONTINUITY_REQUIRED || isContinuityRequired(error)) return <ContinuityLock />;
   if (error === null || error === undefined || error === '') {
     return <p className="text-secondary text-muted-foreground" role="status">Loading…</p>;
   }
   if (isMissing(error)) return <NotAvailable {...(what ? { what } : {})} />;
+  const message = typeof error === 'string' ? error : messageOf(error, 'Could not load this page.');
+  const retry = () => void queryClient.refetchQueries({ type: 'active' });
+  if (heading) {
+    return (
+      <div className="mx-auto flex max-w-2xl flex-col gap-6">
+        <div className="flex flex-col items-start gap-3" role="alert">
+          <h1 className="font-display text-page-title">{heading}</h1>
+          <p className="text-secondary text-destructive">{message}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={retry}>Retry</Button>
+            <Button asChild variant="outline"><Link {...to.library()}>Back to library</Link></Button>
+          </div>
+        </div>
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col items-start gap-2 text-secondary text-destructive" role="alert">
-      <p>{typeof error === 'string' ? error : messageOf(error, 'Could not load this page.')}</p>
-      <Button type="button" variant="outline" size="sm" onClick={() => void queryClient.refetchQueries({ type: 'active' })}>
+      <p>{message}</p>
+      <Button type="button" variant="outline" size="sm" onClick={retry}>
         Retry
       </Button>
     </div>
