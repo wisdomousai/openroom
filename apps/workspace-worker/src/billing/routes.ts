@@ -1,8 +1,11 @@
 import { reconcileBillingAccount } from './reconcile';
 import { availablePlans } from './prices';
+import { and, eq } from 'drizzle-orm';
 import { json, type ControlEnv } from '../auth';
 import { requireControlUser } from '../control-auth';
 import { readJson } from '../control-utils';
+import { orm } from '../db/client';
+import { billingAccountSync } from '../db/schema';
 import { billingOff, parseEntitlements } from '../entitlements';
 import { billingSubscriptions, subscriptionAccessUntil } from './access';
 import { billingCustomer, cancelCheckout, checkoutDetails, currentCheckout, startCheckout } from './checkout';
@@ -21,13 +24,14 @@ export async function billingRoute(request: Request, env: ControlEnv, url: URL):
   if (!config) return leaf === '' ? json({ available: false, selfHosted: billingOff(env), subscriptions: [], pendingCheckout: null, canManage: false }) : json({ error: 'billing-not-configured' }, 503);
   try {
     if (leaf === '') {
-      const [customer, rows, pending, sync] = await Promise.all([billingCustomer(env, config, guard.user.id), billingSubscriptions(env, guard.user.id), currentCheckout(env, config, guard.user.id), env.DB.prepare('SELECT error,checked_at FROM billing_account_sync WHERE environment=?1 AND user_id=?2').bind(config.catalog.environment, guard.user.id).first<{ error: string | null; checked_at: number | null }>()]);
-      return json({ available: true, environment: config.catalog.environment, canManage: Boolean(customer), syncState: sync?.error ? 'attention' : sync?.checked_at ? 'checked' : 'pending',
+      const [customer, rows, pending, sync] = await Promise.all([billingCustomer(env, config, guard.user.id), billingSubscriptions(env, guard.user.id), currentCheckout(env, config, guard.user.id), orm(env).select({ error: billingAccountSync.error, checkedAt: billingAccountSync.checkedAt }).from(billingAccountSync)
+        .where(and(eq(billingAccountSync.environment, config.catalog.environment), eq(billingAccountSync.userId, guard.user.id))).get()]);
+      return json({ available: true, environment: config.catalog.environment, canManage: Boolean(customer), syncState: sync?.error ? 'attention' : sync?.checkedAt ? 'checked' : 'pending',
         subscriptions: rows.map((row) => {
-          let ids: string[] = []; try { const value: unknown = JSON.parse(row.price_ids); if (Array.isArray(value)) ids = value.filter((id): id is string => typeof id === 'string'); } catch { /* unknown plan */ }
+          let ids: string[] = []; try { const value: unknown = JSON.parse(row.priceIds); if (Array.isArray(value)) ids = value.filter((id): id is string => typeof id === 'string'); } catch { /* unknown plan */ }
           return { id: row.id, name: ids.map((id) => config.catalog.prices[id]?.name ?? 'Subscription').join(' + '), status: row.status,
-            hasAccess: subscriptionAccessUntil(row) > Date.now() && Object.values(parseEntitlements(row.entitlements)).some(Boolean), scheduledStop: row.scheduled_end !== null };
-        }), pendingCheckout: pending ? { id: pending.id, priceId: pending.price_id, name: config.catalog.prices[pending.price_id]?.name ?? 'Selected plan' } : null });
+            hasAccess: subscriptionAccessUntil(row) > Date.now() && Object.values(parseEntitlements(row.entitlements)).some(Boolean), scheduledStop: row.scheduledEnd !== null };
+        }), pendingCheckout: pending ? { id: pending.id, priceId: pending.priceId, name: config.catalog.prices[pending.priceId]?.name ?? 'Selected plan' } : null });
     }
     if (leaf === '/sync') {
       const body = await readJson(request);
@@ -42,8 +46,8 @@ export async function billingRoute(request: Request, env: ControlEnv, url: URL):
       if (!body || Object.keys(body).length !== 0) throw new BillingError('billing-invalid-request', 422);
       const customer = await billingCustomer(env, config, guard.user.id);
       if (!customer) throw new BillingError('billing-customer-not-found', 404);
-      const { data } = await paddleRequest(config, `/customers/${customer.customer_id}/portal-sessions`, 'POST', {});
-      if (!record(data) || data.customer_id !== customer.customer_id || !record(data.urls) || !record(data.urls.general) || typeof data.urls.general.overview !== 'string') throw new BillingError('billing-provider-response-invalid');
+      const { data } = await paddleRequest(config, `/customers/${customer.customerId}/portal-sessions`, 'POST', {});
+      if (!record(data) || data.customer_id !== customer.customerId || !record(data.urls) || !record(data.urls.general) || typeof data.urls.general.overview !== 'string') throw new BillingError('billing-provider-response-invalid');
       const portal = new URL(data.urls.general.overview);
       const host = config.catalog.environment === 'sandbox' ? 'sandbox-customer-portal.paddle.com' : 'customer-portal.paddle.com';
       if (portal.protocol !== 'https:' || portal.hostname !== host || portal.username || portal.password || portal.port) throw new BillingError('billing-provider-response-invalid');
