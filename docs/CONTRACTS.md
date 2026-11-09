@@ -856,8 +856,8 @@ The console uses the recoverable trash routes for decks, sessions and folders. H
 remains available on decks, sessions and folders for API clients that want it; permanent deletion in
 the console always requires the short-lived signed-in browser confirmation page. A permanent
 deletion is confirmed in the browser only — MCP and the CLI can create the intent but cannot
-confirm it. Deletion-intent resource types are `student | deck | session | folder`, and trash
-covers the same four.
+confirm it. Deletion-intent resource types are `student | deck | session | folder | brand_kit`,
+and trash covers the same five. Brand kits have their own trash under the space's brand kits.
 
 ### Space collaboration
 
@@ -938,8 +938,12 @@ rules](BILLING.md) for implemented behavior and remaining release work.
 Brand kits are space-owned design resources stored in D1. Editor access and the
 space owner’s branding entitlement authorize writes; kit membership reads use the
 same control-plane credentials as decks. No kit is an account, entitlement or live
-session credential. Deletion is recoverable trash. An update carries the current
-revision and cannot overwrite an intervening edit.
+session credential. Deletion is recoverable trash. `POST
+/api/tutoring/brand-kits/{id}/permanent-deletion` returns a short-lived browser
+confirmation URL for a kit in trash (409 `move-to-trash-first` for a live kit), and
+the shared confirmation page removes the kit row. A space holds at most 100 kits
+outside trash; one more answers 409 `brand-kit-limit`. An update carries the
+current revision and cannot overwrite an intervening edit.
 
 A kit stores resolved DeckDesign values. Applying it to a deck copies those values
 and resets per-slide design overrides while preserving template composition. There
