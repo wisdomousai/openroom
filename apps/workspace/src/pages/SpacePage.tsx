@@ -670,7 +670,7 @@ export function SpacePage({
               <div className="flex shrink-0 items-center gap-2">
                 {/* New deck stays in the deck toolbar below and the sidebar, not a third time here. */}
                 {space?.role === 'owner' && !personTrashed ? (
-                  <Button asChild variant="outline" className="h-8 bg-card"><Link {...to.spaceMembers(spaceId)}>Share</Link></Button>
+                  <Button asChild variant="outline" className="h-8 bg-card"><Link {...to.spaceMembers(spaceId)}>Members</Link></Button>
                 ) : null}
               </div>
             </div>
