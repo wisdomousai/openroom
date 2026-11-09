@@ -142,12 +142,13 @@ describe('deck client', () => {
     });
   });
 
-  it('treats a missing draft as null but still throws on a real failure', async () => {
-    const missing = createDeckClient({
+  it('reads the draft zero like any draft but still throws on a real failure', async () => {
+    const zero = { deckId: 'd1', source: 'version: 1\n', baseVersion: 2, updatedAt: null, updatedBy: null };
+    const unsaved = createDeckClient({
       baseUrl: 'https://openroom.test',
-      fetch: recorder(() => ({ status: 404, body: { error: 'not-found' } })).fetch,
+      fetch: recorder(() => ({ status: 200, body: zero })).fetch,
     });
-    expect(await missing.decks.getDraft('d1')).toBeNull();
+    expect(await unsaved.decks.getDraft('d1')).toEqual(zero);
 
     const broken = createDeckClient({
       baseUrl: 'https://openroom.test',

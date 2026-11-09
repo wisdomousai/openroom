@@ -3,7 +3,9 @@
  * Students stay in tutoring.ts. Live sessions are launched from a session.
  */
 import {
+  blankDeck,
   canonicalOutlineJson,
+  deckSource,
   validateOutline,
   parseOutline,
   DECK_DRAFT_MAX_CHARS,
@@ -563,8 +565,8 @@ export async function deckFileLocationRoute(
  * Refusing it would turn auto-save off exactly when it is needed. Only
  * `POST .../versions` validates, because only a version can launch a session.
  *
- * PUT upserts and answers `{ savedAt }`; GET answers the draft or 404; DELETE
- * discards it. Auth and role are the version route's, unchanged.
+ * PUT upserts and answers `{ savedAt }`; GET answers the draft, or the draft
+ * zero when nothing is unsaved; DELETE discards it. Auth and role are the version route's, unchanged.
  */
 export async function deckDraftRoute(
   request: Request,
@@ -588,7 +590,18 @@ export async function deckDraftRoute(
       .from(deckDrafts)
       .where(eq(deckDrafts.deckId, deckId))
       .get();
-    if (row === undefined) return json({ error: 'not-found' }, 404);
+    // Every save clears the draft, so "nothing unsaved" is the normal state.
+    // Answer it with the draft zero: the current version as editor text.
+    if (row === undefined) {
+      const latest = await latestContent(env, deckId);
+      return json({
+        deckId,
+        source: deckSource(latest?.outline ?? blankDeck(deck.title)),
+        baseVersion: deck.currentVersion,
+        updatedAt: null,
+        updatedBy: null,
+      });
+    }
     return json({
       deckId,
       source: row.contentYaml,

@@ -78,8 +78,9 @@ export function presentationTitle(office: typeof Office | null): string {
 
 /** The deck editor autosaves a draft; a new version would delete it, so stop and ask the host to save there first. */
 async function refuseEditorDraft(connection: Connection, deckId: string): Promise<void> {
-  try { await request(connection, `/api/decks/${encodeURIComponent(deckId)}/draft`); }
-  catch (cause) { if (cause instanceof RequestError && cause.status === 404) return; throw cause; }
+  // With nothing unsaved the server answers the draft zero, whose updatedAt is null.
+  const draft = await request<{ updatedAt: number | null }>(connection, `/api/decks/${encodeURIComponent(deckId)}/draft`);
+  if (draft.updatedAt === null) return;
   throw new Error('This deck has unsaved changes in the OpenRoom editor. Save them there first.');
 }
 
