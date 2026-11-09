@@ -288,7 +288,7 @@ Errors: `deck-content-not-found`, `invalid-deck-content`, `session-not-found`.
 | Surface | String |
 | --- | --- |
 | End dialog title | End this session? |
-| End dialog body | Participants are disconnected and results are final. |
+| End dialog body | The session closes for everyone who joined, and results are final. |
 | End dialog confirm | End session |
 | Ended banner | Session ended |
 | Ended banner (participant) | Session ended · You can close this page. |

@@ -1,7 +1,6 @@
-import { ELEMENT_BOX_MIN } from '@openroom/schema';
 import { describe, expect, it } from 'vitest';
 
-import { clampElementBox, SLIDE_ELEMENT_BOX_MIN } from './element-box';
+import { clampElementBox, ELEMENT_BOX_MIN } from './outline-types.js';
 
 describe('clampElementBox draws every boxed element inside the slide', () => {
   it('leaves a box that fits unchanged', () => {
@@ -24,13 +23,9 @@ describe('clampElementBox draws every boxed element inside the slide', () => {
     for (const x of [-50, 0, 33, 99, 100, 250]) {
       for (const w of [-10, 0, 5, 60, 100, 400]) {
         const box = clampElementBox({ x, y: x, w, h: w });
-        expect([box.x >= 0, box.x + box.w <= 100, box.w >= SLIDE_ELEMENT_BOX_MIN]).toEqual([true, true, true]);
-        expect([box.y >= 0, box.y + box.h <= 100, box.h >= SLIDE_ELEMENT_BOX_MIN]).toEqual([true, true, true]);
+        expect([box.x >= 0, box.x + box.w <= 100, box.w >= ELEMENT_BOX_MIN]).toEqual([true, true, true]);
+        expect([box.y >= 0, box.y + box.h <= 100, box.h >= ELEMENT_BOX_MIN]).toEqual([true, true, true]);
       }
     }
-  });
-
-  it('keeps the minimum the schema allows', () => {
-    expect(SLIDE_ELEMENT_BOX_MIN).toBe(ELEMENT_BOX_MIN);
   });
 });

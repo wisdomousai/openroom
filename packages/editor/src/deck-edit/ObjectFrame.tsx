@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ELEMENT_BOX_MAX, ELEMENT_BOX_MIN, type OutlineElementBox } from '@openroom/schema';
+import { clampElementBox, ELEMENT_BOX_MAX, ELEMENT_BOX_MIN, type OutlineElementBox } from '@openroom/schema';
 
 const HANDLES = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'] as const;
 type Handle = (typeof HANDLES)[number];
@@ -75,7 +75,9 @@ export function ObjectFrame({
     slideW: number;
     slideH: number;
   } | null>(null);
-  const shown = draft ?? box;
+  // The chrome sits on the box as every surface draws it, clamped inside the slide.
+  const drawn = clampElementBox(box);
+  const shown = draft ?? drawn;
 
   useLayoutEffect(() => {
     setDraft(null);
@@ -89,12 +91,12 @@ export function ObjectFrame({
     if (targetKey === undefined) return;
     const el = frame.querySelector(`[data-part="${CSS.escape(targetKey)}"]`);
     if (!(el instanceof HTMLElement)) return;
-    const value = draft ?? box;
+    const value = shown;
     el.style.left = `${String(value.x)}%`;
     el.style.top = `${String(value.y)}%`;
     el.style.width = `${String(value.w)}%`;
     el.style.height = `${String(value.h)}%`;
-  }, [frame, targetKey, draft, box]);
+  }, [frame, targetKey, shown.x, shown.y, shown.w, shown.h]);
 
   useEffect(() => {
     const onMove = (event: PointerEvent) => {

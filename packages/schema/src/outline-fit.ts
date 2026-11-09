@@ -29,6 +29,7 @@ import {
   stepElements,
   stepPicture,
 } from './outline-parts.js';
+import { clampElementBox } from './outline-types.js';
 import type {
   Outline,
   OutlineElementBox,
@@ -535,7 +536,8 @@ function elementWarnings(step: OutlineStep, index: number, design: ResolvedSlide
         message: `element "${element.id}" on step "${step.id}" runs past the slide edge (${edges.join(', ')}; at most 100), so it is drawn clamped: shrunk to fit inside the slide`,
       });
     }
-    const rect = boxRect(box, slide);
+    // Overlap is measured on the box as drawn, after the clamp.
+    const rect = boxRect(clampElementBox(box), slide);
     if (title !== null && overlaps(rect, title)) {
       warnings.push({
         code: 'W_ELEMENT_OVERLAP',

@@ -36,7 +36,7 @@ If the page says **This link no longer works**, saving and sending stop and retr
 
 Open **Practice** and complete the current exercise. Select options, fill blanks, match pairs, reorder items, or type your answer. Select **Check** to reveal the assessment or self-check information.
 
-Use **Good** or the confidence action when you are satisfied with the response. Use **Again** when you need to practise it again. **Try again** starts another attempt at the exercise. Wait for the saved state so your progress survives a reload.
+After a correct answer, choose **Next**, or **Show this again later** to practise it again soon. After a wrong answer, choose **Change my answer** to try again, or **Show the answer** to see the accepted answers and then **Next**. On a self-check item, **Confident** moves on. Wait for the saved state so your progress survives a reload.
 
 For an open answer without a fixed key, assess your confidence using the provided self-check action. A teacher-authored answer key is used only where the exercise includes one.
 

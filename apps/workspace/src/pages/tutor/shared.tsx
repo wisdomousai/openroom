@@ -100,10 +100,8 @@ export function EmptyCollection({ children }: { children: ReactNode }) {
 
 /**
  * Loading, locked, missing or failed. `error` is the message or the raw
- * failure; a raw 404 shows `NotAvailable` instead of a Retry that cannot help.
- */
-/** `what` names the missing thing on a 404 (“This student is not available”). */
-/**
+ * failure; a raw 404 shows `NotAvailable` instead of a Retry that cannot help,
+ * and `what` names the missing thing there (“This student is not available”).
  * A page that sets `heading` gets the full failure screen: that heading, the
  * message, Retry and a Back to library link, with `children` (for example
  * notes kept on this device) below.

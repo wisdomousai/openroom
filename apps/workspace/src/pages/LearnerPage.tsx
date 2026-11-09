@@ -21,7 +21,7 @@
  *    tutor for nothing.
  */
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { practiceLocale } from '@openroom/schema';
 
 import {
@@ -37,6 +37,7 @@ import {
   type LearnerPracticeItem,
   type LearnerSession,
 } from '../api';
+import { ChevronRight } from 'lucide-react';
 import { Button } from '@openroom/ui/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@openroom/ui/components/card';
 import { Textarea } from '@openroom/ui/components/textarea';
@@ -208,6 +209,7 @@ function LearnerContent({ token }: { token: string | null }) {
     retry: false,
   });
   const [activeTab, setActiveTab] = useState('lesson');
+  const [showEarlier, setShowEarlier] = useState(false);
   const feedbackQuery = useQuery({ queryKey: ['learner', 'feedback'], queryFn: () => fetchLearnerFeedback(token!), enabled: token !== null && identityQuery.isSuccess, retry: false });
   // Writes report here; the link stays refused for the life of this page.
   const [writeRefused, setWriteRefused] = useState(false);
@@ -236,8 +238,6 @@ function LearnerContent({ token }: { token: string | null }) {
   if (state.identity === null) return <DeadLink />;
 
   const sessions = sessionsQuery.data ?? null;
-  const latest = sessions?.[0] ?? null;
-  const earlier = (sessions ?? []).slice(1);
   const pile = practiceQuery.data ?? [];
 
   return (
@@ -266,20 +266,22 @@ function LearnerContent({ token }: { token: string | null }) {
       ) : sessions.length === 0 ? (
         <p className="text-secondary">{copy.lessonEmpty}</p>
       ) : (
+        // One keyed list: when a new session arrives on refetch, the previous latest
+        // block moves under Earlier sessions without unmounting its typed work.
         <div className="flex flex-col gap-6">
-          {latest !== undefined && latest !== null ? (
-            <HomeworkBlock token={token} session={latest} latest active={activeTab === 'lesson'} />
-          ) : null}
-          {earlier.length > 0 ? (
-            <details>
-              <summary className="cursor-pointer text-row-title">{copy.earlierSessions}</summary>
-              <div className="mt-3 flex flex-col gap-4">
-                {earlier.map((session) => (
-                  <HomeworkBlock key={session.id} token={token} session={session} active={activeTab === 'lesson'} />
-                ))}
+          {sessions.map((session, index) => (
+            <Fragment key={session.id}>
+              {index === 1 ? (
+                <button type="button" className="flex items-center gap-2 self-start text-row-title" aria-expanded={showEarlier} onClick={() => setShowEarlier((value) => !value)}>
+                  <ChevronRight aria-hidden className={showEarlier ? 'size-4 rotate-90' : 'size-4'} />
+                  {copy.earlierSessions}
+                </button>
+              ) : null}
+              <div hidden={index > 0 && !showEarlier}>
+                <HomeworkBlock token={token} session={session} latest={index === 0} active={activeTab === 'lesson'} />
               </div>
-            </details>
-          ) : null}
+            </Fragment>
+          ))}
         </div>
       )}
         </TabsContent>
