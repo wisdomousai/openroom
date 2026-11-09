@@ -8,6 +8,7 @@ import {
   resolveMediaAspect,
   type MediaAspect,
 } from './aspect';
+import { clampElementBox } from './element-box';
 import { focalStyle } from './focal';
 import type { SlideLayout } from './layout';
 import { makeParts, type PartAttrs } from './parts';
@@ -55,7 +56,8 @@ export function elementsLayer(
       {step.elements.map((element) => {
         const key = `el-${element.id}`;
         if (!show(key)) return null;
-        const box = element.box;
+        // Drawn inside the slide: a box past the edge is clamped, not cut off.
+        const box = clampElementBox(element.box);
         const style = {
           left: `${String(box.x)}%`,
           top: `${String(box.y)}%`,
