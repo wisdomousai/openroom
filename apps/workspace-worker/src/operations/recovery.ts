@@ -15,7 +15,7 @@ export function recoveryPreparation(now: number): string[] {
     // Membership may have been removed after the backup. Owners re-share after recovery.
     'DELETE FROM space_members WHERE user_id NOT IN (SELECT owner_user_id FROM spaces WHERE spaces.id=space_members.space_id)',
     // A recovery uses a fresh live-object namespace and a new TOKEN_SECRET.
-    "UPDATE sessions SET status='completed' WHERE status='live'",
+    "UPDATE sessions SET status='ended' WHERE status='live'",
     'UPDATE live_sessions SET ended=1,collaboration_enabled=0',
     // Provider IDs and uncertain create markers survive; access is rebuilt from Paddle.
     "UPDATE users SET entitlements='{}'",

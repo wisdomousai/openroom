@@ -86,8 +86,8 @@ export interface LiveAuthority<G = unknown> {
   ): Promise<{ ok: true; grant?: G; canRecover: boolean } | { ok: false; response: Response }>;
   /** May this host seat send this command? Called only when `host` returned a grant. */
   commandAllowed(grant: G, sessionCode: string, command: Command): Promise<boolean>;
-  /** Runs after the session accepted `session.end`. */
-  sessionEnded(sessionCode: string): Promise<void>;
+  /** Runs after the session accepted `session.start` or `session.end`. */
+  sessionChanged(sessionCode: string, command: 'session.start' | 'session.end'): Promise<void>;
   /** Does the answers export include per-participant rows? */
   mayExportAnswers(sessionCode: string): Promise<boolean>;
   /** Answers CSV kept after the session's own storage is gone, if any. */
@@ -324,8 +324,8 @@ export async function commandRoute<G>(live: Live<G>, request: Request, url: URL,
     body: JSON.stringify(envelope),
   });
 
-  if (response.ok && command.command === 'session.end') {
-    await live.authority.sessionEnded(sessionCode);
+  if (response.ok && (command.command === 'session.start' || command.command === 'session.end')) {
+    await live.authority.sessionChanged(sessionCode, command.command);
   }
 
   return withApiHeaders(response);

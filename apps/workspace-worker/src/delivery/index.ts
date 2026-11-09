@@ -18,7 +18,6 @@ export {
   sessionItemRoute,
   restoreSessionRoute,
   sessionRecordRoute,
-  endSessionForCode,
   launchSessionRoute,
   createDeliveryDeletionIntentRoute,
   deleteDeckPermanently,

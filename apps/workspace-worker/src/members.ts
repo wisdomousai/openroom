@@ -298,7 +298,8 @@ export async function patchMemberRoute(
 
   const body = await readJson(request);
   if (body === null) return json({ ok: false, error: 'invalid-json' }, 400);
-  if (!isSpaceRole(body.role)) return json({ ok: false, error: 'invalid-role' }, 400);
+  // A space has one owner (spaces.owner_user_id); a colleague is an editor or a presenter.
+  if (body.role !== 'editor' && body.role !== 'presenter') return json({ ok: false, error: 'invalid-role' }, 400);
 
   const target = await managedMember(env, access, targetUserId);
   if (!target.ok) return target.response;

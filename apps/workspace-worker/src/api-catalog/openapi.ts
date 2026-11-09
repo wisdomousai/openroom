@@ -854,7 +854,7 @@ export function openapiDocument(origin: string): unknown {
             '200': { description: 'Updated' },
             '404': { description: 'student or folder not found in this space' },
             '409': { description: 'resource-in-trash' },
-            '422': { description: 'status-server-owned or invalid-status' },
+            '422': { description: 'status-server-owned (status moves are made by launch and end; only draft may be repeated on a draft) or invalid-status' },
           },
         },
         delete: { operationId: 'trashSession', summary: 'Trash a session', security: [{ UserBearer: [] }, { SessionCookie: [], CsrfHeader: [] }], parameters: [{ name: 'sessionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trashed' } } },
@@ -883,7 +883,8 @@ export function openapiDocument(origin: string): unknown {
           responses: {
             '201': LAUNCHED,
             '403': { description: 'team-required, guest-list-required or continuity-required (identified sessions), from the space owner' },
-            '409': { description: 'session-already-live or deck-content-not-found' },
+            '409': { description: 'session-already-live (the session is running), session-already-ended (it ended, including the automatic end after 12 hours without activity), or deck-content-not-found' },
+            '410': { description: 'session-expired (the live session was deleted after its retention period)' },
             '422': { description: 'identified-session-needs-student (an identified deck must be filed under a student) or invalid-presentation-cursor' },
           },
         },

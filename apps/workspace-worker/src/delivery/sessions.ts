@@ -202,26 +202,24 @@ export async function sessionItemRoute(
     ? row.title
     : typeof body.title === 'string' ? body.title.trim().slice(0, 200) : '';
   if (title === '') return json({ error: 'title-required' }, 422);
-  if (typeof body.status === 'string' && SESSION_STATUSES_SERVER_OWNED.has(body.status)) {
-    return json({ error: 'status-server-owned' }, 422);
-  }
-  const status = body.status === undefined ? row.status : body.status;
-  if (status !== 'draft' && status !== row.status) {
-    return json({ error: 'invalid-status' }, 422);
+  // Status moves are server-owned (delivery/session-status.ts). A client may
+  // only repeat 'draft' on a session that is still a draft.
+  if (body.status !== undefined && !(body.status === 'draft' && row.status === 'draft')) {
+    const known = typeof body.status === 'string' && (SESSION_STATUSES as readonly string[]).includes(body.status);
+    return json({ error: known ? 'status-server-owned' : 'invalid-status' }, 422);
   }
   const location = await resolveFolder(env, guard.user, row.space_id, body, row.folder_id);
   if (!location.ok) return location.response;
   const now = Date.now();
   await env.DB.prepare(
-    `UPDATE sessions SET student_id = ?1, title = ?2, status = ?3,
-       folder_id = ?4, updated_at = ?5 WHERE id = ?6`,
-  ).bind(studentId, title, status, location.folderId, now, sessionId).run();
+    `UPDATE sessions SET student_id = ?1, title = ?2,
+       folder_id = ?3, updated_at = ?4 WHERE id = ?5`,
+  ).bind(studentId, title, location.folderId, now, sessionId).run();
   return json({
     session: sessionJson({
       ...row,
       student_id: studentId,
       title,
-      status,
       folder_id: location.folderId,
       updated_at: now,
     }),
@@ -415,42 +413,6 @@ export async function sessionRecordRoute(
   return json({ ok: true, sessionId, updatedAt: now, homeworkRevision });
 }
 
-/**
- * The other half of the session lifecycle: `launchSessionForUser` writes
- * `sessions.status = 'live'`, and this writes `'ended'` when the session ends.
- *
- * Nothing wrote it before, which is why Home had to infer "this was delivered"
- * from `sessions` rows. The Durable Object owns liveness but has no D1 binding, so
- * the writeback lives on the command path the host actually takes: the Worker
- * sees a successful `session.end` and closes the control-plane record.
- *
- * Deliberately narrow and deliberately quiet:
- *  - only a session that is `live` moves, so a re-sent end (idempotent in the DO)
- *    cannot overwrite a status someone set afterwards;
- *  - `sessions.ended` is still advisory (`mySessionsRoute`), just no longer always 0;
- *  - a failed write is swallowed. The session has ended either way, and a lost
- *    bookkeeping row must not turn that into an error for the host.
- *
- * Not covered, knowingly: the DO's own 12 h idle auto-end never passes through
- * the Worker, so such a session keeps its previous status.
- */
-export async function endSessionForCode(env: ControlEnv, sessionCode: string): Promise<void> {
-  try {
-    const now = Date.now();
-    await env.DB.batch([
-      env.DB.prepare('UPDATE live_sessions SET ended = 1 WHERE code = ?1').bind(sessionCode),
-      env.DB.prepare(
-        `UPDATE sessions SET status = 'ended', updated_at = ?1
-          WHERE deleted_at IS NULL
-            AND status = 'live'
-            AND id = (SELECT session_id FROM live_sessions WHERE code = ?2)`,
-      ).bind(now, sessionCode),
-    ]);
-  } catch {
-    // advisory bookkeeping only
-  }
-}
-
 export async function launchSessionRoute(
   request: Request,
   env: ControlEnv,
@@ -461,7 +423,6 @@ export async function launchSessionRoute(
   if (!guard.ok) return guard.response;
   const session = await sessionAccess(env, guard.user.id, sessionId);
   if (session === null || session.deleted_at !== null) return json({ error: 'not-found' }, 404);
-  if (session.status === 'live') return json({ error: 'session-already-live' }, 409);
   const body = (await readJson(request)) ?? {};
   const requested = typeof body.version === 'number' && Number.isInteger(body.version)
     ? body.version
@@ -486,6 +447,8 @@ export async function launchSessionRoute(
     version: content.version,
     outline: content.outline,
     start: body.start === true,
+    // A launch of a running session is refused once the DO confirms it is live.
+    refuseLive: session.status === 'live',
     ...(body.cursor === undefined ? {} : { cursor: body.cursor as PresentationPosition }),
   }, guard.user);
 }

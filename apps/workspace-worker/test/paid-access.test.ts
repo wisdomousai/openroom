@@ -93,7 +93,11 @@ describe('paid access across account clients', () => {
   it('gates named sessions on every creation path and uses the space owner for invited editors', async () => {
     const owner = await account(), invited = await account();
     for (const client of ['cookie', 'pat', 'oauth'] as const) expect((await owner.request('/api/sessions', 'POST', { outline: namedOutline }, client)).status).toBe(403);
-    expect((await owner.rpc('session_create', { outline: namedOutline })).error).toBe(true);
+    expect(await owner.rpc('session_create', { outline: namedOutline })).toEqual({ error: true, value: { error: 'guest-list-required' } });
+    const a2a = await owner.raw('/api/a2a', 'POST', { jsonrpc: '2.0', id: 1, method: 'message/send', params: { message: {
+      role: 'user', messageId: 'named', parts: [{ kind: 'data', data: { skill: 'session-create', arguments: { outline: namedOutline } } }],
+    } } }, 'oauth');
+    expect(JSON.parse((await a2a.json() as { result: { parts: { text: string }[] } }).result.parts[0]!.text)).toEqual({ error: 'guest-list-required' });
     const source = await owner.request('/api/decks', 'POST', { spaceId: owner.spaceId, content: namedOutline });
     expect(source.status).toBe(201);
     for (const client of clients) expect((await owner.request(`/api/decks/${source.body.deck.id}/start`, 'POST', { requestId: crypto.randomUUID() }, client)).status).toBe(403);

@@ -50,6 +50,12 @@ export interface SessionLaunchInput {
   version: number;
   outline: Outline;
   start: boolean;
+  /**
+   * Answer 409 session-already-live when the DO reports the session running.
+   * Set by POST /api/sessions/:id/launch for a session D1 records as live;
+   * the deck start retries the same launch and leaves it unset.
+   */
+  refuseLive?: boolean;
   cursor?: PresentationPosition;
 }
 
