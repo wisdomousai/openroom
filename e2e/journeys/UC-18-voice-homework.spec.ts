@@ -149,3 +149,25 @@ test('voice response upload, private timed feedback, learner deletion and microp
   await expect(mic.getByText(/^Recording stopped at/)).toHaveCount(0);
   await fakeMicrophone.close();
 });
+
+test('without MediaRecorder the page says so and keeps the file choice', async ({ page, browser }, testInfo) => {
+  await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
+  const cookies = await page.context().cookies();
+  await page.context().clearCookies();
+  await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
+  const { student } = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'Sprechen ohne Aufnahme', kind: 'person', experience: 'tutoring' } })).json();
+  const { session } = await (await page.request.post('/api/decks', { headers: CSRF, data: { studentId: student.id, spaceId: student.spaceId, createSession: true,
+    content: { version: 1, meta: { title: 'Votre voyage' }, steps: [{ id: 'title', kind: 'title', title: 'Votre voyage' }], interactions: [] },
+  } })).json();
+  expect((await page.request.post(`/api/sessions/${session.id}/launch`, { headers: CSRF, data: { start: true } })).status()).toBe(201);
+  expect((await page.request.put(`/api/sessions/${session.id}/record`, { headers: CSRF, data: { homework: [{ id: 'voice', kind: 'voice', title: 'Votre voyage', prompt: 'Parlez de votre voyage.' }] } })).status()).toBe(200);
+  const { token } = await (await page.request.post(`/api/tutoring/students/${student.id}/links`, { headers: CSRF, data: {} })).json();
+  const learner = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await learner.addInitScript(() => { Reflect.deleteProperty(window, 'MediaRecorder'); });
+  await learner.goto(`/host/#/learn?token=${token}`);
+  await expect(learner.getByText("Recording isn't available in this browser. Choose an audio file instead.", { exact: true })).toBeVisible();
+  await expect(learner.getByRole('button', { name: 'Record response', exact: true })).toHaveCount(0);
+  await expect(learner.getByLabel('Choose audio file', { exact: true })).toBeEnabled();
+  await learner.screenshot({ path: testInfo.outputPath('voice-recorder-missing-phone.png'), fullPage: true });
+  await learner.close();
+});

@@ -29,6 +29,7 @@ import {
   stepElements,
   stepPicture,
 } from './outline-parts.js';
+import { clampElementBox } from './outline-types.js';
 import type {
   Outline,
   OutlineElementBox,
@@ -532,29 +533,30 @@ function elementWarnings(step: OutlineStep, index: number, design: ResolvedSlide
       warnings.push({
         code: 'W_ELEMENT_BOUNDS',
         path,
-        message: `element "${element.id}" on step "${step.id}" runs past the slide edge (${edges.join(', ')}; at most 100), and the part beyond the edge is cut`,
+        message: `element "${element.id}" on step "${step.id}" runs past the slide edge (${edges.join(', ')}; at most 100), so it is drawn clamped: shrunk to fit inside the slide`,
       });
     }
-    const rect = boxRect(box, slide);
+    // Overlap is measured on the box as drawn, after the clamp.
+    const rect = boxRect(clampElementBox(box), slide);
     if (title !== null && overlaps(rect, title)) {
       warnings.push({
         code: 'W_ELEMENT_OVERLAP',
         path,
-        message: `element "${element.id}" on step "${step.id}" covers the step title, which is drawn in the top ${String(round(((title.bottom) * 100) / slide.height))}% of the slide; move the box down or drop the title`,
+        message: `element "${element.id}" on step "${step.id}" covers the step title, which is drawn in the top ${String(round(((title.bottom) * 100) / slide.height))}% of the slide; move the box down or drop the title; the box is not moved for you`,
       });
     }
     if (logo !== null && overlaps(rect, logo)) {
       warnings.push({
         code: 'W_ELEMENT_OVERLAP',
         path,
-        message: `element "${element.id}" on step "${step.id}" lies under the master logo in the top-right corner`,
+        message: `element "${element.id}" on step "${step.id}" lies under the master logo in the top-right corner; the box is not moved for you`,
       });
     }
     if (footer !== null && overlaps(rect, footer)) {
       warnings.push({
         code: 'W_ELEMENT_OVERLAP',
         path,
-        message: `element "${element.id}" on step "${step.id}" reaches into the footer band at the bottom of the slide`,
+        message: `element "${element.id}" on step "${step.id}" reaches into the footer band at the bottom of the slide; the box is not moved for you`,
       });
     }
   });

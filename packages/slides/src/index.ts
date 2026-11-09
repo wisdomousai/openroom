@@ -59,6 +59,7 @@ export {
   type SlideLayout,
   type SlideStepKind,
 } from './layout';
+export { clampElementBox } from './element-box';
 export { FOCAL_POINTS, FOCAL_WORDS, focalStyle, type FocalPoint } from './focal';
 export {
   ASPECT_WORDS,

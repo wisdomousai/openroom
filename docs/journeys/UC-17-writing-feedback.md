@@ -17,6 +17,12 @@ Acceptance:
 
 - Unsaved writing survives switching learner tabs.
 - Saving writing by keyboard keeps focus on the Save button and announces Saved.
+- When the tutor changed the task, Save shows "Your tutor changed this task." with
+  Show revised task. The button reloads the lesson in place: the revised prompt
+  replaces the old one, the typed text stays, and Save goes out with the new
+  revision. Voice tasks do the same and keep the unsent recording.
+- Homework published while the page is open appears when the window regains
+  focus or the Lesson tab opens.
 - A correction whose words are not in the response is marked on its field with
   the reason and takes focus; Add correction focuses the new field.
 - Words selected in the response fill Their words through Use selection, or

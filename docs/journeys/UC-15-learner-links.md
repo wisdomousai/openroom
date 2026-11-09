@@ -1,17 +1,23 @@
-# UC-15 — Private group work and replaceable access links
+# UC-15 — Learner links: private work and replacement
 
 Status: green on local Chromium, including a 390px learner viewport.
 
-Purpose: each member of a tutoring group keeps their own work even when a tutor
-replaces a lost link. A link grants no workspace role or learner account.
+Purpose: a tutor gives each learner of a student their own access link. Each
+learner keeps their own writing and practice, also when the tutor replaces a
+lost link. A link grants no workspace role or learner account.
 
-Fixture: one group, one taught deck, a writing task and a choice exercise; Léa and
-Noor have separate tutor-authored identities and credentials.
+Fixture: one student (kind group) with one
+taught session, a writing task and a choice exercise in its record; Léa and Noor
+are two learners of that student, each with a link created by the tutor.
 
-Surfaces: dedicated link creation, Library access-link disclosure, learner page.
+Surfaces: dedicated link creation page, access links list with Revoke, learner
+page (Lesson, Practice, Feedback).
 
-Lifecycle: create both links → Léa writes and practices → switch the same tab to
-Noor → mint a replacement for Léa → revoke the old link → reopen with the new link.
+Lifecycle: create a link for Léa and one for Noor → Léa writes, saves and
+practices → switch the same tab to Noor's link → create a replacement link for
+Léa → revoke her old link → open the old link, then the replacement → force a
+failed load, a failed lesson tab, a rate limit, a refused save and a link
+refused while the page is open.
 
 Acceptance:
 

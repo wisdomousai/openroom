@@ -131,3 +131,39 @@ test('tutor drafts stay private; published corrections stay attached to the orig
   expect(draft.source).not.toContain('Léa');
   await learner.close();
 });
+
+test('a revised writing task reloads in place with the typed text kept, and new homework appears on return', async ({ page, browser }, testInfo) => {
+  await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
+  const cookies = await page.context().cookies();
+  await page.context().clearCookies();
+  await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, secure: false })));
+  const { student } = await (await page.request.post('/api/tutoring/students', { headers: CSRF, data: { displayName: 'Hélène', kind: 'person', experience: 'tutoring' } })).json();
+  const { session } = await (await page.request.post('/api/decks', { headers: CSRF, data: { studentId: student.id, spaceId: student.spaceId, createSession: true,
+    content: { version: 1, meta: { title: 'Un voyage en train' }, steps: [{ id: 'title', kind: 'title', title: 'Un voyage en train' }], interactions: [] },
+  } })).json();
+  expect((await page.request.post(`/api/sessions/${session.id}/launch`, { headers: CSRF, data: { start: true } })).status()).toBe(201);
+  const publish = async (homework: unknown[], homeworkRevision?: number) => expect((await page.request.put(`/api/sessions/${session.id}/record`, { headers: CSRF, data: { homeworkRevision, homework } })).status()).toBe(200);
+  await publish([{ id: 'writing', kind: 'writing', title: 'Votre voyage', prompt: 'Racontez votre voyage.' }]);
+  const { token } = await (await page.request.post(`/api/tutoring/students/${student.id}/links`, { headers: CSRF, data: {} })).json();
+  const learner = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await learner.goto(`/host/#/learn?token=${token}`);
+  await learner.getByRole('textbox', { name: 'Racontez votre voyage.', exact: true }).fill('Je suis allé à Berlin.');
+  await publish([{ id: 'writing', kind: 'writing', title: 'Votre voyage', prompt: 'Racontez votre voyage en trois phrases.' }], 1);
+  await learner.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(learner.getByRole('alert').filter({ hasText: 'Your tutor changed this task.' })).toBeVisible();
+  await learner.screenshot({ path: testInfo.outputPath('learner-task-changed.png'), fullPage: true });
+  await learner.getByRole('button', { name: 'Show revised task', exact: true }).click();
+  const revised = learner.getByRole('textbox', { name: 'Racontez votre voyage en trois phrases.', exact: true });
+  await expect(revised).toHaveValue('Je suis allé à Berlin.');
+  await expect(learner.getByRole('alert')).toHaveCount(0);
+  await learner.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(learner.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+
+  // Homework published while the page is open appears when the student returns to it.
+  await publish([{ id: 'writing', kind: 'writing', title: 'Votre voyage', prompt: 'Racontez votre voyage en trois phrases.' }, { id: 'second', kind: 'writing', title: 'La gare', prompt: 'Décrivez la gare.' }], 2);
+  await expect(learner.getByRole('textbox', { name: 'Décrivez la gare.', exact: true })).toHaveCount(0);
+  await learner.evaluate(() => document.dispatchEvent(new Event('visibilitychange', { bubbles: true })));
+  await expect(learner.getByRole('textbox', { name: 'Décrivez la gare.', exact: true })).toBeVisible();
+  await expect(revised).toHaveValue('Je suis allé à Berlin.');
+  await learner.close();
+});

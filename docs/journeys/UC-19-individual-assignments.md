@@ -8,6 +8,9 @@ published assignments. The reusable deck contains no learner identities.
 
 - Every task defaults to everyone in the student. Selected learners requires at least
   one named learner from that student; no first person is selected automatically.
+- Choosing Selected learners shows no error until the tutor has ticked and cleared a
+  learner. While Save is off, the reason is written next to it. A one-person student
+  has no recipient picker. A group reads "Everyone in this group".
 - The choice survives reopening Notes. Tutors can revise instructions and recipients.
 - A learner's Lesson and Practice include only shared tasks and their own assignments.
   Other learners, recipient lists, tutor notes and private next steps are never exposed.

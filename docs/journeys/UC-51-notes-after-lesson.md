@@ -12,7 +12,8 @@ Surfaces: Library prompt and Live now, the Notes page after End session.
 
 Lifecycle: start from the Library → End session → Cancel Notes → open the
 prompt → save Notes 1 → a later lesson writes its own Next session note →
-reopen Notes 1 with an unsaved device edit → add it and update → a refused save.
+reopen Notes 1 with an unsaved device edit → add it and update → a refused save
+→ a plan-locked save → a plan-locked load → a failed load → Retry and save.
 
 Acceptance:
 

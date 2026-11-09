@@ -151,6 +151,8 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await presenter.locator('header').getByRole('button', { name: 'End session', exact: true }).click();
   await page.getByRole('dialog', { name: 'End this session?', exact: true }).getByRole('button', { name: 'End session', exact: true }).click();
   await expect(page.getByLabel('Tutor notes', { exact: true })).toHaveValue('PRIVATE TUTOR NOTE: revisit the past tense.');
+  // One person: no per-task recipient picker.
+  await expect(page.getByRole('combobox', { name: 'Who receives this task?' })).toHaveCount(0);
   await page.getByLabel('Outcomes (one per line)', { exact: true }).fill('You explained the delay and found another route.');
   await page.getByLabel('Next session', { exact: true }).fill('PRIVATE NEXT STEP');
   await audit(page, testInfo, '09-session-notes');
@@ -177,7 +179,7 @@ test('first tutoring lesson: UI setup, live teaching, phone homework, feedback a
   await learner.getByRole('textbox', { name: 'Gap 2', exact: true }).fill('a');
   await learner.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(learner.getByText('Correct.', { exact: true })).toBeVisible();
-  await learner.getByRole('button', { name: 'Good', exact: true }).click();
+  await learner.getByRole('button', { name: 'Next', exact: true }).click();
   await audit(learner, testInfo, '11-practice');
   await page.getByRole('link', { name: 'Review learner work', exact: true }).click();
   await page.getByRole('link', { name: /Camille First Lesson.*Review response/s }).click();

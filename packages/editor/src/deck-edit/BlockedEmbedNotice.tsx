@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { OutlineElement } from '@openroom/schema';
+import { clampElementBox, type OutlineElement } from '@openroom/schema';
 
 import { useEditorServices, type EmbedCheck } from '../services';
 import { embedRefusalText } from './IframeElementDialog';
@@ -68,7 +68,7 @@ function ElementNotice({
 }) {
   const check = useEmbedCheck(element.url, deckId);
   if (check === null || check.embeddable) return null;
-  const { box } = element;
+  const box = clampElementBox(element.box);
   return (
     <div
       className="slide-canvas__embed-notice"

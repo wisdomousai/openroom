@@ -42,6 +42,7 @@ follow-up checks; WebKit automation does not establish native Safari behavior.
    live gaps without losing the page. Revealed labels do not overlap.
 6. End the session, carry the private scratchpad into Notes, publish the outcome
    and authored homework, and return to the same student's Library controls.
+   A one-person student's Notes show no per-task recipient picker.
 7. The learner sees the outcome and full reading/writing tasks, with no tutor-private
    Notes or next-step field. The page has no horizontal overflow at the three widths.
 8. Submit writing, complete gap practice, and record a self-assessment.

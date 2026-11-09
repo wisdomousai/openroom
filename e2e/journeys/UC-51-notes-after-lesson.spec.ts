@@ -7,6 +7,8 @@
  * on this device join the private notes on request. Re-saving an older
  * session's Notes leaves the Next session note written by a later session.
  * A refused save names what stays on this device and downloads every field.
+ * The paid-plan lock and a failed load show their own screens, and notes can
+ * be saved again once access returns.
  */
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
@@ -18,7 +20,7 @@ const CSRF = { 'x-openroom-csrf': '1' };
 test.beforeAll(async () => { await waitForWorker(); });
 
 test('notes after a lesson: Library prompt, student name, device notes and the Next session note', async ({ page }, testInfo) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   await page.request.post('/api/auth/demo/login', { headers: CSRF, data: { username: 'alice', password: 'demo' } });
   const cookies = await page.context().cookies();
   await page.context().clearCookies();
@@ -51,8 +53,12 @@ test('notes after a lesson: Library prompt, student name, device notes and the N
   await prompt.click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${sessionId}/record`));
   const nextSession = page.getByLabel('Next session', { exact: true });
-  await expect(nextSession).toHaveAccessibleDescription(`Tutors only. Shown with ${studentName} in the Library and at the top of their next deck.`);
+  await expect(nextSession).toHaveAccessibleDescription(`Tutors only. Shown with ${studentName} in the Library and at the top of their next deck. 2000 characters left`);
   await nextSession.fill('NEXT FROM THE FIRST LESSON');
+  await expect(page.getByText('1974 characters left', { exact: true })).toBeVisible();
+  // The student has no access link yet: the page says so and offers to make one.
+  await expect(page.getByText('This student has no access link, so they won\'t see these outcomes or homework yet.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Create an access link (opens in a new tab)', exact: true })).toHaveAttribute('href', new RegExp(`/tutor/students/${student.id}/links/new`));
   await page.getByLabel('Tutor notes', { exact: true }).fill('SAVED NOTE');
   await page.screenshot({ path: testInfo.outputPath('notes-first-lesson.png'), fullPage: true });
   await page.getByRole('button', { name: 'Save notes', exact: true }).click();
@@ -94,4 +100,42 @@ test('notes after a lesson: Library prompt, student name, device notes and the N
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download notes', exact: true }).click()]);
   expect(readFileSync((await download.path())!, 'utf8')).toBe('Outcomes\nOrdered a coffee\n\nNext session\nNEXT AFTER ACCESS CHANGED\n\nTutor notes\nSAVED NOTE\n\nDEVICE NOTE');
   await page.screenshot({ path: testInfo.outputPath('notes-access-changed.png'), fullPage: true });
+
+  // The paid-plan lock on a refused save keeps the form's text and names what stays on this device.
+  await page.unroute('**/api/sessions/*/record');
+  await page.route('**/api/sessions/*/record', (route) => route.request().method() === 'PUT' ? route.fulfill({ status: 403, json: { error: 'continuity-required' } }) : route.continue());
+  await page.reload();
+  await page.getByLabel('Outcomes (one per line)', { exact: true }).fill('Ordered tea');
+  await page.getByRole('button', { name: 'Update notes', exact: true }).click();
+  await expect(page.locator('[data-or-lock="continuity"]')).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveText('Shared notes not saved. Tutor notes are kept on this device. Download notes to keep the outcomes, Next session and tutor notes.');
+  await expect(page.getByLabel('Outcomes (one per line)', { exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Update notes', exact: true })).toBeDisabled();
+  await page.screenshot({ path: testInfo.outputPath('notes-plan-lock-on-save.png'), fullPage: true });
+
+  // The lock on load replaces the form and leaves the notes on this device in reach.
+  await page.unroute('**/api/sessions/*/record');
+  await page.route('**/api/sessions/*/record', (route) => route.request().method() === 'GET' ? route.fulfill({ status: 403, json: { error: 'continuity-required' } }) : route.continue());
+  await page.reload();
+  await expect(page.locator('[data-or-lock="continuity"]')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Notes on this device', exact: true }).getByRole('textbox')).toHaveValue('SAVED NOTE\n\nDEVICE NOTE');
+  await expect(page.getByRole('button', { name: 'Update notes', exact: true })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('notes-plan-lock-on-load.png'), fullPage: true });
+
+  // A failed load names itself, offers Retry and the Library, and keeps the notes on this device.
+  await page.unroute('**/api/sessions/*/record');
+  await page.route('**/api/sessions/*/record', (route) => route.request().method() === 'GET' ? route.fulfill({ status: 500, json: { error: 'internal' } }) : route.continue());
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Session notes could not be loaded', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Back to library', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Notes on this device', exact: true }).getByRole('textbox')).toHaveValue('SAVED NOTE\n\nDEVICE NOTE');
+  await page.screenshot({ path: testInfo.outputPath('notes-load-error.png'), fullPage: true });
+
+  // Recovery: once access returns, Retry loads the form and the notes save.
+  await page.unroute('**/api/sessions/*/record');
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await page.getByLabel('Outcomes (one per line)', { exact: true }).fill('Ordered tea');
+  await page.getByRole('button', { name: 'Update notes', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/space/${student.spaceId}`));
+  expect((await (await page.request.get(`/api/sessions/${sessionId}/record`)).json()).record.outcomes).toEqual(['Ordered tea']);
 });

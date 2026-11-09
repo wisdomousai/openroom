@@ -42,10 +42,14 @@ test('practice keeps the answered exercise through a lost response and tutor rev
   const practice = learner.locator('section').filter({ has: learner.getByRole('heading', { name: 'Practice', exact: true }) });
   await practice.getByRole('textbox', { name: 'Your answer', exact: true }).fill('ete');
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
-  await practice.getByRole('button', { name: 'Again', exact: true }).click();
+  // A wrong answer hides the accepted answers until the student asks; Next then records it.
+  await expect(practice.getByText('Accepted answers', { exact: true })).toHaveCount(0);
+  await practice.getByRole('button', { name: 'Show the answer', exact: true }).click();
+  await expect(practice.getByText('Accepted answers', { exact: true })).toBeVisible();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(practice.getByRole('alert')).toHaveText('Your practice could not be saved. Try again.');
   await publish('Welcher Monat kommt nach Februar?', 'März', 1);
-  await practice.getByRole('button', { name: 'Again', exact: true }).click();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(practice).toHaveCount(0);
   expect(submissions).toHaveLength(2);
   expect(submissions[0]).toEqual(submissions[1]);
@@ -65,7 +69,7 @@ test('practice keeps the answered exercise through a lost response and tutor rev
   await expect(practice.getByText('Welcher Monat kommt nach Februar?', { exact: true })).toBeVisible();
   await expect(practice.getByRole('textbox')).toHaveValue('März');
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
-  await practice.getByRole('button', { name: 'Good', exact: true }).click();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(practice.getByRole('alert')).toContainText('This exercise has changed.');
   await expect(practice.getByRole('textbox')).toHaveValue('März');
   await learner.screenshot({ path: testInfo.outputPath('practice-revised.png'), fullPage: true });
@@ -77,7 +81,7 @@ test('practice keeps the answered exercise through a lost response and tutor rev
   await expect(practice.getByRole('textbox')).toHaveValue('');
   await practice.getByRole('textbox').fill('April');
   await practice.getByRole('button', { name: 'Check', exact: true }).click();
-  await practice.getByRole('button', { name: 'Good', exact: true }).click();
+  await practice.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(practice).toHaveCount(0);
   expect(submissions.at(-1)?.assignmentRevision).toBe(3);
   await learner.reload();

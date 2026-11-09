@@ -152,6 +152,24 @@ export interface OutlineElementBox {
   h: number;
 }
 
+/**
+ * The box a freeform element is drawn in: inside the slide on every surface
+ * (editor canvas, stage, phone, thumbnails) and in the fit warnings.
+ *
+ * x and y stay within 0..100 (and leave room for the minimum size); w and h are
+ * shrunk so x + w and y + h are at most 100, never below the minimum. A box
+ * that already fits comes back unchanged. Nothing is moved to avoid the title,
+ * the logo or the footer: that overlap stays the validator's warning.
+ */
+export function clampElementBox(box: OutlineElementBox): OutlineElementBox {
+  const finite = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback);
+  const x = Math.min(100 - ELEMENT_BOX_MIN, Math.max(0, finite(box.x, 0)));
+  const y = Math.min(100 - ELEMENT_BOX_MIN, Math.max(0, finite(box.y, 0)));
+  const w = Math.min(100 - x, Math.max(ELEMENT_BOX_MIN, finite(box.w, ELEMENT_BOX_MIN)));
+  const h = Math.min(100 - y, Math.max(ELEMENT_BOX_MIN, finite(box.h, ELEMENT_BOX_MIN)));
+  return { x, y, w, h };
+}
+
 export type OutlineElementRole = 'heading' | 'body';
 
 export interface OutlineTextElement {
@@ -600,7 +618,7 @@ export interface Outline {
  *   W_TEXT_FIT            a step's words are estimated taller than its slide
  *   W_MEDIA_PLACE         a picture place the slide redraws (left or right on a
  *                         stacked layout, top or bottom on split)
- *   W_ELEMENT_BOUNDS      a box that runs past the slide edge (x+w or y+h above 100)
+ *   W_ELEMENT_BOUNDS      a box that runs past the slide edge (x+w or y+h above 100); it is drawn clamped inside the slide
  *   W_ELEMENT_OVERLAP     a box over a blank step's title, the master logo or footer
  *   W_SPAN_SIZE           a styled span too small to read
  *   W_INTERACTION_FIELDS  step fields the live wall does not draw on a question
