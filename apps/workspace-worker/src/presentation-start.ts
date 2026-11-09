@@ -53,7 +53,7 @@ export async function startPresentationRoute(request: Request, env: ControlEnv, 
     if ([...decks.values()].some((deck) => deck.studentId !== anchor.studentId)) return json({ error: 'presentation-student-mismatch' }, 422);
     const access = await spaceRole(env, guard.user, anchor.spaceId);
     if (!access) return json({ error: 'deck-not-found' }, 404);
-    if (access.space.owner_user_id !== guard.user.id && !(await readEntitlements(env, access.space.owner_user_id)).team) return json({ error: 'team-required' }, 403);
+    if (access.space.ownerUserId !== guard.user.id && !(await readEntitlements(env, access.space.ownerUserId)).team) return json({ error: 'team-required' }, 403);
     let composed: ReturnType<typeof composePresentation>;
     try { composed = composePresentation(sources); }
     catch (error) { return json({ error: error instanceof Error ? error.message : 'invalid-presentation-content' }, 422); }

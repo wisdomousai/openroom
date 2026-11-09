@@ -46,7 +46,7 @@ function isSpaceRole(value: unknown): value is SpaceRole {
 
 export interface SpaceAccess {
   role: SpaceRole;
-  space: { id: string; name: string; owner_user_id: string };
+  space: { id: string; name: string; ownerUserId: string };
 }
 
 /** Effective role of `user` on a space, or null when they cannot see it. */
@@ -64,7 +64,7 @@ export async function spaceRole(
   if (row === undefined || !isSpaceRole(row.role)) return null;
   return {
     role: row.role,
-    space: { id: row.id, name: row.name, owner_user_id: row.ownerUserId },
+    space: { id: row.id, name: row.name, ownerUserId: row.ownerUserId },
   };
 }
 
@@ -72,10 +72,10 @@ export interface FolderAccess {
   role: SpaceRole;
   folder: {
     id: string;
-    space_id: string;
+    spaceId: string;
     name: string;
-    parent_id: string | null;
-    deleted_at: number | null;
+    parentId: string | null;
+    deletedAt: number | null;
   };
 }
 
@@ -104,10 +104,10 @@ export async function folderAccess(
     role: access.role,
     folder: {
       id: row.id,
-      space_id: row.spaceId,
+      spaceId: row.spaceId,
       name: row.name,
-      parent_id: row.parentId,
-      deleted_at: row.deletedAt,
+      parentId: row.parentId,
+      deletedAt: row.deletedAt,
     },
   };
 }
@@ -277,7 +277,7 @@ async function managedMember(
   access: SpaceAccess,
   targetUserId: string,
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
-  if (targetUserId === access.space.owner_user_id) {
+  if (targetUserId === access.space.ownerUserId) {
     return { ok: false, response: json({ ok: false, error: 'space-owner' }, 400) };
   }
   const row = await orm(env)

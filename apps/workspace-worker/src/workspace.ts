@@ -487,7 +487,7 @@ export async function createFolderRoute(
   let parentId: string | null = null;
   if (typeof body.parentId === 'string' && body.parentId.trim() !== '') {
     const parent = await folderAccess(env, guard.user, body.parentId);
-    if (parent === null || parent.folder.space_id !== spaceId) {
+    if (parent === null || parent.folder.spaceId !== spaceId) {
       return json({ ok: false, error: 'not-found' }, 404);
     }
     parentId = parent.folder.id;
@@ -516,7 +516,7 @@ export async function patchFolderRoute(
   const body = await readJson(request);
   if (body === null) return json({ ok: false, error: 'invalid-json' }, 400);
 
-  const spaceId = access.folder.space_id;
+  const spaceId = access.folder.spaceId;
   let nextName: string | null = null;
   if (typeof body.name === 'string' && body.name.trim() !== '') {
     nextName = body.name.trim().slice(0, 120);
@@ -533,7 +533,7 @@ export async function patchFolderRoute(
       nextParentId = null;
     } else {
       const parent = await folderAccess(env, guard.user, body.parentId);
-      if (parent === null || parent.folder.space_id !== spaceId) {
+      if (parent === null || parent.folder.spaceId !== spaceId) {
         return json({ ok: false, error: 'not-found' }, 404);
       }
       const subtree = await collectFolderSubtree(env, spaceId, folderId);
@@ -612,7 +612,7 @@ export async function deleteFolderRoute(
   if (access === null) return json({ ok: false, error: 'not-found' }, 404);
   if (!roleAtLeast(access.role, 'editor')) return json({ ok: false, error: 'forbidden' }, 403);
 
-  const subtreeIds = await collectFolderSubtree(env, access.folder.space_id, folderId);
+  const subtreeIds = await collectFolderSubtree(env, access.folder.spaceId, folderId);
   const db = orm(env);
   await db.batch([
     db.update(decks).set({ folderId: null }).where(inArray(decks.folderId, subtreeIds)),
@@ -640,8 +640,8 @@ export async function trashFolderRoute(
   const access = await folderAccess(env, guard.user, folderId, true);
   if (access === null) return json({ ok: false, error: 'not-found' }, 404);
   if (!roleAtLeast(access.role, 'editor')) return json({ ok: false, error: 'forbidden' }, 403);
-  if (access.folder.deleted_at !== null) return json({ ok: true, recoverable: true });
-  const subtreeIds = await collectFolderSubtree(env, access.folder.space_id, folderId);
+  if (access.folder.deletedAt !== null) return json({ ok: true, recoverable: true });
+  const subtreeIds = await collectFolderSubtree(env, access.folder.spaceId, folderId);
   const marker = Date.now();
   const db = orm(env);
   await db.batch([
@@ -700,12 +700,12 @@ export async function restoreFolderRoute(
   const guard = await requireSession(request, env, true);
   if (!guard.ok) return guard.response;
   const access = await folderAccess(env, guard.user, folderId, true);
-  if (access === null || access.folder.deleted_at === null) {
+  if (access === null || access.folder.deletedAt === null) {
     return json({ ok: false, error: 'not-found' }, 404);
   }
   if (!roleAtLeast(access.role, 'editor')) return json({ ok: false, error: 'forbidden' }, 403);
-  const subtreeIds = await collectFolderSubtree(env, access.folder.space_id, folderId);
-  const marker = access.folder.deleted_at;
+  const subtreeIds = await collectFolderSubtree(env, access.folder.spaceId, folderId);
+  const marker = access.folder.deletedAt;
   const db = orm(env);
   await db.batch([
     db
@@ -735,7 +735,7 @@ export async function createFolderDeletionIntentRoute(
   const access = await folderAccess(env, guard.user, folderId, true);
   if (access === null) return json({ ok: false, error: 'not-found' }, 404);
   if (!roleAtLeast(access.role, 'editor')) return json({ ok: false, error: 'forbidden' }, 403);
-  if (access.folder.deleted_at === null) {
+  if (access.folder.deletedAt === null) {
     return json({ ok: false, error: 'move-to-trash-first' }, 409);
   }
   const token = randomId(24);
@@ -798,9 +798,9 @@ export async function confirmFolderDeletion(
   deleteDeckPermanently: (env: ControlEnv, deckId: string) => Promise<void>,
 ): Promise<boolean> {
   const access = await folderAccess(env, user, folderId, true);
-  if (access === null || access.folder.deleted_at === null) return false;
-  const subtreeIds = await collectFolderSubtree(env, access.folder.space_id, folderId);
-  const marker = access.folder.deleted_at;
+  if (access === null || access.folder.deletedAt === null) return false;
+  const subtreeIds = await collectFolderSubtree(env, access.folder.spaceId, folderId);
+  const marker = access.folder.deletedAt;
   const db = orm(env);
   const trashedDecks = await db
     .select({ id: decks.id })

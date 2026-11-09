@@ -49,7 +49,7 @@ export async function handleBrandKits(request: Request, env: ControlEnv, url: UR
   const spaceId = row?.spaceId ?? decodeURIComponent(collection![1]!);
   const access = await spaceRole(env, guard.user, spaceId);
   if (!access) return json({ error: 'not-found' }, 404);
-  const entitlements = await readEntitlements(env, access.space.owner_user_id);
+  const entitlements = await readEntitlements(env, access.space.ownerUserId);
   const permissions = { canEdit: roleAtLeast(access.role, 'editor'), brandingEnabled: entitlements.branding };
   if (request.method === 'GET' && !item?.[2]) {
     if (row) return json({ brandKit: view(row), ...permissions });

@@ -79,7 +79,7 @@ export async function resolveFolder(
 ): Promise<{ ok: true; folderId: string | null } | { ok: false; response: Response }> {
   if (typeof input.folderId === 'string' && input.folderId !== '') {
     const access = await folderAccess(env, user, input.folderId);
-    if (access === null || access.folder.space_id !== spaceId) {
+    if (access === null || access.folder.spaceId !== spaceId) {
       return { ok: false, response: json({ error: 'folder-not-found' }, 404) };
     }
     return { ok: true, folderId: access.folder.id };
@@ -163,7 +163,7 @@ export async function targetSpace(
 ): Promise<string | null> {
   if (typeof input.folderId === 'string' && input.folderId !== '') {
     const folder = await folderAccess(env, user, input.folderId);
-    return folder?.folder.space_id ?? null;
+    return folder?.folder.spaceId ?? null;
   }
   if (
     (typeof input.spaceId !== 'string' || input.spaceId === '') &&

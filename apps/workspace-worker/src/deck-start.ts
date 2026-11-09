@@ -29,7 +29,7 @@ export async function startDeckRoute(request: Request, env: ControlEnv, deckId: 
     .where(eq(sessions.id, body.requestId))
     .get();
   if (existing && (existing.sourceOutlineJson || existing.createdBy !== guard.user.id || existing.deckId !== deckId)) return json({ error: 'request-id-conflict' }, 409);
-  if (access.space.owner_user_id !== guard.user.id && !(await readEntitlements(env, access.space.owner_user_id)).team) {
+  if (access.space.ownerUserId !== guard.user.id && !(await readEntitlements(env, access.space.ownerUserId)).team) {
     const retained = existing && await orm(env)
       .select({ code: liveSessions.code })
       .from(liveSessions)
@@ -43,7 +43,7 @@ export async function startDeckRoute(request: Request, env: ControlEnv, deckId: 
   // Refuse before the durable row exists: a row filed without a student would
   // keep refusing this requestId after the deck is filed under the student.
   if (!existing && deck.studentId === null && available.outline.defaults?.identityMode === 'identified') {
-    return (await requireIdentifiedSessionAccess(env, access.space.owner_user_id)) ?? identifiedNeedsStudent();
+    return (await requireIdentifiedSessionAccess(env, access.space.ownerUserId)) ?? identifiedNeedsStudent();
   }
   const now = Date.now();
   await orm(env).insert(sessions).values({

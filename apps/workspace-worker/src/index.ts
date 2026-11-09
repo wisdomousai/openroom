@@ -326,9 +326,9 @@ export async function launchSessionForUser(
   if (deckSpace?.spaceId) {
     const access = await spaceRole(env, user, deckSpace.spaceId);
     if (!access) return json({ error: 'not-found' }, 404);
-    entitlementOwnerId = access.space.owner_user_id;
-    collaborationEnabled = (await readEntitlements(env, access.space.owner_user_id)).team;
-    if (access.space.owner_user_id !== user.id && !collaborationEnabled && !(reserved?.collaborationEnabled && reserved.spaceId === deckSpace.spaceId)) {
+    entitlementOwnerId = access.space.ownerUserId;
+    collaborationEnabled = (await readEntitlements(env, access.space.ownerUserId)).team;
+    if (access.space.ownerUserId !== user.id && !collaborationEnabled && !(reserved?.collaborationEnabled && reserved.spaceId === deckSpace.spaceId)) {
       return json({ error: 'team-required' }, 403);
     }
   }
@@ -487,8 +487,8 @@ async function createLiveSessionRoute(request: Request, env: Env): Promise<Respo
   if (sessionUser !== null && typeof body.spaceId === 'string' && body.spaceId !== '') {
     const access = await spaceRole(env, sessionUser, body.spaceId);
     if (access === null) return json({ ok: false, error: 'not-found' }, 404);
-    entitlementOwnerId = access.space.owner_user_id;
-    if (access.space.owner_user_id !== sessionUser.id && !(await readEntitlements(env, access.space.owner_user_id)).team) {
+    entitlementOwnerId = access.space.ownerUserId;
+    if (access.space.ownerUserId !== sessionUser.id && !(await readEntitlements(env, access.space.ownerUserId)).team) {
       return json({ error: 'team-required' }, 403);
     }
     spaceIdForRecord = body.spaceId;
