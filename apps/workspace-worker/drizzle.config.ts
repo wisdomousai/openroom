@@ -6,9 +6,8 @@
  * generated migration is picked up by `wrangler d1 migrations apply` and by the
  * test harness without any extra copy step.
  *
- * The worker's runtime does NOT use drizzle: request handlers keep issuing raw
- * `env.DB.prepare()` statements. `src/db/schema.ts` exists purely so the DDL has
- * one authoritative definition.
+ * The runtime builds its queries from the same `src/db/schema.ts` through
+ * `orm(env)` in `src/db/client.ts`.
  *
  * Usage: `bun run db:generate` (see package.json).
  */

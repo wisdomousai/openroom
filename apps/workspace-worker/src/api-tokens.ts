@@ -9,7 +9,11 @@
  * Format: `orpat_<id>_<secret>` — both segments are base64url randoms.
  */
 
+import { and, count, desc, eq, isNull } from 'drizzle-orm';
+
 import { json, requireSession, type ControlEnv, type SessionUser } from './auth.js';
+import { orm } from './db/client.js';
+import { apiTokens, users } from './db/schema.js';
 
 export const MAX_TOKENS_PER_USER = 10;
 export const TOKEN_NAME_MAX = 80;
@@ -38,15 +42,6 @@ function isValidTokenShape(raw: string): boolean {
   return /^orpat_[A-Za-z0-9_-]{8,64}_[A-Za-z0-9_-]{16,128}$/.test(raw);
 }
 
-export interface ApiTokenRow {
-  id: string;
-  userId: string;
-  name: string;
-  tokenPrefix: string;
-  createdAt: number;
-  lastUsedAt: number | null;
-}
-
 export interface VerifiedPat {
   tokenId: string;
   user: SessionUser;
@@ -62,23 +57,20 @@ export async function verifyApiToken(
 ): Promise<VerifiedPat | null> {
   if (!isValidTokenShape(raw)) return null;
   const hash = await sha256Hex(raw);
-  const row = await env.DB.prepare(
-    `SELECT t.id AS id, t.user_id AS user_id, u.email AS email, u.name AS name
-       FROM api_tokens t JOIN users u ON u.id = t.user_id
-      WHERE t.token_hash = ?1 AND t.revoked_at IS NULL`,
-  )
-    .bind(hash)
-    .first<{ id: string; user_id: string; email: string; name: string | null }>();
-  if (row === null) return null;
+  const row = await orm(env)
+    .select({ id: apiTokens.id, userId: apiTokens.userId, email: users.email, name: users.name })
+    .from(apiTokens)
+    .innerJoin(users, eq(users.id, apiTokens.userId))
+    .where(and(eq(apiTokens.tokenHash, hash), isNull(apiTokens.revokedAt)))
+    .get();
+  if (row === undefined) return null;
 
   // Fire-and-forget last_used; ignore failures so auth still succeeds.
-  void env.DB.prepare('UPDATE api_tokens SET last_used_at = ?1 WHERE id = ?2')
-    .bind(Date.now(), row.id)
-    .run();
+  void orm(env).update(apiTokens).set({ lastUsedAt: Date.now() }).where(eq(apiTokens.id, row.id)).run();
 
   return {
     tokenId: row.id,
-    user: { id: row.user_id, email: row.email, name: row.name ?? null },
+    user: { id: row.userId, email: row.email, name: row.name ?? null },
   };
 }
 
@@ -97,28 +89,25 @@ export async function listTokensRoute(request: Request, env: ControlEnv): Promis
   const guard = await requireSession(request, env);
   if (!guard.ok) return guard.response;
 
-  const { results } = await env.DB.prepare(
-    `SELECT id, name, token_prefix, created_at, last_used_at
-       FROM api_tokens
-      WHERE user_id = ?1 AND revoked_at IS NULL
-      ORDER BY created_at DESC`,
-  )
-    .bind(guard.user.id)
-    .all<{
-      id: string;
-      name: string;
-      token_prefix: string;
-      created_at: number;
-      last_used_at: number | null;
-    }>();
+  const rows = await orm(env)
+    .select({
+      id: apiTokens.id,
+      name: apiTokens.name,
+      tokenPrefix: apiTokens.tokenPrefix,
+      createdAt: apiTokens.createdAt,
+      lastUsedAt: apiTokens.lastUsedAt,
+    })
+    .from(apiTokens)
+    .where(and(eq(apiTokens.userId, guard.user.id), isNull(apiTokens.revokedAt)))
+    .orderBy(desc(apiTokens.createdAt));
 
   return json({
-    tokens: (results ?? []).map((r) => ({
+    tokens: rows.map((r) => ({
       id: r.id,
       name: r.name,
-      prefix: r.token_prefix,
-      createdAt: r.created_at,
-      lastUsedAt: r.last_used_at,
+      prefix: r.tokenPrefix,
+      createdAt: r.createdAt,
+      lastUsedAt: r.lastUsedAt,
     })),
   });
 }
@@ -135,11 +124,11 @@ export async function mintTokenRoute(request: Request, env: ControlEnv): Promise
   const rawName = typeof body?.name === 'string' ? body.name.trim() : '';
   const name = (rawName === '' ? 'Agent access' : rawName).slice(0, TOKEN_NAME_MAX);
 
-  const countRow = await env.DB.prepare(
-    'SELECT COUNT(*) AS n FROM api_tokens WHERE user_id = ?1 AND revoked_at IS NULL',
-  )
-    .bind(guard.user.id)
-    .first<{ n: number }>();
+  const countRow = await orm(env)
+    .select({ n: count() })
+    .from(apiTokens)
+    .where(and(eq(apiTokens.userId, guard.user.id), isNull(apiTokens.revokedAt)))
+    .get();
   if ((countRow?.n ?? 0) >= MAX_TOKENS_PER_USER) {
     return json({ error: 'token-limit', max: MAX_TOKENS_PER_USER }, 429);
   }
@@ -151,11 +140,18 @@ export async function mintTokenRoute(request: Request, env: ControlEnv): Promise
   const prefix = token.slice(0, PREFIX_LEN);
   const now = Date.now();
 
-  await env.DB.prepare(
-    `INSERT INTO api_tokens (id, user_id, name, token_hash, token_prefix, created_at, last_used_at, revoked_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, NULL)`,
-  )
-    .bind(id, guard.user.id, name, hash, prefix, now)
+  await orm(env)
+    .insert(apiTokens)
+    .values({
+      id,
+      userId: guard.user.id,
+      name,
+      tokenHash: hash,
+      tokenPrefix: prefix,
+      createdAt: now,
+      lastUsedAt: null,
+      revokedAt: null,
+    })
     .run();
 
   return json(
@@ -179,11 +175,10 @@ export async function revokeTokenRoute(
   const guard = await requireSession(request, env, true);
   if (!guard.ok) return guard.response;
 
-  const result = await env.DB.prepare(
-    `UPDATE api_tokens SET revoked_at = ?1
-      WHERE id = ?2 AND user_id = ?3 AND revoked_at IS NULL`,
-  )
-    .bind(Date.now(), tokenId, guard.user.id)
+  const result = await orm(env)
+    .update(apiTokens)
+    .set({ revokedAt: Date.now() })
+    .where(and(eq(apiTokens.id, tokenId), eq(apiTokens.userId, guard.user.id), isNull(apiTokens.revokedAt)))
     .run();
 
   if ((result.meta.changes ?? 0) === 0) {

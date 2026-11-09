@@ -10,8 +10,11 @@
  * cannot unlock paid features; only local demo-auth development treats unset as off.
  */
 import { FREE_SESSION_PARTICIPANT_LIMIT } from '@openroom/schema';
+import { eq, exists, sql } from 'drizzle-orm';
 import { demoAuthEnabled, type ControlEnv } from './auth.js';
 import { billingSubscriptions, subscriptionAccessUntil } from './billing/access';
+import { orm } from './db/client.js';
+import { billingCustomers, liveSessions, spaces, users } from './db/schema.js';
 
 export const ENTITLEMENT_FLAGS = [
   'keep',
@@ -89,11 +92,13 @@ export function hasEntitlement(entitlements: Entitlements, flag: EntitlementFlag
 
 export async function readEntitlements(env: ControlEnv, userId: string): Promise<Entitlements> {
   if (billingOff(env)) return { ...SELF_HOSTED_ENTITLEMENTS };
-  const row = await env.DB.prepare(`SELECT entitlements,
-    EXISTS (SELECT 1 FROM billing_customers WHERE user_id = ?1) AS billing_managed FROM users WHERE id = ?1`)
-    .bind(userId)
-    .first<{ entitlements: string; billing_managed: number }>();
-  if (!row?.billing_managed) return parseEntitlements(row?.entitlements ?? '{}');
+  const db = orm(env);
+  const row = await db
+    .select({ entitlements: users.entitlements, billingManaged: exists(db.select({ one: sql`1` }).from(billingCustomers).where(eq(billingCustomers.userId, userId))) })
+    .from(users)
+    .where(eq(users.id, userId))
+    .get();
+  if (!row?.billingManaged) return parseEntitlements(row?.entitlements ?? '{}');
   const result = { ...FREE_ENTITLEMENTS };
   if (env.PADDLE_ENVIRONMENT !== 'sandbox' && env.PADDLE_ENVIRONMENT !== 'live') return result;
   const results = await billingSubscriptions(env, userId);
@@ -108,9 +113,13 @@ export async function readEntitlements(env: ControlEnv, userId: string): Promise
 
 /** Billing follows the space owner; starting a shared deck does not transfer it. */
 export async function sessionEntitlementOwner(env: ControlEnv, code: string): Promise<{ userId: string | null; spaceId: string | null } | null> {
-  return env.DB.prepare(`SELECT CASE WHEN l.space_id IS NULL THEN l.user_id ELSE s.owner_user_id END AS userId,
-    l.space_id AS spaceId FROM live_sessions l LEFT JOIN spaces s ON s.id = l.space_id WHERE l.code = ?1`)
-    .bind(code).first<{ userId: string | null; spaceId: string | null }>();
+  const row = await orm(env)
+    .select({ userId: sql<string | null>`CASE WHEN ${liveSessions.spaceId} IS NULL THEN ${liveSessions.userId} ELSE ${spaces.ownerUserId} END`, spaceId: liveSessions.spaceId })
+    .from(liveSessions)
+    .leftJoin(spaces, eq(spaces.id, liveSessions.spaceId))
+    .where(eq(liveSessions.code, code))
+    .get();
+  return row ?? null;
 }
 
 /**

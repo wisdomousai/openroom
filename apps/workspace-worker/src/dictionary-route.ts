@@ -11,9 +11,13 @@
  * that scope's space. So a caller cannot ask for a dictionary in a language its
  * space did not configure, and no surface has to be taught the pair.
  */
+import { and, eq, isNull, sql } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { readJson } from './control-utils.js';
+import { orm } from './db/client.js';
+import { decks, liveSessions, sessions } from './db/schema.js';
 import { isLookupWord, resolveEntry } from './dictionary.js';
 import { spaceRole } from './members.js';
 import { spaceSettings } from './workspace.js';
@@ -47,26 +51,24 @@ async function scopeSpaceId(env: ControlEnv, scope: unknown): Promise<string | n
   if (scope === null || typeof scope !== 'object') return null;
   const { deckId, sessionCode } = scope as { deckId?: unknown; sessionCode?: unknown };
   if (typeof deckId === 'string' && deckId !== '') {
-    const row = await env.DB.prepare(
-      'SELECT space_id FROM decks WHERE id = ?1 AND deleted_at IS NULL',
-    )
-      .bind(deckId)
-      .first<{ space_id: string | null }>();
-    return row?.space_id ?? null;
+    const row = await orm(env)
+      .select({ spaceId: decks.spaceId })
+      .from(decks)
+      .where(and(eq(decks.id, deckId), isNull(decks.deletedAt)))
+      .get();
+    return row?.spaceId ?? null;
   }
   if (typeof sessionCode === 'string' && sessionCode !== '') {
     // A session launched from a deck belongs to that deck's space even when the
     // launch predates space stamping — resolving through the deck completes the
     // scope; it is not a space-less fallback.
-    const row = await env.DB.prepare(
-      `SELECT COALESCE(ls.space_id, d.space_id) AS space_id
-         FROM live_sessions ls
-         LEFT JOIN decks d ON d.id = ls.deck_id AND d.deleted_at IS NULL
-        WHERE ls.code = ?1`,
-    )
-      .bind(sessionCode)
-      .first<{ space_id: string | null }>();
-    return row?.space_id ?? null;
+    const row = await orm(env)
+      .select({ spaceId: sql<string | null>`COALESCE(${liveSessions.spaceId}, ${decks.spaceId})` })
+      .from(liveSessions)
+      .leftJoin(decks, and(eq(decks.id, liveSessions.deckId), isNull(decks.deletedAt)))
+      .where(eq(liveSessions.code, sessionCode))
+      .get();
+    return row?.spaceId ?? null;
   }
   return null;
 }
@@ -165,17 +167,16 @@ export async function sessionDictionaryRoute(
    * The 404 rather than a 403 is deliberate: in a plain poll session this route
    * does not exist, so there is nothing for a phone to discover.
    */
-  const session = await env.DB.prepare(
-    `SELECT r.space_id AS space_id, ru.student_id AS student_id
-       FROM live_sessions r LEFT JOIN sessions ru ON ru.id = r.session_id
-      WHERE r.code = ?1`,
-  )
-    .bind(sessionCode)
-    .first<{ space_id: string | null; student_id: string | null }>();
-  if (session === null || session.student_id === null) return json({ error: 'not-found' }, 404);
-  if (session.space_id === null) return json({ error: 'languages-not-configured' }, 422);
+  const session = await orm(env)
+    .select({ spaceId: liveSessions.spaceId, studentId: sessions.studentId })
+    .from(liveSessions)
+    .leftJoin(sessions, eq(sessions.id, liveSessions.sessionId))
+    .where(eq(liveSessions.code, sessionCode))
+    .get();
+  if (session === undefined || session.studentId === null) return json({ error: 'not-found' }, 404);
+  if (session.spaceId === null) return json({ error: 'languages-not-configured' }, 422);
 
-  const { languages } = await spaceSettings(env, session.space_id);
+  const { languages } = await spaceSettings(env, session.spaceId);
   if (languages === undefined) return json({ error: 'languages-not-configured' }, 422);
 
   /*

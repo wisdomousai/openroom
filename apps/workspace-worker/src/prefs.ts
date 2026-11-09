@@ -26,8 +26,12 @@
  * that is not a JSON object at all, and a blob over the size cap. Junk in
  * `pins` is a client bug; a 400 there would strand the user's other settings.
  */
+import { eq } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
+import { orm } from './db/client.js';
+import { users } from './db/schema.js';
 
 /**
  * Largest stored blob, measured on the serialised JSON.
@@ -133,9 +137,11 @@ export async function prefsRoute(request: Request, env: ControlEnv): Promise<Res
   if (!guard.ok) return guard.response;
 
   if (method === 'GET') {
-    const row = await env.DB.prepare('SELECT prefs FROM users WHERE id = ?1')
-      .bind(guard.user.id)
-      .first<{ prefs: string | null }>();
+    const row = await orm(env)
+      .select({ prefs: users.prefs })
+      .from(users)
+      .where(eq(users.id, guard.user.id))
+      .get();
     return json({ prefs: parseStored(row?.prefs ?? null) });
   }
 
@@ -163,8 +169,6 @@ export async function prefsRoute(request: Request, env: ControlEnv): Promise<Res
   if (new TextEncoder().encode(serialised).length > MAX_PREFS_BYTES) {
     return json({ error: 'prefs-too-large' }, 413);
   }
-  await env.DB.prepare('UPDATE users SET prefs = ?1 WHERE id = ?2')
-    .bind(serialised, guard.user.id)
-    .run();
+  await orm(env).update(users).set({ prefs: serialised }).where(eq(users.id, guard.user.id)).run();
   return json({ prefs });
 }

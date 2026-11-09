@@ -6,8 +6,12 @@
  * session creation.
  */
 
+import { and, count, desc, eq, exists, gt, or, sql } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
+import { orm } from './db/client.js';
+import { liveSessions, sessions as sessionsTable, spaceMembers, spaces, students } from './db/schema.js';
 import { hostAccess } from './hosting.js';
 import { signToken } from 'openroom-relay/tokens';
 import { readEntitlements } from './entitlements.js';
@@ -25,11 +29,11 @@ export async function sessionQuotaExceeded(
   userId: string,
   now: number,
 ): Promise<boolean> {
-  const row = await env.DB.prepare(
-    'SELECT COUNT(*) AS n FROM live_sessions WHERE user_id = ?1 AND created_at > ?2',
-  )
-    .bind(userId, now - SESSION_QUOTA_WINDOW_MS)
-    .first<{ n: number }>();
+  const row = await orm(env)
+    .select({ n: count() })
+    .from(liveSessions)
+    .where(and(eq(liveSessions.userId, userId), gt(liveSessions.createdAt, now - SESSION_QUOTA_WINDOW_MS)))
+    .get();
   return (row?.n ?? 0) >= SESSION_QUOTA;
 }
 
@@ -46,26 +50,30 @@ export async function recordLiveSession(
     sessionId?: string | null;
   } = {},
 ): Promise<void> {
-  const space = opts.spaceId ? await env.DB.prepare('SELECT owner_user_id FROM spaces WHERE id=?1').bind(opts.spaceId).first<{ owner_user_id: string }>() : null;
-  const collaborationEnabled = space ? (await readEntitlements(env, space.owner_user_id)).team : false;
-  await env.DB.prepare(
-    `INSERT OR REPLACE INTO live_sessions
-       (code, user_id, title, created_at, ended, space_id,
-        deck_id, deck_version, session_id, collaboration_enabled)
-     VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?8, ?9)`,
-  )
-    .bind(
-      code,
-      userId,
-      title,
-      now,
-      opts.spaceId ?? null,
-      opts.deckId ?? null,
-      opts.deckVersion ?? null,
-      opts.sessionId ?? null,
-      collaborationEnabled ? 1 : 0,
-    )
-    .run();
+  const db = orm(env);
+  const space = opts.spaceId
+    ? await db.select({ ownerUserId: spaces.ownerUserId }).from(spaces).where(eq(spaces.id, opts.spaceId)).get()
+    : undefined;
+  const collaborationEnabled = space ? (await readEntitlements(env, space.ownerUserId)).team : false;
+  // INSERT OR REPLACE rather than an upsert on `code`: a relaunch of the same
+  // session id (`uidx_live_sessions_session`) must displace the old row too.
+  const columns = [
+    liveSessions.code,
+    liveSessions.userId,
+    liveSessions.title,
+    liveSessions.createdAt,
+    liveSessions.ended,
+    liveSessions.spaceId,
+    liveSessions.deckId,
+    liveSessions.deckVersion,
+    liveSessions.sessionId,
+    liveSessions.collaborationEnabled,
+  ].map((column) => sql.identifier(column.name));
+  await db.run(
+    sql`INSERT OR REPLACE INTO ${liveSessions} (${sql.join(columns, sql`, `)})
+     VALUES (${code}, ${userId}, ${title}, ${now}, 0, ${opts.spaceId ?? null}, ${opts.deckId ?? null},
+             ${opts.deckVersion ?? null}, ${opts.sessionId ?? null}, ${collaborationEnabled ? 1 : 0})`,
+  );
 }
 
 /**
@@ -84,37 +92,51 @@ export async function mySessionsRoute(request: Request, env: ControlEnv): Promis
   if (!guard.ok) return guard.response;
   const now = Date.now();
 
-  const { results } = await env.DB.prepare(
-    `SELECT l.code, l.title, l.created_at, l.ended, l.user_id, l.deck_id,
-            s.student_id, c.display_name AS student_name
-       FROM live_sessions l
-       LEFT JOIN sessions s ON s.id = l.session_id
-       LEFT JOIN students c ON c.id = s.student_id
-      WHERE l.user_id = ?1 OR EXISTS (SELECT 1 FROM space_members m WHERE m.space_id = l.space_id AND m.user_id = ?1)
-      ORDER BY l.created_at DESC LIMIT 100`,
-  )
-    .bind(guard.user.id)
-    .all<{
-      code: string; title: string | null; created_at: number; ended: number; user_id: string | null;
-      deck_id: string | null; student_id: string | null; student_name: string | null;
-    }>();
+  const db = orm(env);
+  const rows = await db
+    .select({
+      code: liveSessions.code,
+      title: liveSessions.title,
+      createdAt: liveSessions.createdAt,
+      ended: liveSessions.ended,
+      userId: liveSessions.userId,
+      deckId: liveSessions.deckId,
+      studentId: sessionsTable.studentId,
+      studentName: students.displayName,
+    })
+    .from(liveSessions)
+    .leftJoin(sessionsTable, eq(sessionsTable.id, liveSessions.sessionId))
+    .leftJoin(students, eq(students.id, sessionsTable.studentId))
+    .where(
+      or(
+        eq(liveSessions.userId, guard.user.id),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(spaceMembers)
+            .where(and(eq(spaceMembers.spaceId, liveSessions.spaceId), eq(spaceMembers.userId, guard.user.id))),
+        ),
+      ),
+    )
+    .orderBy(desc(liveSessions.createdAt))
+    .limit(100);
 
   const sessions = await Promise.all(
-    (results ?? []).map(async (row) => {
+    rows.map(async (row) => {
       const access = await hostAccess(env, row.code, guard.user.id);
       if (!access) return null;
-      const shared = row.user_id !== guard.user.id;
-      const recoverable = row.ended === 0 && now - row.created_at < RECOVERY_WINDOW_MS;
+      const shared = row.userId !== guard.user.id;
+      const recoverable = row.ended === 0 && now - row.createdAt < RECOVERY_WINDOW_MS;
       // Which deck and which student: two live lessons of decks both called
       // "Untitled" are told apart by the student's name, never by a time.
-      const subject = { deckId: row.deck_id, studentId: row.student_id, studentName: row.student_name };
+      const subject = { deckId: row.deckId, studentId: row.studentId, studentName: row.studentName };
       if (!recoverable || shared) {
         return {
           code: row.code,
           sessionCode: row.code,
           title: row.title,
           ...subject,
-          createdAt: row.created_at,
+          createdAt: row.createdAt,
           ended: row.ended === 1,
           recoverable,
           shared,
@@ -129,7 +151,7 @@ export async function mySessionsRoute(request: Request, env: ControlEnv): Promis
         sessionCode: row.code,
         title: row.title,
         ...subject,
-        createdAt: row.created_at,
+        createdAt: row.createdAt,
         ended: false,
         recoverable: true as const,
         hostToken,

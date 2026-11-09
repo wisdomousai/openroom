@@ -1,0 +1,34 @@
+/**
+ * Runtime code reaches D1 only through `orm(env)` (src/db/client.ts), so every
+ * query is checked against src/db/schema.ts. Raw `env.DB` statements stay in
+ * tests and operator scripts.
+ *
+ * Sources are inlined at transform time: the workerd runtime the tests execute
+ * in has no filesystem.
+ */
+import { describe, expect, it } from 'vitest';
+
+declare global {
+  interface ImportMeta {
+    glob(pattern: string, options: { query: '?raw'; import: 'default'; eager: true }): Record<string, string>;
+  }
+}
+
+const sources = import.meta.glob('../src/**/*.ts', { query: '?raw', import: 'default', eager: true });
+
+const RAW = /\bDB\.(prepare|batch|exec)\(|\bD1PreparedStatement\b/;
+
+describe('raw SQL boundary', () => {
+  const files = Object.entries(sources).map(([path, text]) => [path.replace('../src/', ''), text] as const);
+
+  it('finds the sources', () => {
+    expect(files.length).toBeGreaterThan(40);
+  });
+
+  it('keeps raw D1 statements out of runtime code', () => {
+    const offenders = files
+      .filter(([path, text]) => !path.startsWith('db/') && RAW.test(text))
+      .map(([path]) => path);
+    expect(offenders).toEqual([]);
+  });
+});

@@ -26,9 +26,14 @@
  * or renaming the item, because a tag is identity chrome in exactly the sense
  * `AGENTS.md` §"Entity panel" describes.
  */
+import { and, asc, count, desc, eq, isNull } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
+
 import { json, type ControlEnv, type SessionUser } from './auth.js';
 import { requireControlUser } from './control-auth.js';
 import { memberOfSpace, readJson } from './control-utils.js';
+import { orm } from './db/client.js';
+import { decks, itemTags, sessionRecords, sessions, students } from './db/schema.js';
 import { roleAtLeast, spaceRole } from './members.js';
 
 /**
@@ -112,17 +117,45 @@ async function itemSpaceId(
   itemType: TaggableItemType,
   itemId: string,
 ): Promise<string | null> {
-  const query: Record<TaggableItemType, string> = {
-    deck: 'SELECT space_id FROM decks WHERE id = ?1 AND deleted_at IS NULL',
-    session: 'SELECT space_id FROM sessions WHERE id = ?1 AND deleted_at IS NULL',
-    student: 'SELECT space_id FROM students WHERE id = ?1 AND deleted_at IS NULL',
-    record:
-      `SELECT r.space_id AS space_id FROM session_records rr
-         JOIN sessions r ON r.id = rr.session_id
-        WHERE rr.id = ?1 AND r.deleted_at IS NULL`,
-  };
-  const row = await env.DB.prepare(query[itemType]).bind(itemId).first<{ space_id: string | null }>();
-  return row?.space_id ?? null;
+  const db = orm(env);
+  switch (itemType) {
+    case 'deck':
+      return (
+        (await db.select({ spaceId: decks.spaceId }).from(decks).where(and(eq(decks.id, itemId), isNull(decks.deletedAt))).get())
+          ?.spaceId ?? null
+      );
+    case 'session':
+      return (
+        (
+          await db
+            .select({ spaceId: sessions.spaceId })
+            .from(sessions)
+            .where(and(eq(sessions.id, itemId), isNull(sessions.deletedAt)))
+            .get()
+        )?.spaceId ?? null
+      );
+    case 'student':
+      return (
+        (
+          await db
+            .select({ spaceId: students.spaceId })
+            .from(students)
+            .where(and(eq(students.id, itemId), isNull(students.deletedAt)))
+            .get()
+        )?.spaceId ?? null
+      );
+    case 'record':
+      return (
+        (
+          await db
+            .select({ spaceId: sessions.spaceId })
+            .from(sessionRecords)
+            .innerJoin(sessions, eq(sessions.id, sessionRecords.sessionId))
+            .where(and(eq(sessionRecords.id, itemId), isNull(sessions.deletedAt)))
+            .get()
+        )?.spaceId ?? null
+      );
+  }
 }
 
 type ItemGuard =
@@ -158,12 +191,12 @@ async function readItemTags(
   itemType: TaggableItemType,
   itemId: string,
 ): Promise<string[]> {
-  const { results } = await env.DB.prepare(
-    'SELECT tag FROM item_tags WHERE item_type = ?1 AND item_id = ?2 ORDER BY tag ASC',
-  )
-    .bind(itemType, itemId)
-    .all<{ tag: string }>();
-  return (results ?? []).map((row) => row.tag);
+  const rows = await orm(env)
+    .select({ tag: itemTags.tag })
+    .from(itemTags)
+    .where(and(eq(itemTags.itemType, itemType), eq(itemTags.itemId, itemId)))
+    .orderBy(asc(itemTags.tag));
+  return rows.map((row) => row.tag);
 }
 
 /** All tag rows in a space — the browser groups them onto its list rows. */
@@ -171,17 +204,12 @@ export async function readSpaceItemTags(
   env: ControlEnv,
   spaceId: string,
 ): Promise<{ itemType: string; itemId: string; tag: string }[]> {
-  const { results } = await env.DB.prepare(
-    `SELECT item_type, item_id, tag FROM item_tags
-      WHERE space_id = ?1 ORDER BY tag ASC LIMIT 5000`,
-  )
-    .bind(spaceId)
-    .all<{ item_type: string; item_id: string; tag: string }>();
-  return (results ?? []).map((row) => ({
-    itemType: row.item_type,
-    itemId: row.item_id,
-    tag: row.tag,
-  }));
+  return await orm(env)
+    .select({ itemType: itemTags.itemType, itemId: itemTags.itemId, tag: itemTags.tag })
+    .from(itemTags)
+    .where(eq(itemTags.spaceId, spaceId))
+    .orderBy(asc(itemTags.tag))
+    .limit(5000);
 }
 
 /** GET /api/my/spaces/:spaceId/tags — the facet list under the tree rail. */
@@ -196,13 +224,14 @@ export async function spaceTagsRoute(
   if (!(await memberOfSpace(env, guard.user.id, spaceId))) {
     return json({ error: 'not-found' }, 404);
   }
-  const { results } = await env.DB.prepare(
-    `SELECT tag, COUNT(*) AS count FROM item_tags
-      WHERE space_id = ?1 GROUP BY tag ORDER BY count DESC, tag ASC`,
-  )
-    .bind(spaceId)
-    .all<{ tag: string; count: number }>();
-  return json({ tags: (results ?? []).map((row) => ({ tag: row.tag, count: row.count })) });
+  const total = count();
+  const rows = await orm(env)
+    .select({ tag: itemTags.tag, count: total })
+    .from(itemTags)
+    .where(eq(itemTags.spaceId, spaceId))
+    .groupBy(itemTags.tag)
+    .orderBy(desc(total), asc(itemTags.tag));
+  return json({ tags: rows.map((row) => ({ tag: row.tag, count: row.count })) });
 }
 
 /**
@@ -244,27 +273,27 @@ export async function itemTagsRoute(
     if (!existing.includes(tag) && existing.length >= MAX_TAGS_PER_ITEM) {
       return json({ error: 'too-many-tags' }, 400);
     }
-    await env.DB.prepare(
-      `INSERT OR IGNORE INTO item_tags (space_id, item_type, item_id, tag, created_at, created_by)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-    )
-      .bind(guard.spaceId, type, itemId, tag, now, guard.user.id)
+    await orm(env)
+      .insert(itemTags)
+      .values({ spaceId: guard.spaceId, itemType: type, itemId, tag, createdAt: now, createdBy: guard.user.id })
+      .onConflictDoNothing()
       .run();
     return json({ ok: true, itemType: type, itemId, tags: await readItemTags(env, type, itemId) });
   }
 
   const parsed = normalizeTagSet(body.tags);
   if (!parsed.ok) return json({ error: parsed.error }, 400);
-  const statements = [
-    env.DB.prepare('DELETE FROM item_tags WHERE item_type = ?1 AND item_id = ?2').bind(type, itemId),
+  const db = orm(env);
+  const statements: [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]] = [
+    db.delete(itemTags).where(and(eq(itemTags.itemType, type), eq(itemTags.itemId, itemId))),
     ...parsed.tags.map((tag) =>
-      env.DB.prepare(
-        `INSERT OR IGNORE INTO item_tags (space_id, item_type, item_id, tag, created_at, created_by)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      ).bind(guard.spaceId, type, itemId, tag, now, guard.user.id),
+      db
+        .insert(itemTags)
+        .values({ spaceId: guard.spaceId, itemType: type, itemId, tag, createdAt: now, createdBy: guard.user.id })
+        .onConflictDoNothing(),
     ),
   ];
-  await env.DB.batch(statements);
+  await db.batch(statements);
   return json({ ok: true, itemType: type, itemId, tags: parsed.tags });
 }
 
@@ -282,10 +311,9 @@ export async function deleteItemTagRoute(
   const type = itemType as TaggableItemType;
   const tag = normalizeTag(rawTag);
   if (tag === null) return json({ error: 'invalid-tag' }, 400);
-  await env.DB.prepare(
-    'DELETE FROM item_tags WHERE item_type = ?1 AND item_id = ?2 AND tag = ?3',
-  )
-    .bind(type, itemId, tag)
+  await orm(env)
+    .delete(itemTags)
+    .where(and(eq(itemTags.itemType, type), eq(itemTags.itemId, itemId), eq(itemTags.tag, tag)))
     .run();
   return json({ ok: true, itemType: type, itemId, tags: await readItemTags(env, type, itemId) });
 }

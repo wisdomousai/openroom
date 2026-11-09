@@ -15,6 +15,10 @@
  * leaked session link at exactly one session.
  */
 
+import { and, eq, gt } from 'drizzle-orm';
+
+import { orm } from './db/client.js';
+import { authSessions, desktopAuthTickets, users } from './db/schema.js';
 import { readEntitlements } from './entitlements.js';
 import type { PaddleEnv } from './billing/paddle';
 import { signToken, type Role } from 'openroom-relay/tokens';
@@ -151,15 +155,14 @@ export async function getSession(request: Request, env: ControlEnv): Promise<Ses
   const sessionId = await verifyCookieValue(env.TOKEN_SECRET, signed);
   if (sessionId === null) return null;
 
-  const row = await env.DB.prepare(
-    `SELECT u.id AS id, u.email AS email, u.name AS name
-       FROM auth_sessions s JOIN users u ON u.id = s.user_id
-      WHERE s.id = ?1 AND s.expires_at > ?2`,
-  )
-    .bind(sessionId, Date.now())
-    .first<{ id: string; email: string; name: string | null }>();
+  const row = await orm(env)
+    .select({ id: users.id, email: users.email, name: users.name })
+    .from(authSessions)
+    .innerJoin(users, eq(users.id, authSessions.userId))
+    .where(and(eq(authSessions.id, sessionId), gt(authSessions.expiresAt, Date.now())))
+    .get();
 
-  if (row === null) return null;
+  if (row === undefined) return null;
   return { id: row.id, email: row.email, name: row.name ?? null };
 }
 
@@ -193,10 +196,9 @@ export async function requireSession(
 
 async function createSession(env: ControlEnv, userId: string, now: number): Promise<string> {
   const sessionId = randomId();
-  await env.DB.prepare(
-    'INSERT INTO auth_sessions (id, user_id, created_at, expires_at) VALUES (?1, ?2, ?3, ?4)',
-  )
-    .bind(sessionId, userId, now, now + SESSION_TTL_MS)
+  await orm(env)
+    .insert(authSessions)
+    .values({ id: sessionId, userId, createdAt: now, expiresAt: now + SESSION_TTL_MS })
     .run();
   return signCookieValue(env.TOKEN_SECRET, sessionId);
 }
@@ -213,22 +215,14 @@ async function upsertUserBySub(
   name: string | null,
   now: number,
 ): Promise<string> {
-  const existing = await env.DB.prepare('SELECT id FROM users WHERE google_sub = ?1')
-    .bind(sub)
-    .first<{ id: string }>();
-  if (existing !== null) {
-    await env.DB.prepare('UPDATE users SET email = ?1, name = ?2 WHERE id = ?3')
-      .bind(email, name, existing.id)
-      .run();
+  const db = orm(env);
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.googleSub, sub)).get();
+  if (existing !== undefined) {
+    await db.update(users).set({ email, name }).where(eq(users.id, existing.id)).run();
     return existing.id;
   }
   const id = randomId(16);
-  await env.DB.prepare(
-    `INSERT INTO users (id, google_sub, email, name, created_at, entitlements)
-     VALUES (?1, ?2, ?3, ?4, ?5, '{}')`,
-  )
-    .bind(id, sub, email, name, now)
-    .run();
+  await db.insert(users).values({ id, googleSub: sub, email, name, createdAt: now, entitlements: '{}' }).run();
   return id;
 }
 
@@ -653,10 +647,13 @@ export async function googleCallbackRoute(
     const sessionId = await verifyCookieValue(env.TOKEN_SECRET, sessionCookie);
     if (sessionId === null) return json({ error: 'session-failed' }, 500);
     const ticket = randomId(24);
-    await env.DB.prepare(
-      'INSERT INTO desktop_auth_tickets (id, session_id, expires_at) VALUES (?1, ?2, ?3)',
-    )
-      .bind(await desktopTicketKey(ticket, parsed.desktopChallenge), sessionId, now + DESKTOP_AUTH_TICKET_TTL_MS)
+    await orm(env)
+      .insert(desktopAuthTickets)
+      .values({
+        id: await desktopTicketKey(ticket, parsed.desktopChallenge),
+        sessionId,
+        expiresAt: now + DESKTOP_AUTH_TICKET_TTL_MS,
+      })
       .run();
     return desktopHandoffPage(ticket, sessionCookie, request);
   }
@@ -686,13 +683,14 @@ export async function desktopRedeemRoute(request: Request, env: ControlEnv): Pro
   if (ticket === '') return json({ error: 'invalid-ticket' }, 400);
 
   const key = await desktopTicketKey(ticket, verifier === undefined ? undefined : await pkceChallenge(verifier));
-  const row = await env.DB.prepare(
-    'SELECT session_id AS sessionId, expires_at AS expiresAt FROM desktop_auth_tickets WHERE id = ?1',
-  )
-    .bind(key)
-    .first<{ sessionId: string; expiresAt: number }>();
-  await env.DB.prepare('DELETE FROM desktop_auth_tickets WHERE id = ?1').bind(key).run();
-  if (row === null || row.expiresAt <= Date.now()) {
+  const db = orm(env);
+  const row = await db
+    .select({ sessionId: desktopAuthTickets.sessionId, expiresAt: desktopAuthTickets.expiresAt })
+    .from(desktopAuthTickets)
+    .where(eq(desktopAuthTickets.id, key))
+    .get();
+  await db.delete(desktopAuthTickets).where(eq(desktopAuthTickets.id, key)).run();
+  if (row === undefined || row.expiresAt <= Date.now()) {
     return json({ error: 'invalid-ticket' }, 400);
   }
 
@@ -711,7 +709,7 @@ export async function logoutRoute(request: Request, env: ControlEnv): Promise<Re
   if (signed !== null) {
     const sessionId = await verifyCookieValue(env.TOKEN_SECRET, signed);
     if (sessionId !== null) {
-      await env.DB.prepare('DELETE FROM auth_sessions WHERE id = ?1').bind(sessionId).run();
+      await orm(env).delete(authSessions).where(eq(authSessions.id, sessionId)).run();
     }
   }
   return json({ ok: true }, 200, { 'set-cookie': clearCookie(SESSION_COOKIE, { request }) });

@@ -1,6 +1,9 @@
 /** Shared control-plane OAuth: exact redirects, S256, single-use codes and revocable connections. */
+import { and, eq, gt, isNull, lte, sql } from 'drizzle-orm';
 import { sha256Hex } from './api-tokens.js';
 import { DEMO_ACCOUNTS, demoAuthEnabled, demoLoginRoute, getSession, googleAuthConfigured } from './auth.js';
+import { orm } from './db/client.js';
+import { oauthCodes, oauthConnections } from './db/schema.js';
 import type { Env } from './index.js';
 
 export const POWERPOINT_CLIENT_ID = 'openroom-powerpoint';
@@ -90,13 +93,15 @@ function nowSeconds(): number {
 export interface McpAccessClaims { userId: string; connectionId: string }
 
 export async function connectionActive(env: Pick<Env, 'DB'>, id: string, userId: string): Promise<boolean> {
-  return !!await env.DB.prepare('SELECT id FROM oauth_connections WHERE id = ?1 AND user_id = ?2 AND revoked_at IS NULL AND expires_at > ?3').bind(id, userId, Date.now()).first();
+  const c = oauthConnections;
+  return !!await orm(env).select({ id: c.id }).from(c).where(and(eq(c.id, id), eq(c.userId, userId), isNull(c.revokedAt), gt(c.expiresAt, Date.now()))).get();
 }
 
 export async function verifyMcpAccessToken(env: Pick<Env, 'DB'>, bearer: string): Promise<McpAccessClaims | null> {
   if (!/^orauth_[A-Za-z0-9_-]{43}$/.test(bearer)) return null;
-  const row = await env.DB.prepare('SELECT id, user_id FROM oauth_connections WHERE token_hash = ?1 AND revoked_at IS NULL AND expires_at > ?2').bind(await sha256Hex(bearer), Date.now()).first<{ id: string; user_id: string }>();
-  return row ? { userId: row.user_id, connectionId: row.id } : null;
+  const c = oauthConnections;
+  const row = await orm(env).select({ id: c.id, userId: c.userId }).from(c).where(and(eq(c.tokenHash, await sha256Hex(bearer)), isNull(c.revokedAt), gt(c.expiresAt, Date.now()))).get();
+  return row ? { userId: row.userId, connectionId: row.id } : null;
 }
 
 /* ------------------------------------------------------ discovery metadata */
@@ -290,9 +295,10 @@ export async function authorizeRoute(request: Request, url: URL, env: Env): Prom
   const userId = params.get('via_session') === '1' && user ? user.id : undefined;
   if (!userId) return consentPage({ ...fields, consent: params.get('consent')! }, client, consent.n, url, env, user?.email, 'Sign in to continue.');
   const code = `orcode_${b64url(crypto.getRandomValues(new Uint8Array(32)))}`;
-  await env.DB.batch([
-    env.DB.prepare('DELETE FROM oauth_codes WHERE expires_at <= ?1').bind(Date.now()),
-    env.DB.prepare('INSERT INTO oauth_codes (code_hash,user_id,client_id,client_name,redirect_uri,challenge,expires_at) VALUES (?1,?2,?3,?4,?5,?6,?7)').bind(await sha256Hex(code), userId, clientId, client.name, redirectUri, challenge, Date.now() + CODE_TTL_SECONDS * 1000),
+  const db = orm(env);
+  await db.batch([
+    db.delete(oauthCodes).where(lte(oauthCodes.expiresAt, Date.now())),
+    db.insert(oauthCodes).values({ codeHash: await sha256Hex(code), userId, clientId, clientName: client.name, redirectUri, challenge, expiresAt: Date.now() + CODE_TTL_SECONDS * 1000 }),
   ]);
   const target = new URL(redirectUri); target.searchParams.set('code', code); if (state) target.searchParams.set('state', state);
   return new Response(null, { status: 302, headers: { location: target.toString(), 'cache-control': 'no-store', 'referrer-policy': 'no-referrer', 'set-cookie': consentCookie(url, '', 0) } });
@@ -313,12 +319,13 @@ export async function tokenRoute(request: Request, env: Env): Promise<Response> 
   if (!/^orcode_[A-Za-z0-9_-]{43}$/.test(code) || !/^[A-Za-z0-9._~-]{43,128}$/.test(verifier) || !clientId || !validRedirectUri(redirectUri)) return json({ error: 'invalid_grant' }, 400);
   const hash = await sha256Hex(code), challenge = await s256(verifier), now = Date.now();
   const token = `orauth_${b64url(crypto.getRandomValues(new Uint8Array(32)))}`, id = crypto.randomUUID();
+  const db = orm(env), codes = oauthCodes, tokenHash = await sha256Hex(token);
+  const redeemable = and(eq(codes.codeHash, hash), eq(codes.clientId, clientId), eq(codes.redirectUri, redirectUri), eq(codes.challenge, challenge), gt(codes.expiresAt, now));
   // One atomic batch: only one competing redemption can copy then consume this code.
-  const [inserted] = await env.DB.batch([
-    env.DB.prepare(`INSERT INTO oauth_connections (id,user_id,client_id,client_name,redirect_uri,token_hash,created_at,expires_at)
-      SELECT ?1,user_id,client_id,client_name,redirect_uri,?2,?3,?4 FROM oauth_codes
-      WHERE code_hash = ?5 AND client_id = ?6 AND redirect_uri = ?7 AND challenge = ?8 AND expires_at > ?3`).bind(id, await sha256Hex(token), now, now + ACCESS_TTL_SECONDS * 1000, hash, clientId, redirectUri, challenge),
-    env.DB.prepare('DELETE FROM oauth_codes WHERE code_hash = ?1 AND client_id = ?2 AND redirect_uri = ?3 AND challenge = ?4 AND expires_at > ?5').bind(hash, clientId, redirectUri, challenge, now),
+  const [inserted] = await db.batch([
+    db.insert(oauthConnections).select(db.select({ id: sql`${id}`.as('id'), userId: codes.userId, clientId: codes.clientId, clientName: codes.clientName, redirectUri: codes.redirectUri,
+      tokenHash: sql`${tokenHash}`.as('token_hash'), createdAt: sql`${now}`.as('created_at'), expiresAt: sql`${now + ACCESS_TTL_SECONDS * 1000}`.as('expires_at'), revokedAt: sql`NULL`.as('revoked_at') }).from(codes).where(redeemable)),
+    db.delete(codes).where(redeemable),
   ]);
   if (!inserted?.meta.changes) return json({ error: 'invalid_grant' }, 400);
   return json({ access_token: token, token_type: 'Bearer', expires_in: ACCESS_TTL_SECONDS, scope: 'mcp', connection_id: id });
@@ -327,6 +334,7 @@ export async function tokenRoute(request: Request, env: Env): Promise<Response> 
 export async function revokeOAuthRoute(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') return json({ error: 'invalid_request' }, 405);
   const params = await readFormParams(request), token = params.get('token') ?? '', clientId = params.get('client_id') ?? '';
-  if (/^orauth_[A-Za-z0-9_-]{43}$/.test(token) && clientId) await env.DB.prepare('UPDATE oauth_connections SET revoked_at = ?1 WHERE token_hash = ?2 AND client_id = ?3 AND revoked_at IS NULL').bind(Date.now(), await sha256Hex(token), clientId).run();
+  const c = oauthConnections;
+  if (/^orauth_[A-Za-z0-9_-]{43}$/.test(token) && clientId) await orm(env).update(c).set({ revokedAt: Date.now() }).where(and(eq(c.tokenHash, await sha256Hex(token)), eq(c.clientId, clientId), isNull(c.revokedAt))).run();
   return json({});
 }

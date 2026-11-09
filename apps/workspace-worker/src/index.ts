@@ -19,6 +19,7 @@ import { serveOffice } from './office';
 import { resumeSessionRoute } from './deck-start';
 import { startPresentationRoute } from './presentation-start';
 import { compileOutline, compileToOutline, joinCodeOpens, parseStartOutline, type IdentityMode, type Outline } from '@openroom/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 
 import {
   authStatusRoute,
@@ -34,6 +35,8 @@ import {
 import { coHostSessionRoute, hostAccess, hostCommandAllowed, registerSessionHost, type HostAccess } from './hosting.js';
 import { accountRecapRoute, forwardRecap } from './recap-route.js';
 import { connectionsRoute } from './oauth-connections.js';
+import { orm } from './db/client.js';
+import { decks, liveSessions, sessions, spaceMembers, students, users } from './db/schema.js';
 import { mySessionsRoute, recordLiveSession, sessionQuotaExceeded } from './control.js';
 import { roleAtLeast, spaceRole, type SpaceRole } from './members.js';
 import { sharingRoute } from './sharing';
@@ -308,26 +311,24 @@ export async function launchSessionForUser(
   // the same condition, and the same literal, the MCP deck tools answer with.
   if (!validation.ok) return json({ error: 'invalid-deck-content', errors: validation.errors }, 422);
   const now = Date.now();
-  type Allocation = { code: string; user_id: string; name: string; deck_version: number; created_at: number; ended: number; collaboration_enabled: number; space_id: string | null };
-  const allocation = () => env.DB.prepare(`SELECT l.code,l.user_id,u.name,l.deck_version,l.created_at,l.ended,l.collaboration_enabled,l.space_id
-    FROM live_sessions l JOIN users u ON u.id = l.user_id WHERE l.session_id = ?1`).bind(input.sessionId).first<Allocation>();
+  const l = liveSessions;
+  const allocation = () => orm(env).select({ code: l.code, userId: users.id, name: users.name, deckVersion: l.deckVersion, createdAt: l.createdAt, ended: l.ended, collaborationEnabled: l.collaborationEnabled, spaceId: l.spaceId })
+    .from(l).innerJoin(users, eq(users.id, l.userId)).where(eq(l.sessionId, input.sessionId)).get();
   let reserved = await allocation();
   // Space-scoped features (the dictionary's language pair among them) resolve
   // a session through its space, so the launch must stamp the deck's.
   const deckSpace =
     typeof input.deckId === 'string' && input.deckId !== ''
-      ? await env.DB.prepare('SELECT space_id FROM decks WHERE id = ?1')
-          .bind(input.deckId)
-          .first<{ space_id: string | null }>()
+      ? await orm(env).select({ spaceId: decks.spaceId }).from(decks).where(eq(decks.id, input.deckId)).get()
       : null;
   let collaborationEnabled = false;
   let entitlementOwnerId = user.id;
-  if (deckSpace?.space_id) {
-    const access = await spaceRole(env, user, deckSpace.space_id);
+  if (deckSpace?.spaceId) {
+    const access = await spaceRole(env, user, deckSpace.spaceId);
     if (!access) return json({ error: 'not-found' }, 404);
-    entitlementOwnerId = access.space.owner_user_id;
-    collaborationEnabled = (await readEntitlements(env, access.space.owner_user_id)).team;
-    if (access.space.owner_user_id !== user.id && !collaborationEnabled && !(reserved?.collaboration_enabled && reserved.space_id === deckSpace.space_id)) {
+    entitlementOwnerId = access.space.ownerUserId;
+    collaborationEnabled = (await readEntitlements(env, access.space.ownerUserId)).team;
+    if (access.space.ownerUserId !== user.id && !collaborationEnabled && !(reserved?.collaborationEnabled && reserved.spaceId === deckSpace.spaceId)) {
       return json({ error: 'team-required' }, 403);
     }
   }
@@ -347,10 +348,8 @@ export async function launchSessionForUser(
     // The unique session_id index chooses one code even for competing start requests.
     // A failed response can retry this same durable session without creating another audience.
     for (let attempt = 0; attempt < 3 && !reserved; attempt++) {
-      await env.DB.prepare(`INSERT OR IGNORE INTO live_sessions
-        (code,user_id,title,created_at,ended,space_id,deck_id,deck_version,session_id,collaboration_enabled)
-        VALUES (?1,?2,?3,?4,0,?5,?6,?7,?8,?9)`)
-        .bind(generateSessionCode(), user.id, input.title, now, deckSpace?.space_id ?? null, input.deckId, input.version, input.sessionId, collaborationEnabled ? 1 : 0).run();
+      await orm(env).insert(liveSessions).values({ code: generateSessionCode(), userId: user.id, title: input.title, createdAt: now, ended: 0, spaceId: deckSpace?.spaceId ?? null,
+        deckId: input.deckId, deckVersion: input.version, sessionId: input.sessionId, collaborationEnabled: collaborationEnabled ? 1 : 0 }).onConflictDoNothing().run();
       reserved = await allocation();
     }
   }
@@ -359,11 +358,11 @@ export async function launchSessionForUser(
     await recordSessionTransition(env, reserved.code, 'ended');
     return json({ error: 'session-already-ended' }, 409);
   }
-  if (reserved.deck_version !== input.version) return json({ error: 'session-version-conflict' }, 409);
+  if (reserved.deckVersion !== input.version) return json({ error: 'session-version-conflict' }, 409);
   // The DO decides whether this session can launch. What it reports is
   // recorded first, so a session that ended on its own reads as ended.
   const before = await stub(env, reserved.code).fetch(doUrl('/__state', { role: 'stage' }));
-  if (before.status === 404 && now - reserved.created_at > SESSION_INIT_WINDOW_MS) {
+  if (before.status === 404 && now - reserved.createdAt > SESSION_INIT_WINDOW_MS) {
     await recordMissingSession(env, reserved.code, now);
     return json({ error: 'session-expired' }, 410);
   }
@@ -382,7 +381,7 @@ export async function launchSessionForUser(
     user,
     entitlementOwnerId,
     reservedCode: reserved.code,
-    initialHost: { id: reserved.user_id, name: reserved.name?.trim().slice(0, 200) || 'Presenter' },
+    initialHost: { id: reserved.userId, name: reserved.name?.trim().slice(0, 200) || 'Presenter' },
     ...(input.connectionId ? { connectionId: input.connectionId } : {}),
   });
   if (!created.ok) return created.response;
@@ -417,8 +416,8 @@ export async function launchSessionForUser(
   await recordSessionTransition(env, reserved.code, current.status);
   if (current.status === 'ended') return json({ error: 'session-already-ended' }, 409);
   const sessionStatus = current.status === 'live' ? 'live' : 'draft';
-  await env.DB.prepare('UPDATE sessions SET deck_version = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL')
-    .bind(input.version, now, input.sessionId)
+  await orm(env).update(sessions).set({ deckVersion: input.version, updatedAt: now })
+    .where(and(eq(sessions.id, input.sessionId), isNull(sessions.deletedAt)))
     .run();
 
   return json({
@@ -488,8 +487,8 @@ async function createLiveSessionRoute(request: Request, env: Env): Promise<Respo
   if (sessionUser !== null && typeof body.spaceId === 'string' && body.spaceId !== '') {
     const access = await spaceRole(env, sessionUser, body.spaceId);
     if (access === null) return json({ ok: false, error: 'not-found' }, 404);
-    entitlementOwnerId = access.space.owner_user_id;
-    if (access.space.owner_user_id !== sessionUser.id && !(await readEntitlements(env, access.space.owner_user_id)).team) {
+    entitlementOwnerId = access.space.ownerUserId;
+    if (access.space.ownerUserId !== sessionUser.id && !(await readEntitlements(env, access.space.ownerUserId)).team) {
       return json({ error: 'team-required' }, 403);
     }
     spaceIdForRecord = body.spaceId;
@@ -598,49 +597,45 @@ async function sessionStudentRoute(
   const auth = await authenticate(request, url, env, sessionCode, 'host');
   if (!auth.ok) return auth.response;
 
-  const row = await env.DB.prepare(
-    `SELECT session.id AS session_id, session.title AS session_title,
-            ctx.id AS student_id, ctx.kind AS kind, ctx.display_name AS display_name,
-            ctx.profile_json AS profile_json, ctx.next_note AS next_note
-       FROM live_sessions ro
-       JOIN sessions session ON session.id = ro.session_id
-       LEFT JOIN students ctx ON ctx.id = session.student_id
-      WHERE ro.code = ?1`,
-  )
-    .bind(sessionCode)
-    .first<{
-      session_id: string;
-      session_title: string;
-      student_id: string | null;
-      kind: string | null;
-      display_name: string | null;
-      profile_json: string | null;
-      next_note: string | null;
-    }>();
+  const row = await orm(env)
+    .select({
+      sessionId: sessions.id,
+      sessionTitle: sessions.title,
+      studentId: students.id,
+      kind: students.kind,
+      displayName: students.displayName,
+      profileJson: students.profileJson,
+      nextNote: students.nextNote,
+    })
+    .from(liveSessions)
+    .innerJoin(sessions, eq(sessions.id, liveSessions.sessionId))
+    .leftJoin(students, eq(students.id, sessions.studentId))
+    .where(eq(liveSessions.code, sessionCode))
+    .get();
 
-  if (row === null) return json({ student: null, session: null });
+  if (row === undefined) return json({ student: null, session: null });
 
-  const session = { id: row.session_id, title: row.session_title };
-  if (row.student_id === null) return json({ student: null, session });
+  const session = { id: row.sessionId, title: row.sessionTitle };
+  if (row.studentId === null) return json({ student: null, session });
 
   let level: string | null = null;
   try {
-    const parsed = JSON.parse(row.profile_json ?? '{}') as { level?: unknown };
+    const parsed = JSON.parse(row.profileJson ?? '{}') as { level?: unknown };
     if (typeof parsed.level === 'string' && parsed.level !== '') level = parsed.level;
   } catch {
     /* a student with unparseable JSON simply has no level to show */
   }
 
   // The "for next time" sticky is written from Notes, so it follows `continuity`.
-  const nextNote = row.next_note && row.next_note !== ''
-    && (await ownerHasContinuity(env, await studentOwnerId(env, row.student_id)))
-    ? row.next_note : null;
+  const nextNote = row.nextNote && row.nextNote !== ''
+    && (await ownerHasContinuity(env, await studentOwnerId(env, row.studentId)))
+    ? row.nextNote : null;
 
   return json({
     student: {
-      id: row.student_id,
+      id: row.studentId,
       kind: row.kind,
-      displayName: row.display_name,
+      displayName: row.displayName,
       level,
       nextNote,
     },
@@ -1011,10 +1006,10 @@ export default {
         // Minting a credential is a privilege escalation primitive, so in a space
         // session a presenter co-host may not; an editor or owner may.
         if (owner.spaceId !== null) {
-          const minter = await env.DB.prepare('SELECT role FROM space_members WHERE space_id = ?1 AND user_id = ?2')
-            .bind(owner.spaceId, auth.payload.userId ?? '')
-            .first<{ role: SpaceRole }>();
-          if (minter === null || !roleAtLeast(minter.role, 'editor')) return json({ error: 'forbidden' }, 403);
+          const minter = await orm(env).select({ role: spaceMembers.role }).from(spaceMembers)
+            .where(and(eq(spaceMembers.spaceId, owner.spaceId), eq(spaceMembers.userId, auth.payload.userId ?? '')))
+            .get();
+          if (minter === undefined || !roleAtLeast(minter.role as SpaceRole, 'editor')) return json({ error: 'forbidden' }, 403);
         }
         const body = await readJson(request);
         const name = typeof body?.displayName === 'string' ? body.displayName : '';

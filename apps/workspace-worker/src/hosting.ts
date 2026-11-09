@@ -1,6 +1,10 @@
 import { normalizeSessionCode, type Command } from '@openroom/domain';
+import { and, eq } from 'drizzle-orm';
+
 import { json, type ControlEnv } from './auth.js';
 import { requireControlUser } from './control-auth.js';
+import { orm } from './db/client.js';
+import { liveSessions, spaceMembers, spaces, users } from './db/schema.js';
 import { readEntitlements } from './entitlements.js';
 import { signToken } from 'openroom-relay/tokens';
 import { recordMissingSession, recordSessionTransition } from './delivery/session-status.js';
@@ -10,27 +14,30 @@ export interface HostAccess { id: string; name: string; canRecover: boolean }
 
 /** Live host controls only. Participant answers never call D1. */
 export async function hostAccess(env: ControlEnv, code: string, userId: string): Promise<HostAccess | null> {
-  const row = await env.DB.prepare(
-    `SELECT l.user_id AS creator_id, l.space_id, s.owner_user_id AS owner_id,
-            m.role, u.name, l.collaboration_enabled
-       FROM live_sessions l
-       JOIN users u ON u.id = ?2
-       LEFT JOIN spaces s ON s.id = l.space_id
-       LEFT JOIN space_members m ON m.space_id = s.id AND m.user_id = u.id
-      WHERE l.code = ?1`,
-  ).bind(code, userId).first<{
-    creator_id: string | null; space_id: string | null; owner_id: string | null;
-    role: string | null; name: string | null; collaboration_enabled: number;
-  }>();
+  const row = await orm(env)
+    .select({
+      creatorId: liveSessions.userId,
+      spaceId: liveSessions.spaceId,
+      ownerId: spaces.ownerUserId,
+      role: spaceMembers.role,
+      name: users.name,
+      collaborationEnabled: liveSessions.collaborationEnabled,
+    })
+    .from(liveSessions)
+    .innerJoin(users, eq(users.id, userId))
+    .leftJoin(spaces, eq(spaces.id, liveSessions.spaceId))
+    .leftJoin(spaceMembers, and(eq(spaceMembers.spaceId, spaces.id), eq(spaceMembers.userId, users.id)))
+    .where(eq(liveSessions.code, code))
+    .get();
   if (!row) return null;
-  if (row.space_id === null) {
-    if (row.creator_id !== userId) return null;
+  if (row.spaceId === null) {
+    if (row.creatorId !== userId) return null;
   } else {
     if (!['owner', 'editor', 'presenter'].includes(row.role ?? '')) return null;
     // Paid collaboration is retained for this session; membership is always current.
-    if (row.owner_id !== userId && !row.collaboration_enabled && (!row.owner_id || !(await readEntitlements(env, row.owner_id)).team)) return null;
+    if (row.ownerId !== userId && !row.collaborationEnabled && (!row.ownerId || !(await readEntitlements(env, row.ownerId)).team)) return null;
   }
-  return { id: userId, name: row.name?.trim().slice(0, 200) || 'Host', canRecover: row.creator_id === userId || row.owner_id === userId };
+  return { id: userId, name: row.name?.trim().slice(0, 200) || 'Host', canRecover: row.creatorId === userId || row.ownerId === userId };
 }
 
 /** Rechecked per request: a retained token cannot outlive membership. */

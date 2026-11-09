@@ -9,10 +9,34 @@ import { startDeckRoute } from './deck-start.js';
  * launch compiles into the Session runtime contract (Durable Object).
  */
 import { STUDENT_KINDS, isWorkspaceExperience } from '@openroom/schema';
+import { and, desc, eq, exists, getTableColumns, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 
 import { sha256Hex } from './api-tokens.js';
 import { getSession, json, type ControlEnv, type SessionUser } from './auth.js';
 import { requireControlUser } from './control-auth.js';
+import { orm } from './db/client.js';
+import {
+  brandKits,
+  decks,
+  deletionIntents,
+  folders,
+  itemTags,
+  learnerFeedback,
+  learnerPracticeAttempts,
+  learnerSrs,
+  learnerSubmissions,
+  liveSessions,
+  mediaAssets,
+  sessionRecords,
+  sessions,
+  spaceInvites,
+  spaceMembers,
+  spaceStudents,
+  spaces,
+  studentAccessLinks,
+  studentLearners,
+  students,
+} from './db/schema.js';
 import {
   listStudentLinksRoute,
   listStudentLearnersRoute,
@@ -65,31 +89,20 @@ type ResourceType = 'student' | 'deck' | 'session' | 'folder' | 'brand_kit';
 
 const STUDENT_KIND_SET: ReadonlySet<string> = new Set(STUDENT_KINDS);
 
-interface StudentRow {
-  id: string;
-  space_id: string;
-  created_by: string;
-  kind: string;
-  display_name: string;
-  profile_json: string;
-  next_note: string;
-  created_at: number;
-  updated_at: number;
-  deleted_at: number | null;
-}
+type StudentRow = typeof students.$inferSelect;
 
 async function studentAccess(
   env: ControlEnv,
   userId: string,
   studentId: string,
 ): Promise<StudentRow | null> {
-  return env.DB.prepare(
-    `SELECT c.* FROM students c
-      JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?2
-     WHERE c.id = ?1`,
-  )
-    .bind(studentId, userId)
-    .first<StudentRow>();
+  const row = await orm(env)
+    .select(getTableColumns(students))
+    .from(students)
+    .innerJoin(spaceMembers, and(eq(spaceMembers.spaceId, students.spaceId), eq(spaceMembers.userId, userId)))
+    .where(eq(students.id, studentId))
+    .get();
+  return row ?? null;
 }
 
 /** Changing, trashing or deleting a student needs `editor` on its space; reads need membership. */
@@ -104,17 +117,17 @@ async function studentEditable(env: ControlEnv, user: SessionUser, spaceId: stri
  * not cleared, and returns with access.
  */
 function studentJson(row: StudentRow, includeProfile = true, withNextNote = true): Record<string, unknown> {
-  const nextNote = withNextNote && typeof row.next_note === 'string' ? row.next_note : '';
+  const nextNote = withNextNote && typeof row.nextNote === 'string' ? row.nextNote : '';
   return {
     id: row.id,
-    spaceId: row.space_id,
+    spaceId: row.spaceId,
     kind: row.kind,
-    displayName: row.display_name,
-    ...(includeProfile ? { profile: parseJson(row.profile_json, {}) } : {}),
+    displayName: row.displayName,
+    ...(includeProfile ? { profile: parseJson(row.profileJson, {}) } : {}),
     ...(nextNote !== '' ? { nextNote } : {}),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    deletedAt: row.deleted_at,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    deletedAt: row.deletedAt,
   };
 }
 
@@ -137,33 +150,22 @@ export async function studentsCollectionRoute(
     const trashed = url.searchParams.get('trash') === '1';
     const spaceId = url.searchParams.get('spaceId');
     const kind = url.searchParams.get('kind');
-    const binds: (string | number)[] = [guard.user.id];
-    let where = trashed ? 'c.deleted_at IS NOT NULL' : 'c.deleted_at IS NULL';
-    let next = 2;
-    if (spaceId !== null) {
-      where += ` AND c.space_id = ?${next}`;
-      binds.push(spaceId);
-      next += 1;
-    }
-    if (kind !== null && STUDENT_KIND_SET.has(kind)) {
-      where += ` AND c.kind = ?${next}`;
-      binds.push(kind);
-    }
-    const { results } = await env.DB.prepare(
-      `SELECT c.*, s.owner_user_id AS owner_user_id FROM students c
-        JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?1
-        JOIN spaces s ON s.id = c.space_id
-       WHERE ${where}
-       ORDER BY c.updated_at DESC LIMIT 500`,
-    )
-      .bind(...binds)
-      .all<StudentRow & { owner_user_id: string }>();
-    const rows = results ?? [];
+    const filters = [trashed ? isNotNull(students.deletedAt) : isNull(students.deletedAt)];
+    if (spaceId !== null) filters.push(eq(students.spaceId, spaceId));
+    if (kind !== null && STUDENT_KIND_SET.has(kind)) filters.push(eq(students.kind, kind));
+    const rows = await orm(env)
+      .select({ ...getTableColumns(students), ownerUserId: spaces.ownerUserId })
+      .from(students)
+      .innerJoin(spaceMembers, and(eq(spaceMembers.spaceId, students.spaceId), eq(spaceMembers.userId, guard.user.id)))
+      .innerJoin(spaces, eq(spaces.id, students.spaceId))
+      .where(and(...filters))
+      .orderBy(desc(students.updatedAt))
+      .limit(500);
     const continuity = new Map<string, boolean>();
-    for (const owner of new Set(rows.filter((row) => row.next_note).map((row) => row.owner_user_id))) {
+    for (const owner of new Set(rows.filter((row) => row.nextNote).map((row) => row.ownerUserId))) {
       continuity.set(owner, await ownerHasContinuity(env, owner));
     }
-    return json({ students: rows.map((row) => studentJson(row, false, continuity.get(row.owner_user_id) === true)) });
+    return json({ students: rows.map((row) => studentJson(row, false, continuity.get(row.ownerUserId) === true)) });
   }
 
   if (request.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
@@ -212,26 +214,36 @@ export async function studentsCollectionRoute(
     settings.experience = isWorkspaceExperience(body.experience) ? body.experience : 'tutoring';
     // Inherit the chosen place's language pair; the new person's folder remains
     // a separate sharing boundary, with its own explicit experience.
-    await env.DB.prepare(
-      `INSERT INTO spaces (id, owner_user_id, name, created_at, updated_at, settings)
-       VALUES (?1, ?2, ?3, ?4, ?4, ?5)`,
-    )
-      .bind(spaceId, guard.user.id, displayName.slice(0, 200), now, JSON.stringify(settings))
+    await orm(env)
+      .insert(spaces)
+      .values({
+        id: spaceId,
+        ownerUserId: guard.user.id,
+        name: displayName.slice(0, 200),
+        createdAt: now,
+        updatedAt: now,
+        settings: JSON.stringify(settings),
+      })
       .run();
-    await env.DB.prepare(
-      `INSERT INTO space_members (space_id, user_id, role, invited_by, created_at)
-       VALUES (?1, ?2, 'owner', NULL, ?3)`,
-    )
-      .bind(spaceId, guard.user.id, now)
+    await orm(env)
+      .insert(spaceMembers)
+      .values({ spaceId, userId: guard.user.id, role: 'owner', invitedBy: null, createdAt: now })
       .run();
   }
 
-  await env.DB.prepare(
-    `INSERT INTO students
-       (id, space_id, created_by, kind, display_name, profile_json, created_at, updated_at, deleted_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, NULL)`,
-  )
-    .bind(id, spaceId, guard.user.id, kind, displayName.slice(0, 200), serializedProfile, now)
+  await orm(env)
+    .insert(students)
+    .values({
+      id,
+      spaceId,
+      createdBy: guard.user.id,
+      kind,
+      displayName: displayName.slice(0, 200),
+      profileJson: serializedProfile,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    })
     .run();
   await linkStudent(env, spaceId, id, now);
   const row = await studentAccess(env, guard.user.id, id);
@@ -250,48 +262,46 @@ export async function studentItemRoute(
   const row = await studentAccess(env, guard.user.id, studentId);
   if (row === null) return json({ error: 'not-found' }, 404);
 
-  const withNextNote = async () => row.next_note !== '' && (await ownerHasContinuity(env, await spaceOwnerId(env, row.space_id)));
+  const withNextNote = async () => row.nextNote !== '' && (await ownerHasContinuity(env, await spaceOwnerId(env, row.spaceId)));
 
   if (request.method === 'GET') return json({ student: studentJson(row, true, await withNextNote()) });
-  if (!(await studentEditable(env, guard.user, row.space_id))) return json({ error: 'forbidden' }, 403);
+  if (!(await studentEditable(env, guard.user, row.spaceId))) return json({ error: 'forbidden' }, 403);
 
   if (request.method === 'DELETE') {
-    if (row.deleted_at === null) {
+    if (row.deletedAt === null) {
       const now = Date.now();
-      await env.DB.prepare('UPDATE students SET deleted_at = ?1, updated_at = ?1 WHERE id = ?2')
-        .bind(now, studentId)
-        .run();
+      await orm(env).update(students).set({ deletedAt: now, updatedAt: now }).where(eq(students.id, studentId)).run();
     }
     return json({ ok: true, recoverable: true });
   }
   if (request.method !== 'PATCH') return json({ error: 'method-not-allowed' }, 405);
-  if (row.deleted_at !== null) return json({ error: 'resource-in-trash' }, 409);
+  if (row.deletedAt !== null) return json({ error: 'resource-in-trash' }, 409);
   const body = await readJson(request);
   if (body === null) return json({ error: 'invalid-json' }, 400);
   const displayName = body.displayName === undefined
-    ? row.display_name
+    ? row.displayName
     : typeof body.displayName === 'string'
       ? body.displayName.trim().slice(0, 200)
       : '';
   if (displayName === '') return json({ error: 'display-name-required' }, 422);
-  const currentProfile = parseJson(row.profile_json, {});
+  const currentProfile = parseJson(row.profileJson, {});
   const profile = body.profile === undefined ? currentProfile : plainObject(body.profile);
   if (profile === null) return json({ error: 'profile-must-be-object' }, 422);
   const serialized = JSON.stringify(profile);
   if (serialized.length > 100_000) return json({ error: 'profile-too-large' }, 413);
   const kind = body.kind === undefined ? row.kind : parseKind(body.kind, row.kind);
   const now = Date.now();
-  await env.DB.prepare(
-    'UPDATE students SET display_name = ?1, profile_json = ?2, kind = ?3, updated_at = ?4 WHERE id = ?5',
-  )
-    .bind(displayName, serialized, kind, now, studentId)
+  await orm(env)
+    .update(students)
+    .set({ displayName, profileJson: serialized, kind, updatedAt: now })
+    .where(eq(students.id, studentId))
     .run();
   const payload = studentJson({
     ...row,
-    display_name: displayName,
-    profile_json: serialized,
+    displayName,
+    profileJson: serialized,
     kind,
-    updated_at: now,
+    updatedAt: now,
   }, true, await withNextNote());
   return json({ student: payload });
 }
@@ -305,10 +315,8 @@ export async function restoreStudentRoute(
   if (!guard.ok) return guard.response;
   const row = await studentAccess(env, guard.user.id, studentId);
   if (row === null) return json({ error: 'not-found' }, 404);
-  if (!(await studentEditable(env, guard.user, row.space_id))) return json({ error: 'forbidden' }, 403);
-  await env.DB.prepare('UPDATE students SET deleted_at = NULL, updated_at = ?1 WHERE id = ?2')
-    .bind(Date.now(), studentId)
-    .run();
+  if (!(await studentEditable(env, guard.user, row.spaceId))) return json({ error: 'forbidden' }, 403);
+  await orm(env).update(students).set({ deletedAt: null, updatedAt: Date.now() }).where(eq(students.id, studentId)).run();
   return json({ ok: true });
 }
 
@@ -321,16 +329,24 @@ export async function createDeletionIntentRoute(
   if (!guard.ok) return guard.response;
   const resource = await studentAccess(env, guard.user.id, resourceId);
   if (resource === null) return json({ error: 'not-found' }, 404);
-  if (!(await studentEditable(env, guard.user, resource.space_id))) return json({ error: 'forbidden' }, 403);
-  if (resource.deleted_at === null) return json({ error: 'move-to-trash-first' }, 409);
+  if (!(await studentEditable(env, guard.user, resource.spaceId))) return json({ error: 'forbidden' }, 403);
+  if (resource.deletedAt === null) return json({ error: 'move-to-trash-first' }, 409);
   const token = randomToken();
   const tokenHash = await sha256Hex(token);
   const now = Date.now();
-  await env.DB.prepare(
-    `INSERT INTO deletion_intents
-       (token_hash, user_id, resource_type, resource_id, resource_name, created_at, expires_at, used_at)
-     VALUES (?1, ?2, 'student', ?3, ?4, ?5, ?6, NULL)`,
-  ).bind(tokenHash, guard.user.id, resourceId, resource.display_name, now, now + DELETION_INTENT_TTL_MS).run();
+  await orm(env)
+    .insert(deletionIntents)
+    .values({
+      tokenHash,
+      userId: guard.user.id,
+      resourceType: 'student',
+      resourceId,
+      resourceName: resource.displayName,
+      createdAt: now,
+      expiresAt: now + DELETION_INTENT_TTL_MS,
+      usedAt: null,
+    })
+    .run();
   const origin = new URL(request.url).origin;
   return json({
     ok: true,
@@ -340,20 +356,15 @@ export async function createDeletionIntentRoute(
   }, 202);
 }
 
-interface IntentRow {
-  token_hash: string;
-  user_id: string;
-  resource_type: ResourceType;
-  resource_id: string;
-  resource_name: string;
-  expires_at: number;
-  used_at: number | null;
-}
+type IntentRow = Omit<typeof deletionIntents.$inferSelect, 'resourceType'> & { resourceType: ResourceType };
 
 async function intentForToken(env: ControlEnv, token: string): Promise<IntentRow | null> {
-  return env.DB.prepare('SELECT * FROM deletion_intents WHERE token_hash = ?1')
-    .bind(await sha256Hex(token))
-    .first<IntentRow>();
+  const row = await orm(env)
+    .select()
+    .from(deletionIntents)
+    .where(eq(deletionIntents.tokenHash, await sha256Hex(token)))
+    .get();
+  return row === undefined ? null : { ...row, resourceType: row.resourceType as ResourceType };
 }
 
 function escapeHtml(value: string): string {
@@ -370,22 +381,22 @@ export async function deletionConfirmationPage(
     return new Response(null, { status: 302, headers: { location: '/api/auth/google?returnTo=' + encodeURIComponent(new URL(request.url).pathname) } });
   }
   const intent = await intentForToken(env, token);
-  if (intent === null || intent.user_id !== user.id || intent.used_at !== null || intent.expires_at <= Date.now()) {
+  if (intent === null || intent.userId !== user.id || intent.usedAt !== null || intent.expiresAt <= Date.now()) {
     return linkNoLongerWorks();
   }
   const noun = await deletionNoun(env, intent);
-  const contents = deletionContents(intent.resource_type, noun)
+  const contents = deletionContents(intent.resourceType, noun)
     .map((line) => `<li>${line}</li>`).join('');
-  const kept = intent.resource_type === 'folder' && await folderKeepsLiveDecks(env, intent.resource_id)
+  const kept = intent.resourceType === 'folder' && await folderKeepsLiveDecks(env, intent.resourceId)
     ? '<p>Decks in it that are not in Trash are kept and move to the top of the space.</p>'
-    : intent.resource_type === 'brand_kit'
+    : intent.resourceType === 'brand_kit'
       ? '<p>Decks that used this kit keep their design. Pictures the kit uses stay in the space.</p>'
       : '';
   const trashHref = await trashHrefFor(env, intent);
   return deletionPage(
     'Confirm permanent deletion',
     `<h1>Permanently delete this ${noun}?</h1>
-<p class="name">${escapeHtml(intent.resource_name)}</p>
+<p class="name">${escapeHtml(intent.resourceName)}</p>
 <p>This deletes:</p>
 <ul>${contents}</ul>
 ${kept}<p>This cannot be undone. Items in Trash can be restored; items deleted here cannot.</p>
@@ -397,8 +408,8 @@ const TRASH_HREF = '/host/#/tutor/trash';
 
 /** Brand kits have their own Trash under the space's brand kits; everything else uses the workspace Trash. */
 async function trashHrefFor(env: ControlEnv, intent: IntentRow): Promise<string> {
-  if (intent.resource_type !== 'brand_kit') return TRASH_HREF;
-  const spaceId = await brandKitSpaceId(env, intent.resource_id);
+  if (intent.resourceType !== 'brand_kit') return TRASH_HREF;
+  const spaceId = await brandKitSpaceId(env, intent.resourceId);
   return spaceId === null ? TRASH_HREF : `/host/#/space/${encodeURIComponent(spaceId)}/brand-kits?trashed=true`;
 }
 
@@ -433,10 +444,13 @@ const STUDENT_NOUNS: Record<string, string> = {
 };
 
 async function deletionNoun(env: ControlEnv, intent: IntentRow): Promise<string> {
-  if (intent.resource_type === 'brand_kit') return 'brand kit';
-  if (intent.resource_type !== 'student') return intent.resource_type;
-  const row = await env.DB.prepare('SELECT kind FROM students WHERE id = ?1')
-    .bind(intent.resource_id).first<{ kind: string }>();
+  if (intent.resourceType === 'brand_kit') return 'brand kit';
+  if (intent.resourceType !== 'student') return intent.resourceType;
+  const row = await orm(env)
+    .select({ kind: students.kind })
+    .from(students)
+    .where(eq(students.id, intent.resourceId))
+    .get();
   return STUDENT_NOUNS[row?.kind ?? 'person'] ?? 'student';
 }
 
@@ -502,25 +516,27 @@ function deletionPage(title: string, body: string, status = 200): Response {
  */
 async function removeEmptyStudentSpace(env: ControlEnv, studentId: string, spaceId: string): Promise<void> {
   if (spaceId !== `sp_ctx_${studentId}`) return;
-  const space = await env.DB.prepare(
-    `SELECT (EXISTS (SELECT 1 FROM decks WHERE space_id = s.id)
-             OR EXISTS (SELECT 1 FROM sessions WHERE space_id = s.id)
-             OR EXISTS (SELECT 1 FROM media_assets WHERE space_id = s.id)
-             OR EXISTS (SELECT 1 FROM brand_kits WHERE space_id = s.id)
-             OR EXISTS (SELECT 1 FROM students WHERE space_id = s.id)) AS kept
-       FROM spaces s WHERE s.id = ?1`,
-  ).bind(spaceId).first<{ kept: number }>();
-  if (space === null || space.kept) return;
+  const db = orm(env);
+  const filedIn = (table: typeof decks | typeof sessions | typeof mediaAssets | typeof brandKits | typeof students) =>
+    exists(db.select({ one: sql`1` }).from(table).where(eq(table.spaceId, spaces.id)));
+  const space = await db
+    .select({
+      kept: sql<number>`(${filedIn(decks)} OR ${filedIn(sessions)} OR ${filedIn(mediaAssets)} OR ${filedIn(brandKits)} OR ${filedIn(students)})`,
+    })
+    .from(spaces)
+    .where(eq(spaces.id, spaceId))
+    .get();
+  if (space === undefined || space.kept) return;
   try {
-    await env.DB.batch([
+    await db.batch([
       // Archive access then falls back to the tutor who ran the lesson.
-      env.DB.prepare('UPDATE live_sessions SET space_id = NULL WHERE space_id = ?1').bind(spaceId),
-      env.DB.prepare('DELETE FROM item_tags WHERE space_id = ?1').bind(spaceId),
-      env.DB.prepare('DELETE FROM folders WHERE space_id = ?1').bind(spaceId),
-      env.DB.prepare('DELETE FROM space_invites WHERE space_id = ?1').bind(spaceId),
-      env.DB.prepare('DELETE FROM space_members WHERE space_id = ?1').bind(spaceId),
-      env.DB.prepare('DELETE FROM space_students WHERE space_id = ?1').bind(spaceId),
-      env.DB.prepare('DELETE FROM spaces WHERE id = ?1').bind(spaceId),
+      db.update(liveSessions).set({ spaceId: null }).where(eq(liveSessions.spaceId, spaceId)),
+      db.delete(itemTags).where(eq(itemTags.spaceId, spaceId)),
+      db.delete(folders).where(eq(folders.spaceId, spaceId)),
+      db.delete(spaceInvites).where(eq(spaceInvites.spaceId, spaceId)),
+      db.delete(spaceMembers).where(eq(spaceMembers.spaceId, spaceId)),
+      db.delete(spaceStudents).where(eq(spaceStudents.spaceId, spaceId)),
+      db.delete(spaces).where(eq(spaces.id, spaceId)),
     ]);
   } catch (cause) {
     // The batch rolled back and the space stays; the workspace nav leaves an empty one out.
@@ -548,56 +564,58 @@ export async function confirmPermanentDeletionRoute(
     );
   }
   const intent = await intentForToken(env, token);
-  if (intent === null || intent.user_id !== user.id || intent.used_at !== null || intent.expires_at <= Date.now()) {
+  if (intent === null || intent.userId !== user.id || intent.usedAt !== null || intent.expiresAt <= Date.now()) {
     return linkNoLongerWorks();
   }
 
   // Read before the deletion: the kit row is what names the space.
   const trashHref = await trashHrefFor(env, intent);
-  if (intent.resource_type === 'student') {
-    const resource = await studentAccess(env, user.id, intent.resource_id);
-    if (resource === null || resource.deleted_at === null) return notInTrash();
+  if (intent.resourceType === 'student') {
+    const resource = await studentAccess(env, user.id, intent.resourceId);
+    if (resource === null || resource.deletedAt === null) return notInTrash();
     // The role may have changed since the intent was made; deleting still needs editor.
-    if (!(await studentEditable(env, user, resource.space_id))) return notInTrash();
-    const { results } = await env.DB.prepare('SELECT id FROM decks WHERE student_id = ?1')
-      .bind(resource.id).all<{ id: string }>();
-    for (const deck of results ?? []) {
+    if (!(await studentEditable(env, user, resource.spaceId))) return notInTrash();
+    const db = orm(env);
+    const studentDecks = await db.select({ id: decks.id }).from(decks).where(eq(decks.studentId, resource.id));
+    for (const deck of studentDecks) {
       await deleteDeckPermanently(env, deck.id);
     }
     await deleteLearnerAudioPermanently(env, 'student_id', resource.id);
-    await env.DB.batch([
+    await db.batch([
       // Sessions of other decks may still reference this student; detach them
       // before the student row goes away.
-      env.DB.prepare('UPDATE sessions SET student_id = NULL WHERE student_id = ?1').bind(resource.id),
-      env.DB.prepare('UPDATE session_records SET student_id = NULL WHERE student_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM learner_feedback WHERE submission_id IN (SELECT id FROM learner_submissions WHERE student_id = ?1)').bind(resource.id),
-      env.DB.prepare('DELETE FROM learner_submissions WHERE student_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM learner_srs WHERE student_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM learner_practice_attempts WHERE student_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM student_access_links WHERE student_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM student_learners WHERE student_id = ?1').bind(resource.id),
-      env.DB.prepare("DELETE FROM item_tags WHERE item_type = 'student' AND item_id = ?1").bind(resource.id),
+      db.update(sessions).set({ studentId: null }).where(eq(sessions.studentId, resource.id)),
+      db.update(sessionRecords).set({ studentId: null }).where(eq(sessionRecords.studentId, resource.id)),
+      db.delete(learnerFeedback).where(inArray(
+        learnerFeedback.submissionId,
+        db.select({ id: learnerSubmissions.id }).from(learnerSubmissions).where(eq(learnerSubmissions.studentId, resource.id)),
+      )),
+      db.delete(learnerSubmissions).where(eq(learnerSubmissions.studentId, resource.id)),
+      db.delete(learnerSrs).where(eq(learnerSrs.studentId, resource.id)),
+      db.delete(learnerPracticeAttempts).where(eq(learnerPracticeAttempts.studentId, resource.id)),
+      db.delete(studentAccessLinks).where(eq(studentAccessLinks.studentId, resource.id)),
+      db.delete(studentLearners).where(eq(studentLearners.studentId, resource.id)),
+      db.delete(itemTags).where(and(eq(itemTags.itemType, 'student'), eq(itemTags.itemId, resource.id))),
       // Every space that pointed at it, before the row it points to is gone.
-      env.DB.prepare('DELETE FROM space_students WHERE student_id = ?1').bind(resource.id),
-      env.DB.prepare('DELETE FROM students WHERE id = ?1').bind(resource.id),
+      db.delete(spaceStudents).where(eq(spaceStudents.studentId, resource.id)),
+      db.delete(students).where(eq(students.id, resource.id)),
     ]);
-    await removeEmptyStudentSpace(env, resource.id, resource.space_id);
-  } else if (intent.resource_type === 'folder') {
-    const ok = await confirmFolderDeletion(env, user, intent.resource_id, deleteDeckPermanently);
+    await removeEmptyStudentSpace(env, resource.id, resource.spaceId);
+  } else if (intent.resourceType === 'folder') {
+    const ok = await confirmFolderDeletion(env, user, intent.resourceId, deleteDeckPermanently);
     if (!ok) return notInTrash();
-  } else if (intent.resource_type === 'brand_kit') {
-    if (!(await confirmBrandKitDeletion(env, user, intent.resource_id))) return notInTrash(trashHref);
+  } else if (intent.resourceType === 'brand_kit') {
+    if (!(await confirmBrandKitDeletion(env, user, intent.resourceId))) return notInTrash(trashHref);
   } else {
-    const ok = await confirmDeliveryDeletion(env, user.id, intent.resource_type, intent.resource_id);
+    const ok = await confirmDeliveryDeletion(env, user.id, intent.resourceType, intent.resourceId);
     if (!ok) return notInTrash();
   }
 
-  await env.DB.prepare('UPDATE deletion_intents SET used_at = ?1 WHERE token_hash = ?2')
-    .bind(Date.now(), intent.token_hash).run();
+  await orm(env).update(deletionIntents).set({ usedAt: Date.now() }).where(eq(deletionIntents.tokenHash, intent.tokenHash)).run();
   return deletionPage(
     'Permanently deleted',
     `<h1>Permanently deleted.</h1>
-<p class="name">${escapeHtml(intent.resource_name)}</p>
+<p class="name">${escapeHtml(intent.resourceName)}</p>
 <p>This cannot be restored.</p>
 <p class="actions"><a class="button" href="${escapeHtml(trashHref)}">Return to Trash</a></p>`,
   );
