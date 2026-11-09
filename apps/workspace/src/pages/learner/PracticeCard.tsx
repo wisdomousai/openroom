@@ -23,6 +23,8 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
   const interaction = snapshot.interaction;
   const [answer, setAnswer] = useState(() => initialHomeworkAnswer(interaction));
   const [revealed, setRevealed] = useState(false);
+  // After a wrong answer the accepted answers stay hidden until the student asks for them.
+  const [answerShown, setAnswerShown] = useState(false);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<'save' | 'changed' | 'refresh' | null>(null);
@@ -37,7 +39,7 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
     if (!focusResult.current) return;
     focusResult.current = false;
     result.current?.focus();
-  }, [revealed, busy]);
+  }, [revealed, busy, answerShown]);
   const update = (next: HomeworkPracticeAnswer) => { setAnswer(next); setError(null); setSaved(false); setAttemptId(crypto.randomUUID()); setAttemptGrade(null); };
   const record = async (grade: 'again' | 'good') => {
     focusResult.current = true; setBusy(true); setError(null); setAttemptGrade(grade);
@@ -50,10 +52,11 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
     try {
       const current = await onRefresh();
       if (!current) { setUnavailable(true); return; }
-      setSnapshot(current); setAnswer(initialHomeworkAnswer(current.interaction)); setRevealed(false); setSaved(false);
+      setSnapshot(current); setAnswer(initialHomeworkAnswer(current.interaction)); setRevealed(false); setAnswerShown(false); setSaved(false);
       setAttemptId(crypto.randomUUID()); setAttemptGrade(null); setError(null);
     } catch (cause) { if (!link.report(cause)) setError('refresh'); } finally { setBusy(false); }
   };
+  const back = () => { setRevealed(false); setAnswerShown(false); setSaved(false); setAttemptId(crypto.randomUUID()); setAttemptGrade(null); };
   const check = () => { focusResult.current = true; setRevealed(true); };
   // Return on a phone keyboard checks a typed answer, as the Check button does.
   const checkOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -84,36 +87,36 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
     update({ kind: 'ranking', order });
   };
 
-  if (unavailable) return <div className="grid gap-3"><p role="status" className="text-sm text-muted-foreground">{copy.practiceUnavailable}</p>{onSkip ? <Button className="min-h-11 w-fit" onClick={onSkip}>{copy.continuePractice}</Button> : null}</div>;
+  if (unavailable) return <div className="grid gap-3"><p role="status" className="text-secondary text-muted-foreground">{copy.practiceUnavailable}</p>{onSkip ? <Button className="min-h-11 w-fit" onClick={onSkip}>{copy.continuePractice}</Button> : null}</div>;
   return <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
-    {interaction.type !== 'fill-the-gaps' ? <p lang={locale} className="whitespace-pre-wrap text-base leading-relaxed">{interaction.prompt}</p> : null}
+    {interaction.type !== 'fill-the-gaps' ? <p lang={locale} className="whitespace-pre-wrap text-option">{interaction.prompt}</p> : null}
     <fieldset ref={fieldset} disabled={revealed || busy} className="min-w-0" onFocus={(event) => { if (event.target instanceof HTMLInputElement) field.current = event.target; }}>
       <legend className="sr-only">{copy.yourAnswer}</legend>
       {interaction.type === 'choice' && answer.kind === 'choice' ? <div className="flex flex-col gap-2">
-        {interaction.multiple ? <p className="text-sm text-muted-foreground">{copy.chooseAll}</p> : null}
+        {interaction.multiple ? <p className="text-secondary text-muted-foreground">{copy.chooseAll}</p> : null}
         {interaction.options.map((option) => {
           const selected = answer.optionIds.includes(option.id);
           return <button key={option.id} type="button" aria-pressed={selected} onClick={() => update({ kind: 'choice', optionIds: interaction.multiple ? selected ? answer.optionIds.filter((id) => id !== option.id) : [...answer.optionIds, option.id] : [option.id] })}
-            className={`flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-base ${selected ? 'border-primary bg-accent' : 'border-input bg-background'}`}>
+            className={`flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-option ${selected ? 'border-primary bg-accent' : 'border-input bg-background'}`}>
             <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center border ${interaction.multiple ? 'rounded' : 'rounded-full'} ${selected ? 'border-primary bg-primary text-primary-foreground' : 'border-input'}`}>{selected ? <Check className="size-3" /> : null}</span>
             <span>{option.label}</span>
           </button>;
         })}
       </div> : null}
-      {interaction.type === 'text' && answer.kind === 'text' ? <Input aria-label={copy.yourAnswer} className="min-h-11 text-base" value={answer.text} maxLength={interaction.maxLength ?? 200} onChange={(event) => update({ kind: 'text', text: event.target.value })} onKeyDown={checkOnEnter} enterKeyHint="done" autoComplete="off" lang={locale} /> : null}
-      {interaction.type === 'fill-the-gaps' && answer.kind === 'fill-the-gaps' ? <div className="whitespace-pre-wrap text-base leading-loose">
+      {interaction.type === 'text' && answer.kind === 'text' ? <Input aria-label={copy.yourAnswer} className="min-h-11 text-option" value={answer.text} maxLength={interaction.maxLength ?? 200} onChange={(event) => update({ kind: 'text', text: event.target.value })} onKeyDown={checkOnEnter} enterKeyHint="done" autoComplete="off" lang={locale} /> : null}
+      {interaction.type === 'fill-the-gaps' && answer.kind === 'fill-the-gaps' ? <div className="whitespace-pre-wrap text-option leading-loose">
         {interaction.prompt.split(/(\{\{[^{}]+\}\})/g).map((part, index) => {
           const id = /^\{\{([^{}]+)\}\}$/.exec(part)?.[1];
           const gapIndex = interaction.gaps.findIndex((gap) => gap.id === id);
           if (!id || gapIndex < 0) return <span key={index} lang={locale}>{part}</span>;
-          return <Input key={index} data-gap={id} lang={locale} aria-label={copy.gap(gapIndex + 1)} value={answer.gaps[id] ?? ''} maxLength={200} autoComplete="off" className="mx-1 inline-flex min-h-11 w-32 max-w-full text-base" onChange={(event) => update({ kind: 'fill-the-gaps', gaps: { ...answer.gaps, [id]: event.target.value } })} onKeyDown={checkOnEnter} enterKeyHint="done" />;
+          return <Input key={index} data-gap={id} lang={locale} aria-label={copy.gap(gapIndex + 1)} value={answer.gaps[id] ?? ''} maxLength={200} autoComplete="off" className="mx-1 inline-flex min-h-11 w-32 max-w-full text-option" onChange={(event) => update({ kind: 'fill-the-gaps', gaps: { ...answer.gaps, [id]: event.target.value } })} onKeyDown={checkOnEnter} enterKeyHint="done" />;
         })}
       </div> : null}
       {interaction.type === 'match' && answer.kind === 'match' ? <div className="grid gap-3">
         {interaction.left.map((left) => <div key={left.id} className="grid gap-1.5 sm:grid-cols-2 sm:items-center">
-          <span className="text-base">{left.label}</span>
+          <span className="text-option">{left.label}</span>
           <Select value={answer.pairs[left.id] ?? ''} onValueChange={(value) => update({ kind: 'match', pairs: { ...answer.pairs, [left.id]: value } })} disabled={revealed || busy}>
-            <SelectTrigger aria-label={copy.match(left.label)} className="min-h-11 text-base"><SelectValue placeholder={copy.chooseMatch} /></SelectTrigger>
+            <SelectTrigger aria-label={copy.match(left.label)} className="min-h-11 text-option"><SelectValue placeholder={copy.chooseMatch} /></SelectTrigger>
             <SelectContent>{interaction.right.map((right) => <SelectItem key={right.id} value={right.id}>{right.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>)}
@@ -122,7 +125,7 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
         {answer.order.map((id, index) => {
           const label = interaction.options.find((option) => option.id === id)?.label ?? '';
           return <li key={id} className="flex min-h-12 items-center gap-2 rounded-lg border border-input bg-background pl-3 pr-1">
-            <span className="w-5 shrink-0 text-sm text-muted-foreground">{index + 1}</span><span className="flex-1 text-base">{label}</span>
+            <span className="w-5 shrink-0 text-secondary text-muted-foreground">{index + 1}</span><span className="flex-1 text-option">{label}</span>
             <Button variant="ghost" size="icon" className="size-11 shrink-0" aria-label={copy.moveUp(label)} disabled={index === 0 || revealed} onClick={() => move(index, -1)}><ArrowUp /></Button>
             <Button variant="ghost" size="icon" className="size-11 shrink-0" aria-label={copy.moveDown(label)} disabled={index === answer.order.length - 1 || revealed} onClick={() => move(index, 1)}><ArrowDown /></Button>
           </li>;
@@ -134,14 +137,21 @@ export function PracticeCard({ item, onGrade, onRefresh, onSkip }: {
       </div> : null}
     </fieldset>
     {!revealed ? <Button className="min-h-11 w-fit" disabled={!assessment.complete} onClick={check}>{copy.check}</Button> : <div className="grid gap-3" aria-live="polite">
-      <p ref={result} tabIndex={-1} className="text-base font-semibold outline-none">{assessment.result === 'correct' ? copy.correct : assessment.result === 'incorrect' ? copy.compare : copy.selfCheck}</p>
-      {assessment.answers.length > 0 ? <div className="rounded-lg bg-muted/60 p-3"><p className="mb-1 text-sm font-semibold">{assessment.result === 'incorrect' ? copy.acceptedAnswers : copy.answer}</p><ul className="grid gap-1 text-base">{assessment.answers.map((line, index) => <li key={index}>{line}</li>)}</ul></div> : <p className="text-sm text-muted-foreground">{copy.noSingleAnswer}</p>}
+      <p ref={result} tabIndex={-1} className="text-option font-semibold outline-none">{assessment.result === 'correct' ? copy.correct : assessment.result === 'incorrect' ? copy.compare : copy.selfCheck}</p>
+      {assessment.answers.length > 0 ? (assessment.result !== 'incorrect' || answerShown) ? <div className="rounded-lg bg-muted/60 p-3"><p className="mb-1 text-row-title">{assessment.result === 'incorrect' ? copy.acceptedAnswers : copy.answer}</p><ul className="grid gap-1 text-option">{assessment.answers.map((line, index) => <li key={index}>{line}</li>)}</ul></div> : null : <p className="text-secondary text-muted-foreground">{copy.noSingleAnswer}</p>}
+      {/* The grade each button records is unchanged: Next is good, Show this again later is again, and a wrong answer is again once its answer is shown. */}
       <div className="flex flex-wrap gap-2">
-        {assessment.result !== 'incorrect' ? <Button className="min-h-11" disabled={busy || link.refused || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'again'} onClick={() => void record('good')}>{saved ? copy.saved : assessment.result === 'self-check' ? copy.confident : copy.good}</Button> : null}
-        <Button variant={assessment.result === 'incorrect' ? 'default' : 'outline'} className="min-h-11" disabled={busy || link.refused || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'good'} onClick={() => void record('again')}>{saved && assessment.result === 'incorrect' ? copy.saved : copy.again}</Button>
-        <Button variant="ghost" className="min-h-11" disabled={busy || error !== null} onClick={() => { setRevealed(false); setSaved(false); setAttemptId(crypto.randomUUID()); setAttemptGrade(null); }}><RotateCcw className="size-4" /> {copy.tryAgain}</Button>
+        {assessment.result === 'incorrect' ? <>
+          {!answerShown ? <Button className="min-h-11" disabled={busy || error !== null} onClick={back}>{copy.changeMyAnswer}</Button> : null}
+          {!answerShown ? <Button variant="outline" className="min-h-11" disabled={busy || link.refused} onClick={() => { focusResult.current = true; setAnswerShown(true); }}>{copy.showAnswer}</Button>
+            : <Button className="min-h-11" disabled={busy || link.refused || saved || error === 'changed' || error === 'refresh'} onClick={() => void record('again')}>{saved ? copy.saved : copy.next}</Button>}
+        </> : <>
+          <Button className="min-h-11" disabled={busy || link.refused || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'again'} onClick={() => void record('good')}>{saved && attemptGrade === 'good' ? copy.saved : assessment.result === 'self-check' ? copy.confident : copy.next}</Button>
+          <Button variant="outline" className="min-h-11" disabled={busy || link.refused || saved || error === 'changed' || error === 'refresh' || attemptGrade === 'good'} onClick={() => void record('again')}>{saved && attemptGrade === 'again' ? copy.saved : copy.showAgainLater}</Button>
+          <Button variant="ghost" className="min-h-11" disabled={busy || error !== null} onClick={back}><RotateCcw className="size-4" /> {copy.tryAgain}</Button>
+        </>}
       </div>
-      {error ? <div className="grid gap-2"><p role="alert" className="text-sm text-destructive">{error === 'changed' ? copy.practiceChanged : error === 'refresh' ? copy.practiceRefreshError : copy.practiceSaveError}</p>{error === 'changed' || error === 'refresh' ? <Button variant="outline" className="min-h-11 w-fit" disabled={busy || link.refused} onClick={() => void refresh()}>{copy.refreshPractice}</Button> : null}</div> : null}
+      {error ? <div className="grid gap-2"><p role="alert" className="text-secondary text-destructive">{error === 'changed' ? copy.practiceChanged : error === 'refresh' ? copy.practiceRefreshError : copy.practiceSaveError}</p>{error === 'changed' || error === 'refresh' ? <Button variant="outline" className="min-h-11 w-fit" disabled={busy || link.refused} onClick={() => void refresh()}>{copy.refreshPractice}</Button> : null}</div> : null}
     </div>}
   </div>;
 }

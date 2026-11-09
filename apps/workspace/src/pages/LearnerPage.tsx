@@ -44,6 +44,7 @@ import { recordItemLabel, recordItemUrl } from '../lib/student-links';
 import { VoiceTask } from './learner/VoiceTask';
 import { PrivateAudio } from '../components/PrivateAudio';
 import { PracticeCard } from './learner/PracticeCard';
+import { TaskChangedNotice, useRevisedTask } from './learner/TaskChanged';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@openroom/ui/components/tabs';
 import { LearnerLanguageProvider, useLearnerLanguage } from '../lib/learner-language';
 import { learnerLanguageNames, type LearnerLocale } from '../lib/learner-copy';
@@ -70,7 +71,7 @@ function DeadLink() {
   return (
     <Frame>
       <h1 className="font-display text-screen-title font-semibold tracking-tight">{copy.deadLink}</h1>
-      <p className="text-base">
+      <p className="text-secondary">
         {copy.newLink}
       </p>
     </Frame>
@@ -82,7 +83,7 @@ function TooManyAttempts() {
   return (
     <Frame>
       <h1 className="font-display text-screen-title font-semibold tracking-tight">{copy.tooManyAttempts}</h1>
-      <p className="text-base">
+      <p className="text-secondary">
         {copy.rateLimit}
       </p>
     </Frame>
@@ -94,7 +95,7 @@ function LoadFailed({ onRetry }: { onRetry: () => void }) {
   return (
     <Frame>
       <h1 className="font-display text-screen-title font-semibold tracking-tight">{copy.pageLoadFailed}</h1>
-      <p className="text-base">{copy.pageLoadHelp}</p>
+      <p className="text-secondary">{copy.pageLoadHelp}</p>
       <Button type="button" variant="outline" className="min-h-11 w-fit" onClick={onRetry}>{copy.tryAgain}</Button>
     </Frame>
   );
@@ -142,8 +143,8 @@ function DeadLinkNotice() {
   return (
     <section role="alert" className="flex flex-col gap-1 rounded-lg border border-destructive/40 p-4">
       <h2 className="text-section font-semibold">{copy.deadLink}</h2>
-      <p className="text-base">{copy.newLink}</p>
-      <p className="text-base">{copy.deadLinkKeepWork}</p>
+      <p className="text-secondary">{copy.newLink}</p>
+      <p className="text-secondary">{copy.deadLinkKeepWork}</p>
     </section>
   );
 }
@@ -153,10 +154,10 @@ function QueryError({ error, message, onRetry }: { error: unknown; message: stri
   const { copy } = useLearnerLanguage();
   // A refused link is said once, above the tasks; retrying cannot help.
   if (isDeadLink(error)) return null;
-  if (isRateLimited(error)) return <p role="alert" className="text-base">{copy.rateLimitShort}</p>;
+  if (isRateLimited(error)) return <p role="alert" className="text-secondary">{copy.rateLimitShort}</p>;
   return (
     <div className="grid gap-3">
-      <p role="alert" className="text-base">{message}</p>
+      <p role="alert" className="text-secondary">{message}</p>
       <Button type="button" variant="outline" className="min-h-11 w-fit" onClick={onRetry}>{copy.tryAgain}</Button>
     </div>
   );
@@ -197,6 +198,8 @@ function LearnerContent({ token }: { token: string | null }) {
     queryFn: () => fetchLearnerSessions(token!),
     enabled: token !== null && identityQuery.isSuccess,
     retry: false,
+    // Homework published while the page is open shows when the student comes back to it.
+    refetchOnWindowFocus: true,
   });
   const practiceQuery = useQuery({
     queryKey: ['learner', 'practice'] as const,
@@ -248,10 +251,11 @@ function LearnerContent({ token }: { token: string | null }) {
       </header>
       <Tabs value={activeTab} onValueChange={(value) => {
         setActiveTab(value);
+        if (value === 'lesson' && value !== activeTab) void sessionsQuery.refetch();
         if (value === 'feedback') void feedbackQuery.refetch();
         if (value === 'practice') void practiceQuery.refetch();
       }}>
-        <TabsList className="grid h-12 w-full grid-cols-3" aria-label={copy.learning}><TabsTrigger className="h-10 text-base" value="lesson">{copy.lesson}</TabsTrigger><TabsTrigger className="h-10 text-base" value="practice">{copy.practice}</TabsTrigger><TabsTrigger className="h-10 text-base" value="feedback">{copy.feedback}</TabsTrigger></TabsList>
+        <TabsList className="grid h-12 w-full grid-cols-3" aria-label={copy.learning}><TabsTrigger className="h-10 text-row-title" value="lesson">{copy.lesson}</TabsTrigger><TabsTrigger className="h-10 text-row-title" value="practice">{copy.practice}</TabsTrigger><TabsTrigger className="h-10 text-row-title" value="feedback">{copy.feedback}</TabsTrigger></TabsList>
         <TabsContent forceMount value="lesson" className="mt-5 data-[state=inactive]:hidden">
       {/* A failed refetch keeps the tasks on screen under its message, so typed work is never unmounted. */}
       {sessionsQuery.isError ? (
@@ -260,7 +264,7 @@ function LearnerContent({ token }: { token: string | null }) {
       {sessions === null ? (
         sessionsQuery.isError ? null : <p className="text-secondary text-muted-foreground" role="status">{copy.loading}</p>
       ) : sessions.length === 0 ? (
-        <p className="text-base">{copy.lessonEmpty}</p>
+        <p className="text-secondary">{copy.lessonEmpty}</p>
       ) : (
         <div className="flex flex-col gap-6">
           {latest !== undefined && latest !== null ? (
@@ -289,10 +293,10 @@ function LearnerContent({ token }: { token: string | null }) {
           {feedbackQuery.data?.length === 0 ? <p className="text-muted-foreground">{copy.feedbackEmpty}</p> : feedbackQuery.data?.map((item) => <Card key={item.submissionId}>
             <CardHeader><CardTitle className="text-section">{item.task.title ?? (item.task.kind === 'writing' || item.task.kind === 'voice' ? item.task.prompt : copy.feedback)}</CardTitle></CardHeader>
             <CardContent className="grid gap-5">
-              <p className="whitespace-pre-wrap text-base leading-relaxed">{item.feedback.message}</p>
-              {item.feedback.corrections.map((correction, index) => <div key={index} className="grid gap-2 rounded-lg border border-border p-4"><p className="text-secondary text-muted-foreground">{copy.yourWords}</p><p className="whitespace-pre-wrap text-base">{correction.original}</p><p className="text-secondary text-muted-foreground">{copy.tryThis}</p><p className="whitespace-pre-wrap text-base font-semibold">{correction.replacement}</p><p className="whitespace-pre-wrap text-base leading-relaxed">{correction.explanation}</p></div>)}
+              <p className="whitespace-pre-wrap text-option">{item.feedback.message}</p>
+              {item.feedback.corrections.map((correction, index) => <div key={index} className="grid gap-2 rounded-lg border border-border p-4"><p className="text-secondary text-muted-foreground">{copy.yourWords}</p><p className="whitespace-pre-wrap text-option">{correction.original}</p><p className="text-secondary text-muted-foreground">{copy.tryThis}</p><p className="whitespace-pre-wrap text-option font-semibold">{correction.replacement}</p><p className="whitespace-pre-wrap text-secondary">{correction.explanation}</p></div>)}
               {item.audio && token ? <PrivateAudio key={item.submissionId} submissionId={item.submissionId} {...item.audio} token={token} comments={item.feedback.audioComments} onChanged={() => Promise.all([feedbackQuery.refetch(), sessionsQuery.refetch()])} /> : null}
-              {item.task.kind === 'writing' ? <details><summary className="cursor-pointer text-row-title">{copy.yourResponse}</summary><p className="mt-3 whitespace-pre-wrap text-base leading-relaxed">{item.body}</p></details> : null}
+              {item.task.kind === 'writing' ? <details><summary className="cursor-pointer text-row-title">{copy.yourResponse}</summary><p className="mt-3 whitespace-pre-wrap text-secondary">{item.body}</p></details> : null}
             </CardContent>
           </Card>)}
         </TabsContent>
@@ -370,7 +374,7 @@ function HomeworkBlock({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{latest ? copy.thisSession : session.title}</CardTitle>
+        <CardTitle className="text-section">{latest ? copy.thisSession : session.title}</CardTitle>
         {latest ? <p className="text-secondary text-muted-foreground">{session.title}</p> : null}
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
@@ -403,7 +407,7 @@ function HomeworkTaskView({
     return (
       <div>
         <h3 className="text-row-title">{task.title ?? copy.reading}</h3>
-        <p className="mt-1 whitespace-pre-wrap text-secondary leading-relaxed">{task.body}</p>
+        <p className="mt-1 whitespace-pre-wrap text-secondary">{task.body}</p>
       </div>
     );
   }
@@ -452,6 +456,9 @@ function WritingTask({
     mutationFn: () => saveLearnerWriting(token!, { sessionId, taskId: task.id, body, assignmentRevision: task.assignmentRevision!, submissionId }),
     onError: link.report,
   });
+  // The revised task replaces the old one; the text stays, and Save goes out with the new revision.
+  const revised = useRevisedTask(() => { save.reset(); setSubmissionId(crypto.randomUUID()); });
+  const changed = save.isError && save.error instanceof ApiError && save.error.status === 409;
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-row-title">{task.title ?? copy.writing}</h3>
@@ -460,10 +467,10 @@ function WritingTask({
       {/* Read-only and aria-disabled rather than disabled while saving, so keyboard focus stays on the field or on Save. */}
       <Textarea
         rows={6}
-        readOnly={save.isPending}
+        readOnly={save.isPending || revised.loading}
         value={body}
         onChange={(event) => { setBody(event.currentTarget.value); setSubmissionId(crypto.randomUUID()); save.reset(); }}
-        className="min-h-28 text-base"
+        className="min-h-28 text-option"
         aria-label={task.prompt}
       />
       <Button
@@ -476,7 +483,8 @@ function WritingTask({
         {save.isSuccess ? copy.saved : save.isPending ? copy.saving : copy.save}
       </Button>
       <span role="status" className="sr-only">{save.isSuccess ? copy.saved : ''}</span>
-      {save.isError && !isDeadLink(save.error) ? <p role="alert" className="text-secondary text-destructive">{save.error instanceof ApiError && save.error.status === 409 ? copy.writingChanged : copy.writingError}</p> : null}
+      {changed ? <TaskChangedNotice loading={revised.loading} failed={revised.failed} onShow={() => void revised.load()} /> : null}
+      {save.isError && !changed && !isDeadLink(save.error) ? <p role="alert" className="text-secondary text-destructive">{copy.writingError}</p> : null}
     </div>
   );
 }
