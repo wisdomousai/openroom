@@ -170,7 +170,7 @@ function Content({ office }: { office: typeof Office | null }) {
   if (supported && view !== 'read' && (choosing || !binding)) return <div className="embedded-picker">
     {binding ? <button className="picker-back" onClick={() => setChoosing(false)}>Back to slide</button> : null}
     {error ? <p role="alert">{error}</p> : null}
-    <iframe ref={picker} title="Choose an OpenRoom slide" src="/office/taskpane.html?embed=1" />
+    <iframe ref={picker} title="Add or edit the OpenRoom question" src="/office/taskpane.html?embed=1" />
   </div>;
   return <div className="embedded-slide">
     {snapshot ? <ScaledStage aspect={deckAspectRatio(snapshot.outline?.design?.aspectRatio ?? '16:9')}><StageView snapshot={snapshot} status={display?.status ?? 'live'} embedded hideRail={!display} /></ScaledStage> : <div className="display-message"><h1>OpenRoom Slide</h1>
@@ -178,7 +178,7 @@ function Content({ office }: { office: typeof Office | null }) {
     </div>}
     {view !== 'read' ? <div className="embedded-toolbar">
       {error ? <span role="alert">{error}</span> : <span>{display ? 'Live slide' : sessionSaved ? 'Preview · Resume the session in the OpenRoom pane' : 'Preview · Start a session in the OpenRoom pane'}</span>}
-      {supported ? <button onClick={() => setChoosing(true)}>Choose slide</button> : null}
+      {supported ? <button onClick={() => setChoosing(true)}>Edit</button> : null}
     </div> : null}
   </div>;
 }

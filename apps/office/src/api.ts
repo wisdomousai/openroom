@@ -3,15 +3,15 @@ import type { Connection } from './auth';
 
 export interface Space { id: string; name: string; role: string }
 export interface Deck { id: string; title: string; spaceId: string }
-export interface DeckDetail { deck: Deck; content: Outline | null }
+export interface DeckDetail { deck: Deck; content: Outline | null; contentVersion?: number | null }
 export class ConnectionExpired extends Error {}
 export class RequestError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
 
-export async function request<T>(connection: Connection, path: string, signal?: AbortSignal, body?: object): Promise<T> {
+export async function request<T>(connection: Connection, path: string, signal?: AbortSignal, body?: object, method?: 'DELETE'): Promise<T> {
   if (connection.expiresAt <= Date.now()) throw new ConnectionExpired('Your connection expired. Sign in again to continue.');
-  const response = await fetch(path, { credentials: 'omit', method: body ? 'POST' : 'GET', headers: { authorization: `Bearer ${connection.token}`, ...(body ? { 'content-type': 'application/json' } : {}) }, signal, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const response = await fetch(path, { credentials: 'omit', method: body ? 'POST' : method ?? 'GET', headers: { authorization: `Bearer ${connection.token}`, ...(body ? { 'content-type': 'application/json' } : {}) }, signal, ...(body ? { body: JSON.stringify(body) } : {}) });
   if (response.status === 401) throw new ConnectionExpired('This connection is no longer active. Sign in again to continue.');
   if (!response.ok) {
     const error = await response.json().catch(() => null) as { error?: string } | null;
@@ -27,6 +27,8 @@ export async function request<T>(connection: Connection, path: string, signal?: 
       'activity-not-found': 'This slide changed. Choose a saved OpenRoom slide again.',
       'request-id-conflict': 'This session belongs to another presenter. Resume it with an authorized account or start a new session.',
       'deck-content-not-found': 'Save this deck in OpenRoom before starting a session.',
+      'invalid-content': 'OpenRoom could not save this question. Check the question and its options, then try again.',
+      'resource-in-trash': 'This deck is in the trash in OpenRoom. Restore it there, or save the questions in a new deck.',
     };
     throw new RequestError(response.status, code, messages[code] ?? (response.status === 403 || response.status === 404 ? 'This content is unavailable or you no longer have access.' : response.status === 503 ? 'Live sessions are not available right now. Try again in a minute.' : 'Could not complete this action. Try again.'));
   }

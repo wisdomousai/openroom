@@ -1,6 +1,6 @@
 ---
 title: Use OpenRoom in PowerPoint
-description: Embed OpenRoom slides, connect the task pane, rehearse, and run participation alongside a presentation.
+description: Add questions to slides, embed OpenRoom slides, connect the task pane, rehearse, and run participation alongside a presentation.
 section: Desktop and PowerPoint
 order: 220
 related: [deck-editor, present, live-session, troubleshooting]
@@ -38,9 +38,21 @@ Open the **OpenRoom** task pane, select the sign-in action, complete sign-in in 
 
 Use the same server address throughout sign-in and presentation. The pane stays signed in when it reloads or PowerPoint restarts, until the connection expires after 30 days or is revoked. If it asks you to sign in again, do that before resuming the existing session. Revoke an old connection in OpenRoom **Settings → Connected applications** when needed.
 
-## Insert an OpenRoom slide
+## Add a question to a slide
 
-Choose a space, deck, and slide in the embedded picker. Alternatively:
+Select a slide in PowerPoint. In the **OpenRoom** task pane, choose a type (multiple choice, word cloud, open text, scale, number, ranking or Q&A), write the question and its options, and select **Add to selected slide**. To show the question on the slide, insert **OpenRoom Slide** from **Home → Add-ins** on that slide.
+
+You can also insert **OpenRoom Slide** first and add the question in the slide itself.
+
+The first question creates an OpenRoom deck for the presentation in the space chosen under **Save questions in**. Later questions go to the same deck. A copy of the PowerPoint file uses the same deck.
+
+To change a question, select its slide. The pane shows **Edit question**; select **Save changes**. A session that is already running keeps the version it started with. Other settings, such as correct answers for text and numbers, ranking order and timers, are in the OpenRoom editor: select **More settings in OpenRoom**. Once a question has a setting that the form cannot write back, the pane no longer shows the form for it. It shows **Edit deck** instead.
+
+The pane does not save over changes that the OpenRoom editor has not saved yet, or over a newer version of the same question. It tells you to save in the editor or reload the question first.
+
+## Use a slide from an OpenRoom deck
+
+Open **Use a slide from an OpenRoom deck** in the pane or the embedded slide, then choose a space, deck, and slide. Alternatively:
 
 1. Open a cloud deck in OpenRoom's editor.
 2. Select the slide.
