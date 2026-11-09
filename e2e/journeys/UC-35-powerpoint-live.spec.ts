@@ -10,6 +10,7 @@ async function connect(page: Page) {
   const popup = page.waitForEvent('popup');
   await page.getByRole('button', { name: 'Sign in to OpenRoom', exact: true }).click();
   await (await popup).getByRole('button', { name: 'Approve connection', exact: true }).click();
+  await page.getByText('Use a slide from an OpenRoom deck', { exact: true }).click();
   await expect(page.getByRole('navigation', { name: 'Choose content' })).toBeVisible();
 }
 const select = (page: Page, id: string) => page.evaluate((id) => (window as unknown as { __officeFile: { select(id: string): void } }).__officeFile.select(id), id);
@@ -117,6 +118,7 @@ test('recovers a lost start response, retains answers across revisits and reload
     expect(Object.keys(document.presentationTags).sort()).toEqual(['OPENROOM_PRESENTATION', 'OPENROOM_SESSION']);
     // The connection survives a reload (and a PowerPoint restart) without signing in again.
     await page.reload();
+    await page.getByText('Use a slide from an OpenRoom deck', { exact: true }).click();
     await expect(page.getByRole('navigation', { name: 'Choose content' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Sign in to OpenRoom', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Resume session', exact: true }).click();

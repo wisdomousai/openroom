@@ -1,13 +1,16 @@
 # OpenRoom for PowerPoint
 
-Insert **OpenRoom Slide** from PowerPoint's Add-ins menu. Choose any slide from an
-OpenRoom deck inside the embedded surface, or paste a code copied with **Copy embed
-code** in the OpenRoom editor. Content, freeform objects, media, exercises, questions,
-and detail slides all use the shared audience renderer. Choosing a slide previews it
+Select a slide and add a question in the task pane, or insert **OpenRoom Slide**
+from **Home → Add-ins** and add it in the slide itself. The form covers
+multiple choice, word cloud, open text, scale, number, ranking and Q&A. To use a
+slide from an existing OpenRoom deck instead, open **Use a slide from an OpenRoom
+deck**: choose any slide there, or paste a code copied with **Copy embed code** in
+the OpenRoom editor. Content, freeform objects, media, exercises, questions, and
+detail slides all use the shared audience renderer. Choosing a slide previews it
 immediately without starting participation. No OpenRoom slide type is excluded.
 
-The task pane provides the same picker and paste field, plus session controls.
-Choosing there also configures a subsequently inserted OpenRoom Slide without a
+The task pane provides the same form, picker and paste field, plus session controls.
+Adding or choosing there also configures a subsequently inserted OpenRoom Slide without a
 second connection step. Start session gathers the selected OpenRoom slides in native
 presentation order into one frozen session and audience code. A visible content
 add-in in Slide Show requests activation through the signed-in pane; questions open
@@ -113,6 +116,33 @@ manifest has a different version. Slides inserted under 1.0.0.0 or 1.0.1.0 must
 be inserted again. Both use 32/64-pixel PNG icons, different for each add-in. The add-in remains unreleased. Local HTTPS health and both manifest origins
 were verified with certificate validation enabled.
 
+## Questions created in PowerPoint
+
+- The first question in a presentation creates an OpenRoom deck named after the
+  file (shape `lecture`) in the space chosen under **Save questions in**. Only
+  spaces where the account is owner or editor are offered. The deck reference is
+  stored in the `OPENROOM_DECK` presentation tag; later questions are appended to
+  that deck as new versions.
+- Selecting a slide whose question is in that deck opens it for editing, for an
+  account that is owner or editor in the deck's space. A save keeps the question
+  and option IDs, and settings made in the OpenRoom editor (display, timer, notes,
+  result visibility) when the type is unchanged. A running session keeps the
+  version it started with.
+- A save is refused when the deck editor holds an unsaved draft for the deck (a new
+  version would delete it) and when the question was changed in OpenRoom after the
+  form was opened. If the deck named in the presentation is deleted, in the trash or
+  not writable, the form offers a new deck in a chosen space and replaces the
+  `OPENROOM_DECK` tag.
+- Selecting another slide keeps an edit with unsaved changes open until the host
+  discards it.
+- Questions this form cannot write back (correct answers for text or numbers,
+  ranking order, styled option text, fill the gaps, matching) and slides from other
+  decks show **Edit deck**, a link to the OpenRoom editor, instead of the form.
+- A copy of the `.pptx` file keeps the same `OPENROOM_DECK` reference, so new
+  questions in either file go to the same deck.
+- Start session needs all source decks in one space. Keep questions created here
+  in the same space as any deck slides used in the same presentation.
+
 ## Rehearsal and the embedded display
 
 - Rehearse selected slide loads the saved slide once and runs commands in
@@ -122,15 +152,15 @@ were verified with certificate validation enabled.
 - The preview frame uses the same `StageView` as the projector. Its state uses
   `packages/domain/src/wire-snapshots.ts`, also used by the Worker. Correct answers
   become available only at reveal; private notes stay excluded.
-- After sideloading the manifests, insert **OpenRoom Slide** using PowerPoint's
-  Add-ins menu. Sign in and choose a slide, or paste its embed code. The code is a
+- After sideloading the manifests, insert **OpenRoom Slide** from
+  **Home → Add-ins**. Sign in and choose a slide, or paste its embed code. The code is a
   versioned deck/slide reference, never a credential. Access is checked by the
   ordinary deck API. A local file must be saved to a workspace before PowerPoint
   can resolve its code. Copying a code saves the current editor content first.
 - The embedded picker runs in a same-origin frame and uses its containing Office
   runtime for document operations. Only the audience projection and public binding
   return to the content surface; account credentials stay in the picker runtime.
-- Inserting the native content-add-in shape still uses PowerPoint's Add-ins menu;
+- Inserting the native content-add-in shape still uses **Home → Add-ins**;
   the task-pane API does not create that shape. No fake image or link substitutes
   for the embedded slide.
 - The pane sends stage-role snapshots through a same-origin `BroadcastChannel`.
@@ -147,6 +177,9 @@ were verified with certificate validation enabled.
   image of live audience responses into the presentation. See Microsoft's
   [content add-in guidance](https://learn.microsoft.com/en-us/office/dev/add-ins/design/content-add-ins)
   and [snapshot setting](https://learn.microsoft.com/en-us/javascript/api/manifest/allowsnapshot).
+
+UC-62 creates questions in the pane and in the slide, edits one, checks the
+validation messages and the deck tag, and starts a session with them.
 
 UC-36 uses a simulated Office adapter with real local account/live services. It
 checks zero rehearsal writes, sample percentages, private-note and unrevealed-answer
@@ -166,7 +199,8 @@ rehearsal and embedded-result screenshots were inspected. It does not prove actu
   settings or tags.
 - `OPENROOM_PRESENTATION` is a random presentation reference.
   `OPENROOM_ACTIVITY` contains only version, presentation ID, original slide ID,
-  space ID, deck ID and step ID. References do not grant access.
+  space ID, deck ID and step ID. `OPENROOM_DECK` contains only version,
+  presentation ID, space ID and deck ID. References do not grant access.
 - `OPENROOM_SESSION` contains only version, presentation ID and session ID.
   It is written before Start is sent; retries reuse that ID and the same audience.
   Resume after reconnecting checks current account and space access before issuing
