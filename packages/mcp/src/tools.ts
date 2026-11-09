@@ -24,6 +24,7 @@ import {
   isTutoringApiPath,
   TUTORING_API_PATH_PATTERN,
   compileToOutline,
+  joinCodeOpens,
   parseOutline,
   parseStartOutline,
   resolveRevealOrder,
@@ -253,7 +254,8 @@ const TOOLS: ToolDefinition[] = [
       'Create a live session from an Outline v1 document (YAML/JSON text or object). ' +
       'SimpleSession (title + questions) and classroom poll lists compile to an outline of interaction steps. ' +
       'Returns the join code, hostToken, stageToken and the absolute joinUrl and stageUrl (the projector page). Use session_command for live control. ' +
-      'defaults.identityMode guest-list requires the guestList capability (403 guest-list-required). ' +
+      'defaults.identityMode guest-list requires the guestList capability (403 guest-list-required) and returns no joinUrl, because a code alone admits nobody: ' +
+      'mint each guest’s link with POST /api/sessions/{code}/guest-links {displayName} (Bearer hostToken) and give each guest the join page address with ?code={code}&guest={token}. ' +
       'A session created here has no student, so identified is refused with 422 identified-session-needs-student; use deck_start for an identified lesson. ' +
       AUDIENCE_LIMIT,
     inputSchema: {
@@ -274,7 +276,9 @@ const TOOLS: ToolDefinition[] = [
     description:
       'Get a session’s current status by join code: session status, participant count, ' +
       'each question’s lifecycle state (pending/open/closed/revealed), and position: the slide showing ' +
-      '{stepId, stepIndex (from 0), stepCount, kind, shownGroups, revealGroups}. shownGroups equals revealGroups when the whole slide is showing. No results included.',
+      '{stepId, stepIndex (from 0), stepCount, kind, shownGroups, revealGroups}. shownGroups equals revealGroups when the whole slide is showing. No results included. ' +
+      'Individual responses and participant records are deleted 30 minutes after the session ends: from then on participantCount is absent and ' +
+      'answersDeletedAt (epoch ms) says when they were deleted, so do not report the session as having had no participants.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -473,8 +477,9 @@ const TOOLS: ToolDefinition[] = [
     description:
       'Open a live session from a deck: files the durable session (the delivery instance) and launches it, started by ' +
       'default. Returns the session code, join code, hostToken, stageToken, the absolute stageUrl (the projector page) and joinUrl, plus the sessionId and ' +
-      'the deck version delivered. An identified session returns no joinUrl, because a code alone admits nobody: mint the student’s link with ' +
-      'openroom_api POST /api/tutoring/students/{studentId}/links {learnerId?, sessionCode} and give the student the joinUrl it returns. ' +
+      'the deck version delivered. An identified or guest-list session returns no joinUrl, because a code alone admits nobody. For an identified session mint the student’s link with ' +
+      'openroom_api POST /api/tutoring/students/{studentId}/links {learnerId?, sessionCode} and give the student the joinUrl it returns; ' +
+      'for a guest-list session mint each guest’s link with POST /api/sessions/{code}/guest-links {displayName} (Bearer hostToken) and give each guest the join page address with ?code={code}&guest={token}. ' +
       'Each call without requestId files a new session. For a retry-safe start pass requestId: generate one UUID before the first call and reuse it after a timeout or interruption; ' +
       'the same requestId returns the same session without resetting position, answers or reveals. requestId starts the current saved version at once, so it takes no version, title or start. ' +
       'Only a stamped version can launch — a deck with no content ' +
@@ -654,7 +659,11 @@ export async function callTool(
         );
       }
       const created = await deps.createSession(resolved.outline);
-      return { ok: true, ...created, ...absoluteSessionUrls(deps.appOrigin, created) };
+      const shared = { ok: true, ...created, ...absoluteSessionUrls(deps.appOrigin, created) };
+      // A guest-list session admits only each guest's link, so a bare join URL opens nothing.
+      if (joinCodeOpens(resolved.outline.defaults?.identityMode)) return shared;
+      const { joinUrl: _closed, ...withoutJoinUrl } = shared;
+      return withoutJoinUrl;
     }
     case 'session_status': {
       const code = requireString(args, 'code');
@@ -668,9 +677,10 @@ export async function callTool(
         code: exported['code'],
         status: exported['status'],
         revision: exported['revision'],
-        participantCount: exported['participantCount'],
+        ...(exported['participantCount'] === undefined ? {} : { participantCount: exported['participantCount'] }),
         ...(exported['position'] === undefined ? {} : { position: exported['position'] }),
         ...(exported['endedAt'] === undefined ? {} : { endedAt: exported['endedAt'] }),
+        ...(exported['answersDeletedAt'] === undefined ? {} : { answersDeletedAt: exported['answersDeletedAt'] }),
         interactions: interactions.map((i) => ({
           id: i['id'],
           prompt: i['prompt'],

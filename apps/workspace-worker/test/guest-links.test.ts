@@ -46,7 +46,9 @@ describe('guest-list sessions', () => {
       body: JSON.stringify({ outline: GUEST_LIST_OUTLINE }),
     });
     expect(created.status).toBe(201);
-    const session = (await created.json()) as { sessionCode: string; hostToken: string; code: string };
+    const session = (await created.json()) as { sessionCode: string; hostToken: string; code: string; joinUrl?: string };
+    // The code alone admits nobody here, so no bare join address is handed out.
+    expect(session.joinUrl).toBeUndefined();
 
     const first = await mintLink(session, owner, 'Alex');
     const second = await mintLink(session, owner, 'Alex');

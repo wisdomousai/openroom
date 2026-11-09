@@ -4,7 +4,7 @@ import { canAdvanceOutline, canRetreatOutline } from './outline-navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHotkeys } from '@tanstack/react-hotkeys';
 import { getTheme, type ThemeId } from '@openroom/ui';
-import { deckAspectRatio } from '@openroom/schema';
+import { deckAspectRatio, joinCodeOpens } from '@openroom/schema';
 import {
   isMarkShape,
   type InkColor,
@@ -19,6 +19,7 @@ import { formatClock, formatQuestionLeft, useClosesAt, useSessionClock } from '.
 import { QuestionRailFooter } from './QuestionRailFooter';
 import { sessionThemeCommand } from './sdk';
 import { EndSessionDialog } from './EndSessionDialog';
+import { exportFailureLine } from './export-lines';
 import { ToastRegion } from '@openroom/ui/toasts';
 import { useTheme } from '@openroom/ui/theme-provider';
 import { ThemeStudio } from '@openroom/ui/theme-studio';
@@ -375,15 +376,14 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   const { joined, answered } = countsOf(snapshot);
 
   const learner = exit.student?.student ?? null;
-  const identified = snapshot?.outline?.content?.defaults?.identityMode === 'identified';
-
   /**
-   * An identified session is entered with a personal access link, so a join
-   * code on the tutor's screen buys nothing and invites bystanders. It is not
-   * shown anywhere in this console for such a session — not in the header, not
-   * in the rail, not in the menu.
+   * An identified session is entered with a personal access link and a
+   * guest-list session with each guest's own link, so a join code on the
+   * host's screen buys nothing and invites bystanders. It is not shown anywhere
+   * in this console for such a session: not in the header, not in the rail,
+   * not in the menu.
    */
-  const showCode = !identified;
+  const showCode = joinCodeOpens(snapshot?.outline?.content?.defaults?.identityMode);
 
   /**
    * The marks the last Clear removed, for Undo, and how many of them are back
@@ -565,7 +565,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
   const doExport = useCallback(
     (format: 'csv' | 'json' | 'answers') => {
       downloadExport(live.sessionCode, live.hostToken, format).catch((err: unknown) => {
-        push(err instanceof Error ? err.message : 'Export failed', 'error');
+        push(exportFailureLine(err), 'error');
       });
     },
     [downloadExport, live.sessionCode, live.hostToken, push],
@@ -734,6 +734,7 @@ export function LiveHost({ live, onLeave, onReturnToDeck, onPosition, onAudience
         activeThemeName={activeThemeName}
         onOpenTheme={() => setThemeOpen(true)}
         onExport={doExport}
+        answersExport={snapshot?.exports?.answers}
         documentWindow={documentWindow}
         libraryPlace={exit.deckPlace}
         onBackToDeck={backToDeck}

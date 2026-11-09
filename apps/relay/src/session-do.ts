@@ -67,6 +67,7 @@ import {
   outlineResourceIds,
   mapOutlineResourceSources,
   openRoomResourceBytesMatch as resourceBytesMatchType,
+  joinCodeOpens,
   type Outline,
 } from '@openroom/schema';
 
@@ -624,7 +625,7 @@ export class SessionDO implements DurableObject {
       typeof supplied === 'string' ? supplied.trim().replace(/\s+/g, ' ').slice(0, 64) : '';
     const seatKey =
       typeof seatKeyRaw === 'string' ? seatKeyRaw.trim().slice(0, 64) : '';
-    if (identityMode === 'identified' || identityMode === 'guest-list') {
+    if (!joinCodeOpens(identityMode)) {
       if (identityName === '') {
         return json(
           {
@@ -730,7 +731,7 @@ export class SessionDO implements DurableObject {
       });
     }
 
-    if (identityMode === 'identified' || identityMode === 'guest-list') {
+    if (!joinCodeOpens(identityMode)) {
       // The invite or link *is* the recovery credential: re-entering with the
       // same seat key (never the raw token) must land on the same participant.
       const existing = Object.entries(state.participants).find(
@@ -775,7 +776,7 @@ export class SessionDO implements DurableObject {
     const lane = paired ? ((joinSeq % 2) as 0 | 1) : undefined;
     if (paired) this.#setMeta('joinSeq', joinSeq + 1);
     let participantName: string | undefined;
-    if (identityMode === 'identified' || identityMode === 'guest-list') {
+    if (!joinCodeOpens(identityMode)) {
       participantName = identityName;
     } else if (identityMode === 'nickname') {
       const taken = new Set<string>();
@@ -792,7 +793,7 @@ export class SessionDO implements DurableObject {
         [participantId]: {
           joinedAt: now,
           ...(participantName === undefined ? {} : { name: participantName }),
-          ...((identityMode === 'identified' || identityMode === 'guest-list') && seatKey !== ''
+          ...(!joinCodeOpens(identityMode) && seatKey !== ''
             ? { seatKey }
             : {}),
           ...(lane === undefined ? {} : { lane }),

@@ -14,7 +14,9 @@ Open **Session menu** in the presenter and choose a download:
 | --- | --- |
 | Download JSON | Structured session results for analysis or processing. |
 | Download counts (CSV) | Aggregate results in a spreadsheet-friendly file. |
-| Download responses (CSV) | Individual answers, available with named-response export access or for a guest-list session. |
+| Download responses (CSV) | Individual answers, available with **Named response exports** or for a guest-list session. |
+
+Without **Named response exports**, the menu shows a line naming it in place of **Download responses (CSV)**, and space owners and editors get a **Plans** item. Individual responses are deleted 30 minutes after the session ends; from then on the menu says so, unless a saved results file still holds them.
 
 Downloads reflect the responses available at that moment. Download again after the final question for a complete copy. Individual-response exports can contain participant names; free-text answers can also identify a person regardless of the session's identity setting.
 

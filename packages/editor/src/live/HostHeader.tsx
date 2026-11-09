@@ -4,6 +4,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Lock,
   LogOut,
   Monitor,
   Palette,
@@ -14,6 +15,7 @@ import {
 import { useEditorServices, type LibraryPlace } from '../services';
 import { Button } from '@openroom/ui/components/button';
 import { SessionFullNotice } from './SessionFullNotice';
+import { RESPONSES_DELETED, RESPONSES_NEED_PLAN, type AnswersExport } from './export-lines';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,7 +49,7 @@ const STATUS_DOT: Record<ConnectionStatus, string> = {
 export interface HostHeaderProps {
   status: ConnectionStatus;
   code: string;
-  /** An identified tutoring session shows the learner, never a join code. */
+  /** False when the code opens nothing (identified, guest-list); an identified session shows the learner instead. */
   showCode: boolean;
   learnerName?: string | null;
   sessionTitle: string;
@@ -73,6 +75,8 @@ export interface HostHeaderProps {
   activeThemeName: string;
   onOpenTheme: () => void;
   onExport: (format: 'csv' | 'json' | 'answers') => void;
+  /** Whether the individual-responses file downloads, from the host snapshot; `available` when the server does not say. */
+  answersExport?: AnswersExport;
   /** `null` until the desktop shell answers; hides the exit destination. */
   documentWindow: boolean | null;
   /** The deck's place in the Library, so leaving mid-session keeps the folder. */
@@ -110,6 +114,7 @@ export function HostHeader({
   activeThemeName,
   onOpenTheme,
   onExport,
+  answersExport = 'available',
   documentWindow,
   libraryPlace = null,
   onBackToDeck,
@@ -201,12 +206,14 @@ export function HostHeader({
               Copy join link
             </DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem asChild>
-            <a href={joinUrl} target="_blank" rel="noreferrer">
-              <ExternalLink aria-hidden="true" />
-              Join page
-            </a>
-          </DropdownMenuItem>
+          {showCode ? (
+            <DropdownMenuItem asChild>
+              <a href={joinUrl} target="_blank" rel="noreferrer">
+                <ExternalLink aria-hidden="true" />
+                Join page
+              </a>
+            </DropdownMenuItem>
+          ) : null}
           {stageToken ? (
             <DropdownMenuItem asChild>
               <a href={services.live.stageUrl(sessionCode, stageToken)} target="_blank" rel="noreferrer">
@@ -304,10 +311,26 @@ export function HostHeader({
             <Download aria-hidden="true" />
             Download counts (CSV)
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onExport('answers')}>
-            <Download aria-hidden="true" />
-            Download responses (CSV)
-          </DropdownMenuItem>
+          {answersExport === 'available' ? (
+            <DropdownMenuItem onSelect={() => onExport('answers')}>
+              <Download aria-hidden="true" />
+              Download responses (CSV)
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuLabel
+              data-or-lock={answersExport === 'needs-plan' ? 'named-response-exports' : undefined}
+              className="flex max-w-64 items-start gap-2 text-caption font-normal text-muted-foreground"
+            >
+              {answersExport === 'needs-plan' ? <Lock aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" /> : null}
+              {answersExport === 'needs-plan' ? RESPONSES_NEED_PLAN : RESPONSES_DELETED}
+            </DropdownMenuLabel>
+          )}
+          {answersExport === 'needs-plan' && canManagePlan ? (
+            <DropdownMenuItem onSelect={() => navigate({ kind: 'plans' })}>
+              <Lock aria-hidden="true" />
+              Plans
+            </DropdownMenuItem>
+          ) : null}
           {documentWindow === null ? null : !documentWindow ? (
             <>
               <DropdownMenuSeparator />

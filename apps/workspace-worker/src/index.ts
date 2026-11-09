@@ -18,7 +18,7 @@ import { generateSessionCode, normalizeSessionCode } from '@openroom/domain';
 import { serveOffice } from './office';
 import { resumeSessionRoute } from './deck-start';
 import { startPresentationRoute } from './presentation-start';
-import { compileOutline, compileToOutline, parseStartOutline, type Outline } from '@openroom/schema';
+import { compileOutline, compileToOutline, joinCodeOpens, parseStartOutline, type IdentityMode, type Outline } from '@openroom/schema';
 
 import {
   authStatusRoute,
@@ -204,21 +204,24 @@ function authenticate(
  * know their shapes: the stage (projector) URL and the join URL. With
  * JOIN_ORIGIN unset the join SPA is path-mounted on this origin.
  *
- * An identified session admits nobody by code alone, so its result carries no
- * joinUrl at all; the usable join URL is the one the link mint returns with the
- * student's link in it (`mintStudentLinkRoute` with a sessionCode).
+ * An identified or guest-list session admits nobody by code alone
+ * (`joinCodeOpens`), so its result carries no joinUrl at all. For an
+ * identified session the usable join URL is the one the link mint returns with
+ * the student's link in it (`mintStudentLinkRoute` with a sessionCode); a
+ * guest-list seat's address is formed from the session code and that seat's
+ * guest link.
  */
 function sessionShareUrls(
   session: CreatedSession,
   origin: string | undefined,
-  identified: boolean,
+  identityMode: IdentityMode | undefined,
 ): { joinUrl?: string; stageUrl?: string } {
   const join = session.joinUrl;
   const joinUrl = origin !== undefined && join.startsWith('/') ? `${origin}${join}` : join;
   const stageUrl = origin === undefined
     ? undefined
     : `${origin}/stage/?session=${encodeURIComponent(session.sessionCode)}&token=${encodeURIComponent(session.stageToken)}`;
-  return { joinUrl: identified ? undefined : joinUrl, ...(stageUrl === undefined ? {} : { stageUrl }) };
+  return { joinUrl: joinCodeOpens(identityMode) ? joinUrl : undefined, ...(stageUrl === undefined ? {} : { stageUrl }) };
 }
 
 /**
@@ -383,7 +386,7 @@ export async function launchSessionForUser(
 
   return json({
     ...created.session,
-    ...sessionShareUrls(created.session, input.origin, validation.outline.defaults?.identityMode === 'identified'),
+    ...sessionShareUrls(created.session, input.origin, validation.outline.defaults?.identityMode),
     ...(input.studentId === null ? {} : { studentId: input.studentId }),
     sessionId: input.sessionId,
     deckId: input.deckId,
@@ -464,7 +467,7 @@ async function createLiveSessionRoute(request: Request, env: Env): Promise<Respo
     });
   }
 
-  return json({ ...created.session, ...sessionShareUrls(created.session, new URL(request.url).origin, false) }, 201);
+  return json({ ...created.session, ...sessionShareUrls(created.session, new URL(request.url).origin, outline.defaults?.identityMode) }, 201);
 }
 
 /**

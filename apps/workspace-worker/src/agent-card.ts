@@ -93,7 +93,8 @@ export function buildAgentCard(origin: string): AgentCard {
         name: 'Create live session',
         description:
           'Create a live session from a validated session outline. Returns join code, joinUrl, hostToken ' +
-          'and stageToken. Requires bearer auth (API token, OAuth access token, or admin key).',
+          'and stageToken; a guest-list session returns no joinUrl, because each guest joins with their own guest link. ' +
+          'Requires bearer auth (API token, OAuth access token, or admin key).',
         tags: ['session', 'create', 'live', 'classroom'],
         examples: ['Create a session from this validated outline YAML.'],
         inputModes: ['text/plain', 'application/json'],
@@ -104,7 +105,8 @@ export function buildAgentCard(origin: string): AgentCard {
         name: 'Session status',
         description:
           'Get a session’s current status by join code: session status, participant count, and each ' +
-          'question’s lifecycle state (pending/open/closed/revealed). No results included.',
+          'question’s lifecycle state (pending/open/closed/revealed). No results included. Once individual responses ' +
+          'are deleted, 30 minutes after the end, the participant count is absent and answersDeletedAt says when.',
         tags: ['session', 'status', 'monitor'],
         examples: ['What is the status of session ABCD1234?'],
         inputModes: ['text/plain', 'application/json'],

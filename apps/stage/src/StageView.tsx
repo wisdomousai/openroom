@@ -23,7 +23,7 @@ import { MomentLayer } from './layers/moment';
 import { AggregateChart } from '@openroom/charts';
 import { AnimatedNumber } from './viz/common';
 import { Visualization } from './viz';
-import { deckAspectRatio, fillTheGapsPromptText, seededShuffle } from '@openroom/schema';
+import { deckAspectRatio, fillTheGapsPromptText, joinCodeOpens, seededShuffle } from '@openroom/schema';
 import { InkOverlay, TokenLine } from './ink';
 
 /** True while the host has put session Q&A on the projector (list or spotlight). */
@@ -161,11 +161,14 @@ export function StageView({
   const code = snapshot?.code ?? '······';
   const joinUrl = resolveJoinUrl(snapshot, code);
   /*
-   * An identified session admits only the learner's own access link, so a
-   * code or QR on the shared screen admits nobody and invites bystanders. The
-   * Stage prints neither, as the console header does not.
+   * An identified session admits only the learner's own access link and a
+   * guest-list session only each guest's link, so a code or QR on the shared
+   * screen admits nobody and invites bystanders. The Stage prints neither, as
+   * the console header does not, and says who it is waiting for instead.
    */
-  const showJoin = snapshot?.identityMode !== 'identified';
+  const showJoin = joinCodeOpens(snapshot?.identityMode);
+  const waitingLine =
+    snapshot?.identityMode === 'guest-list' ? 'Waiting for invited people' : 'Waiting for the student';
   const interaction = snapshot?.interaction ?? null;
   // Require an actual outline. Without this, `snapshot.outline?.… !== 'interaction'`
   // is true when outline is missing, so outlineContent becomes `undefined` and the
@@ -212,13 +215,14 @@ export function StageView({
             offline={status === 'offline'}
             connecting={status === 'connecting' && snapshot !== null}
             showJoin={showJoin}
+            waitingLine={waitingLine}
             compact
           />
         ) : null}
         {/* Standalone stage owns the page landmark; embedded LiveHost already has <main>. */}
         {embedded ? (
           <div className="stage__main" style={{ position: 'relative' }}>
-            <Body snapshot={snapshot} reduced={reduced} code={code} joinUrl={joinUrl} showJoin={showJoin} overlay={<InkOverlay
+            <Body snapshot={snapshot} reduced={reduced} code={code} joinUrl={joinUrl} showJoin={showJoin} waitingLine={waitingLine} overlay={<InkOverlay
               marks={snapshot?.marks}
               capture={drawTool}
               color={inkColor}
@@ -233,7 +237,7 @@ export function StageView({
           </div>
         ) : (
           <main className="stage__main" style={{ position: 'relative' }}>
-            <Body snapshot={snapshot} reduced={reduced} code={code} joinUrl={joinUrl} showJoin={showJoin} overlay={<InkOverlay marks={snapshot?.marks} />} />
+            <Body snapshot={snapshot} reduced={reduced} code={code} joinUrl={joinUrl} showJoin={showJoin} waitingLine={waitingLine} overlay={<InkOverlay marks={snapshot?.marks} />} />
             <StageMeaning meaning={snapshot?.meaning} dictionary={snapshot?.dictionary} />
             <StageClock snapshot={snapshot} />
           </main>
@@ -261,6 +265,7 @@ function Rail({
   offline,
   connecting,
   showJoin,
+  waitingLine,
   compact,
 }: {
   code: string;
@@ -272,8 +277,10 @@ function Rail({
   closesAt?: number;
   offline: boolean;
   connecting: boolean;
-  /** False for an identified session: no code, no QR. */
+  /** False when the code opens nothing (identified, guest-list): no code, no QR. */
   showJoin: boolean;
+  /** Shown in place of the code while nobody has joined. */
+  waitingLine: string;
   compact: boolean;
 }) {
   const answeredPct = expected > 0 ? Math.min(100, Math.round((answered / expected) * 100)) : 0;
@@ -311,7 +318,7 @@ function Rail({
           </div>
         </>
       ) : joined === 0 ? (
-        <p className="rail__waiting">Waiting for the student</p>
+        <p className="rail__waiting">{waitingLine}</p>
       ) : null}
 
       <p className="rail__counts">
@@ -343,6 +350,7 @@ function Body({
   code,
   joinUrl,
   showJoin,
+  waitingLine,
   overlay,
 }: {
   snapshot: StageSnapshot | null;
@@ -350,6 +358,7 @@ function Body({
   code: string;
   joinUrl: string;
   showJoin: boolean;
+  waitingLine: string;
   overlay?: React.ReactNode;
 }) {
   if (!snapshot) {
@@ -428,6 +437,7 @@ function Body({
         code={code}
         joinUrl={joinUrl}
         showJoin={showJoin}
+        waitingLine={waitingLine}
         joined={snapshot.participantCount}
       />
     );
@@ -661,13 +671,16 @@ function IdleScreen({
   code,
   joinUrl,
   showJoin,
+  waitingLine,
   joined,
 }: {
   lobby: boolean;
   code: string;
   joinUrl: string;
-  /** False for an identified session: no code, address or QR. */
+  /** False when the code opens nothing (identified, guest-list): no code, address or QR. */
   showJoin: boolean;
+  /** Shown in place of the code while nobody has joined. */
+  waitingLine: string;
   joined: number;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -705,7 +718,7 @@ function IdleScreen({
             </div>
           </>
         ) : joined === 0 ? (
-          <p className="idle__waiting">Waiting for the student</p>
+          <p className="idle__waiting">{waitingLine}</p>
         ) : null}
         <p className="idle__sub">
           <span className="idle__state">{lobby ? 'Waiting to start' : 'Next'}</span> ·{' '}

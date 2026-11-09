@@ -17,6 +17,7 @@ import { isValidSessionCode, type Command } from '@openroom/domain';
 import type { Outline } from '@openroom/schema';
 
 import { parseExportFormat } from './export.js';
+import { ANSWERS_DELETED_HEADER } from './session-do/export-response.js';
 import { joinUrlForCode, type JoinOriginEnv } from './join-url.js';
 import { extractToken, signToken, verifyToken, type Role, type TokenPayload } from './tokens.js';
 
@@ -269,14 +270,39 @@ export async function stateRoute<G>(live: Live<G>, request: Request, url: URL, s
     return json({ error: 'role-mismatch' }, 403);
   }
 
+  const host = auth.payload.role === 'host';
   const params: Record<string, string> = { role: auth.payload.role };
   if (auth.payload.hostId) params.hostId = auth.payload.hostId;
-  if (auth.payload.role === 'host') params.canRecover = String(auth.canRecover);
+  if (host) {
+    params.canRecover = String(auth.canRecover);
+    // The host snapshot says which exports the session menu offers (exportAvailability).
+    if (await live.authority.mayExportAnswers(sessionCode)) params.mayExportAnswers = '1';
+  }
   const after = url.searchParams.get('afterRevision');
   if (after !== null) params.afterRevision = after;
   if (auth.payload.participantId !== undefined) params.participantId = auth.payload.participantId;
 
-  return withApiHeaders(await sessionStub(live.env, sessionCode).fetch(sessionDoUrl('/__state', params)));
+  const response = await sessionStub(live.env, sessionCode).fetch(sessionDoUrl('/__state', params));
+  if (host && response.headers.get(ANSWERS_DELETED_HEADER) === '1') {
+    return withApiHeaders(await withArchivedAnswers(live, sessionCode, response));
+  }
+  return withApiHeaders(response);
+}
+
+/**
+ * Answers deleted from the session can still download from a saved archive
+ * (exportRoute's fallback), so the host snapshot reports them available then.
+ * Runs only on full host reads of an ended session whose answers are deleted.
+ */
+async function withArchivedAnswers<G>(live: Live<G>, sessionCode: string, response: Response): Promise<Response> {
+  const headers = new Headers(response.headers);
+  headers.delete(ANSWERS_DELETED_HEADER);
+  if ((await live.authority.archivedAnswers(sessionCode)) === null) {
+    return new Response(response.body, { status: response.status, headers });
+  }
+  const body = (await response.json()) as { exports?: { answers?: string } };
+  if (body.exports !== undefined) body.exports.answers = 'available';
+  return new Response(JSON.stringify(body), { status: response.status, headers });
 }
 
 /** POST /api/sessions/:code/commands */

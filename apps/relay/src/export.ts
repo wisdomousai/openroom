@@ -213,7 +213,11 @@ export function exportJson(input: SessionState): unknown {
     status: state.status,
     revision: state.revision,
     meta: sessionOf(state).meta,
-    participantCount: Object.keys(state.participants).length,
+    // Deleting individual answers empties the participant records, so after
+    // that a count would read 0. The export says when they were deleted instead.
+    ...(state.answersDeletedAt === undefined
+      ? { participantCount: Object.keys(state.participants).length }
+      : { answersDeletedAt: state.answersDeletedAt }),
     ...(position === undefined ? {} : { position }),
     ...(state.endedAt === undefined ? {} : { endedAt: state.endedAt }),
     interactions: sessionOf(state).interactions.map((interaction) => {

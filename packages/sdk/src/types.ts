@@ -941,6 +941,20 @@ export interface HostSnapshot {
    * from remainingSecAt / remainingSec while `running`.
    */
   clock?: SessionClockView;
+  /** Which downloads the session menu offers (CONTRACTS §Export split); absent on servers that predate it. */
+  exports?: SessionExports;
+}
+
+/**
+ * Export availability for the host. JSON and the counts CSV stay until the
+ * session is wiped; `answers` is the individual-responses CSV: `needs-plan`
+ * without Named response exports (outside guest-list sessions), `deleted` once
+ * individual responses were deleted 30 minutes after the end.
+ */
+export interface SessionExports {
+  json: 'available';
+  csv: 'available';
+  answers: 'available' | 'needs-plan' | 'deleted';
 }
 
 export interface SessionClockView {

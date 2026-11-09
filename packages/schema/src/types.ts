@@ -37,6 +37,21 @@ export const SESSION_THEME_IDS = [
  */
 export type IdentityMode = 'anonymous' | 'nickname' | 'identified' | 'guest-list';
 
+/** The identity modes a participant can enter with the session code alone. */
+export const JOIN_CODE_MODES: readonly IdentityMode[] = ['anonymous', 'nickname'];
+
+/**
+ * True when the session code alone lets a participant in: `anonymous` and
+ * `nickname`, and an absent mode, which normalises to `nickname`. An
+ * `identified` session admits only a student access link and a `guest-list`
+ * session only a guest link, so for those the code, its QR and a bare join
+ * address open nothing and are neither shown nor returned. Takes a plain
+ * string because wire snapshots carry the mode untyped.
+ */
+export function joinCodeOpens(identityMode: string | undefined): boolean {
+  return identityMode === undefined || (JOIN_CODE_MODES as readonly string[]).includes(identityMode);
+}
+
 export type InteractionType =
   | 'choice'
   | 'scale'

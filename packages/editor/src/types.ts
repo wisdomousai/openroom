@@ -2,7 +2,7 @@
  * Local mirrors of the shared contracts (docs/CONTRACTS.md), used by the
  * editor and the apps that host it. Keep in sync with CONTRACTS.md.
  */
-import type { DictionaryEntry, Outline, PresentationPosition } from '@openroom/schema';
+import type { DictionaryEntry, IdentityMode, Outline, PresentationPosition } from '@openroom/schema';
 import type { InkColor, MarkShape } from '@openroom/sdk';
 
 export type SessionStatus = 'lobby' | 'live' | 'ended';
@@ -143,9 +143,7 @@ export interface Session {
   version: 1;
   meta: SessionMeta;
   defaults?: {
-    // Mirrors `IdentityMode` in @openroom/schema; `identified` is the mode a
-    // participant reaches by holding a student access link.
-    identityMode?: 'anonymous' | 'nickname' | 'identified';
+    identityMode?: IdentityMode;
     resultVisibility?: ResultVisibility;
     allowAnswerChange?: boolean;
     theme?: string;
@@ -324,6 +322,10 @@ export interface HostSnapshot {
     placement: 'slide' | 'corner';
   };
   endedAt?: number;
+  /** Set once individual responses were deleted, 30 minutes after the end. */
+  answersDeletedAt?: number;
+  /** Which downloads the session menu offers; absent on servers that predate it. */
+  exports?: import('@openroom/sdk').SessionExports;
 }
 
 // ---- Commands (host subset) -------------------------------------------------
