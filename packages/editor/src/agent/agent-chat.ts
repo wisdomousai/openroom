@@ -3,6 +3,8 @@ import type {
   DesktopAgentEvent,
   DesktopAgentHostId,
   DesktopAgentRunResult,
+  DesktopAgentRunState,
+  DesktopAgentStreamEvent,
 } from '../desktop-bridge';
 
 export type AgentChatPart = DesktopAgentEvent;
@@ -24,7 +26,12 @@ export interface AgentChatState {
   modelId: string | null;
   conversationId: string | null;
   messages: AgentChatMessage[];
+  /** A preparation runs for this deck. Main owns the run; a remount reads it back. */
   running: boolean;
+  /** The window runs a preparation on another deck: Send waits, Stop stops that run. */
+  busyDeck: { title: string | null } | null;
+  /** Hosted deck the pane shows; null for the file window's open file. */
+  deckId: string | null;
   error: string | null;
 }
 
@@ -35,6 +42,8 @@ export const EMPTY_AGENT_CHAT: AgentChatState = {
   conversationId: null,
   messages: [],
   running: false,
+  busyDeck: null,
+  deckId: null,
   error: null,
 };
 
@@ -56,11 +65,18 @@ export function beginTurn(
   };
 }
 
-export function applyAgentEvent(state: AgentChatState, event: DesktopAgentEvent): AgentChatState {
+export function applyAgentEvent(state: AgentChatState, tagged: DesktopAgentStreamEvent): AgentChatState {
+  const { conversationId, ...rest } = tagged;
+  const event = rest as DesktopAgentEvent;
+  // An event from another conversation (a run on another deck) is not this transcript's.
+  if (conversationId !== undefined && state.conversationId !== null && conversationId !== state.conversationId) {
+    return state;
+  }
   const last = state.messages.at(-1);
   if (last === undefined || last.role !== 'agent' || !last.pending) return state;
   return {
     ...state,
+    conversationId: state.conversationId ?? conversationId ?? null,
     messages: [...state.messages.slice(0, -1), { ...last, parts: nextAgentParts(last.parts, event) }],
   };
 }
@@ -106,23 +122,57 @@ export function finishTurn(state: AgentChatState, result: DesktopAgentRunResult)
 }
 
 export function resetChat(state: AgentChatState): AgentChatState {
-  return { ...EMPTY_AGENT_CHAT, hostId: state.hostId, modelId: state.modelId, draft: state.draft };
+  return {
+    ...EMPTY_AGENT_CHAT,
+    hostId: state.hostId,
+    modelId: state.modelId,
+    draft: state.draft,
+    deckId: state.deckId,
+    busyDeck: state.busyDeck,
+  };
 }
 
+/**
+ * The pane's state from main's snapshot of a deck. `run` comes from the main
+ * process, which owns the preparation: a pane that remounts mid-run keeps
+ * running and its pending agent message, and a pane on another deck learns
+ * that deck is busy. Without `run` (an older Desktop) nothing is running.
+ */
 export function restoreChat(
   snapshot: DesktopAgentConversationSnapshot | null,
   /** `draft` rides along so loading a conversation does not discard what is typed. */
-  fallback: Pick<AgentChatState, 'hostId' | 'modelId'> & { draft?: string },
+  fallback: Pick<AgentChatState, 'hostId' | 'modelId'> & { draft?: string; deckId?: string | null },
+  run: DesktopAgentRunState | null = null,
 ): AgentChatState {
   const draft = fallback.draft ?? '';
-  if (snapshot === null) return { ...EMPTY_AGENT_CHAT, ...fallback, draft };
+  const deckId = fallback.deckId ?? null;
+  const running = run?.state === 'running';
+  const busyDeck = run?.state === 'busy' ? { title: run.deckTitle } : null;
+  if (snapshot === null) {
+    return {
+      ...EMPTY_AGENT_CHAT,
+      ...fallback,
+      draft,
+      deckId,
+      running,
+      busyDeck,
+      conversationId: run?.state === 'running' ? run.conversationId : null,
+    };
+  }
+  const live = run?.state === 'running' && run.conversationId === snapshot.id;
   return {
     hostId: snapshot.hostId,
     modelId: snapshot.modelId,
     draft,
     conversationId: snapshot.id,
-    messages: snapshot.messages,
-    running: false,
+    // Only the conversation main is running may stay pending; a transcript left
+    // pending by a quit mid-run reads as finished.
+    messages: live
+      ? snapshot.messages
+      : snapshot.messages.map((message) => (message.role === 'agent' ? { ...message, pending: false } : message)),
+    running,
+    busyDeck,
+    deckId,
     error: null,
   };
 }
@@ -193,7 +243,7 @@ export function selectModel(state: AgentChatState, modelId: string | null): Agen
 export function selectHost(state: AgentChatState, hostId: DesktopAgentHostId): AgentChatState {
   if (state.hostId === hostId) return state;
   // A conversation's resume handle belongs to one host; switching starts over.
-  return { ...EMPTY_AGENT_CHAT, hostId };
+  return { ...EMPTY_AGENT_CHAT, hostId, deckId: state.deckId, busyDeck: state.busyDeck };
 }
 
 type Listener = () => void;

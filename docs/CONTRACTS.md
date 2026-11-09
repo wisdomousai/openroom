@@ -382,7 +382,13 @@ GET|PUT|DELETE /api/decks/:id/draft
                                          one rolling auto-save draft per deck {source, baseVersion, updatedAt, updatedBy};
                                          source is editor text, NOT validated (half-typed YAML must still save) and is
                                          never read by launch or by the deck detail content; GET 404s when absent;
-                                         PUT caps source at 256K chars (413); editor+ to write, member to read
+                                         PUT caps source at 256K chars (413); editor+ to write, member to read;
+                                         PUT refusals: 401 unauthorized, 403 forbidden, 404 not-found,
+                                         409 resource-in-trash, 400 invalid-json|source-required|base-version-required,
+                                         413 draft-too-large, 409 version-conflict. The editor's saver
+                                         (packages/editor/src/deck-edit/useDraftSave.ts) retries only status 0, 429
+                                         and 5xx, raises the conflict choice only for version-conflict, and stops
+                                         on every other code with that reason until Try again or Restore
 POST /api/decks/:id/restore   restore from trash
 POST /api/decks/:id/start     start the current saved deck with {requestId: UUID, stepId?};
                                          422 identified-session-needs-student when the outline is identified and the deck

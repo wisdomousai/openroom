@@ -96,9 +96,19 @@ export interface AgentConversationSummary {
   updatedAt: string;
 }
 
+/**
+ * The preparation this window's main process is running, as one deck's pane
+ * sees it. Main owns the run; a pane that mounts mid-run reads it from here.
+ */
+export type AgentRunState =
+  | { state: 'running'; conversationId: string | null }
+  | { state: 'busy'; deckTitle: string | null };
+
 export interface AgentWorkspaceSnapshot {
   active: AgentConversationSnapshot | null;
   history: AgentConversationSummary[];
+  /** Absent or null: no preparation runs in this window. */
+  run?: AgentRunState | null;
 }
 
 export interface AgentRunRequest {
@@ -115,6 +125,8 @@ export interface AgentRunRequest {
    * Absent/null means the run targets the open local .openroom file.
    */
   deckId?: string | null;
+  /** The deck's title, so a pane on another deck can say which deck is busy. */
+  deckTitle?: string | null;
   /** Vendor model id from the picker; absent/null uses the host's default. */
   model?: string | null;
   /**

@@ -8,7 +8,7 @@ related: [deck-editor, live-session, learner, desktop, account, limits]
 
 ## A deck has unsaved changes
 
-Keep the editor open and restore the connection. Wait for the save status. If it stays at **Couldn’t save** after the automatic retries, make a further edit to retry. Preserve important text locally before closing a page that still reports a save error.
+Keep the editor open. If a notice below the title bar names why the save was refused (the deck is in Trash, your sign-in ended, your access changed, or the deck is too large), follow its action and use **Copy text** to keep your edits. Otherwise restore the connection and wait for the save status. If it stays at **Couldn’t save** after the automatic retries, make a further edit to retry. Preserve important text locally before closing a page that still reports a save error.
 
 If the editor says **This deck was changed somewhere else since you opened it.**, choose **Keep this draft** or **Use saved version**. Choose the intended content only after considering the other client's changes. In Desktop, save a separate local copy before resolving a cloud synchronization conflict.
 

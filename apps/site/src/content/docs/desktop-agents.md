@@ -36,6 +36,8 @@ Describe the audience, objective, available time, and material to use. For examp
 
 Select **Send**. Answer any questions the agent presents. Use **Stop** to interrupt a running turn. Review the deck as changes appear in the editor, then refine the request or edit the content directly.
 
+A preparation keeps running when you open the Library or another deck. Come back to its deck to watch it and stop it. Desktop runs one preparation per window, so the Agent pane on another deck names the deck that is running and offers **Stop**; send there once that preparation ends.
+
 Check factual statements, task instructions, accepted answers, reveal order, and homework before presenting. Use **Present** to rehearse and save the file when satisfied.
 
 ## Add reference material
@@ -48,7 +50,7 @@ Desktop gives the local agent access to the selected material. Temporary attachm
 
 ## Manage conversations
 
-Use **Chats for this deck** to reopen a conversation. Select **New chat** for a new preparation task. Changing the agent host begins a new conversation.
+Use **Chats for this deck** to reopen a conversation. Select **New chat** for a new preparation task. New chat on one deck leaves a preparation running on another deck alone. Changing the agent host begins a new conversation.
 
 Conversation history is stored locally. Temporary attachment workspaces are cleaned up with the conversation lifecycle; keep original files in your own folders. Reattach needed material when beginning a fresh conversation.
 

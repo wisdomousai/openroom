@@ -57,7 +57,14 @@ The **plan.yaml** menu copies the command-line commands that read this deck into
 
 ## Save changes
 
-Cloud editing saves a rolling draft after a short pause. The status shows **Unsaved changes**, **Saving…**, **Saved**, or a save error. Wait for **Saved** before closing the tab. A failed save retries automatically and shows **Couldn’t save — retrying**. If the status stays at **Couldn’t save**, keep the editor open, restore the connection, and make a further edit to retry. If the deck was changed somewhere else, the editor shows the conflict banner instead; see [resolve a conflicting draft](#resolve-a-conflicting-draft).
+Cloud editing saves a rolling draft after a short pause. The status shows **Unsaved changes**, **Saving…**, **Saved**, or a save error. Wait for **Saved** before closing the tab. A save that fails on the connection or the server retries automatically and shows **Couldn’t save — retrying**. If the status stays at **Couldn’t save**, keep the editor open, restore the connection, and make a further edit to retry. A save refused for another reason does not retry. A notice below the title bar names the reason, keeps your text in the editor and offers **Copy text**:
+
+- The deck is in Trash: choose **Restore**, and saving continues.
+- Your sign-in ended: copy the text, then choose **Sign in**. Signing in reopens the deck from its last save, so paste the copied text back.
+- You can no longer edit the deck, or it is no longer shared with you: copy the text. When an owner gives you editor access again, choose **Try again**.
+- The deck is too large to save: shorten it, then choose **Try again**.
+
+If the deck was changed somewhere else, the editor shows the conflict banner instead; see [resolve a conflicting draft](#resolve-a-conflicting-draft).
 
 Drafts preserve unfinished fields so you can return to them. Starting participation validates the content and saves a version first. Complete any question named in the readiness message before starting the session. A draft can be readable in the editor while its unfinished question still needs an answer or prompt.
 

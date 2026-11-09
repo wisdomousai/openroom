@@ -8,6 +8,7 @@ import type {
   DesktopAgentModel,
   DesktopAgentQuestionAnswer,
   DesktopAgentRunResult,
+  DesktopAgentWorkspaceSnapshot,
   DesktopByokProviderId,
 } from '../desktop-bridge';
 import { useEditorServices } from '../services';
@@ -209,6 +210,7 @@ function ChatMessage({
 export function AgentPane({
   onBeforeRun,
   deckId = null,
+  deckTitle = null,
   onAfterRun,
   onClose,
 }: {
@@ -217,6 +219,8 @@ export function AgentPane({
   onClose?: () => void;
   /** Hosted deck the chat prepares (deck editor); null targets the open local file. */
   deckId?: string | null;
+  /** The deck's title, so a pane on another deck in this window can name it while it runs. */
+  deckTitle?: string | null;
   /** Called after a successful run so the mounting editor can adopt the agent's saves. */
   onAfterRun?: () => void;
 }) {
@@ -242,18 +246,27 @@ export function AgentPane({
   const [history, setHistory] = useState<DesktopAgentConversationSummary[]>([]);
   const modelsLoading = useRef(new Set<DesktopAgentHostId>());
 
-  const adoptWorkspace = (workspace: Awaited<ReturnType<NonNullable<typeof bridge>['loadAgentChat']>>) => {
+  const adoptWorkspace = (workspace: DesktopAgentWorkspaceSnapshot) => {
     setHistory(workspace.history);
     agentChatStore.setState((current) =>
-      restoreChat(workspace.active, { hostId: current.hostId, modelId: current.modelId, draft: current.draft }),
+      current.deckId !== deckId
+        ? current
+        : restoreChat(
+            workspace.active,
+            { hostId: current.hostId, modelId: current.modelId, draft: current.draft, deckId },
+            workspace.run ?? null,
+          ),
     );
   };
 
   useEffect(() => {
     if (bridge === null) return;
     let active = true;
+    // A pane that remounts on the deck it was running keeps that run until main's snapshot says otherwise.
     agentChatStore.setState((current) =>
-      restoreChat(null, { hostId: current.hostId, modelId: current.modelId, draft: current.draft }),
+      current.deckId === deckId && current.running
+        ? current
+        : restoreChat(null, { hostId: current.hostId, modelId: current.modelId, draft: current.draft, deckId }),
     );
     void bridge.loadAgentChat(deckId).then((workspace) => {
       if (active) adoptWorkspace(workspace);
@@ -356,7 +369,14 @@ export function AgentPane({
   const selected = hosts.find((host) => host.id === chat.hostId) ?? null;
   const selectedModels = selected === null ? [] : (models[selected.id] ?? []);
   const selectedProvider = BYOK_PROVIDERS.find((provider) => provider.id === keyProvider) ?? null;
-  const canSend = selected !== null && selected.installed && selected.signedIn && prompt.trim() !== '' && !chat.running;
+  const busyElsewhere = chat.busyDeck !== null;
+  const canSend =
+    selected !== null &&
+    selected.installed &&
+    selected.signedIn &&
+    prompt.trim() !== '' &&
+    !chat.running &&
+    !busyElsewhere;
   const hasConversation = chat.messages.length > 0;
 
   /**
@@ -399,6 +419,7 @@ export function AgentPane({
         folders: turn.folders,
         conversationId: agentChatStore.getState().conversationId,
         deckId,
+        deckTitle,
         model: agentChatStore.getState().modelId,
       });
     } catch (cause) {
@@ -408,10 +429,37 @@ export function AgentPane({
         conversationId: null,
       };
     }
-    agentChatStore.setState((current) => finishTurn(current, result));
-    void bridge.loadAgentChat(deckId).then((workspace) => setHistory(workspace.history));
+    if (agentChatStore.getState().deckId === deckId) {
+      agentChatStore.setState((current) => finishTurn(current, result));
+      void bridge.loadAgentChat(deckId).then((workspace) => {
+        setHistory(workspace.history);
+        // A refused send: the window is running a preparation this pane did not know about.
+        if (workspace.run === null || workspace.run === undefined) return;
+        agentChatStore.setState((current) =>
+          current.deckId !== deckId || current.running
+            ? current
+            : {
+                ...restoreChat(
+                  workspace.active,
+                  { hostId: current.hostId, modelId: current.modelId, draft: current.draft, deckId },
+                  workspace.run,
+                ),
+                error: current.error,
+              },
+        );
+      });
+    } else {
+      // The pane now shows another deck, which this run held busy. One run per window, so it is free now.
+      agentChatStore.setState((current) => (current.busyDeck === null ? current : { ...current, busyDeck: null }));
+    }
     if (result.ok) onAfterRun?.();
     refresh();
+  };
+
+  /** Stop the run on another deck in this window, then read this deck's state again. */
+  const stopElsewhere = async () => {
+    await bridge.cancelAgent();
+    adoptWorkspace(await bridge.loadAgentChat(deckId));
   };
 
   const signIn = async () => {
@@ -477,7 +525,7 @@ export function AgentPane({
   };
 
   const openChat = async (conversationId: string) => {
-    if (chat.running || conversationId === chat.conversationId) return;
+    if (chat.running || busyElsewhere || conversationId === chat.conversationId) return;
     adoptWorkspace(await bridge.selectAgentChat(conversationId, deckId));
   };
 
@@ -494,7 +542,7 @@ export function AgentPane({
             <Button
               size="sm"
               variant="ghost"
-              disabled={chat.running}
+              disabled={chat.running || busyElsewhere}
               onClick={() => {
                 void bridge.openAgentInCodex(deckId).then((result) => {
                   if (!result.ok) {
@@ -660,7 +708,7 @@ export function AgentPane({
                       <button
                         key={item.id}
                         type="button"
-                        disabled={chat.running}
+                        disabled={chat.running || busyElsewhere}
                         className={cn(
                           'truncate rounded-md px-2 py-1 text-left text-caption hover:bg-accent',
                           item.id === chat.conversationId && 'bg-accent',
@@ -837,18 +885,28 @@ export function AgentPane({
               </PromptInputActionMenu>
             </PromptInputTools>
             <PromptInputSubmit
-              status={chat.running ? 'streaming' : undefined}
-              disabled={!chat.running && !canSend}
+              status={chat.running || busyElsewhere ? 'streaming' : undefined}
+              disabled={!chat.running && !busyElsewhere && !canSend}
               onClick={(event) => {
-                // While a turn runs, the same button is Stop.
+                // While a turn runs, here or on another deck, the same button is Stop.
                 if (chat.running) {
                   event.preventDefault();
                   void bridge.cancelAgent();
+                } else if (busyElsewhere) {
+                  event.preventDefault();
+                  void stopElsewhere();
                 }
               }}
             />
           </PromptInputFooter>
         </PromptInput>
+        {chat.busyDeck === null ? null : (
+          <p className="text-caption text-muted-foreground" role="status">
+            {chat.busyDeck.title === null
+              ? 'A preparation is running on another deck. Wait for it to finish, or press Stop to end it and send here.'
+              : `A preparation is running on “${chat.busyDeck.title}”. Wait for it to finish, or press Stop to end it and send here.`}
+          </p>
+        )}
         {chat.error === null ? null : (
           <p className="text-caption text-destructive" role="alert">
             {chat.error}

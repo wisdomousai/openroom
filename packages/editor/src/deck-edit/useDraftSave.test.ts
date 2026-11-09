@@ -97,6 +97,41 @@ describe('draft save state machine', () => {
     expect(put).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    [409, 'resource-in-trash'],
+    [401, 'unauthorized'],
+    [403, 'forbidden'],
+    [404, 'not-found'],
+    [413, 'draft-too-large'],
+    [400, 'invalid-json'],
+  ])('stops on %i %s with the reason, without retrying or raising the conflict choice', async (status, code) => {
+    const refusal = Object.assign(new Error(`Sentence for ${code}`), { status, code });
+    const put = vi.fn(async (): Promise<{ savedAt: number }> => { throw refusal; });
+    const onConflict = vi.fn();
+    const saver = createDraftSaver({ acked: 'seed', put, onStatus: () => undefined, onConflict, debounceMs: 1_500, retryDelaysMs: [1_000, 4_000] });
+
+    saver.change('kept text', 2);
+    await vi.advanceTimersByTimeAsync(20_000);
+    saver.change('kept text, typed on', 2);
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(onConflict).not.toHaveBeenCalled();
+    expect(saver.status()).toMatchObject({
+      state: 'error',
+      retrying: false,
+      reason: { code, status, message: `Sentence for ${code}` },
+    });
+
+    // Try again sends the current text once the cause is cleared.
+    put.mockResolvedValueOnce({ savedAt: 5 });
+    saver.retry();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(put).toHaveBeenLastCalledWith('kept text, typed on', 2);
+    expect(saver.status()).toMatchObject({ state: 'saved' });
+    expect(saver.status().reason).toBeUndefined();
+    saver.dispose();
+  });
+
   it('keeps typing during a slow save and writes the newer text after', async () => {
     let release: ((value: { savedAt: number }) => void) | null = null;
     const put = vi.fn(() => new Promise<{ savedAt: number }>((resolve) => { release = resolve; }));

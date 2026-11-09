@@ -175,7 +175,12 @@ with the OpenRoom skills and a stdio MCP sidecar back to the open file.
 Follow-up messages resume the same vendor session — the API-key host has none, so
 it replays the stored transcript as text instead; reopening the deck restores
 the active transcript, and New chat archives it in that deck's local chat
-history. Files the agent creates in the workspace remain with the deck on this
+history. A Desktop window runs one preparation at a time, and the main process
+owns it (`apps/desktop/src/agents/ipc.ts`): the workspace snapshot the pane loads
+reports it as running for this deck or busy with another deck, and agent events
+name their conversation. A pane that remounts mid-run resumes streaming with
+Stop; a pane on another deck names the busy deck and offers Stop. New chat stops
+a run only on its own deck. Files the agent creates in the workspace remain with the deck on this
 device. Attached school files are copied to a separate temporary directory and
 deleted when the window or app closes; referenced folders are read in place.
 The teacher’s subscription pays, or their own provider key does. Desktop does not
